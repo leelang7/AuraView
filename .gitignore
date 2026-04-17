@@ -25,3 +25,6 @@ env/
 
 # OS 관련
 .DS_Store
+
+uploads/
+backend/uploads/

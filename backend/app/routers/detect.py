@@ -1,21 +1,31 @@
 import os
-import uuid
+import re
+import cv2
+from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, UploadFile, File, Form, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import BlindSignalEvent, Intersection
-from ..services.matching import haversine
 from ..services.detector import detect_objects
 from ..services.public_api import fetch_signal_info
-import cv2
+from ..services.matching import haversine
 
 router = APIRouter()
 
-def draw_overlay(image_path, det, signal_state, signal_time):
-    import cv2, os
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+
+def safe_name(name: str) -> str:
+    stem = os.path.splitext(name)[0]
+    stem = re.sub(r"[^0-9a-zA-Z가-힣_-]+", "_", stem).strip("_")
+    return stem[:50] or "file"
+
+
+def draw_overlay(image_path, det, signal_state, signal_time):
     img = cv2.imread(image_path)
     h, w = img.shape[:2]
 
@@ -41,56 +51,29 @@ def draw_overlay(image_path, det, signal_state, signal_time):
         status_text = "CHECK SIGNAL"
         status_color = (255, 255, 255)
 
+    hud_top = int(h * 0.72)
+    hud_bottom = int(h * 0.90)
+
     overlay = img.copy()
-
-    panel_w = int(w * 0.78)
-    panel_h = 160
-    x1 = (w - panel_w) // 2
-    y1 = int(h * 0.68)
-    x2 = x1 + panel_w
-    y2 = y1 + panel_h
-
-    cv2.rectangle(overlay, (x1, y1), (x2, y2), (18, 24, 35), -1)
+    cv2.rectangle(overlay, (0, hud_top), (w, hud_bottom), (0, 0, 0), -1)
     img = cv2.addWeighted(overlay, 0.45, img, 0.55, 0)
 
-    cv2.rectangle(img, (x1, y1), (x2, y2), status_color, 2)
-
     cv2.putText(
         img,
-        "AURAVIEW SYSTEM",
-        (x1 + 24, y1 + 34),
+        f"AURAVIEW  |  SIGNAL: {status_text}",
+        (36, hud_top + 42),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.75,
-        (220, 230, 245),
-        2
-    )
-
-    cv2.putText(
-        img,
-        "BLOCKED SIGNAL DETECTED",
-        (x1 + 24, y1 + 84),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.05,
+        1.18,
         status_color,
         3
     )
 
     cv2.putText(
         img,
-        f"HUD SIGNAL  {status_text}",
-        (x1 + 24, y1 + 126),
+        f"REMAIN {int(float(signal_time))}s",
+        (36, hud_top + 88),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,
-        (255, 255, 255),
-        2
-    )
-
-    cv2.putText(
-        img,
-        f"REMAIN  {int(float(signal_time))}s",
-        (x2 - 220, y1 + 126),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,
+        1.0,
         (255, 255, 255),
         2
     )
@@ -100,8 +83,35 @@ def draw_overlay(image_path, det, signal_state, signal_time):
     cv2.imwrite(out_path, img)
     return out_path
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+def process_video(video_path, base_name: str, sample_rate: int = 10):
+    cap = cv2.VideoCapture(video_path)
+    results = []
+
+    frame_idx = 0
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        if frame_idx % sample_rate == 0:
+            frame_name = f"{ts}_{base_name}_frame_{frame_idx:04d}.jpg"
+            frame_path = os.path.join(UPLOAD_DIR, frame_name)
+            cv2.imwrite(frame_path, frame)
+
+            det = detect_objects(frame_path)
+
+            results.append({
+                "frame_path": frame_path,
+                "det": det
+            })
+
+        frame_idx += 1
+
+    cap.release()
+    return results
 
 
 @router.post("/frame")
@@ -114,18 +124,18 @@ async def detect_frame(
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    import os, uuid
-
     ext = os.path.splitext(image.filename)[1] or ".jpg"
-    save_path = os.path.join("uploads", f"{uuid.uuid4().hex}{ext}")
+    base = safe_name(image.filename or "image")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    save_name = f"{ts}_{base}{ext}"
+    save_path = os.path.join(UPLOAD_DIR, save_name)
 
     with open(save_path, "wb") as f:
         f.write(await image.read())
 
     det = detect_objects(save_path)
 
-    # 🔥 1. 위치 기반 교차로 자동 매칭
-    if user_lat and user_lon:
+    if user_lat is not None and user_lon is not None:
         intersections = db.query(Intersection).filter(
             Intersection.has_valid_coord == True
         ).all()
@@ -140,40 +150,21 @@ async def detect_frame(
     if not intersection_id:
         intersection_id = "unknown"
 
-    # 🔥 2. 신호 조회
-    try:
-        signal_data = fetch_signal_info(intersection_id)
-    except:
-        signal_data = {
-            "body": {
-                "items": {
-                    "item": {
-                        "stPdsgSttsNm": "stop-And-Remain",
-                        "stPdsgRmndCs": "10"
-                    }
-                }
-            }
-        }
+    signal_data = fetch_signal_info(intersection_id)
     body = signal_data.get("body", {})
     items = body.get("items", {})
     item_list = items.get("item", [])
     if isinstance(item_list, dict):
         item_list = [item_list]
 
-    signal_state = ""
-    signal_time = 0
-
-    overlay_path = draw_overlay(save_path, det, signal_state, signal_time)
-    overlay_url = None
-    if overlay_path:
-        overlay_url = "/" + overlay_path
+    signal_state = "stop-And-Remain"
+    signal_time = 10
 
     if item_list:
         sig = item_list[0]
-        signal_state = sig.get("stPdsgSttsNm", "")
-        signal_time = sig.get("stPdsgRmndCs", 0)
+        signal_state = sig.get("stPdsgSttsNm", signal_state)
+        signal_time = sig.get("stPdsgRmndCs", signal_time)
 
-    # 🔥 3. 위험 점수 계산
     risk_score = 0
     if det["vehicle_detected"]:
         risk_score += 5
@@ -181,12 +172,16 @@ async def detect_frame(
         risk_score += 5
     risk_score += min(duration, 5)
 
-    # 🔥 4. 위험 판단
     is_blind_risk = (
         det["vehicle_detected"] and
         (not det["signal_detected"]) and
         duration >= 2
     )
+
+    overlay_path = draw_overlay(save_path, det, signal_state, signal_time)
+    overlay_url = None
+    if overlay_path:
+        overlay_url = "/" + overlay_path.replace("\\", "/")
 
     if is_blind_risk:
         event = BlindSignalEvent(
@@ -226,4 +221,54 @@ async def detect_frame(
         "risk_score": risk_score,
         "overlay_image": overlay_url,
         "detect_result": det,
+    }
+
+
+@router.post("/video")
+async def detect_video(
+    video: UploadFile = File(...),
+):
+    ext = os.path.splitext(video.filename)[1] or ".mp4"
+    base = safe_name(video.filename or "video")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    video_name = f"{ts}_{base}{ext}"
+    video_path = os.path.join(UPLOAD_DIR, video_name)
+
+    with open(video_path, "wb") as f:
+        f.write(await video.read())
+
+    frames = process_video(video_path, base_name=base, sample_rate=10)
+
+    highlights = []
+
+    for item in frames:
+        frame_path = item["frame_path"]
+        det = item["det"]
+
+        is_blocked = det["vehicle_detected"] and not det["signal_detected"]
+
+        if is_blocked:
+            overlay_path = draw_overlay(
+                frame_path,
+                det,
+                "stop-And-Remain",
+                10
+            )
+
+            if overlay_path:
+                highlights.append({
+                    "frame": "/" + frame_path.replace("\\", "/"),
+                    "overlay": "/" + overlay_path.replace("\\", "/"),
+                    "det": det
+                })
+
+    total_frames = len(frames)
+    risk_frames = len(highlights)
+    risk_ratio = round((risk_frames / total_frames) * 100, 1) if total_frames else 0
+
+    return {
+        "total_frames": total_frames,
+        "risk_frames": risk_frames,
+        "risk_ratio": risk_ratio,
+        "highlights": highlights[:3]
     }

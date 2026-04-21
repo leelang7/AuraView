@@ -1,7 +1,27 @@
+# Core
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
-pydantic
+pydantic>=2.0
 requests
 python-dotenv
+python-multipart
+
+# Vision / ML
+ultralytics
+opencv-python
+numpy
+Pillow
+
+# Visualization (notebook)
+matplotlib
+
+# (Optional) E2E Risk Transformer training
+# torch>=2.1
+# torchvision
+
+# Database (optional prod)
 psycopg2-binary
+
+# ffmpeg binary for video transcode — system 패키지 우선, 없을 때 pip
+imageio-ffmpeg

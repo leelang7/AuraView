@@ -28,3 +28,19 @@ env/
 
 uploads/
 backend/uploads/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+secrets/
+
+# Model artifacts
+models/*.pt
+models/*.onnx
+models/*.safetensors
+
+# Training outputs
+runs/
+wandb/
+mlruns/

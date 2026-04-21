@@ -6,6 +6,13 @@
 
 ---
 
+## 0. 제출 URL
+
+- 🌐 **대시보드:** https://auraview.allthatai.kr/ui
+- 📱 **Fleet Mobile PWA:** https://auraview.allthatai.kr/pwa/
+- 📖 **Swagger API:** https://auraview.allthatai.kr/docs
+- 🔧 **Source:** https://github.com/leelang7/AuraView (branch: `feat/k-perception`)
+
 ## 1. 요약 (Executive Summary)
 
 테슬라의 FSD가 "카메라만으로 세상을 3D로 이해"했다면, AuraView는 **"블랙박스만으로 한국 도심의 사각지대까지 이해"** 한다.

@@ -3,6 +3,14 @@
 > **K-Perception Platform — 블랙박스 한 대로 사각지대까지 계산한다.**
 > Tesla-style occupancy · fleet-learning · end-to-end risk prediction을 한국 도심 교차로에 이식한 안전 주행 지원 시스템.
 
+### 🌐 Live
+
+- **Dashboard:** https://auraview.allthatai.kr/ui
+- **Mobile PWA:** https://auraview.allthatai.kr/pwa/
+- **API Docs (Swagger):** https://auraview.allthatai.kr/docs
+
+이 AuraView 는 **AllThatAI** 포트폴리오의 일부입니다. 우산 브랜드 랜딩: https://allthatai.kr
+
 비가시 신호·점유 공간·가려진 보행자 의도까지 **확률 필드로 추정**해 즉시 HUD에 경고합니다.
 영상만 있으면 신호 · 차량 · 보행자 · 점유 공간 · 충돌 위험을 **단일 백본에서 동시 예측**합니다.
 

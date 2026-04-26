@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -28,6 +29,29 @@ app = FastAPI(
     title="AuraView — K-Perception Platform",
     description="테슬라식 Occupancy · HydraNet · Fleet Learning을 한국 도심 교차로에 이식한 안전 주행 지원 시스템",
     version="0.2.0",
+)
+
+# CORS — Flutter Web · 외부 데모 클라이언트가 직접 호출 가능하도록
+# 운영 시 화이트리스트로 좁히려면 ALLOWED_ORIGINS 환경변수에 콤마 구분으로 지정.
+_default_origins = [
+    "https://auraview.allthatai.kr",
+    "https://allthatai.kr",
+    "http://localhost",
+    "http://localhost:5180",
+    "http://127.0.0.1",
+    "http://127.0.0.1:5180",
+]
+_env_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+_allowed = [o.strip() for o in _env_origins.split(",") if o.strip()] if _env_origins else _default_origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Process-Time"],
+    max_age=600,
 )
 
 # Core routers

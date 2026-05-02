@@ -136,17 +136,34 @@ github.com/leelang7/AuraView
 
 ## 🚀 Quickstart
 
-### Backend (FastAPI)
+### 🐳 한 줄 가동 (Docker, 권장)
 
 ```bash
 git clone https://github.com/leelang7/AuraView.git
 cd AuraView
-cp .env.example .env    # → SERVICE_KEY 등 실제 값 입력
+cp .env.example .env    # → SERVICE_KEY 등 (없어도 fallback 으로 가동)
+docker compose up -d
+```
+
+→ http://localhost:8000/ui · `docker compose logs -f auraview` · `docker compose down`
+
+reverse-proxy 까지 포함하려면:
+```bash
+docker compose --profile edge up -d   # nginx 80 포트 추가
+```
+
+### Backend (Native, 개발용)
+
+```bash
+git clone https://github.com/leelang7/AuraView.git
+cd AuraView
+cp .env.example .env
 pip install -r requirements.txt
 cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-대시보드: http://localhost:8000/ui · 통합 테스트: `cd backend && pytest tests/`
+대시보드: http://localhost:8000/ui · 통합 테스트: `cd backend && pytest tests/` (30개)
+모델 학습 (선택): `python notebooks/train_risk_transformer_real.py` (~3분, AUC 0.94)
 
 ### Flutter Mobile App (`auraview_fleet/`)
 

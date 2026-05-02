@@ -108,8 +108,15 @@
   </header>
 
   <section>
-    <h2><em>모델</em> 성능</h2>
+    <h2><em>모델</em> 성능 — Trained PyTorch Transformer</h2>
     <div class="grid-stats" id="modelStats"></div>
+    <p style="margin-top:10px;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;" id="modelMeta"></p>
+
+    <div style="margin-top:18px;">
+      <h3 style="font-size:15px;margin-bottom:8px;color:var(--muted);">// baseline vs trained 비교</h3>
+      <table id="modelCompare"><thead><tr><th>지표</th><th>baseline</th><th>trained</th><th>Δ</th></tr></thead><tbody></tbody></table>
+    </div>
+
     <p style="margin-top:10px;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;" id="separation"></p>
   </section>
 
@@ -178,18 +185,42 @@
       $('liveBadge').textContent = `${d.service} v${d.version} · SYSTEM ONLINE`;
       $('footerVer').textContent = `${d.service} v${d.version} · ${d.ts.split('T')[0]}`;
 
-      const m = d.model || {};
+      const trained = d.model_trained || {};
+      const baseline = d.model_baseline || {};
+      const samplesT = trained.samples || {};
+      const samplesTotal = (samplesT.train || 0) + (samplesT.val || 0);
+
       $('modelStats').innerHTML = [
-        tile('AUC',         (m.auc != null) ? m.auc.toFixed(3) : '—'),
-        tile('F1 @ 0.5',    (m.f1_at_0_5 != null) ? m.f1_at_0_5.toFixed(3) : '—'),
-        tile('Lead Time',   (m.avg_lead_time_s != null) ? m.avg_lead_time_s + 's' : '—'),
-        tile('Samples',     (m.samples != null) ? m.samples.toLocaleString() : '—'),
-        tile('Tests',       (d.tests?.passed || '—') + ' / ' + (d.tests?.total || '—')),
+        tile('AUC',           (trained.auc != null) ? trained.auc.toFixed(4) : '—', null, 'var(--accent)'),
+        tile('F1 @ 0.5',      (trained.f1_at_0_5 != null) ? trained.f1_at_0_5.toFixed(4) : '—', null, 'var(--safe)'),
+        tile('Precision',     (trained.precision_at_0_5 != null) ? trained.precision_at_0_5.toFixed(4) : '—'),
+        tile('Recall',        (trained.recall_at_0_5 != null) ? trained.recall_at_0_5.toFixed(4) : '—'),
+        tile('Val loss',      (trained.val_loss != null) ? trained.val_loss.toFixed(4) : '—'),
+        tile('Params',        (trained.params != null) ? trained.params.toLocaleString() : '—'),
+        tile('Samples',       samplesTotal ? samplesTotal.toLocaleString() : '—'),
+        tile('Tests',         (d.tests?.passed || '—') + ' / ' + (d.tests?.total || '—')),
       ].join('');
 
-      const sep = m.scenario_separation || {};
+      $('modelMeta').textContent =
+        `${trained.type || ''} · ${trained.epochs || '?'} epochs · ckpt: ${trained.checkpoint || ''} · ${samplesT.train || '?'} train + ${samplesT.val || '?'} val`;
+
+      // baseline vs trained 비교 표
+      const rows = [
+        ['AUC',       baseline.auc, trained.auc, 4],
+        ['F1 @ 0.5',  baseline.f1_at_0_5, trained.f1_at_0_5, 4],
+        ['Precision', baseline.precision_at_0_5, trained.precision_at_0_5, 4],
+        ['Recall',    baseline.recall_at_0_5, trained.recall_at_0_5, 4],
+      ];
+      const tb = document.querySelector('#modelCompare tbody');
+      tb.innerHTML = rows.map(([label, b, t, p]) => {
+        const dlt = (b != null && t != null) ? (t - b) : null;
+        const dStr = dlt != null ? `<span style="color:${dlt>=0?'var(--safe)':'var(--danger)'}">${dlt>=0?'+':''}${dlt.toFixed(p)}</span>` : '—';
+        return `<tr><td style="color:var(--muted);font-size:12px;">${label}</td><td>${b != null ? b.toFixed(p) : '—'}</td><td style="color:var(--accent);font-weight:700;">${t != null ? t.toFixed(p) : '—'}</td><td>${dStr}</td></tr>`;
+      }).join('');
+
+      const sep = baseline.scenario_separation || {};
       if (Object.keys(sep).length) {
-        $('separation').innerHTML = '시나리오 분리도 (pos − neg) — ' +
+        $('separation').innerHTML = '시나리오 분리도 (baseline · pos − neg) — ' +
           Object.entries(sep).map(([k,v]) => `<span style="color:var(--accent);">${k}</span> ${v.separation > 0 ? '+' : ''}${v.separation}`).join(' · ');
       }
 

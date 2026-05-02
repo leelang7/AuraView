@@ -254,26 +254,79 @@ def reenact_from_video(video_path: str, out_name: str) -> ReenactmentResult:
 # ──────────────────────────────────────────────────────────────────────
 
 def _draw_scene_base(w: int, h: int) -> np.ndarray:
-    """도로·차선·원경 하늘을 그린 베이스 장면. (해상도 비례)"""
+    """시네마틱 도로 베이스 — 그라디언트 하늘 + 원근 도로 + 대기 원근감 + 차선."""
     s = w / 960.0
     img = np.zeros((h, w, 3), dtype=np.uint8)
-    # sky gradient
+
+    # ── 1) 하늘 — 일출/저녁 무드 그라디언트 (지평선에 따뜻한 톤)
     sky_h = int(h * 0.55)
     for y in range(sky_h):
         t = y / max(1, sky_h)
-        img[y, :] = (int(18 + 60 * t), int(22 + 40 * t), int(28 + 35 * t))
-    # road
-    cv2.rectangle(img, (0, sky_h), (w, h), (20, 20, 26), -1)
-    # perspective lane
-    th = max(2, int(3 * s))
-    cv2.line(img, (int(w*0.5), sky_h), (int(w*0.15), h), (140, 140, 160), th)
-    cv2.line(img, (int(w*0.5), sky_h), (int(w*0.85), h), (140, 140, 160), th)
-    # center dashed
-    for i in range(6):
-        y1 = int(h * 0.58 + i * (h * 0.06))
-        y2 = y1 + int(h * 0.03)
-        cv2.line(img, (int(w * 0.5), y1), (int(w * 0.5), y2), (200, 200, 80), max(2, int(2*s)))
+        # 위쪽: 진한 네이비 → 지평선: 옅은 청록·핑크
+        b = int(38 + 100 * t)        # blue
+        g = int(28 + 90 * t)         # green
+        r = int(22 + 130 * t)        # red (지평선에서 따뜻하게)
+        img[y, :] = (b, g, r)
+
+    # ── 2) 도로 — 어두운 아스팔트 + 약한 노이즈 (디테일감)
+    cv2.rectangle(img, (0, sky_h), (w, h), (16, 16, 22), -1)
+    # 도로에 미세 노이즈 (10% 강도)
+    noise = (np.random.rand(h - sky_h, w, 3) * 14).astype(np.int16)
+    img[sky_h:, :] = np.clip(img[sky_h:, :].astype(np.int16) + noise, 0, 255).astype(np.uint8)
+
+    # ── 3) 도로 가장자리 (원근 라인) — 그라디언트 두께
+    edge_color = (130, 130, 145)
+    cv2.line(img, (int(w*0.5), sky_h), (int(w*0.10), h), edge_color, max(2, int(3*s)))
+    cv2.line(img, (int(w*0.5), sky_h), (int(w*0.90), h), edge_color, max(2, int(3*s)))
+
+    # ── 4) 중앙 점선 — 원근에 따라 굵어짐
+    for i in range(7):
+        prog = i / 6.0
+        y1 = int(sky_h + prog * (h - sky_h) * 0.95)
+        y2 = y1 + int(h * (0.018 + prog * 0.025))
+        thick = max(2, int((1 + prog * 4) * s))
+        cv2.line(img, (int(w * 0.5), y1), (int(w * 0.5), y2),
+                 (215, 215, 110), thick)
+
+    # ── 5) 대기 원근감 (지평선 부근 옅은 안개 layer)
+    haze = np.zeros_like(img)
+    haze_h = int(h * 0.18)
+    for y in range(sky_h - haze_h // 2, sky_h + haze_h // 2):
+        if y < 0 or y >= h: continue
+        alpha = 1.0 - abs(y - sky_h) / (haze_h / 2)
+        haze[y, :] = (int(120 * alpha), int(110 * alpha), int(105 * alpha))
+    img = cv2.addWeighted(img, 1.0, haze, 0.45, 0)
+
     return img
+
+
+def _apply_cinematic_post(frame: np.ndarray) -> np.ndarray:
+    """프레임 단위 후처리 — 비네트 + 색감 보정 + 살짝 글로우."""
+    h, w = frame.shape[:2]
+    s = w / 960.0
+
+    # ── 비네트 (가장자리 어둡게)
+    yy, xx = np.ogrid[:h, :w]
+    cy, cx = h / 2, w / 2
+    dx = (xx - cx) / cx
+    dy = (yy - cy) / cy
+    dist2 = dx * dx + dy * dy
+    vignette_mask = np.clip(1.0 - dist2 * 0.55, 0.45, 1.0).astype(np.float32)
+    out = frame.astype(np.float32)
+    out *= vignette_mask[..., None]
+
+    # ── 약한 cinematic 글로우 (밝은 영역 블러 + 가산)
+    bright = np.clip(out - 200, 0, 255).astype(np.uint8)
+    glow = cv2.GaussianBlur(bright, (0, 0), sigmaX=8 * s, sigmaY=8 * s)
+    out = np.clip(out + glow * 0.35, 0, 255)
+
+    # ── 약한 teal-orange 컬러 그레이딩 (그림자에 청록, 하이라이트 따뜻하게)
+    shadow_mask = np.clip(1.0 - out.mean(axis=2, keepdims=True) / 255.0, 0, 1)
+    out[..., 0] += shadow_mask[..., 0] * 6   # B 가산 (그림자 청록)
+    out[..., 2] += (1 - shadow_mask[..., 0]) * 4  # R 가산 (하이라이트 따뜻)
+    out = np.clip(out, 0, 255).astype(np.uint8)
+
+    return out
 
 
 def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
@@ -324,7 +377,7 @@ def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
         base_risk = float(max(0.0, min(0.98, base_risk)))
         risks.append(base_risk)
 
-        out_frames.append(img)
+        out_frames.append(_apply_cinematic_post(img))
     return out_frames, risks
 
 
@@ -358,7 +411,7 @@ def _synthesize_motorcycle_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames:
             base_risk = min(0.96, 0.32 + 0.16 * (t - 3.0))
         base_risk += random.uniform(-0.01, 0.01)
         risks.append(float(max(0.0, min(0.98, base_risk))))
-        out_frames.append(img)
+        out_frames.append(_apply_cinematic_post(img))
     return out_frames, risks
 
 
@@ -389,7 +442,7 @@ def _synthesize_signal_occluded(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
             base_risk = min(0.95, 0.42 + 0.14 * (t - 5.0))
         base_risk += random.uniform(-0.015, 0.015)
         risks.append(float(max(0.0, min(0.98, base_risk))))
-        out_frames.append(img)
+        out_frames.append(_apply_cinematic_post(img))
     return out_frames, risks
 
 

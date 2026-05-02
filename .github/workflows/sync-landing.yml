@@ -1,0 +1,69 @@
+name: Sync Landing
+
+# main 브랜치의 landing/ 폴더 변경 시 자동으로 leelang7/allthatai-landing 리포로 push
+# (GitHub Pages 가 그 리포에 호스팅돼 있어 https://allthatai.kr 자동 갱신)
+#
+# 활성화 조건:
+#   GitHub Settings → Secrets 에 LANDING_PUSH_TOKEN 등록 필요
+#   - Fine-grained PAT, Resource owner: leelang7,
+#     Repository access: leelang7/allthatai-landing,
+#     Permissions: Contents = Read and write
+#   미설정 시 step 이 skip됨.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landing/**"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Push landing/ → allthatai-landing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secret
+        id: gate
+        env:
+          TOKEN: ${{ secrets.LANDING_PUSH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::LANDING_PUSH_TOKEN 미설정 — skip. 등록하면 자동 sync 가 작동합니다."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout AuraView
+        if: steps.gate.outputs.skip == 'false'
+        uses: actions/checkout@v4
+
+      - name: Push landing/ to allthatai-landing
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          TOKEN: ${{ secrets.LANDING_PUSH_TOKEN }}
+        run: |
+          set -e
+          tmp=$(mktemp -d)
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/leelang7/allthatai-landing.git" "$tmp"
+          # CNAME + 정적 파일 동기화
+          cp landing/CNAME "$tmp/CNAME" 2>/dev/null || true
+          shopt -s dotglob
+          for f in landing/*; do
+            base="$(basename "$f")"
+            [ "$base" = ".git" ] && continue
+            [ "$base" = "node_modules" ] && continue
+            cp -r "$f" "$tmp/"
+          done
+
+          cd "$tmp"
+          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "변경 없음 — skip."
+            exit 0
+          fi
+          git add -A
+          git commit -m "sync from AuraView@${GITHUB_SHA::7}"
+          git push origin main

@@ -10,6 +10,7 @@
 // 백엔드: https://auraview.allthatai.kr/fleet/contribute · /fleet/stats
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show File;
 import 'dart:math';
 
@@ -117,6 +118,13 @@ class _FleetHomeState extends State<FleetHome>
   Uint8List? _lastDownsample;
   DateTime? _lastUploadAt;
 
+  // V2V broadcast 상태
+  bool _v2vEnabled = true;
+  int _v2vSent = 0;
+  double? _prevSpeedMps;
+  DateTime? _prevSpeedTs;
+  StreamSubscription<Position>? _posSub;
+
   @override
   void initState() {
     super.initState();
@@ -131,9 +139,26 @@ class _FleetHomeState extends State<FleetHome>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
+    _posSub?.cancel();
     _cam?.dispose();
     _pulseAnim.dispose();
     super.dispose();
+  }
+
+  /// 실시간 위치 스트림 — heading/speed 를 V2V broadcast 에 사용
+  void _startLocationStream() {
+    if (kIsWeb) return;
+    try {
+      _posSub = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 3,
+        ),
+      ).listen((p) {
+        if (!mounted) return;
+        setState(() => _pos = p);
+      }, onError: (_) {});
+    } catch (_) {}
   }
 
   @override
@@ -174,6 +199,7 @@ class _FleetHomeState extends State<FleetHome>
     }
 
     _refreshLocation();
+    _startLocationStream();
     _pollServer();
     Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
 
@@ -235,6 +261,12 @@ class _FleetHomeState extends State<FleetHome>
       final feat = _entropyAndMotion(bytes);
       _lastEntropy = feat.entropy;
       final reason = _classifyReason(feat);
+
+      // V2V broadcast — intersection ID 가 있고 토글 ON 이면 매 틱 위치/heading/속도 송신
+      if (_v2vEnabled && _intersectionId != null && _intersectionId!.isNotEmpty) {
+        unawaited(_broadcastV2V(entropy: feat.entropy));
+      }
+
       if (reason != null) {
         _lastReason = reason;
         await _upload(bytes, feat.entropy, reason);
@@ -244,6 +276,65 @@ class _FleetHomeState extends State<FleetHome>
       if (mounted) setState(() {});
       if (!kIsWeb) {
         try { final f = File(shot.path); if (await f.exists()) await f.delete(); } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  /// 같은 교차로의 다른 AuraView 차량들에게 내 위치·heading·속도·entropy 를 broadcast.
+  /// 마주오는 차들이 이 메시지로 자기 사각지대 점유 격자를 보강함.
+  Future<void> _broadcastV2V({required double entropy}) async {
+    if (_pos == null) return;
+    final p = _pos!;
+    final speedMps = p.speed.isFinite && p.speed >= 0 ? p.speed : 0.0;
+    final headingDeg = (p.heading.isFinite && speedMps > 1.0) ? p.heading : 0.0;
+
+    // 감속 g 계산
+    double decelG = 0.0;
+    final now = DateTime.now();
+    if (_prevSpeedMps != null && _prevSpeedTs != null) {
+      final dt = now.difference(_prevSpeedTs!).inMilliseconds / 1000.0;
+      if (dt > 0.1 && dt < 10.0) {
+        final dv = _prevSpeedMps! - speedMps;
+        decelG = (dv / dt) / 9.81;
+        if (decelG < 0) decelG = 0;
+      }
+    }
+    _prevSpeedMps = speedMps;
+    _prevSpeedTs = now;
+
+    // entropy 가 높으면 "뭔가 봤음" 신호 (TFLite 통합 전 임시 detection)
+    final List<Map<String, Object>> dets = [];
+    if (entropy >= 0.65) {
+      dets.add({
+        "class": "anomaly",
+        "conf": entropy,
+        "rel_lat": 0.0,
+        "rel_lon": 0.0,
+        "width_m": 0.6,
+      });
+    }
+
+    final body = jsonEncode({
+      "device_id": _deviceId,
+      "intersection_id": _intersectionId,
+      "lat": p.latitude,
+      "lon": p.longitude,
+      "heading_deg": headingDeg,
+      "speed_kmh": speedMps * 3.6,
+      "decel_g": double.parse(decelG.toStringAsFixed(3)),
+      "detections": dets,
+      "occluded_mass": entropy * 200.0,
+      "ttl_s": 8,
+    });
+
+    try {
+      final res = await http.post(
+        Uri.parse('$kApiBase/collab/v2v/broadcast'),
+        headers: const {"Content-Type": "application/json"},
+        body: body,
+      ).timeout(const Duration(seconds: 6));
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        if (mounted) setState(() => _v2vSent++);
       }
     } catch (_) {}
   }
@@ -367,10 +458,14 @@ class _FleetHomeState extends State<FleetHome>
         intersectionId: _intersectionId, pos: _pos,
         lastEntropy: _lastEntropy, lastReason: _lastReason,
         lastUploadAt: _lastUploadAt,
+        v2vEnabled: _v2vEnabled, v2vSent: _v2vSent,
         onIntersectionChanged: (v) async {
           final sp = await SharedPreferences.getInstance();
           await sp.setString('intersection_id', v);
           if (mounted) setState(() => _intersectionId = v);
+        },
+        onV2VChanged: (v) {
+          if (mounted) setState(() => _v2vEnabled = v);
         },
       ),
     );
@@ -738,7 +833,10 @@ class _DetailSheet extends StatefulWidget {
   final double lastEntropy;
   final String lastReason;
   final DateTime? lastUploadAt;
+  final bool v2vEnabled;
+  final int v2vSent;
   final ValueChanged<String> onIntersectionChanged;
+  final ValueChanged<bool> onV2VChanged;
 
   const _DetailSheet({
     required this.deviceId,
@@ -747,7 +845,9 @@ class _DetailSheet extends StatefulWidget {
     required this.intersectionId, required this.pos,
     required this.lastEntropy, required this.lastReason,
     required this.lastUploadAt,
+    required this.v2vEnabled, required this.v2vSent,
     required this.onIntersectionChanged,
+    required this.onV2VChanged,
   });
 
   @override
@@ -820,6 +920,49 @@ class _DetailSheetState extends State<_DetailSheet> {
             _KV('현재 위치', '${widget.pos!.latitude.toStringAsFixed(4)}, ${widget.pos!.longitude.toStringAsFixed(4)}')
           else
             _KV('현재 위치', '권한 없음 또는 측정 중'),
+
+          const SizedBox(height: 18),
+          _SectionTitle('// V2V 협업 인지'),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: _surface2,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _accent.withValues(alpha: 0.18)),
+            ),
+            child: Column(children: [
+              Row(children: [
+                const Icon(Icons.cell_tower, color: _accent, size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Text(
+                  '내 위치·속도·heading 을 같은 교차로 다른 차량과 공유',
+                  style: TextStyle(color: _text.withValues(alpha: 0.85), fontSize: 12, height: 1.4),
+                )),
+                Switch(
+                  value: widget.v2vEnabled,
+                  onChanged: widget.onV2VChanged,
+                  activeThumbColor: _accent,
+                ),
+              ]),
+              if (widget.v2vEnabled)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(children: [
+                    const Icon(Icons.send_rounded, color: _safe, size: 14),
+                    const SizedBox(width: 6),
+                    Text('전송 ${widget.v2vSent}건',
+                        style: const TextStyle(color: _safe, fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    Text(
+                      widget.intersectionId == null || widget.intersectionId!.isEmpty
+                        ? '⚠ 교차로 ID 입력 시 활성화'
+                        : 'intersection ${widget.intersectionId}',
+                      style: TextStyle(color: _muted, fontSize: 10, fontFamily: 'monospace'),
+                    ),
+                  ]),
+                ),
+            ]),
+          ),
 
           const SizedBox(height: 18),
           _SectionTitle('// 디바이스'),

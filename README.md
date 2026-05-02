@@ -1,7 +1,24 @@
 # AuraView
 
+[![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
+[![tests](https://img.shields.io/badge/tests-30%2F30%20passed-brightgreen)](backend/tests/)
+[![model AUC](https://img.shields.io/badge/Risk%20Transformer%20AUC-0.9403-00c8ff)](models/risk_transformer_trained_metric.json)
+[![license](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
+[![demo](https://img.shields.io/badge/demo-auraview.allthatai.kr-00e09a)](https://auraview.allthatai.kr/ui)
+
 > **K-Perception Platform — 블랙박스 한 대로 사각지대까지 계산한다.**
 > Tesla-style occupancy · fleet-learning · end-to-end risk prediction 에 **Tesla 도 못 하는 한국 도로 협업 인지(V2V + Bus + Bidirectional)** 까지 결합한 안전 주행 지원 시스템.
+
+## ⏱️ 30초 시연 가이드
+
+| Step | URL | 효과 |
+|---|---|---|
+| 1️⃣ 5초 | https://auraview.allthatai.kr/ui | 9탭 풀 대시보드 부트 스플래시 |
+| 2️⃣ 60초 | TAB ⑥ 사고 재현 → 자동 재생 | 4 시나리오 합본 영상 (음향 포함) |
+| 3️⃣ 20초 | TAB ⑨ V2V → "시연용 V2V 차량 게시" → "협업 인지 실행" | 단독 vs 협업 위험 비교 |
+| 4️⃣ (선택) | TAB ④ QR 스캔 | Flutter Fleet 앱 즉시 설치 |
+| ⭐ 10초 | https://auraview.allthatai.kr/submission/ | 인쇄 가능 원페이지 요약 |
+| 또는 | https://auraview.allthatai.kr/kiosk/ | 무인 자동 시연 10장면 |
 
 ### 🌐 Live
 

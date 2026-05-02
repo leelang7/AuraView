@@ -1,0 +1,65 @@
+name: Showreel Cron
+
+# 주 1회 (월요일 02:00 UTC = 한국 11:00) 시연 합본 영상 자동 빌드 + artifact 보관.
+# EC2 운영 서버에서 시간 들여 만들지 않게, GitHub Linux runner 가 대신 만들어 캐시.
+#
+# 활성화: workflow_dispatch 로 수동 실행도 가능.
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"   # 매주 월 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --quiet
+
+      - name: Build showreel (in-process)
+        env:
+          ALLOW_FALLBACK: "1"
+          SERVICE_KEY: "ci-stub"
+          SHOWREEL_DIR: "uploads/showreel"
+          SCENARIO_DIR: "uploads/scenarios"
+        run: |
+          mkdir -p uploads/showreel uploads/scenarios
+          cd backend
+          python -c "
+          import sys; sys.path.insert(0, '.')
+          from app.services import showreel
+          r = showreel.build()
+          print('built:', r.get('video_url'), 'frames:', r.get('frame_count'))
+          print('avg_lead_time_s:', r.get('average_lead_time_s'))
+          print('scenarios:', len(r.get('scenarios', [])))
+          "
+
+      - name: Find generated mp4
+        id: find
+        run: |
+          mp4=$(ls -t backend/uploads/showreel/*.mp4 2>/dev/null | head -1 || true)
+          [ -z "$mp4" ] && (echo "no mp4 generated" && exit 1)
+          echo "mp4=$mp4" >> $GITHUB_OUTPUT
+          ls -lh "$mp4"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: showreel_${{ github.run_id }}
+          path: ${{ steps.find.outputs.mp4 }}
+          retention-days: 90

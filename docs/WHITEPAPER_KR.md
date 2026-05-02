@@ -224,17 +224,28 @@ AuraView 의 K-MaaS 통합:
 
 ### 7.1 Risk Transformer 합성 baseline (현재 측정값)
 
-학습 노트북: `notebooks/risk_transformer_metric.py` · 1,000 샘플 · seed 42 · 라벨 노이즈 6%.
+학습 노트북: `notebooks/risk_transformer_metric.py` · **2,000 샘플** · seed 42 · 라벨 노이즈 6% · **4 시나리오 (혼합 / 러시아워 / 야간 / 우천)**.
 
 | 지표 | 측정값 | 목표(trained) |
 |---|---:|---:|
-| **AUC** | **0.938** | ≥ 0.85 ✅ |
-| **F1 @ 0.5** | **0.905** | ≥ 0.80 ✅ |
-| Precision @ 0.5 | 0.928 | — |
-| Recall @ 0.5 | 0.883 | — |
+| **AUC** | **0.931** | ≥ 0.85 ✅ |
+| **F1 @ 0.5** | **0.909** | ≥ 0.80 ✅ |
+| Precision @ 0.5 | 0.916 | — |
+| Recall @ 0.5 | 0.903 | — |
 | 평균 선행 경고 시간 (합성) | 3.38s | ≥ 2.5s ✅ |
 
-> 위 수치는 *해석 가능 baseline (linear logistic)* 으로 측정한 결과로, Transformer 가중치로 교체 시 더 향상 기대. 결과 JSON: `models/risk_transformer_metric.json`.
+#### 시나리오별 분리도 (positive avg − negative avg)
+
+| 시나리오 | n | pos avg | neg avg | **separation** |
+|---|---:|---:|---:|---:|
+| 혼합 | 516 | 0.697 | 0.305 | **+0.392** |
+| 러시아워 | 479 | 0.744 | 0.290 | **+0.454** |
+| 야간 | 489 | 0.776 | 0.354 | **+0.421** |
+| 우천 | 516 | 0.703 | 0.258 | **+0.445** |
+
+→ 4가지 환경 모두 separation +0.39 이상으로 모델이 위험/안전을 일관되게 구분. 결과 JSON: `models/risk_transformer_metric.json`.
+
+> 위 수치는 *해석 가능 baseline (linear logistic)* 으로 측정한 결과로, Transformer 가중치로 교체 시 더 향상 기대.
 
 ### 7.2 사고 재현 영상 시연 결과 (3종 합성 시나리오)
 

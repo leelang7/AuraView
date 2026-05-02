@@ -28,14 +28,21 @@ OUT.parent.mkdir(parents=True, exist_ok=True)
 random.seed(42)
 
 
-def _gen_sample(label: int):
-    """label=1 위험, label=0 안전 시나리오. 클래스 경계가 겹치는 현실 분포로 생성."""
+def _gen_sample(label: int, scenario: str = "mixed"):
+    """label=1 위험, label=0 안전. scenario 별 분포 차등.
+
+    scenarios:
+      'mixed'      혼합 (기본)
+      'rush_hour'  러시아워 — 정체·VRU 많음
+      'night'      야간 — 시야 가림 ↑·신호 정확 ↓
+      'rainy'      우천 — occlusion ↑·속도 ↓
+    """
     if label == 1:
-        return rt.RiskInput(
+        base = dict(
             duration=random.uniform(1.4, 5.5),
             vehicle_cnt=random.randint(1, 5),
-            vru_cnt=random.randint(0, 2),                  # 위험인데도 VRU 안 보일 수 있음
-            vds_speed=random.uniform(15.0, 50.0),          # 정체 ~ 보통
+            vru_cnt=random.randint(0, 2),
+            vds_speed=random.uniform(15.0, 50.0),
             vds_volume=random.uniform(1500, 3200),
             occluded_mass=random.uniform(80.0, 320.0),
             taas_nearby=random.randint(1, 5),
@@ -43,10 +50,22 @@ def _gen_sample(label: int):
             incident_flag=random.random() < 0.25,
             obstacle_type=random.choice(["truck", "bus", "van", "car"]),
         )
-    return rt.RiskInput(
-        duration=random.uniform(0.0, 2.5),                  # 안전인데도 일부 길어질 수 있음
+        if scenario == "rush_hour":
+            base["vds_speed"] = random.uniform(5, 25)
+            base["vds_volume"] = random.uniform(2400, 3800)
+            base["vru_cnt"] = random.randint(1, 3)
+        elif scenario == "night":
+            base["occluded_mass"] = random.uniform(180, 450)
+            base["incident_flag"] = random.random() < 0.40
+        elif scenario == "rainy":
+            base["occluded_mass"] = random.uniform(150, 400)
+            base["vds_speed"] = random.uniform(8, 35)
+        return rt.RiskInput(**base)
+
+    base = dict(
+        duration=random.uniform(0.0, 2.5),
         vehicle_cnt=random.randint(0, 3),
-        vru_cnt=random.choice([0, 0, 0, 1]),                # 가끔 보행자 있음
+        vru_cnt=random.choice([0, 0, 0, 1]),
         vds_speed=random.uniform(30.0, 90.0),
         vds_volume=random.uniform(800, 2400),
         occluded_mass=random.uniform(0.0, 130.0),
@@ -55,6 +74,14 @@ def _gen_sample(label: int):
         incident_flag=random.random() < 0.05,
         obstacle_type=random.choice(["car", "unknown_vehicle", "van"]),
     )
+    if scenario == "rush_hour":
+        base["vds_volume"] = random.uniform(1200, 2600)
+        base["vds_speed"] = random.uniform(20, 60)
+    elif scenario == "night":
+        base["occluded_mass"] = random.uniform(40, 200)
+    elif scenario == "rainy":
+        base["vds_speed"] = random.uniform(20, 70)
+    return rt.RiskInput(**base)
 
 
 def _label_with_noise(true_label: int, swap_p: float = 0.06) -> int:
@@ -64,14 +91,20 @@ def _label_with_noise(true_label: int, swap_p: float = 0.06) -> int:
     return true_label
 
 
-def evaluate(n: int = 1000):
+def evaluate(n: int = 2000, scenarios=("mixed", "rush_hour", "night", "rainy")):
     samples = []
+    per_scenario = {}
+    for sc in scenarios:
+        per_scenario[sc] = []
+
     for i in range(n):
-        true_label = i % 2
-        sample = _gen_sample(label=true_label)
+        true_label = random.randint(0, 1)
+        sc = random.choice(scenarios)
+        sample = _gen_sample(label=true_label, scenario=sc)
         score = rt.predict(sample).p_collision
         observed_label = _label_with_noise(true_label)
         samples.append((score, observed_label))
+        per_scenario[sc].append((score, observed_label))
 
     # ROC AUC
     sorted_s = sorted(samples, key=lambda x: -x[0])
@@ -97,21 +130,36 @@ def evaluate(n: int = 1000):
     rec  = tp / max(1, tp + fn)
     f1 = 2 * prec * rec / max(1e-9, prec + rec)
 
+    # 시나리오별 평균 score (분리도 — 모델이 시나리오를 다르게 평가하는지)
+    per_sc_avg_score = {}
+    for sc, ss in per_scenario.items():
+        if len(ss) < 10: continue
+        pos = [s for s, y in ss if y == 1]
+        neg = [s for s, y in ss if y == 0]
+        per_sc_avg_score[sc] = {
+            "n": len(ss),
+            "pos_avg": round(sum(pos) / max(1, len(pos)), 3),
+            "neg_avg": round(sum(neg) / max(1, len(neg)), 3),
+            "separation": round(sum(pos) / max(1, len(pos)) - sum(neg) / max(1, len(neg)), 3),
+        }
+
     # Lead-time 시뮬
-    lead_durations = [s.duration for s in [_gen_sample(1) for _ in range(200)]]
+    lead_durations = [s.duration for s in [_gen_sample(1, "mixed") for _ in range(200)]]
     avg_lead = sum(lead_durations) / max(1, len(lead_durations))
 
     return {
-        "version": "0.1-baseline-logistic",
+        "version": "0.2-baseline-logistic-multi-scenario",
         "samples": n,
+        "scenarios_per_class": list(scenarios),
         "auc": round(auc, 4),
         "f1@0.5": round(f1, 4),
         "precision@0.5": round(prec, 4),
         "recall@0.5": round(rec, 4),
+        "scenario_separation": per_sc_avg_score,
         "avg_lead_time_synth_s": round(avg_lead, 2),
         "note": (
-            "Risk Transformer 의 해석 가능 baseline (linear logistic) 에 합성 분포로 평가한 결과. "
-            "실 데이터·trained Transformer 로 교체 시 AUC ≥ 0.85, F1 ≥ 0.80 목표."
+            "Risk Transformer 의 해석 가능 baseline (linear logistic) 에 4개 시나리오 (혼합/러시아워/야간/우천) "
+            "분포로 평가. 실 데이터·trained Transformer 로 교체 시 AUC ≥ 0.85, F1 ≥ 0.80 목표."
         ),
     }
 

@@ -1,10 +1,42 @@
 {
-  "version": "0.1-baseline-logistic",
-  "samples": 1000,
-  "auc": 0.9384,
-  "f1@0.5": 0.905,
-  "precision@0.5": 0.928,
-  "recall@0.5": 0.8831,
+  "version": "0.2-baseline-logistic-multi-scenario",
+  "samples": 2000,
+  "scenarios_per_class": [
+    "mixed",
+    "rush_hour",
+    "night",
+    "rainy"
+  ],
+  "auc": 0.9306,
+  "f1@0.5": 0.9094,
+  "precision@0.5": 0.9155,
+  "recall@0.5": 0.9034,
+  "scenario_separation": {
+    "mixed": {
+      "n": 516,
+      "pos_avg": 0.697,
+      "neg_avg": 0.305,
+      "separation": 0.392
+    },
+    "rush_hour": {
+      "n": 479,
+      "pos_avg": 0.744,
+      "neg_avg": 0.29,
+      "separation": 0.454
+    },
+    "night": {
+      "n": 489,
+      "pos_avg": 0.776,
+      "neg_avg": 0.354,
+      "separation": 0.421
+    },
+    "rainy": {
+      "n": 516,
+      "pos_avg": 0.703,
+      "neg_avg": 0.258,
+      "separation": 0.445
+    }
+  },
   "avg_lead_time_synth_s": 3.38,
-  "note": "Risk Transformer 의 해석 가능 baseline (linear logistic) 에 합성 분포로 평가한 결과. 실 데이터·trained Transformer 로 교체 시 AUC ≥ 0.85, F1 ≥ 0.80 목표."
+  "note": "Risk Transformer 의 해석 가능 baseline (linear logistic) 에 4개 시나리오 (혼합/러시아워/야간/우천) 분포로 평가. 실 데이터·trained Transformer 로 교체 시 AUC ≥ 0.85, F1 ≥ 0.80 목표."
 }

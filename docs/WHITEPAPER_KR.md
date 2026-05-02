@@ -95,17 +95,27 @@ AuraView는 위 네 가지를 **"보이지 않는 공간의 확률 모델링"** 
 
 ---
 
-## 4. 가점 25점 매트릭스
+## 4. 가점 25점 + K-MaaS 특별상 매트릭스
 
 | 항목 | 배점 | AuraView 증빙 | 엔드포인트 / 파일 |
 |---|---:|---|---|
-| AI 활용 · 학습 | 5 | HydraNet · Risk Transformer · Intent Predictor 학습 파이프라인 | `notebooks/`, `services/risk_transformer.py` |
-| AI 활용 · 분석 | 5 | Occupancy BEV 추정 · 위험 확률 추론 · attention 해석 | `POST /occupancy/infer`, 대시보드 TAB② |
-| 데이터 융합 | 5 | 신호 · VDS · 돌발 · TAAS · ITS · DSZ 6종 어댑터 통합 | `GET /fusion/intersection/{id}` |
-| 가명정보 결합 | 5 | HMAC 가명화 · k-익명성 · 얼굴·번호판 블러 · TAAS×VDS 결합 | `services/pii.py`, `POST /dsz/join/taas-vds` |
-| 안심구역 | 5 | `dsz.ex.co.kr` 반입 → 결합분석 → 해시 검증 반출 기록 | `services/dsz_adapter.py`, `POST /dsz/verify` |
+| AI 활용 · 학습 | 5 | HydraNet · Risk Transformer · Intent Predictor 학습 파이프라인 + Fleet 하드샘플 | `notebooks/`, `services/risk_transformer.py`, `routers/fleet.py` |
+| AI 활용 · 분석 | 5 | Occupancy BEV 추정 · 위험 확률 · attention 해석 · 사고 재현 영상 + 합본 Showreel | `POST /occupancy/infer`, `/scenario/reenact`, `/showreel/build` |
+| 데이터 융합 | 5 | 신호 · VDS · 돌발 · TAAS · ITS · DSZ 6종 어댑터 한 응답 결합 | `GET /fusion/intersection/{id}` · `services/public_api.py` |
+| 가명정보 결합 | 5 | HMAC 가명화 · k=5 익명성 · 얼굴·번호판 블러 · TAAS×VDS 결합 | `services/pii.py`, `POST /dsz/join/taas-vds` |
+| 안심구역 | 5 | 반입·결합분석·해시 검증 반출 + Top-N 정책 리포트(HTML/JSON) | `services/dsz_adapter.py`, `POST /dsz/verify`, `/reports/generate` |
+| **⭐ K-MaaS 특별상** | **+300만원** | 위험 교차로 → 대중교통 우회 추천 + 노선 운영팀 환원 데이터 | `services/kmaas.py`, `/kmaas/alternatives`, `/kmaas/operator-report` |
 
-**합계 25점** — 가점 상한선 정조준.
+**합계 25점 + 특별상** — 가점 상한선 + 별도 트랙 동시 정조준.
+
+### 4.1 K-MaaS 특별상 전략 (별도 시상 1건, 300만원)
+
+K-MaaS 활용 부문은 **별도 특별상 트랙**으로 분리되어 있어, 본상 25점과 **독립적으로 동시 수상 가능**.
+
+AuraView 의 K-MaaS 통합:
+- **시민용 (B2C):** 전방 교차로 위험 점수 ≥ 6 일 때 자동으로 K-MaaS 대중교통 대안 3종(지하철·버스·따릉이) 추천. 각 경로의 소요시간·요금·CO₂ 절감량 + 우회 가치 점수 함께 제공.
+- **운영자용 (B2G):** 누적 위험 데이터를 K-MaaS 노선 운영팀에 자동 환원 — "어느 시군구의 어느 교차로에서 노선 우회/신호 연장 검토가 필요한가" 를 표 형태로 제공.
+- **사회적 가치:** 운전자 → 대중교통 전환 유도로 사고 감소 + CO₂ 감축. 데이터로 정책을 바꾸는 양방향 플랫폼.
 
 ---
 

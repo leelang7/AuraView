@@ -44,3 +44,12 @@ models/*.safetensors
 runs/
 wandb/
 mlruns/
+
+# 안심구역 임시 검증/감사 로그 (manifest.jsonl 만 commit, 그 외 제외)
+dsz_exports/_incoming/
+dsz_exports/manifest.jsonl
+
+# Showreel / scenarios 산출물 (코드는 추적, 영상 파일은 제외)
+uploads/
+backend/uploads/
+

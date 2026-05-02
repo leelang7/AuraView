@@ -8,10 +8,10 @@ import os
 from .database import Base, engine
 from .routers import (
     intersections, signals, events, risk, detect,
-    occupancy, fleet, fusion, dsz,
+    occupancy, fleet, fusion, dsz, kmaas, reports,
 )
 
-# scenario 는 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
+# scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
 try:
     from .routers import scenario  # noqa: F401
     _SCENARIO_OK = True
@@ -22,6 +22,13 @@ except Exception as _exc:
     )
     scenario = None
     _SCENARIO_OK = False
+
+try:
+    from .routers import showreel  # noqa: F401
+    _SHOWREEL_OK = True
+except Exception as _exc:
+    showreel = None
+    _SHOWREEL_OK = False
 
 Base.metadata.create_all(bind=engine)
 
@@ -66,8 +73,12 @@ app.include_router(occupancy.router, prefix="/occupancy", tags=["occupancy"])
 app.include_router(fleet.router, prefix="/fleet", tags=["fleet"])
 app.include_router(fusion.router, prefix="/fusion", tags=["fusion"])
 app.include_router(dsz.router, prefix="/dsz", tags=["dsz"])
+app.include_router(kmaas.router, prefix="/kmaas", tags=["kmaas"])
+app.include_router(reports.router, prefix="/reports", tags=["reports"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
+if _SHOWREEL_OK:
+    app.include_router(showreel.router, prefix="/showreel", tags=["showreel"])
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -910,6 +921,8 @@ def prototype_ui():
             <div class="tab" data-tab="tab4">④ Fleet Learning</div>
             <div class="tab" data-tab="tab5">⑤ 가점 25점 트레이서</div>
             <div class="tab" data-tab="tab6">⑥ 사고 재현</div>
+            <div class="tab" data-tab="tab7">⑦ K-MaaS 연계</div>
+            <div class="tab" data-tab="tab8">⑧ 정책 리포트</div>
           </div>
         </div>
 
@@ -1187,6 +1200,7 @@ def prototype_ui():
                     </div>
                     <button class="btn-accent" onclick="runScenario()">사고 재현 영상 생성</button>
                     <button class="btn-secondary" onclick="loadScenarioList()">최근 생성물 목록</button>
+                    <button class="btn-video" onclick="buildShowreel()">⭐ 합본 시연 영상 (3장면 + 타이틀)</button>
                   </div>
 
                   <div id="scnStatus" class="status" style="margin-top:14px;">
@@ -1213,44 +1227,125 @@ def prototype_ui():
             </div>
           </div>
 
+          <!-- TAB 7 : K-MaaS -->
+          <div class="tab-panel" id="tab7">
+            <div class="dashboard-grid">
+              <div class="left-col">
+                <div class="card">
+                  <div class="card-tag">K-MAAS · 특별상</div>
+                  <div class="section-label">// 위험 교차로 우회 대중교통 추천</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">위험을 감지하면 즉시 대중교통으로</div>
+                    <div class="hero-desc">전방 위험 교차로를 K-MaaS 데이터와 결합해 지하철·버스·공유 자전거 우회 경로 3종을 즉시 추천. 경진대회 K-MaaS 특별상 겨냥.</div>
+                  </div>
+                  <div class="form-grid" style="margin-top:14px;">
+                    <div class="btn-row">
+                      <div>
+                        <label>출발 위도</label>
+                        <input id="km_olat" type="number" step="0.000001" value="37.5601"/>
+                      </div>
+                      <div>
+                        <label>출발 경도</label>
+                        <input id="km_olon" type="number" step="0.000001" value="127.0410"/>
+                      </div>
+                    </div>
+                    <div class="btn-row">
+                      <div>
+                        <label>도착 위도</label>
+                        <input id="km_dlat" type="number" step="0.000001" value="37.5665"/>
+                      </div>
+                      <div>
+                        <label>도착 경도</label>
+                        <input id="km_dlon" type="number" step="0.000001" value="126.9780"/>
+                      </div>
+                    </div>
+                    <div>
+                      <label>현 위험 점수</label>
+                      <input id="km_risk" type="number" step="0.1" value="11.5"/>
+                    </div>
+                    <button class="btn-accent" onclick="runKmaas()">K-MaaS 대안 조회</button>
+                    <button class="btn-secondary" onclick="loadKmaasOperator()">노선 운영팀 리포트</button>
+                  </div>
+                </div>
+              </div>
+              <div class="right-col">
+                <div class="card">
+                  <div class="section-label">// 추천 결과</div>
+                  <div id="kmaasOut" style="margin-top:8px;display:grid;gap:10px;">
+                    <div class="placeholder" style="min-height:120px;">대안 조회 결과가 여기에 카드로 표시됩니다.</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="section-label">// 노선 운영팀 환원 데이터</div>
+                  <pre id="kmaasOpOut" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;max-height:300px;overflow:auto;white-space:pre-wrap;">시민용 추천 + 운영팀용 데이터를 동시에 제공합니다.</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 8 : Hazard Report -->
+          <div class="tab-panel" id="tab8">
+            <div class="card">
+              <div class="card-tag">POLICY REPORT</div>
+              <div class="section-label">// 위험 교차로 Top-N 자동 리포트 (지자체·도로공사·K-MaaS 환원)</div>
+              <div class="hero-copy">
+                <div class="hero-title">데이터로 정책을 바꾼다</div>
+                <div class="hero-desc">현재까지 누적된 Fleet 이벤트 + 융합 데이터로 위험 교차로 Top-N 을 자동 산출하고, 각 지점별 권고 액션과 함께 HTML/JSON 리포트를 생성합니다.</div>
+              </div>
+              <div class="btn-row" style="margin-top:14px;">
+                <button class="btn-accent" onclick="generateReport(20)">Top 20 리포트 생성</button>
+                <button class="btn-secondary" onclick="loadReportList()">최근 생성물 목록</button>
+              </div>
+              <div id="reportOut" style="margin-top:14px;"></div>
+            </div>
+          </div>
+
           <!-- TAB 5 : Scorecard -->
           <div class="tab-panel" id="tab5">
             <div class="card">
-              <div class="card-tag">SCORECARD</div>
-              <div class="section-label">// 2026 국토교통 데이터활용 경진대회 · 가점 25점 트레이서</div>
+              <div class="card-tag">SCORECARD · LIVE</div>
+              <div class="section-label">// 2026 국토교통 데이터활용 경진대회 · 가점 25점 + 특별상 트레이서</div>
               <div class="ranking">
                 <div class="rank-item mid">
                   <div class="rank-head"><div class="rank-title">AI 활용 · 학습</div><span class="badge b-y">5점</span></div>
                   <div class="rank-body">
                     HydraNet · Risk Transformer · Intent Predictor 학습 스크립트<br>
-                    /occupancy/infer · /detect/frame 결과가 학습 가능한 포맷으로 기록
+                    Fleet 누적 학습 데이터 · <span id="sc_fleet" style="color:var(--accent);font-weight:700;">… 건</span>
                   </div>
                 </div>
                 <div class="rank-item mid">
                   <div class="rank-head"><div class="rank-title">AI 활용 · 분석</div><span class="badge b-y">5점</span></div>
                   <div class="rank-body">
-                    BEV Occupancy 3D 추정 · E2E 위험 확률 · Attention 해석
+                    BEV Occupancy 3D · E2E 위험 확률 · Attention 해석<br>
+                    재현 영상 · <span id="sc_scenarios" style="color:var(--accent);font-weight:700;">… 편</span>
                   </div>
                 </div>
                 <div class="rank-item mid">
                   <div class="rank-head"><div class="rank-title">데이터 융합</div><span class="badge b-y">5점</span></div>
                   <div class="rank-body">
-                    신호 · VDS · 돌발 · TAAS · ITS · 안심구역 6종 융합<br>
-                    /fusion/intersection/{id}
+                    신호 · VDS · 돌발 · TAAS · ITS · 안심구역<br>
+                    소스 어댑터 활성 · <span id="sc_fusion" style="color:var(--accent);font-weight:700;">…종</span>
                   </div>
                 </div>
                 <div class="rank-item mid">
                   <div class="rank-head"><div class="rank-title">가명정보 결합</div><span class="badge b-y">5점</span></div>
                   <div class="rank-body">
-                    HMAC 가명화 · k-익명성 필터 · 얼굴·번호판 블러<br>
-                    /dsz/join/taas-vds · /fleet/contribute
+                    HMAC 가명화 · k-익명성 · 얼굴·번호판 블러<br>
+                    /dsz/join/taas-vds · /fleet/contribute (자동 마스킹)
                   </div>
                 </div>
                 <div class="rank-item mid">
                   <div class="rank-head"><div class="rank-title">안심구역</div><span class="badge b-y">5점</span></div>
                   <div class="rank-body">
-                    dsz.ex.co.kr 반입 → 결합분석 → 해시 검증 반출<br>
-                    /dsz/artifacts · /dsz/verify
+                    dsz.ex.co.kr 반입·결합분석·해시 검증 반출<br>
+                    정책 리포트 누적 · <span id="sc_reports" style="color:var(--accent);font-weight:700;">… 개</span>
+                  </div>
+                </div>
+                <div class="rank-item high" style="border-left-color:var(--accent2);">
+                  <div class="rank-head"><div class="rank-title">⭐ K-MaaS 특별상</div><span class="badge" style="background:rgba(124,58,237,0.18);color:#a995ff;border:1px solid rgba(124,58,237,0.3);">+300만원</span></div>
+                  <div class="rank-body">
+                    위험 교차로 → 대중교통 우회 추천 + 운영팀 환원<br>
+                    /kmaas/alternatives · /kmaas/operator-report
                   </div>
                 </div>
               </div>
@@ -1966,8 +2061,135 @@ def prototype_ui():
               </div>`;
           }
 
+          /* ── SHOWREEL ── */
+          async function buildShowreel() {
+            showLoader('합본 영상 생성 중 (60초 정도 소요)...');
+            try {
+              const res = await fetch(window.location.origin + '/showreel/build', {method:'POST'});
+              if (!res.ok) throw new Error(await res.text());
+              const data = await res.json();
+              const wrap = document.getElementById('scnVideoWrap');
+              wrap.innerHTML = `
+                <video controls autoplay muted loop style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:12px;">
+                  <source src="${data.video_url}?t=${Date.now()}" type="video/mp4"/>
+                </video>`;
+              const box = document.getElementById('scnStatus');
+              box.className = 'status info';
+              box.innerHTML = `
+                <div class="status-title">SHOWREEL READY</div>
+                <div class="status-main">평균 선행 경고 ${data.average_lead_time_s}초</div>
+                <div class="status-meta">
+                  포함 시나리오 &nbsp;${data.scenarios.length}<br>
+                  프레임 수 &nbsp;${data.frame_count}<br>
+                  파일 &nbsp;${data.video_url}
+                </div>`;
+              toast('합본 영상 생성 완료', 'success');
+            } catch(e) { toast('합본 영상 생성 실패', 'error'); } finally { hideLoader(); }
+          }
+
+          /* ── K-MaaS ── */
+          async function runKmaas() {
+            const q = new URLSearchParams({
+              origin_lat: document.getElementById('km_olat').value,
+              origin_lon: document.getElementById('km_olon').value,
+              dest_lat: document.getElementById('km_dlat').value,
+              dest_lon: document.getElementById('km_dlon').value,
+              risk: document.getElementById('km_risk').value,
+            }).toString();
+            showLoader('K-MaaS 대안 조회 중...');
+            try {
+              const res = await fetch(window.location.origin + '/kmaas/alternatives?' + q);
+              const data = await res.json();
+              const wrap = document.getElementById('kmaasOut');
+              wrap.innerHTML = '';
+              const head = document.createElement('div');
+              head.className = 'rank-item ' + ((data.risk_score||0) >= 10 ? 'high' : 'mid');
+              head.innerHTML = `<div class="rank-head"><div class="rank-title">${data.headline||''}</div></div>`;
+              wrap.appendChild(head);
+              (data.alternatives || []).forEach((a, i) => {
+                const div = document.createElement('div');
+                div.className = 'rank-item ' + (a.risk_avoidance_score >= 0.85 ? 'high' : 'mid');
+                const legs = (a.legs||[]).map(l => `<span class="badge">${l.mode} · ${l.duration_min}분 · ${l.distance_km}km</span>`).join(' ');
+                div.innerHTML = `
+                  <div class="rank-head">
+                    <div class="rank-title">#${i+1} ${a.label}</div>
+                    <span class="badge b-y">우회 가치 ${(a.risk_avoidance_score*100).toFixed(0)}%</span>
+                  </div>
+                  <div class="rank-body">
+                    소요 ${a.total_min}분 · 요금 ${a.total_fare.toLocaleString()}원 · CO₂ ${a.total_co2_saved_g}g 절감<br>
+                    <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${legs}</div>
+                  </div>`;
+                wrap.appendChild(div);
+              });
+              toast('K-MaaS 대안 ' + (data.alternatives||[]).length + '건', 'success');
+            } catch(e) { toast('K-MaaS 조회 실패', 'error'); } finally { hideLoader(); }
+          }
+
+          async function loadKmaasOperator() {
+            try {
+              const res = await fetch(window.location.origin + '/kmaas/operator-report');
+              const data = await res.json();
+              document.getElementById('kmaasOpOut').textContent = JSON.stringify(data, null, 2);
+            } catch(e) { toast('운영팀 리포트 조회 실패', 'error'); }
+          }
+
+          /* ── HAZARD REPORT ── */
+          async function generateReport(top) {
+            showLoader('Top ' + top + ' 리포트 생성 중...');
+            try {
+              const res = await fetch(window.location.origin + '/reports/generate?top=' + top, {method:'POST'});
+              const data = await res.json();
+              document.getElementById('reportOut').innerHTML = `
+                <div class="status info" style="margin-top:14px;">
+                  <div class="status-title">REPORT GENERATED</div>
+                  <div class="status-main">${data.entries}개 교차로 분석 완료</div>
+                  <div class="status-meta">
+                    HTML &nbsp;<a style="color:var(--accent)" target="_blank" href="${data.html_url}">${data.html_url}</a><br>
+                    JSON &nbsp;<a style="color:var(--accent)" target="_blank" href="${data.json_url}">${data.json_url}</a><br>
+                    생성 시각 &nbsp;${data.generated_at}
+                  </div>
+                </div>
+                <iframe src="${data.html_url}" style="width:100%;height:540px;margin-top:14px;border:1px solid var(--border);border-radius:14px;background:#fff;"></iframe>`;
+              toast('리포트 생성 완료', 'success');
+            } catch(e) { toast('리포트 생성 실패', 'error'); } finally { hideLoader(); }
+          }
+
+          async function loadReportList() {
+            const res = await fetch(window.location.origin + '/reports/list');
+            const data = await res.json();
+            const items = data.items || [];
+            document.getElementById('reportOut').innerHTML = `
+              <div class="card" style="margin-top:14px;">
+                <div class="section-label">// 최근 ${items.length}건</div>
+                ${items.map(i => `
+                  <div class="rank-item" style="margin-top:8px;">
+                    <div class="rank-head"><div class="rank-title">${i.name}</div><span class="badge b-g">${i.size_kb} KB</span></div>
+                    <div class="rank-body">${i.created_at} · <a style="color:var(--accent)" target="_blank" href="${i.html_url}">HTML</a> · <a style="color:var(--accent)" target="_blank" href="${i.json_url}">JSON</a></div>
+                  </div>`).join('')}
+              </div>`;
+          }
+
+          /* ── LIVE SCORECARD COUNTERS ── */
+          async function refreshScorecard() {
+            try {
+              const [fl, sc, rep, fu] = await Promise.all([
+                fetch(window.location.origin + '/fleet/stats').then(r=>r.json()).catch(()=>({})),
+                fetch(window.location.origin + '/scenario/list').then(r=>r.json()).catch(()=>({items:[]})),
+                fetch(window.location.origin + '/reports/list').then(r=>r.json()).catch(()=>({items:[]})),
+                fetch(window.location.origin + '/fusion/sources').then(r=>r.json()).catch(()=>({count:0})),
+              ]);
+              const setIfExists = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+              setIfExists('sc_fleet', (fl.total ?? 0) + ' 건');
+              setIfExists('sc_scenarios', (sc.items||[]).length + ' 편');
+              setIfExists('sc_reports', (rep.items||[]).length + ' 개');
+              setIfExists('sc_fusion', (fu.count ?? 0) + '종');
+            } catch(e) {}
+          }
+
           loadIntersections();
           refreshAll();
+          refreshScorecard();
+          setInterval(refreshScorecard, 15000);
         </script>
     </body>
     </html>

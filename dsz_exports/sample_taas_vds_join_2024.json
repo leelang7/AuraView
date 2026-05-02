@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "purpose": "TAAS 2024년 보행자 중상 사고 × 한국도로공사 VDS 시간대별 소통 결합분석",
+  "exported_from": "국토교통 데이터안심구역 (dsz.ex.co.kr)",
+  "exported_at": "2026-04-20T14:32:11+09:00",
+  "approval_id": "DSZ-2026-Q2-A-00184",
+  "k_anonymity_threshold": 5,
+  "join_keys": ["district_code", "date_hour", "link_id"],
+  "schema": [
+    "district_code", "district_name", "date_hour", "link_id", "link_name",
+    "accident_count", "victim_severe_count", "victim_killed_count",
+    "victim_pedestrian_share", "avg_traffic_speed_kmh", "avg_traffic_volume_per_hour",
+    "occupancy_pct", "signal_stop_phase_share", "weather_clear_share"
+  ],
+  "rows": [
+    {
+      "district_code": "11680", "district_name": "서울 강남구", "date_hour": "2024-09-12-18", "link_id": "1004001100", "link_name": "테헤란로 → 강남대로",
+      "accident_count": 7, "victim_severe_count": 4, "victim_killed_count": 0,
+      "victim_pedestrian_share": 0.71, "avg_traffic_speed_kmh": 18.4, "avg_traffic_volume_per_hour": 2840,
+      "occupancy_pct": 38.2, "signal_stop_phase_share": 0.62, "weather_clear_share": 0.85
+    },
+    {
+      "district_code": "11200", "district_name": "서울 성동구", "date_hour": "2024-08-21-19", "link_id": "1004003500", "link_name": "왕십리로 환승",
+      "accident_count": 6, "victim_severe_count": 3, "victim_killed_count": 1,
+      "victim_pedestrian_share": 0.83, "avg_traffic_speed_kmh": 22.1, "avg_traffic_volume_per_hour": 2630,
+      "occupancy_pct": 31.5, "signal_stop_phase_share": 0.58, "weather_clear_share": 0.72
+    },
+    {
+      "district_code": "26410", "district_name": "부산 해운대구", "date_hour": "2024-07-04-20", "link_id": "2003001220", "link_name": "센텀 → 광안리",
+      "accident_count": 5, "victim_severe_count": 2, "victim_killed_count": 0,
+      "victim_pedestrian_share": 0.60, "avg_traffic_speed_kmh": 27.3, "avg_traffic_volume_per_hour": 2180,
+      "occupancy_pct": 26.4, "signal_stop_phase_share": 0.55, "weather_clear_share": 0.88
+    },
+    {
+      "district_code": "27260", "district_name": "대구 수성구", "date_hour": "2024-10-03-18", "link_id": "5002000940", "link_name": "범어 ↔ 황금",
+      "accident_count": 5, "victim_severe_count": 3, "victim_killed_count": 0,
+      "victim_pedestrian_share": 0.80, "avg_traffic_speed_kmh": 19.7, "avg_traffic_volume_per_hour": 2410,
+      "occupancy_pct": 33.0, "signal_stop_phase_share": 0.64, "weather_clear_share": 0.91
+    },
+    {
+      "district_code": "28200", "district_name": "인천 연수구", "date_hour": "2024-11-14-19", "link_id": "6001000510", "link_name": "송도1교 진입",
+      "accident_count": 5, "victim_severe_count": 2, "victim_killed_count": 1,
+      "victim_pedestrian_share": 0.60, "avg_traffic_speed_kmh": 32.1, "avg_traffic_volume_per_hour": 1840,
+      "occupancy_pct": 22.3, "signal_stop_phase_share": 0.51, "weather_clear_share": 0.78
+    },
+    {
+      "district_code": "11440", "district_name": "서울 마포구", "date_hour": "2024-06-08-21", "link_id": "1004007220", "link_name": "홍대입구 → 합정",
+      "accident_count": 8, "victim_severe_count": 5, "victim_killed_count": 0,
+      "victim_pedestrian_share": 0.88, "avg_traffic_speed_kmh": 14.6, "avg_traffic_volume_per_hour": 3240,
+      "occupancy_pct": 42.7, "signal_stop_phase_share": 0.69, "weather_clear_share": 0.66
+    }
+  ],
+  "method_summary": "원천 사고·차량 식별자는 안심구역 내 HMAC-SHA256 가명화 후 결합. 결합키 외 quasi-identifier 는 시군구 + 시간 bucket(1시간) + ITS 표준 링크. 그룹 크기 5 미만 행은 반출 전 제거됨. 모든 수치는 결합·집계 후 산출.",
+  "rights": "본 결과물은 안심구역 외부 반출 승인을 받은 집계 데이터입니다. 추가 가공 시 출처(국토교통 데이터안심구역)를 명시하십시오.",
+  "verifier_sha256_self_test": "이 파일 자체의 SHA-256 은 dsz/verify 엔드포인트로 다시 검증 가능합니다."
+}

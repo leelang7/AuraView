@@ -28,15 +28,16 @@
 
 ---
 
-## 🏆 2026 국토교통 데이터활용 경진대회 — 가점 25점 정조준
+## 🏆 2026 국토교통 데이터활용 경진대회 — 가점 25점 + K-MaaS 특별상
 
-| 가점 항목 | 배점 | AuraView의 충족 방식 |
-|---|---:|---|
-| **AI활용 — 학습** | 5 | HydraNet 멀티태스크 / E2E Risk Transformer / Intent Predictor 직접 학습 |
-| **AI활용 — 분석** | 5 | Occupancy Network 추론 + BEV 3D 위험 분석 대시보드 |
-| **데이터융합** | 5 | 신호 + VDS + 돌발 + TAAS + ITS + 지오코딩의 교차 융합 |
-| **가명정보결합** | 5 | 사고이력(TAAS) × 교통량(VDS)을 가명처리 후 교차로 단위 결합 |
-| **안심구역** | 5 | 국토교통 데이터안심구역(`dsz.ex.co.kr`) 반입 → 결과물 반출 파이프라인 |
+| 가점 항목 | 배점 | AuraView의 충족 방식 | 엔드포인트 |
+|---|---:|---|---|
+| **AI활용 — 학습** | 5 | HydraNet · Risk Transformer · Intent Predictor 학습 노트북 + Fleet 누적 데이터 | `/fleet/contribute` |
+| **AI활용 — 분석** | 5 | Occupancy 3D + BEV 시각화 + 사고 재현 영상 | `/occupancy/infer`, `/scenario/reenact` |
+| **데이터융합** | 5 | 신호·VDS·돌발·TAAS·ITS·안심구역 6종 한 응답에 결합 | `/fusion/intersection/{id}` |
+| **가명정보결합** | 5 | HMAC 가명화·k-익명성·얼굴/번호판 블러 + TAAS×VDS 결합 | `/dsz/join/taas-vds`, `/fleet/contribute` |
+| **안심구역** | 5 | 안심구역 반입·결합분석·해시 검증 반출 + 정책 리포트 | `/dsz/verify`, `/reports/generate` |
+| **⭐ K-MaaS 특별상** | +300만원 | 위험 교차로 → 대중교통 우회 추천 + 운영팀 환원 | `/kmaas/alternatives`, `/kmaas/operator-report` |
 
 → [docs/WHITEPAPER_KR.md](docs/WHITEPAPER_KR.md) · [docs/DATASETS.md](docs/DATASETS.md) · [docs/ROADMAP.md](docs/ROADMAP.md)
 
@@ -125,7 +126,12 @@ AuraView/
 | `GET`  | `/fusion/intersection/{id}` | ★ 6종 데이터 융합 조회 | 융합 |
 | `POST` | `/dsz/verify` · `/dsz/join/taas-vds` | ★ 안심구역 결합/검증 | 안심·가명 |
 | `POST` | `/scenario/reenact` | ★ **사고 재현 2분 영상 생성** | 분석 |
-| `GET`  | `/scenario/list` · `/scenario/presets` | 재현 영상 관리 | — |
+| `POST` | `/showreel/build` | ★ **합본 시연 영상 (3장면 + 타이틀)** | 분석 |
+| `GET`  | `/scenario/list` · `/scenario/presets` · `/showreel/list` | 영상 관리 | — |
+| `GET`  | `/kmaas/alternatives` | ★ **위험 교차로 우회 대중교통 추천** | K-MaaS 특별상 |
+| `GET`  | `/kmaas/operator-report` | 노선 운영팀 환원 데이터 | K-MaaS 특별상 |
+| `POST` | `/reports/generate?top=N` | ★ **위험 교차로 Top-N 정책 리포트 (HTML+JSON)** | 분석·안심 |
+| `GET`  | `/reports/list` | 리포트 이력 | — |
 | `GET`  | `/events/` · `/risk/` · `/signals/{id}` · `/intersections/` | 기본 CRUD | — |
 
 ---

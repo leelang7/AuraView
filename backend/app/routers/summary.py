@@ -42,6 +42,14 @@ def _read_trained_metric() -> Dict[str, Any]:
         return {}
 
 
+def _try_active_backend() -> str:
+    try:
+        from ..services import risk_transformer as rt
+        return rt.warm_up()
+    except Exception:
+        return "error"
+
+
 def _count_files(rel: str, glob_pat: str = "*") -> int:
     base = Path(__file__).resolve().parents[2] / rel
     if not base.exists():
@@ -98,6 +106,7 @@ def summary_json(db: Session = Depends(get_db)):
 
         "model_trained": {
             "type": "pytorch-transformer-2L-d64",
+            "live_backend": _try_active_backend(),
             "params": trained_metric.get("params"),
             "epochs": trained_metric.get("epochs"),
             "auc": trained_metric.get("auc"),

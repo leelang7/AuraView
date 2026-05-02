@@ -183,6 +183,21 @@ def _trained_predict(feats: Dict[str, float]) -> Optional[float]:
         return None
 
 
+def active_backend() -> str:
+    """현재 predict() 가 사용하는 백엔드 — 'trained' / 'linear-fallback' / 'unloaded'."""
+    if _TRAINED is not None:
+        return "trained"
+    if _TRAINED_TRIED:
+        return "linear-fallback"
+    return "unloaded"
+
+
+def warm_up() -> str:
+    """ckpt 로드 시도 후 active_backend 반환 — 시작 시점에 호출해서 결정."""
+    _try_load_trained()
+    return active_backend()
+
+
 def predict(inp: RiskInput) -> RiskOutput:
     """학습된 Transformer 우선 — 없으면 해석 가능 linear-logistic fallback."""
     feats = _make_feats(inp)

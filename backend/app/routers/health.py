@@ -80,12 +80,20 @@ def healthz_details():
 
     metric = _read_metric()
 
+    # Risk Transformer 활성 백엔드
+    try:
+        from ..services import risk_transformer as rt
+        live_model_backend = rt.warm_up()
+    except Exception:
+        live_model_backend = "error"
+
     feature_flags = {
         "scenario_router": getattr(main_mod, "_SCENARIO_OK", False),
         "showreel_router": getattr(main_mod, "_SHOWREEL_OK", False),
-        "ultralytics_lazy": True,           # detector.py 가 lazy 로드
+        "ultralytics_lazy": True,
         "fallback_responses": os.getenv("ALLOW_FALLBACK", "1") == "1",
         "cors_open": True,
+        "risk_model_backend": live_model_backend,
     }
 
     return {

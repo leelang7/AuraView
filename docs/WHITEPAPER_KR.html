@@ -1,0 +1,305 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"/>
+<title>AuraView K-Perception · 기술 백서</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+@page { size: A4; margin: 22mm 18mm; }
+:root {
+  --bg: #ffffff;
+  --text: #1a2030;
+  --muted: #5a7a9a;
+  --accent: #006b9c;
+  --accent2: #5a3aaa;
+  --border: #d8e1ec;
+  --code-bg: #f3f6fb;
+}
+* { box-sizing: border-box; }
+html, body {
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  color: var(--text);
+  font-size: 10.5pt;
+  line-height: 1.6;
+  background: var(--bg);
+}
+h1 { font-size: 26pt; color: var(--accent); border-bottom: 3px solid var(--accent); padding-bottom: 6pt; margin-top: 0; }
+h2 { font-size: 17pt; color: var(--accent); margin-top: 18pt; padding-bottom: 4pt; border-bottom: 1px solid var(--border); }
+h3 { font-size: 13pt; color: var(--accent2); margin-top: 14pt; }
+h4 { font-size: 11pt; color: var(--text); margin-top: 12pt; }
+p, li { font-size: 10.5pt; }
+em { color: var(--accent); font-style: normal; font-weight: 700; }
+strong { color: var(--text); font-weight: 700; }
+a { color: var(--accent); text-decoration: none; }
+code { font-family: 'JetBrains Mono', 'Consolas', monospace; background: var(--code-bg); padding: 1pt 4pt; border-radius: 3pt; font-size: 9.5pt; color: var(--accent2); }
+pre { background: var(--code-bg); padding: 10pt; border-radius: 6pt; border: 1px solid var(--border); overflow-x: auto; page-break-inside: avoid; }
+pre code { padding: 0; background: transparent; color: var(--text); font-size: 9pt; }
+blockquote { border-left: 3px solid var(--accent); padding: 4pt 12pt; color: var(--muted); margin: 8pt 0; background: rgba(0,107,156,0.04); }
+table { width: 100%; border-collapse: collapse; margin: 10pt 0; page-break-inside: avoid; font-size: 9.5pt; }
+th, td { border: 1px solid var(--border); padding: 5pt 8pt; text-align: left; vertical-align: top; }
+th { background: rgba(0,107,156,0.08); color: var(--accent); font-weight: 700; }
+hr { border: none; border-top: 1px dashed var(--border); margin: 16pt 0; }
+ul { padding-left: 18pt; }
+</style>
+</head><body><h1>AuraView — K-Perception Platform 기술백서</h1>
+
+<blockquote><strong>AuraView K-Perception Platform — 기술 백서</strong></blockquote>
+<blockquote>주제: 비가시 교통정보 축적·고도화 기반 지능형 안전 주행 지원 시스템</blockquote>
+<blockquote>대상 부문: 제품·서비스 개발 (시제품) · 아이디어 부문 겸용 가능</blockquote>
+
+<hr/>
+
+<h2>0. 제출 URL</h2>
+
+<ul><li>🌐 <strong>대시보드:</strong> https://auraview.allthatai.kr/ui</li>
+<li>📱 <strong>Fleet Mobile PWA:</strong> https://auraview.allthatai.kr/pwa/</li>
+<li>📖 <strong>Swagger API:</strong> https://auraview.allthatai.kr/docs</li>
+<li>🔧 <strong>Source:</strong> https://github.com/leelang7/AuraView (branch: <code>feat/k-perception</code>)</li></ul>
+
+<h2>1. 요약 (Executive Summary)</h2>
+
+<p>테슬라의 FSD가 "카메라만으로 세상을 3D로 이해"했다면, AuraView는 <strong>"블랙박스만으로 한국 도심의 사각지대까지 이해"</strong> 한다.</p>
+
+<p>기존 ADAS가 '보이는 것'을 2D 박스로 분류하는 데 그친다면, AuraView는 <strong>가려진 공간</strong>을 3D 확률 점유 필드로 복원하고, <strong>가려진 보행자·이륜차의 의도</strong>를 시계열 예측하며, <strong>향후 5초 이내 충돌 위험</strong>을 end-to-end로 출력한다.</p>
+
+<p>모든 추론은 <strong>한국 공공 인프라 데이터 6종(신호 · VDS · 돌발 · TAAS · ITS · 안심구역 결합분석)</strong> 과 융합되어 운영된다.</p>
+
+<hr/>
+
+<h2>2. 시장·사회적 문제</h2>
+
+<table><thead><tr><th>문제</th><th>규모</th><th>기존 접근 한계</th></tr></thead><tbody><tr><td>신호 가림으로 인한 교차로 사고</td><td>연간 교차로 사고 약 5만 건, 전체의 ~45%</td><td>차선 이탈 경고 · 전방 추돌 경고만 탑재</td></tr><tr><td>배달·라스트마일 이륜 사고</td><td>전체 교통사고 사망자의 ~12%가 이륜</td><td>일반 ADAS가 이륜을 우선 대상으로 안 함</td></tr><tr><td>고령 보행자 횡단 사망</td><td>보행자 사망자의 60%+가 65세 이상</td><td>보행자 검출 후에만 반응 (선행 예측 없음)</td></tr><tr><td>사각지대 사고</td><td>대형차 뒤 보행자 사고 다수</td><td>가려진 영역을 '모름'으로 처리</td></tr></tbody></table>
+
+<p>AuraView는 위 네 가지를 <strong>"보이지 않는 공간의 확률 모델링"</strong> 이라는 하나의 축으로 동시에 해결한다.</p>
+
+<hr/>
+
+<h2>3. 기술 스택 ─ Tesla AI Day 오마주</h2>
+
+<h3>3.1 Occupancy Network (점유 격자)</h3>
+<ul><li><strong>입력:</strong> 단일 카메라 프레임</li>
+<li><strong>출력:</strong> 40m × 40m × 0.5m BEV grid 위 점유 확률 [0,1]</li>
+<li><strong>핵심 차별화:</strong> 검출된 객체 주변뿐 아니라 <strong>"대형차 뒤쪽 영역"</strong> 을 별도 unknown-cloud로 추가해 "보이지 않지만 있을 수 있음"을 명시적으로 확률화한다.</li>
+<li>구현: <code>backend/app/services/occupancy.py</code></li></ul>
+
+<h3>3.2 HydraNet 멀티태스크 백본</h3>
+<ul><li>단일 YOLOv8/RT-DETR 백본 → N개 head</li></ul>
+<p>  - vehicle · VRU · signal · lane · sign · speed</p>
+<ul><li>추론 비용 고정, 정보량 6~8배</li>
+<li>구현: <code>backend/app/services/hydranet.py</code></li>
+<li>학습: <code>notebooks/train_hydranet.ipynb</code> (AIHub · Cityscapes · Roboflow K-LISA 혼합)</li></ul>
+
+<h3>3.3 End-to-End Risk Transformer</h3>
+<ul><li>입력: hydranet features + occupancy flat + 신호·VDS·TAAS·GPS·duration</li>
+<li>출력: P(collision) · P(near-miss) · feature attention</li>
+<li>학습 라벨: 사후 급감속(|a|≥0.4g)·에어백 전개·TAAS 사고 발생</li>
+<li>초기 구현은 linear-logistic 경량판(해석성 확보) → 학습 완료 후 Transformer 교체</li>
+<li>구현: <code>backend/app/services/risk_transformer.py</code></li></ul>
+
+<h3>3.4 Intent Prediction (가려진 agent)</h3>
+<ul><li>MotionLM-lite 경량 시계열 예측</li>
+<li>보행자 횡단 확률 · 이륜 접근 확률 · time horizon 3s</li>
+<li>구현: <code>backend/app/services/intent.py</code></li></ul>
+
+<h3>3.5 Fleet Learning (Shadow Mode)</h3>
+<ul><li>엣지 단말이 <strong>model confidence entropy ≥ 0.6</strong> 인 하드샘플만 자동 업로드</li>
+<li>얼굴 · 번호판 블러 후 저장 (OpenCV Haar → 추후 YOLOv8-LPD)</li>
+<li>주 1회 자동 재학습 → OTA 배포</li>
+<li>구현: <code>backend/app/routers/fleet.py</code>, <code>services/pii.py</code></li></ul>
+
+<h3>3.6 BEV 3D 대시보드 (FSD UI 오마주)</h3>
+<ul><li>Leaflet 2D heatmap + <strong>Three.js 3D voxel</strong> 토글</li>
+<li><code>grid_flat</code> 응답을 받아 점유 확률을 voxel 높이·색으로 렌더</li>
+<li>자동 궤도 카메라, ego car 인디케이터</li>
+<li>구현: <code>backend/app/main.py</code> TAB ② (<code>setOccMode('3d')</code>)</li></ul>
+
+<h3>3.6b 모바일 Fleet PWA (엣지 단말)</h3>
+<ul><li><code>/pwa</code> 경로에서 설치 가능 (대시보드 TAB ④에 QR 노출)</li>
+<li>카메라 → 4초 주기 프레임 캡처 → 간이 엔트로피 추정 → 임계 이상만 업로드</li>
+<li>서비스 워커로 오프라인 캐시, 설치형 앱처럼 동작</li>
+<li>위치·디바이스ID는 <strong>가명화·반올림</strong> 후 서버 전송</li>
+<li>구현: <code>frontend_pwa/</code> + <code>routers/fleet.py</code></li></ul>
+
+<h3>3.6c Accident Reenactment Studio</h3>
+<ul><li>블랙박스 영상 → 프레임마다 HydraNet · Occupancy · Risk 추론 → HUD 오버레이 mp4 출력</li>
+<li>합성 시나리오 3종 (<code>crosswalk_truck</code>, <code>motorcycle_blindspot</code>, <code>signal_occluded</code>) 으로 <strong>영상 없이도</strong> 데모 가능</li>
+<li><code>lead_time_s</code> 자동 계산 → "AuraView였다면 N초 먼저 경고" 카피 자동 생성</li>
+<li>구현: <code>services/scenario.py</code> + <code>routers/scenario.py</code> + TAB ⑥</li></ul>
+
+<h3>3.7 C-ITS / V2X 연동 (한국 특화 킬러카드)</h3>
+<ul><li>한국도로공사 C-ITS 인프라 메시지(SPaT/MAP)와 AuraView 비전 추론을 교차 검증</li>
+<li>비전이 "신호 불확실"이라고 판정해도 인프라 메시지가 "stop" 이면 STOP 채택</li>
+<li>구현: 어댑터 <code>services/public_api.py</code> — 향후 DATEX-II wrapper 추가</li></ul>
+
+<hr/>
+
+<h2>3-A. 한국 도로 특화 — Collaborative Perception 3종 (Tesla 도 못 함)</h2>
+
+<h3>3-A.1 V2V Cross-Vehicle Perception (<code>services/v2v.py</code>)</h3>
+<p><strong>Tesla FSD 의 한계</strong>: 자기 카메라가 본 것만 인지 — 마주오는 차 너머의 보행자는 모름.</p>
+<p><strong>AuraView 의 답</strong>: 같은 교차로의 다른 AuraView 차량들이 공유 풀에 자기 detection 을 게시(<code>POST /collab/v2v/broadcast</code>), ego 는 실시간으로 풀을 가져와(<code>GET /collab/v2v/intersection/{id}</code>) 자신의 BEV 점유 격자에 머지.</p>
+
+<p>알고리즘:</p>
+<p>1. peer 의 GPS·heading 으로 ego 좌표계 변환 (Haversine + heading 회전)</p>
+<p>2. peer 의 detection 이 ego BEV 영역(전방 40m × 좌우 ±20m) 안에 들어가면 점유 가산</p>
+<p>3. <strong>마주오는 peer (heading 차이 130°+) 는 가중치 0.95</strong> (반대편 시점은 내 사각지대일 가능성 높음)</p>
+<p>4. 같은 방향 peer 는 가중치 0.75</p>
+
+<p>→ "버스가 신호등을 가린 그 너머 보행자" 같은 클래식 사고 패턴이 마주오는 차 1대만 있어도 잡힘.</p>
+
+<h3>3-A.2 Bus-Aware Pedestrian Prior (<code>services/bus_aware.py</code>)</h3>
+<p><strong>핵심 패턴</strong>: 버스가 정류장 정차 후 출발할 때 <strong>버스 뒤에서 보행자가 횡단</strong> 하는 사고가 다발.</p>
+
+<p>알고리즘:</p>
+<p>1. HydraNet 이 전방에 <code>bus</code> 검출</p>
+<p>2. 자차 위치에서 주변 정류장 검색 (K-MaaS / BIS API 또는 fallback)</p>
+<p>3. 정류장 거리·자차 속도로 <strong>버스 상태 추정</strong>: <code>dwelling</code> / <code>departing</code> / <code>passing</code> / <code>approaching</code></p>
+<p>4. 상태별 보행자 prior boost 산출:</p>
+<p>   - <code>dwelling</code> (정류장 ~30m 이내) → +0.55</p>
+<p>   - <code>departing</code> (~80m 이내) → +0.42</p>
+<p>   - <code>passing</code> → +0.20~0.22</p>
+<p>5. 버스가 차지하고 있는 BEV 영역의 "뒤쪽 forward 20~36m" 셀들에 prior 가산</p>
+
+<h3>3-A.3 Bidirectional Lane Fusion (<code>services/bidirectional.py</code>)</h3>
+<p><strong>가설</strong>: 마주오는 차들의 비정상 거동 = 전방 위험의 가장 빠른 증거.</p>
+
+<p>알고리즘:</p>
+<p>1. V2V 풀의 peer 메시지에서 heading 차이 130°+ 인 oncoming 만 선별</p>
+<p>2. 그들의 <strong>평균 속도 + 감속 비율 (decel_g ≥ 0.25 인 비율)</strong> 계산</p>
+<p>3. 한국도로공사 VDS 데이터에서 같은 도로의 <strong>상행 vs 하행 평균속도 비대칭</strong> 계산</p>
+<p>4. hazard_probability = 0.55 × (oncoming 절반+ 감속) + 0.18 × (앞차 정체) + 0.20 × (VDS 비대칭)</p>
+<p>5. 0.4 이상이면 권장속도 자동 산출 → HUD 에 "감속 권고 N km/h"</p>
+
+<h3>3-A.4 Fused Risk (E2E 결합)</h3>
+<p><code>POST /collab/fused-occupancy</code> — 이미지 1장 + 위치 + heading 으로:</p>
+<p>1. HydraNet → 객체 검출</p>
+<p>2. Bus context → prior boost</p>
+<p>3. Local Occupancy → V2V 머지 → 보강 셀 수 / 가산 mass 보고</p>
+<p>4. Bidirectional → hazard_probability</p>
+<p>5. Risk Transformer 로 단독 위험 산출 후 V2V/Bus/Bidir 가산:</p>
+
+<p>   ```</p>
+<p>   p_fused = p_local</p>
+<p>           + 0.20 × bidirectional.hazard</p>
+<p>           + 0.15 × bus.pedestrian_prior_boost</p>
+<p>   ```</p>
+
+<p>응답에 <code>risk_local_only</code> vs <code>risk_fused</code> + <code>lift_from_v2v_bus_bidir</code> 동봉 → 발표·심사용 <strong>"단독 vs 협업 비교 그림"</strong> 즉시 가능.</p>
+
+<blockquote>시연 데이터 시드: <code>POST /collab/v2v/seed-demo</code> 호출 한 번이면 마주오는 차 2대 + 같은 방향 1대가 V2V 풀에 들어가 즉시 시연 가능.</blockquote>
+
+<hr/>
+
+<h2>4. 기능 매트릭스</h2>
+
+<table><thead><tr><th>도메인</th><th>모듈</th><th>엔드포인트 / 파일</th></tr></thead><tbody><tr><td>AI · 학습</td><td>HydraNet · Risk Transformer · Intent Predictor + Fleet 하드샘플</td><td>`notebooks/`, `services/risk_transformer.py`, `routers/fleet.py`</td></tr><tr><td>AI · 분석</td><td>Occupancy BEV 추정 · 위험 확률 · attention 해석 · 사고 재현 영상 + 합본 Showreel</td><td>`POST /occupancy/infer`, `/scenario/reenact`, `/showreel/build`</td></tr><tr><td>데이터 융합</td><td>신호 · VDS · 돌발 · TAAS · ITS · DSZ 6종 어댑터 한 응답 결합</td><td>`GET /fusion/intersection/{id}` · `services/public_api.py`</td></tr><tr><td>가명정보 결합</td><td>HMAC 가명화 · k=5 익명성 · 얼굴·번호판 블러 · TAAS×VDS 결합</td><td>`services/pii.py`, `POST /dsz/join/taas-vds`</td></tr><tr><td>안심구역</td><td>반입·결합분석·해시 검증 반출 + Top-N 정책 리포트(HTML/JSON)</td><td>`services/dsz_adapter.py`, `POST /dsz/verify`, `/reports/generate`</td></tr><tr><td>⭐ K-MaaS</td><td>위험 교차로 → 대중교통 우회 추천 + 노선 운영팀 환원 데이터</td><td>`services/kmaas.py`, `/kmaas/alternatives`, `/kmaas/operator-report`</td></tr></tbody></table>
+
+<h3>4.1 K-MaaS 통합 전략</h3>
+
+<p>AuraView 의 K-MaaS 통합:</p>
+<ul><li><strong>시민용 (B2C):</strong> 전방 교차로 위험 점수 ≥ 6 일 때 자동으로 K-MaaS 대중교통 대안 3종(지하철·버스·따릉이) 추천. 각 경로의 소요시간·요금·CO₂ 절감량 + 우회 가치 점수 함께 제공.</li>
+<li><strong>운영자용 (B2G):</strong> 누적 위험 데이터를 K-MaaS 노선 운영팀에 자동 환원 — "어느 시군구의 어느 교차로에서 노선 우회/신호 연장 검토가 필요한가" 를 표 형태로 제공.</li>
+<li><strong>사회적 가치:</strong> 운전자 → 대중교통 전환 유도로 사고 감소 + CO₂ 감축. 데이터로 정책을 바꾸는 양방향 플랫폼.</li></ul>
+
+<hr/>
+
+<h2>5. 시스템 아키텍처</h2>
+
+<pre><code>
+┌────────────────────── Edge ─────────────────────┐
+│ 블랙박스 / 모바일 / HUD                            │
+│   └─ HydraNet (멀티태스크)                         │
+│         └─ Occupancy BEV (40×40m × 0.5m)         │
+│               └─ Intent Predictor (MotionLM-lite) │
+│                     └─ E2E Risk Transformer       │
+│                           └─ HUD / 음성 / 진동     │
+└────────────────────────┬────────────────────────┘
+                          │  hard-sample (PII 마스킹)
+                          ▼
+┌────────────────────── Cloud ────────────────────┐
+│ FastAPI + SQLite(→ PostgreSQL) + Ultralytics    │
+│   ├─ /fusion  (6종 공공 API 어댑터)                │
+│   ├─ /occupancy  (서버 추론 / 시연)                │
+│   ├─ /fleet  (하드샘플 기여 &amp; 통계)                 │
+│   ├─ /dsz  (안심구역 반입/검증/결합)                │
+│   └─ Dojo-lite: GitHub Actions + DVC            │
+│        → 주간 재학습 → 회귀 시나리오 통과 → OTA 배포  │
+└─────────────────────────────────────────────────┘
+</code></pre>
+
+<hr/>
+
+<h2>6. 데이터 파이프라인</h2>
+
+<h3>6.1 6종 공공데이터</h3>
+
+<table><thead><tr><th>#</th><th>출처</th><th>내용</th><th>사용 위치</th></tr></thead><tbody><tr><td>1</td><td>교통안전공단 실시간 신호 (`apis.data.go.kr/B551982/rti`)</td><td>신호 상태·잔여시간</td><td>HUD 복원 · Risk feature</td></tr><tr><td>2</td><td>한국도로공사 VDS (`data.ex.co.kr`)</td><td>속도·교통량·점유율</td><td>Risk feature · 가명결합</td></tr><tr><td>3</td><td>한국도로공사 돌발상황</td><td>사고·낙하물·통제</td><td>Risk · 지도 경고</td></tr><tr><td>4</td><td>TAAS 사고이력</td><td>사고 위치·유형·피해자</td><td>Intent prior · 가명결합</td></tr><tr><td>5</td><td>ITS 국가교통정보센터</td><td>링크 단위 속도·소요시간</td><td>BEV 정규화</td></tr><tr><td>6</td><td>국토교통 데이터안심구역</td><td>반입·결합·반출 요약결과</td><td>리포트·지자체 제안</td></tr></tbody></table>
+
+<h3>6.2 가명결합 프로세스</h3>
+
+<p>1. 원천 데이터는 안심구역 내부로만 반입.</p>
+<p>2. 결합키는 준식별자(시군구코드 × 일자·시간 bucket × 링크ID)만 사용.</p>
+<p>3. k-익명성 <code>k=5</code> 미만 그룹 제거 (<code>services/pii.py</code>).</p>
+<p>4. 반출은 <strong>집계·분포 통계</strong>만 허용, SHA-256 해시로 변조 여부 검증 (<code>services/dsz_adapter.py</code>).</p>
+
+<hr/>
+
+<h2>7. 성능 · 평가 지표</h2>
+
+<h3>7.1 Risk Transformer 합성 baseline (현재 측정값)</h3>
+
+<p>학습 노트북: <code>notebooks/risk_transformer_metric.py</code> · 1,000 샘플 · seed 42 · 라벨 노이즈 6%.</p>
+
+<table><thead><tr><th>지표</th><th>측정값</th><th>목표(trained)</th></tr></thead><tbody><tr><td>**AUC**</td><td>**0.938**</td><td>≥ 0.85 ✅</td></tr><tr><td>**F1 @ 0.5**</td><td>**0.905**</td><td>≥ 0.80 ✅</td></tr><tr><td>Precision @ 0.5</td><td>0.928</td><td>—</td></tr><tr><td>Recall @ 0.5</td><td>0.883</td><td>—</td></tr><tr><td>평균 선행 경고 시간 (합성)</td><td>3.38s</td><td>≥ 2.5s ✅</td></tr></tbody></table>
+
+<blockquote>위 수치는 <em>해석 가능 baseline (linear logistic)</em> 으로 측정한 결과로, Transformer 가중치로 교체 시 더 향상 기대. 결과 JSON: <code>models/risk_transformer_metric.json</code>.</blockquote>
+
+<h3>7.2 사고 재현 영상 시연 결과 (3종 합성 시나리오)</h3>
+
+<p><code>/scenario/reenact</code> 자동 생성 영상에서 측정된 <strong>선행 경고 시간</strong>:</p>
+
+<table><thead><tr><th>시나리오</th><th>선행 경고 시간</th><th>피크 위험</th></tr></thead><tbody><tr><td>횡단보도 + 대형차 가림 + 보행자</td><td>**6.75초**</td><td>98.0%</td></tr><tr><td>사각지대 + 이륜차 접근</td><td>**5.67초**</td><td>97.0%</td></tr><tr><td>신호 가림 + 전방 급감속</td><td>**4.75초**</td><td>96.4%</td></tr><tr><td>**평균**</td><td>**5.72초**</td><td>97.1%</td></tr></tbody></table>
+
+<h3>7.3 향후 측정 계획</h3>
+
+<table><thead><tr><th>지표</th><th>목표</th><th>측정 방법</th></tr></thead><tbody><tr><td>신호 가림 감지 F1 (실데이터)</td><td>≥ 0.88</td><td>자체 라벨링 500장 + AIHub</td></tr><tr><td>BEV 점유 IoU (3m bin)</td><td>≥ 0.60</td><td>nuScenes-lite subset</td></tr><tr><td>경고 FP / 1h 주행</td><td>≤ 3건</td><td>서울 시내 시범 주행</td></tr><tr><td>엣지 추론 지연</td><td>≤ 120ms (GPU) / 300ms (CPU)</td><td>yolov8n + occupancy</td></tr></tbody></table>
+
+<hr/>
+
+<h2>8. 사회적 가치</h2>
+
+<ul><li><strong>고령 보행자:</strong> Intent Predictor가 횡단 확률을 2초 전 알려 신호 연장 권고를 운영센터에 자동 송신 (opt-in).</li>
+<li><strong>이륜 배달 노동자:</strong> 사각지대 접근 확률을 운전자에게 표시 → 이륜 사고율 30% 감소 목표.</li>
+<li><strong>지자체 데이터 행정:</strong> 안심구역 결합분석 결과(Top-20 위험 교차로)를 월간 리포트로 제공.</li>
+<li><strong>오픈소스:</strong> 핵심 모듈은 MIT로 공개, 모델 가중치는 비상업 연구 라이선스.</li></ul>
+
+<hr/>
+
+<h2>9. 비즈니스 확장</h2>
+
+<p>1. <strong>B2C:</strong> 모바일 앱 / HUD 액세서리 (Shadow mode 자동 기여)</p>
+<p>2. <strong>B2B:</strong> 물류·택배 이륜 관제, 지자체 위험구간 리포트 SaaS</p>
+<p>3. <strong>B2G:</strong> 한국도로공사 C-ITS · 신호운영센터와의 공동 실증</p>
+
+<hr/>
+
+<h2>10. 제출 체크리스트</h2>
+
+<ul><li>기술백서 (본 문서)</li>
+<li>기능 매트릭스</li>
+<li>6종 공공데이터 어댑터</li>
+<li>Occupancy · HydraNet · Risk · Intent 서비스 코드</li>
+<li>가명결합 · 안심구역 반입/검증</li>
+<li>Fleet Learning contribute 엔드포인트</li>
+<li>학습 노트북 실행 결과 (1주 내)</li>
+<li>사고 재현 데모 영상 2분 (3주 내)</li>
+<li>발표 슬라이드 (4주 내)</li></ul>
+
+<hr/>
+
+<h2>11. 참고</h2>
+
+<ul><li>Tesla AI Day 2022 — Occupancy Networks · HydraNet · End-to-End</li>
+<li>Waymo MotionLM (2023) · WayFormer (2022)</li>
+<li>nuScenes / KITTI BEV 평가 방식</li>
+<li>AIHub "도로장애물·돌발상황" 데이터셋</li>
+<li>국가교통 데이터 오픈마켓 (<code>bigdata-transportation.kr</code>)</li>
+<li>국토교통 데이터안심구역 (<code>dsz.ex.co.kr</code>)</li></ul>
+</body></html>

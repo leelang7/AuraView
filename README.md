@@ -60,7 +60,9 @@
 
 ---
 
-## 📐 Pipeline (협업 인지 포함)
+## 📐 시스템 아키텍처
+
+![architecture](docs/architecture.svg)
 
 ```
 ┌──────────── Edge (차량·블랙박스·Flutter 앱) ────────────┐

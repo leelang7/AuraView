@@ -226,17 +226,22 @@ AuraView 의 K-MaaS 통합:
 
 ## 7. 성능 · 평가 지표
 
-### 7.1 Risk Transformer 합성 baseline (현재 측정값)
+### 7.1 Risk Transformer — 학습된 모델 (PyTorch Transformer)
 
-학습 노트북: `notebooks/risk_transformer_metric.py` · **2,000 샘플** · seed 42 · 라벨 노이즈 6% · **4 시나리오 (혼합 / 러시아워 / 야간 / 우천)**.
+**실제 학습**: `notebooks/train_risk_transformer_real.py` · 8,000 train + 2,000 val · 4 시나리오 (혼합/러시아워/야간/우천) · seed 42 · 라벨 노이즈 6% · 15 epochs.
+**아키텍처**: 10 features → Linear(d=64) + positional embed → 2-layer Transformer encoder → mean pool → Linear(2). **67,970 params**.
+**가중치**: `models/risk_transformer.pt` (278KB).
 
-| 지표 | 측정값 | 목표(trained) |
+| 지표 | **trained Transformer** | baseline (linear) |
 |---|---:|---:|
-| **AUC** | **0.931** | ≥ 0.85 ✅ |
-| **F1 @ 0.5** | **0.909** | ≥ 0.80 ✅ |
-| Precision @ 0.5 | 0.916 | — |
-| Recall @ 0.5 | 0.903 | — |
-| 평균 선행 경고 시간 (합성) | 3.38s | ≥ 2.5s ✅ |
+| **AUC** | **0.9403** ✅ | 0.931 |
+| **F1 @ 0.5** | **0.9412** ✅ | 0.909 |
+| Precision @ 0.5 | **0.9441** | 0.916 |
+| Recall @ 0.5 | **0.9384** | 0.903 |
+| Validation loss | **0.2233** | — |
+| 평균 선행 경고 시간 (합성) | 3.38s | 3.38s |
+
+→ Transformer 가 baseline 대비 **AUC +1.0%p, F1 +3.2%p** 향상. **7만 파라미터 모델이 4가지 환경 모두에서 일관되게 위험 판별**. 결과 JSON: `models/risk_transformer_trained_metric.json`.
 
 #### 시나리오별 분리도 (positive avg − negative avg)
 

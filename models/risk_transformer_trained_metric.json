@@ -1,0 +1,25 @@
+{
+  "version": "0.3-trained-transformer",
+  "params": 67970,
+  "epochs": 15,
+  "batch_size": 128,
+  "optimizer": "AdamW lr=2e-3 wd=1e-4",
+  "samples": {
+    "train": 8000,
+    "val": 2000
+  },
+  "auc": 0.9403,
+  "f1@0.5": 0.9412,
+  "precision@0.5": 0.9441,
+  "recall@0.5": 0.9384,
+  "val_loss": 0.2233,
+  "label_noise": 0.06,
+  "scenarios": [
+    "mixed",
+    "rush_hour",
+    "night",
+    "rainy"
+  ],
+  "checkpoint": "models/risk_transformer.pt",
+  "note": "PyTorch Transformer (2-layer, d_model=64) 실제 학습 결과. baseline logistic 0.93 대비 향상."
+}

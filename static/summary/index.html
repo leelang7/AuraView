@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AuraView · K-Perception · One-Page Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#080c14; --surface:#0d1520; --surface2:#121d2e;
+    --text:#e2eaf5; --muted:#5a7a9a;
+    --accent:#00c8ff; --accent2:#7c3aed; --safe:#00e09a; --warn:#ffb020; --danger:#ff3b3b;
+    --border:rgba(0,200,255,0.16);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:'Noto Sans KR', system-ui, sans-serif;
+    line-height:1.65;
+  }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(ellipse at 15% 10%, rgba(0,200,255,0.08), transparent 55%),
+      radial-gradient(ellipse at 85% 0%, rgba(124,58,237,0.06), transparent 55%);
+  }
+  .wrap { max-width:1080px; margin:0 auto; padding:48px 28px 80px; position:relative; z-index:1; }
+
+  header { margin-bottom:36px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+  h1 { font-family:'Black Han Sans',sans-serif; font-size:40px; letter-spacing:-0.4px; line-height:1.05; }
+  h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent),var(--accent2));
+          -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .eyebrow { color:var(--accent); font-family:'JetBrains Mono',monospace;
+             font-size:11px; letter-spacing:4px; text-transform:uppercase; margin-bottom:12px; }
+  .tagline { color:var(--muted); font-size:15px; margin-top:14px; max-width:820px; }
+  .pulse { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--safe);
+           box-shadow:0 0 8px var(--safe); margin-right:10px; animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.4; transform:scale(.7); } }
+
+  section { margin-top:34px; }
+  section h2 { font-family:'Black Han Sans',sans-serif; font-size:24px; margin-bottom:14px; }
+  section h2 em { color:var(--accent); font-style:normal; }
+
+  .grid-stats {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    gap:12px;
+  }
+  .stat {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:16px 18px; position:relative; overflow:hidden;
+  }
+  .stat .l { color:var(--muted); font-family:'JetBrains Mono',monospace;
+             font-size:9.5px; letter-spacing:2px; text-transform:uppercase; }
+  .stat .n { font-family:'Black Han Sans',sans-serif; font-size:34px; line-height:1.1; margin-top:4px; }
+  .stat .n em { font-style:normal; background:linear-gradient(135deg,var(--accent),var(--accent2));
+                -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .stat .sub { color:var(--muted); font-size:11px; margin-top:4px; font-family:'JetBrains Mono',monospace; }
+
+  .card-grid {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+    gap:14px; margin-top:14px;
+  }
+  .card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:18px;
+  }
+  .card h3 { font-size:16px; margin-bottom:8px; color:var(--text); }
+  .card .sub { color:var(--accent); font-family:'JetBrains Mono',monospace;
+               font-size:10px; letter-spacing:1.5px; margin-bottom:8px; }
+  .card ul { margin-top:6px; padding-left:18px; color:var(--muted); font-size:13px; }
+
+  table { width:100%; border-collapse:collapse; background:var(--surface); border-radius:12px; overflow:hidden; }
+  th, td { padding:9px 12px; border-bottom:1px solid var(--border); font-size:13px; text-align:left; vertical-align:top; }
+  th { background:rgba(0,200,255,0.06); color:var(--accent);
+       font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1.5px; }
+
+  .links { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .link {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:7px 14px; border-radius:99px;
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--accent); text-decoration:none;
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px;
+    transition: background .2s;
+  }
+  .link:hover { background:rgba(0,200,255,0.10); }
+
+  footer { margin-top:50px; padding-top:18px; border-top:1px solid var(--border);
+           color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:11px;
+           display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+
+  @media print {
+    body { background:#fff; color:#1a2030; }
+    body::before { display:none; }
+    .stat, .card, table { background:#fff; border:1px solid #d8e1ec; }
+    h1 em, .stat .n em { color:#006b9c !important; -webkit-text-fill-color:#006b9c !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">AURAVIEW · K-PERCEPTION · ONE-PAGE SUMMARY</div>
+    <h1>한국 도심에 이식한 <em>Tesla FSD</em><br>+ 마주오는 차의 시점까지 빌리는 협업 인지</h1>
+    <p class="tagline" id="tagline">로딩 중…</p>
+    <p style="margin-top:14px;"><span class="pulse"></span><span style="color:var(--safe);font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;" id="liveBadge">SYSTEM ONLINE</span></p>
+  </header>
+
+  <section>
+    <h2><em>모델</em> 성능</h2>
+    <div class="grid-stats" id="modelStats"></div>
+    <p style="margin-top:10px;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;" id="separation"></p>
+  </section>
+
+  <section>
+    <h2><em>운영</em> 통계</h2>
+    <div class="grid-stats" id="opStats"></div>
+  </section>
+
+  <section>
+    <h2>Tesla 도 <em>못 하는</em> 한국 특화 3종</h2>
+    <div class="card-grid">
+      <div class="card">
+        <div class="sub">// V2V CROSS-VEHICLE</div>
+        <h3>마주오는 차의 시점</h3>
+        <p>같은 교차로의 다른 AuraView 차량 detection 을 ego BEV 격자에 머지. heading 차이 130°+ peer 가중치 0.95. "버스 너머 보행자" 직격.</p>
+      </div>
+      <div class="card">
+        <div class="sub">// BUS-AWARE PRIOR</div>
+        <h3>정류장 + 정차 상태 prior</h3>
+        <p>버스 검출 + K-MaaS 정류장 데이터 → dwelling/departing/passing 추정 → 보행자 prior +0.55 까지 boost.</p>
+      </div>
+      <div class="card">
+        <div class="sub">// BIDIRECTIONAL FUSION</div>
+        <h3>마주오는 차들의 감속 패턴</h3>
+        <p>oncoming 감속 비율 50%+ → hazard +0.55. VDS 상행/하행 비대칭 40%+ → +0.20. 권장속도 자동 산출.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><em>기술</em> 스택</h2>
+    <div class="card-grid" id="stackGrid"></div>
+  </section>
+
+  <section>
+    <h2><em>라이브</em> 엔드포인트</h2>
+    <div class="links" id="endpointLinks"></div>
+  </section>
+
+  <section>
+    <h2><em>출처</em> · 6종 공공데이터</h2>
+    <div id="dataSources"></div>
+  </section>
+
+  <footer>
+    <div id="footerVer">AuraView · K-Perception</div>
+    <div>github.com/leelang7/AuraView · MIT</div>
+  </footer>
+
+</div>
+
+<script>
+  const API_BASE = (location.host.startsWith('auraview.') || location.host.startsWith('localhost')) ? '' : 'https://auraview.allthatai.kr';
+  const $ = (id) => document.getElementById(id);
+  const tile = (label, value, sub, color) => {
+    const c = color ? `style="-webkit-text-fill-color:${color};background:none;"` : '';
+    return `<div class="stat"><div class="l">${label}</div><div class="n"><em ${c}>${value}</em></div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+  };
+
+  (async function load(){
+    try {
+      const res = await fetch(API_BASE + '/summary.json');
+      const d = await res.json();
+
+      $('tagline').textContent = d.positioning?.tagline || '';
+      $('liveBadge').textContent = `${d.service} v${d.version} · SYSTEM ONLINE`;
+      $('footerVer').textContent = `${d.service} v${d.version} · ${d.ts.split('T')[0]}`;
+
+      const m = d.model || {};
+      $('modelStats').innerHTML = [
+        tile('AUC',         (m.auc != null) ? m.auc.toFixed(3) : '—'),
+        tile('F1 @ 0.5',    (m.f1_at_0_5 != null) ? m.f1_at_0_5.toFixed(3) : '—'),
+        tile('Lead Time',   (m.avg_lead_time_s != null) ? m.avg_lead_time_s + 's' : '—'),
+        tile('Samples',     (m.samples != null) ? m.samples.toLocaleString() : '—'),
+        tile('Tests',       (d.tests?.passed || '—') + ' / ' + (d.tests?.total || '—')),
+      ].join('');
+
+      const sep = m.scenario_separation || {};
+      if (Object.keys(sep).length) {
+        $('separation').innerHTML = '시나리오 분리도 (pos − neg) — ' +
+          Object.entries(sep).map(([k,v]) => `<span style="color:var(--accent);">${k}</span> ${v.separation > 0 ? '+' : ''}${v.separation}`).join(' · ');
+      }
+
+      const op = d.operational || {};
+      $('opStats').innerHTML = [
+        tile('Fleet uploads',   op.fleet_total_uploads ?? '—'),
+        tile('Hard ratio',      op.fleet_hard_ratio != null ? (op.fleet_hard_ratio*100).toFixed(0) + '%' : '—'),
+        tile('Devices',         op.fleet_unique_devices ?? '—'),
+        tile('Showreels',       op.showreels_built ?? '—'),
+        tile('Scenarios',       op.scenarios_generated ?? '—'),
+        tile('Reports',         op.policy_reports ?? '—'),
+        tile('V2V intersections', op.v2v_active_intersections ?? '—'),
+        tile('Hazard pts',      op.hazard_intersections_tracked ?? '—'),
+      ].join('');
+
+      const stack = d.tech_stack || {};
+      $('stackGrid').innerHTML = Object.entries(stack)
+        .filter(([k]) => k !== 'data_sources')
+        .map(([k, v]) => `<div class="card"><div class="sub">// ${k.toUpperCase()}</div><ul>${v.map(s => `<li>${s}</li>`).join('')}</ul></div>`)
+        .join('');
+
+      const ep = d.live_endpoints || {};
+      $('endpointLinks').innerHTML = Object.entries(ep)
+        .map(([k, v]) => `<a class="link" href="${v}" target="_blank" rel="noopener">${k} →</a>`)
+        .join('');
+
+      $('dataSources').innerHTML = '<table><thead><tr><th>#</th><th>출처</th></tr></thead><tbody>' +
+        (stack.data_sources || []).map((s, i) => `<tr><td style="width:36px;color:var(--muted);">${i+1}</td><td>${s}</td></tr>`).join('') +
+        '</tbody></table>';
+
+    } catch (e) {
+      $('tagline').textContent = 'API 응답 실패 — 백엔드 동기화 후 재시도해 주세요.';
+    }
+  })();
+</script>
+
+</body></html>

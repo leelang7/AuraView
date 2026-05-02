@@ -8,7 +8,7 @@ import os
 from .database import Base, engine
 from .routers import (
     intersections, signals, events, risk, detect,
-    occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab, health,
+    occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab, health, summary,
 )
 
 # scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
@@ -78,6 +78,7 @@ app.include_router(reports.router, prefix="/reports", tags=["reports"])
 app.include_router(heatmap.router, prefix="/heatmap", tags=["heatmap"])
 app.include_router(collab.router, prefix="/collab", tags=["collab"])
 app.include_router(health.router, prefix="/healthz", tags=["health"])
+app.include_router(summary.router, prefix="/summary", tags=["summary"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
 if _SHOWREEL_OK:
@@ -104,6 +105,7 @@ def _mount_static(app, paths_relative_to_repo, mount_url):
 
 _mount_static(app, ["static", "slides"], "/slides")
 _mount_static(app, ["static", "kiosk"], "/kiosk")
+_mount_static(app, ["static", "summary"], "/submission")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)
 _PWA_DIR_CANDIDATES = [
@@ -966,6 +968,7 @@ def prototype_ui():
               <div class="subtitle">보이지 않는 신호를 대신 보여주는 시야 차단 대응형 안전 주행 보조 시스템</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
+              <a href="/submission/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--safe);padding:7px 14px;border:1px solid rgba(0,224,154,0.4);border-radius:99px;">≡ SUMMARY</a>
               <a href="/slides/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent);padding:7px 14px;border:1px solid rgba(0,200,255,0.3);border-radius:99px;">▶ SLIDES</a>
               <a href="/kiosk/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent2);padding:7px 14px;border:1px solid rgba(124,58,237,0.4);border-radius:99px;">⏵ KIOSK</a>
               <div class="header-badge">

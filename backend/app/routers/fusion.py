@@ -4,7 +4,7 @@
   GET /fusion/intersection/{intersection_id}  ─ 교차로 1개에 대한 신호·VDS·돌발·TAAS·ITS 종합
   GET /fusion/sources                         ─ 연동 중인 소스 목록(대시보드용)
 
-가점 기여: 데이터융합 5점.
+기능: 6종 공공데이터를 한 응답에 결합 반환.
 """
 
 from __future__ import annotations

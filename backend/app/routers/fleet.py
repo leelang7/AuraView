@@ -4,9 +4,9 @@ Fleet Learning ─ 사용자 엣지 단말이 '어려운 장면'만 업로드하
   POST /fleet/contribute       이미지 업로드 + 자동 PII 마스킹 후 저장
   GET  /fleet/stats            누적 기여량·하드샘플 비율 통계
 
-가점 기여:
-  - AI활용 · 학습 5점: Shadow-mode 자동 재학습 사이클
-  - 가명정보결합 5점: 수집 단계에서 얼굴·번호판 블러 후 저장
+설계 의도:
+  - Shadow-mode 자동 재학습 사이클 — 어려운 장면만 골라 모델이 점차 똑똑해짐
+  - 수집 단계부터 얼굴·번호판 블러 + 디바이스 ID 가명화로 PII 미보관
 """
 
 from __future__ import annotations

@@ -10,7 +10,7 @@ Heads:
   - sign        : 속도·정지·양보 표지
   - speed       : 자차 속도 회귀 (option)
 
-가점 기여: AI활용 · 학습 5점 (멀티태스크 학습 스크립트 포함)
+설계 의도: 단일 백본에서 멀티태스크 학습 — 추론 비용 고정, 정보량은 6~8배.
 """
 
 from __future__ import annotations

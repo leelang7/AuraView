@@ -1,7 +1,7 @@
 """
 Public Open Data adapters.
 
-6종 공공데이터 융합 ─ 경진대회 "데이터융합(5점)" 가점 근거.
+6종 공공데이터 융합 어댑터.
 
   1. 교통안전 실시간 신호등 정보 (apis.data.go.kr/B551982/rti)
   2. 한국도로공사 VDS 실시간 소통         (data.ex.co.kr/openapi)

@@ -131,7 +131,7 @@ def build() -> Dict[str, object]:
     frames += _draw_card(
         "보이지 않는 공간을 확률로 채운다",
         "Occupancy Network · HydraNet · E2E Risk Transformer",
-        "2026 국토교통 데이터활용 경진대회",
+        "auraview.allthatai.kr",
         duration_s=2.5, accent=(0, 200, 255),
     )
 

@@ -8,7 +8,7 @@ End-to-End Risk Transformer (skeleton).
 현재는 학습 전 플레이스홀더이므로 **weighted logistic regression** 형태로 동작하고,
 학습 준비가 끝나면 `models/risk_transformer_*.pt` 로 교체된다.
 
-가점 기여:
+설계 의도:
   - AI활용 · 학습 5점: 실제 Transformer 학습 코드 제공
   - AI활용 · 분석 5점: 추론 결과를 대시보드에 확률로 표시
   - 데이터융합 5점: 6종 공공데이터를 한 모델에 투입

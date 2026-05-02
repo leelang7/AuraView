@@ -68,7 +68,7 @@ app.include_router(events.router, prefix="/events", tags=["events"])
 app.include_router(risk.router, prefix="/risk", tags=["risk"])
 app.include_router(detect.router, prefix="/detect", tags=["detect"])
 
-# K-Perception extensions (경진대회 가점 25점 커버리지)
+# K-Perception extensions
 app.include_router(occupancy.router, prefix="/occupancy", tags=["occupancy"])
 app.include_router(fleet.router, prefix="/fleet", tags=["fleet"])
 app.include_router(fusion.router, prefix="/fusion", tags=["fusion"])
@@ -131,7 +131,7 @@ def prototype_ui():
         <meta charset="utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
         <meta name="theme-color" content="#00c8ff"/>
-        <meta name="description" content="AuraView K-Perception Platform — Tesla-style occupancy · fleet learning · end-to-end risk prediction. 2026 국토교통 데이터활용 경진대회."/>
+        <meta name="description" content="AuraView K-Perception Platform — Tesla-style occupancy · fleet learning · end-to-end risk prediction · 한국 도심 협업 인지(V2V·Bus·Bidirectional)."/>
 
         <!-- Open Graph -->
         <meta property="og:type" content="website"/>
@@ -144,7 +144,7 @@ def prototype_ui():
         <meta name="twitter:description" content="한국 도심에 이식한 Tesla FSD"/>
 
         <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='45%25' r='60%25'%3E%3Cstop offset='0%25' stop-color='%2300d8ff'/%3E%3Cstop offset='100%25' stop-color='%23080c14'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M14 42 Q32 18 50 42' stroke='%23e2eaf5' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='36' r='5' fill='%2300c8ff' stroke='%23e2eaf5' stroke-width='1.5'/%3E%3C/svg%3E"/>
-        <title>AuraView · K-Perception · 2026 국토교통 데이터활용 경진대회</title>
+        <title>AuraView · K-Perception</title>
 
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -981,7 +981,7 @@ def prototype_ui():
             <div class="tab" data-tab="tab2">② BEV Occupancy</div>
             <div class="tab" data-tab="tab3">③ 데이터 융합</div>
             <div class="tab" data-tab="tab4">④ Fleet Learning</div>
-            <div class="tab" data-tab="tab5">⑤ 가점 25점 트레이서</div>
+            <div class="tab" data-tab="tab5">⑤ Capability Matrix</div>
             <div class="tab" data-tab="tab6">⑥ 사고 재현</div>
             <div class="tab" data-tab="tab7">⑦ K-MaaS 연계</div>
             <div class="tab" data-tab="tab8">⑧ 정책 리포트</div>
@@ -1304,11 +1304,11 @@ def prototype_ui():
             <div class="dashboard-grid">
               <div class="left-col">
                 <div class="card">
-                  <div class="card-tag">K-MAAS · 특별상</div>
+                  <div class="card-tag">K-MAAS</div>
                   <div class="section-label">// 위험 교차로 우회 대중교통 추천</div>
                   <div class="hero-copy">
                     <div class="hero-title">위험을 감지하면 즉시 대중교통으로</div>
-                    <div class="hero-desc">전방 위험 교차로를 K-MaaS 데이터와 결합해 지하철·버스·공유 자전거 우회 경로 3종을 즉시 추천. 경진대회 K-MaaS 특별상 겨냥.</div>
+                    <div class="hero-desc">전방 위험 교차로를 K-MaaS 데이터와 결합해 지하철·버스·공유 자전거 우회 경로 3종을 즉시 추천 + 노선 운영팀에 데이터 환원.</div>
                   </div>
                   <div class="form-grid" style="margin-top:14px;">
                     <div class="btn-row">
@@ -1431,49 +1431,49 @@ def prototype_ui():
             </div>
           </div>
 
-          <!-- TAB 5 : Scorecard -->
+          <!-- TAB 5 : Capability Matrix -->
           <div class="tab-panel" id="tab5">
             <div class="card">
-              <div class="card-tag">SCORECARD · LIVE</div>
-              <div class="section-label">// 2026 국토교통 데이터활용 경진대회 · 가점 25점 + 특별상 트레이서</div>
+              <div class="card-tag">CAPABILITIES · LIVE</div>
+              <div class="section-label">// AuraView 기능 매트릭스 · 라이브 카운터</div>
               <div class="ranking">
                 <div class="rank-item mid">
-                  <div class="rank-head"><div class="rank-title">AI 활용 · 학습</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-head"><div class="rank-title">AI · 학습</div><span class="badge b-g">on</span></div>
                   <div class="rank-body">
                     HydraNet · Risk Transformer · Intent Predictor 학습 스크립트<br>
                     Fleet 누적 학습 데이터 · <span id="sc_fleet" style="color:var(--accent);font-weight:700;">… 건</span>
                   </div>
                 </div>
                 <div class="rank-item mid">
-                  <div class="rank-head"><div class="rank-title">AI 활용 · 분석</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-head"><div class="rank-title">AI · 분석</div><span class="badge b-g">on</span></div>
                   <div class="rank-body">
                     BEV Occupancy 3D · E2E 위험 확률 · Attention 해석<br>
                     재현 영상 · <span id="sc_scenarios" style="color:var(--accent);font-weight:700;">… 편</span>
                   </div>
                 </div>
                 <div class="rank-item mid">
-                  <div class="rank-head"><div class="rank-title">데이터 융합</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-head"><div class="rank-title">데이터 융합</div><span class="badge b-g">on</span></div>
                   <div class="rank-body">
                     신호 · VDS · 돌발 · TAAS · ITS · 안심구역<br>
                     소스 어댑터 활성 · <span id="sc_fusion" style="color:var(--accent);font-weight:700;">…종</span>
                   </div>
                 </div>
                 <div class="rank-item mid">
-                  <div class="rank-head"><div class="rank-title">가명정보 결합</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-head"><div class="rank-title">가명정보 결합</div><span class="badge b-g">on</span></div>
                   <div class="rank-body">
                     HMAC 가명화 · k-익명성 · 얼굴·번호판 블러<br>
                     /dsz/join/taas-vds · /fleet/contribute (자동 마스킹)
                   </div>
                 </div>
                 <div class="rank-item mid">
-                  <div class="rank-head"><div class="rank-title">안심구역</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-head"><div class="rank-title">안심구역</div><span class="badge b-g">on</span></div>
                   <div class="rank-body">
                     dsz.ex.co.kr 반입·결합분석·해시 검증 반출<br>
                     정책 리포트 누적 · <span id="sc_reports" style="color:var(--accent);font-weight:700;">… 개</span>
                   </div>
                 </div>
-                <div class="rank-item high" style="border-left-color:var(--accent2);">
-                  <div class="rank-head"><div class="rank-title">⭐ K-MaaS 특별상</div><span class="badge" style="background:rgba(124,58,237,0.18);color:#a995ff;border:1px solid rgba(124,58,237,0.3);">+300만원</span></div>
+                <div class="rank-item mid" style="border-left-color:var(--accent2);">
+                  <div class="rank-head"><div class="rank-title">⭐ K-MaaS</div><span class="badge" style="background:rgba(124,58,237,0.18);color:#a995ff;border:1px solid rgba(124,58,237,0.3);">on</span></div>
                   <div class="rank-body">
                     위험 교차로 → 대중교통 우회 추천 + 운영팀 환원<br>
                     /kmaas/alternatives · /kmaas/operator-report

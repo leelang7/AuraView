@@ -5,7 +5,7 @@ Tesla AI Day에서 공개된 occupancy network 개념을 경량화해 한국 도
 적용한다. 현재는 YOLOv8 탐지 박스 + 간단한 역투영 근사로 BEV occupancy grid를
 생성한다. 학습된 모델은 `models/occupancy_*.pt` 로 교체 가능하다.
 
-가점 기여:
+설계 의도:
   - AI활용 · 분석 (5점): BEV 3D 점유 확률을 실시간 산출
   - AI활용 · 학습 (5점): 하드샘플로 재학습 가능한 파이프라인
 """

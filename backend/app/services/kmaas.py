@@ -1,8 +1,6 @@
 """
 K-MaaS (Korea Mobility-as-a-Service) 어댑터.
 
-경진대회 특별상(K-MaaS 활용, 300만원) 겨냥.
-
 핵심 가설:
   - AuraView 가 전방 교차로의 충돌·보행자 위험을 감지하면
   - 운전자 대신 **K-MaaS 대중교통 대안 경로**를 즉시 제안

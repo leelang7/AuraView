@@ -8,7 +8,7 @@
 
 **목표:** Occupancy PoC + HydraNet skeleton 이 로컬·서버에서 동작하는 상태.
 
-- [x] README / 백서 / 가점 매트릭스 초안
+- [x] README / 백서 / 기능 매트릭스 초안
 - [x] 서비스 스켈레톤(occupancy, hydranet, risk_transformer, intent, pii, dsz)
 - [x] 라우터(/occupancy, /fleet, /fusion, /dsz) 배선 + 대시보드 탭 5개
 - [ ] `requirements.txt` 확장 후 서버 기동 확인
@@ -29,7 +29,7 @@
 - [ ] `/fusion/intersection/1007` 응답에 6종 모두 채움 (fallback 허용)
 - [ ] 가명결합 결과물 → 안심구역 반출 서식으로 export
 
-**Acceptance:** 모든 가점 항목 별 증빙 파일 1개 이상 존재.
+**Acceptance:** 모든 기능 항목 별 증빙 파일 1개 이상 존재.
 
 ---
 
@@ -51,7 +51,7 @@
 **목표:** "처음 본 사람도 3분 안에 납득"하는 발표 자산.
 
 - [ ] 사고 재현 데모 영상 2분 (TAAS 실제 사고 전 영상에 AuraView 실행)
-- [ ] 발표 슬라이드 25장 (스토리: 문제 → 철학 → 기술 → 가점 → 사회적 가치 → Ask)
+- [ ] 발표 슬라이드 25장 (스토리: 문제 → 철학 → 기술 → 기능 → 사회적 가치 → Ask)
 - [ ] 기술백서 v1.0 최종본
 - [ ] 제출 전 QA 체크리스트 완주
 - [ ] **2026-05-29** 접수 마감 24시간 전 최종 제출

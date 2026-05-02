@@ -4,7 +4,7 @@ TAAS 사고 히트맵 — Leaflet.heat 호환 좌표·강도 배열 반환.
   GET /heatmap/taas?bbox=...&year=2024
       서울 시내 등 bbox 범위 내 TAAS 사고이력 → [[lat, lon, weight], ...]
 
-가점: 데이터융합 5점 (TAAS 데이터 시각화) + 분석 5점.
+기능: TAAS 사고 분포의 시각적 융합 (메인 지도 토글).
 """
 
 from __future__ import annotations

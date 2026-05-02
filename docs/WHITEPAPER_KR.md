@@ -1,6 +1,6 @@
 # AuraView — K-Perception Platform 기술백서
 
-> **2026년 국토교통 데이터활용 경진대회 제출용**
+> **AuraView K-Perception Platform — 기술 백서**
 > 주제: 비가시 교통정보 축적·고도화 기반 지능형 안전 주행 지원 시스템
 > 대상 부문: 제품·서비스 개발 (시제품) · 아이디어 부문 겸용 가능
 
@@ -152,22 +152,18 @@ AuraView는 위 네 가지를 **"보이지 않는 공간의 확률 모델링"** 
 
 ---
 
-## 4. 가점 25점 + K-MaaS 특별상 매트릭스
+## 4. 기능 매트릭스
 
-| 항목 | 배점 | AuraView 증빙 | 엔드포인트 / 파일 |
-|---|---:|---|---|
-| AI 활용 · 학습 | 5 | HydraNet · Risk Transformer · Intent Predictor 학습 파이프라인 + Fleet 하드샘플 | `notebooks/`, `services/risk_transformer.py`, `routers/fleet.py` |
-| AI 활용 · 분석 | 5 | Occupancy BEV 추정 · 위험 확률 · attention 해석 · 사고 재현 영상 + 합본 Showreel | `POST /occupancy/infer`, `/scenario/reenact`, `/showreel/build` |
-| 데이터 융합 | 5 | 신호 · VDS · 돌발 · TAAS · ITS · DSZ 6종 어댑터 한 응답 결합 | `GET /fusion/intersection/{id}` · `services/public_api.py` |
-| 가명정보 결합 | 5 | HMAC 가명화 · k=5 익명성 · 얼굴·번호판 블러 · TAAS×VDS 결합 | `services/pii.py`, `POST /dsz/join/taas-vds` |
-| 안심구역 | 5 | 반입·결합분석·해시 검증 반출 + Top-N 정책 리포트(HTML/JSON) | `services/dsz_adapter.py`, `POST /dsz/verify`, `/reports/generate` |
-| **⭐ K-MaaS 특별상** | **+300만원** | 위험 교차로 → 대중교통 우회 추천 + 노선 운영팀 환원 데이터 | `services/kmaas.py`, `/kmaas/alternatives`, `/kmaas/operator-report` |
+| 도메인 | 모듈 | 엔드포인트 / 파일 |
+|---|---|---|
+| AI · 학습 | HydraNet · Risk Transformer · Intent Predictor + Fleet 하드샘플 | `notebooks/`, `services/risk_transformer.py`, `routers/fleet.py` |
+| AI · 분석 | Occupancy BEV 추정 · 위험 확률 · attention 해석 · 사고 재현 영상 + 합본 Showreel | `POST /occupancy/infer`, `/scenario/reenact`, `/showreel/build` |
+| 데이터 융합 | 신호 · VDS · 돌발 · TAAS · ITS · DSZ 6종 어댑터 한 응답 결합 | `GET /fusion/intersection/{id}` · `services/public_api.py` |
+| 가명정보 결합 | HMAC 가명화 · k=5 익명성 · 얼굴·번호판 블러 · TAAS×VDS 결합 | `services/pii.py`, `POST /dsz/join/taas-vds` |
+| 안심구역 | 반입·결합분석·해시 검증 반출 + Top-N 정책 리포트(HTML/JSON) | `services/dsz_adapter.py`, `POST /dsz/verify`, `/reports/generate` |
+| ⭐ K-MaaS | 위험 교차로 → 대중교통 우회 추천 + 노선 운영팀 환원 데이터 | `services/kmaas.py`, `/kmaas/alternatives`, `/kmaas/operator-report` |
 
-**합계 25점 + 특별상** — 가점 상한선 + 별도 트랙 동시 정조준.
-
-### 4.1 K-MaaS 특별상 전략 (별도 시상 1건, 300만원)
-
-K-MaaS 활용 부문은 **별도 특별상 트랙**으로 분리되어 있어, 본상 25점과 **독립적으로 동시 수상 가능**.
+### 4.1 K-MaaS 통합 전략
 
 AuraView 의 K-MaaS 통합:
 - **시민용 (B2C):** 전방 교차로 위험 점수 ≥ 6 일 때 자동으로 K-MaaS 대중교통 대안 3종(지하철·버스·따릉이) 추천. 각 경로의 소요시간·요금·CO₂ 절감량 + 우회 가치 점수 함께 제공.
@@ -282,7 +278,7 @@ AuraView 의 K-MaaS 통합:
 ## 10. 제출 체크리스트
 
 - [x] 기술백서 (본 문서)
-- [x] 가점 25점 매트릭스
+- [x] 기능 매트릭스
 - [x] 6종 공공데이터 어댑터
 - [x] Occupancy · HydraNet · Risk · Intent 서비스 코드
 - [x] 가명결합 · 안심구역 반입/검증

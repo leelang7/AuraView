@@ -13,7 +13,6 @@
 - **Brand portfolio:** https://allthatai.kr
 
 > 본 리포 **monorepo** : 백엔드 · Flutter · 랜딩 · 슬라이드 · 키오스크 · 학습 노트북 · 문서 모두 한 곳.
-> **README 도 이 한 파일**에서 모든 모듈을 다룬다.
 
 ---
 
@@ -27,21 +26,6 @@
 | 데이터 | 단일 소스 | **6종 공공데이터 + V2V 풀 + 정류장 prior** |
 | 학습 | 고정 모델 | **Fleet Learning 플라이휠** + 자동 재학습 |
 | 대상 | 운전자 | **운전자 + 보행자 + 이륜 노동자 + 지자체 + K-MaaS 운영자** |
-
----
-
-## 🏆 2026 국토교통 데이터활용 경진대회 — 가점 25점 + K-MaaS 특별상
-
-| 가점 항목 | 배점 | 충족 방식 | 엔드포인트 |
-|---|---:|---|---|
-| **AI 활용 — 학습** | 5 | HydraNet · Risk Transformer · Intent Predictor + Fleet 데이터 (AUC **0.94**) | `/fleet/contribute`, `notebooks/risk_transformer_metric.py` |
-| **AI 활용 — 분석** | 5 | Occupancy 3D · BEV viewer · 사고 재현 영상 · 합본 Showreel | `/occupancy/infer`, `/scenario/reenact`, `/showreel/build` |
-| **데이터 융합** | 5 | 신호 · VDS · 돌발 · TAAS · ITS · 안심구역 6종 한 응답 결합 | `/fusion/intersection/{id}` |
-| **가명정보 결합** | 5 | HMAC 가명화 · k=5 익명성 · 얼굴/번호판 블러 · TAAS×VDS 결합 | `/dsz/join/taas-vds`, `/fleet/contribute` |
-| **안심구역** | 5 | 반입·결합분석·해시 검증 반출 + Top-N 정책 리포트 | `/dsz/verify`, `/reports/generate` |
-| **⭐ K-MaaS 특별상** | +300만원 | 위험 교차로 → 대중교통 우회 추천 + 노선 운영팀 환원 | `/kmaas/alternatives`, `/kmaas/operator-report` |
-
-→ [docs/WHITEPAPER_KR.md](docs/WHITEPAPER_KR.md) · [docs/DATASETS.md](docs/DATASETS.md) · [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ---
 
@@ -64,7 +48,7 @@
 
 ---
 
-## 📊 측정 결과 (백서 §7)
+## 📊 측정 결과
 
 | 지표 | 측정값 | 출처 |
 |---|---:|---|
@@ -100,7 +84,7 @@
 ## 📦 Monorepo 구조
 
 ```
-github.com/leelang7/AuraView (feat/k-perception)
+github.com/leelang7/AuraView
 ├── backend/                    FastAPI + 9 라우터 + 18 pytest
 │   └── app/
 │       ├── routers/            occupancy · fleet · fusion · dsz · kmaas ·
@@ -128,23 +112,23 @@ github.com/leelang7/AuraView (feat/k-perception)
 
 ## 🔌 API 엔드포인트
 
-| Method | Path | 가점 |
+| Method | Path | 설명 |
 |---|---|---|
-| `GET`  | `/ui` `/pwa` `/slides` `/kiosk` `/docs` | 분석 |
-| `POST` | `/detect/frame` · `/detect/video` | 분석 |
-| `POST` | `/occupancy/infer` · `GET /occupancy/demo` | 학습·분석 |
-| `POST` | `/fleet/contribute` · `GET /fleet/stats` | 가명·학습 |
-| `GET`  | `/fusion/intersection/{id}` · `/fusion/sources` | 융합 |
-| `POST` | `/dsz/verify` · `/dsz/join/taas-vds` · `GET /dsz/artifacts` | 안심·가명 |
-| `POST` | `/reports/generate?top=N` · `GET /reports/list` | 분석·안심 |
-| `POST` | `/scenario/reenact` · `GET /scenario/list` · `/scenario/presets` | 분석 |
-| `POST` | `/showreel/build` · `GET /showreel/list` | 분석 |
-| `GET`  | `/kmaas/alternatives` · `/kmaas/operator-report` | **K-MaaS 특별상** |
-| `GET`  | `/heatmap/taas` | 융합·분석 |
-| `POST` | **`/collab/v2v/broadcast`** · `GET /collab/v2v/intersection/{id}` · `/v2v/stats` | **협업 인지** |
+| `GET`  | `/ui` `/pwa` `/slides` `/kiosk` `/docs` | 데모 / 발표 / 무인 시연 / API 문서 |
+| `POST` | `/detect/frame` · `/detect/video` | 이미지·영상 위험 분석 |
+| `POST` | `/occupancy/infer` · `GET /occupancy/demo` | 3D Occupancy 추정 |
+| `POST` | `/fleet/contribute` · `GET /fleet/stats` | 하드샘플 업로드 (PII 자동 마스킹) |
+| `GET`  | `/fusion/intersection/{id}` · `/fusion/sources` | 6종 공공데이터 융합 |
+| `POST` | `/dsz/verify` · `/dsz/join/taas-vds` · `GET /dsz/artifacts` | 안심구역 결합·검증 |
+| `POST` | `/reports/generate?top=N` · `GET /reports/list` | 위험 교차로 Top-N 정책 리포트 |
+| `POST` | `/scenario/reenact` · `GET /scenario/list` · `/scenario/presets` | 사고 재현 영상 |
+| `POST` | `/showreel/build` · `GET /showreel/list` | 합본 시연 영상 |
+| `GET`  | `/kmaas/alternatives` · `/kmaas/operator-report` | K-MaaS 우회 경로 + 운영팀 환원 |
+| `GET`  | `/heatmap/taas` | TAAS 사고 히트맵 |
+| `POST` | **`/collab/v2v/broadcast`** · `GET /collab/v2v/intersection/{id}` · `/v2v/stats` | V2V 협업 인지 |
 | `POST` | **`/collab/v2v/seed-demo`** | 시연 시드 |
-| `POST` | **`/collab/bus-context`** · **`/collab/bidirectional`** | 협업 인지 |
-| `POST` | **`/collab/fused-occupancy`** ★ | **단독 vs 협업 비교** |
+| `POST` | **`/collab/bus-context`** · **`/collab/bidirectional`** | 버스/상행하행 분석 |
+| `POST` | **`/collab/fused-occupancy`** ★ | **단독 vs 협업 결합 비교** |
 
 ---
 
@@ -164,8 +148,7 @@ cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ### Flutter Mobile App (`auraview_fleet/`)
 
-> **Tesla-style Shadow Mode** dashcam 기여 단말. AuraView 백엔드의 `/fleet/contribute`
-> 엔드포인트로 어려운 장면(불확실성·움직임 큰 프레임)만 자동 업로드.
+> **Tesla-style Shadow Mode** dashcam 기여 단말. 어려운 장면(불확실성·움직임 큰 프레임)만 자동 업로드.
 
 | Platform | Status |
 |---|---|
@@ -177,7 +160,7 @@ cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
 - **풀스크린 카메라 프리뷰** + 라디얼 비네트
 - 상단 HUD: AuraView 로고 + 누적 카운터 + 연결 상태
 - **단일 알약 버튼** — 탭=시작/정지, 길게 누르기=수동 1장 기여
-- 위로 스와이프 시 상세 시트 (캡처 / 업로드 / 실패 / 서버 누적 4-tile + 마지막 entropy / reason)
+- 위로 스와이프 시 상세 시트 (캡처 / 업로드 / 실패 / 서버 누적 4-tile)
 - 캡처/업로드 시 cyan→safe 펄스 링 애니메이션 + Haptic 진동
 - 디바이스 ID 자동 생성 (서버에서 HMAC 가명화)
 - 위치 권한 허용 시 lat/lon 함께 전송
@@ -203,8 +186,6 @@ flutter run -d chrome --web-port 5180 \
 
 # 앱 아이콘 재생성 (디자인 수정 시)
 python tools/make_icons.py
-# → android/app/src/main/res/mipmap-* (legacy + adaptive) 자동 갱신
-# → web/icons/Icon-*.png · favicon.png 도 동시에 교체
 ```
 
 #### 권한
@@ -232,11 +213,11 @@ python tools/make_icons.py
 ```
 
 #### Flutter 앱 TODO
-- [ ] **V2V broadcast 통합** — 폰이 자체 detection 을 `/collab/v2v/broadcast` 로 송신해 같은 교차로 다른 차량과 공유
+- [ ] **V2V broadcast 통합** — 폰이 자체 detection 을 `/collab/v2v/broadcast` 로 송신
 - [ ] `startImageStream()` 기반 실시간 onboard 추론
 - [ ] TFLite 로 YOLOv8-nano 온디바이스
-- [ ] iOS 빌드 (Mac 에서 `flutter create --platforms ios .`)
-- [ ] Background Service (foreground notification 으로 차량 운행 중 지속 캡처)
+- [ ] iOS 빌드
+- [ ] Background Service (foreground notification)
 - [ ] HMAC 사인 헤더로 위변조 방지
 
 ### Landing Page (`landing/` → `allthatai.kr`)
@@ -245,6 +226,7 @@ python tools/make_icons.py
 > `<a class="card" ...>` 블록 하나 붙여넣으면 자동으로 확장.
 
 #### 배포 — GitHub Pages (무료 · HTTPS 자동)
+
 **현재 배포 위치**: 별도 리포 [`leelang7/allthatai-landing`](https://github.com/leelang7/allthatai-landing) (Pages 호스팅).
 이 monorepo 의 `landing/` 폴더가 **단일 소스** 이고, 변경 시 해당 리포로 sync push.
 
@@ -282,11 +264,11 @@ cd _land && git add -A && git commit -m "sync from monorepo" && git push
 
 ## 🗺️ Roadmap
 
-- [x] Week 1 — Occupancy PoC + HydraNet skeleton
-- [x] Week 2 — 6종 어댑터 + 가명결합 + E2E baseline (AUC 0.94)
-- [x] Week 3 — BEV 3D · Fleet PWA · Flutter 앱 · 안심구역 결과물 · 사고 재현 영상
-- [x] Week 3.5 — V2V + Bus + Bidirectional 협업 인지 + Reveal 발표 + Kiosk
-- [ ] Week 4 — 발표 슬라이드 v2 · 시연 리허설 · 제출 패키지 마감
+- [x] Occupancy PoC + HydraNet skeleton
+- [x] 6종 공공데이터 어댑터 + 가명결합 + E2E baseline (AUC 0.94)
+- [x] BEV 3D · Fleet PWA · Flutter 앱 · 안심구역 결과물 · 사고 재현 영상
+- [x] V2V + Bus + Bidirectional 협업 인지 + Reveal 발표 + Kiosk
+- [ ] 발표 자료 v2 · 시연 리허설 · 제품 안정화
 
 상세 → [docs/ROADMAP.md](docs/ROADMAP.md)
 

@@ -5,7 +5,7 @@
   GET  /dsz/artifacts       등록된 안심구역 결합분석 결과물 목록
   POST /dsz/join/taas-vds   (시연용) 로컬 가짜 TAAS × VDS 결합 샘플 수행
 
-가점 기여: 안심구역 5점 + 가명정보결합 5점.
+관련 표준: 국토교통 데이터안심구역 반입·결합·반출 절차.
 """
 
 from __future__ import annotations

@@ -2268,6 +2268,24 @@ def prototype_ui():
           }
 
           /* ── COLLAB (V2V / Bus / Bidir) ── */
+          // TAB 9 활성화 시 자동 V2V 풀 폴링
+          let _v2vPollTimer = null;
+          (function setupV2VAutoPoll(){
+            const tab9 = document.querySelector('[data-tab="tab9"]');
+            if (!tab9) return;
+            const poll = () => {
+              if (document.getElementById('tab9').classList.contains('active')) {
+                const iid = document.getElementById('cv_iid')?.value;
+                if (iid) refreshV2VPool(iid);
+              }
+            };
+            tab9.addEventListener('click', () => {
+              clearInterval(_v2vPollTimer);
+              poll();
+              _v2vPollTimer = setInterval(poll, 5000);
+            });
+          })();
+
           async function seedV2VDemo() {
             const iid = document.getElementById('cv_iid').value;
             const lat = document.getElementById('cv_lat').value;

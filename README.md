@@ -13,6 +13,7 @@
 - **Brand portfolio:** https://allthatai.kr
 
 > 본 리포 **monorepo** : 백엔드 · Flutter · 랜딩 · 슬라이드 · 키오스크 · 학습 노트북 · 문서 모두 한 곳.
+> **README 도 이 한 파일**에서 모든 모듈을 다룬다.
 
 ---
 
@@ -57,9 +58,9 @@
 8. **C-ITS / V2X 브릿지** — 인프라 신호와 비전 교차 검증
 
 ### ⭐ Tesla 도 못 하는 한국 특화 3종 — Collaborative Perception
-9. **V2V Cross-Vehicle Perception** — **마주오는 차의 시점**을 내 BEV 에 머지 → "버스 너머 보행자" 직격 (`services/v2v.py`)
-10. **Bus-Aware Pedestrian Prior** — 정류장 데이터 + 버스 정차/출발 상태 → 보행자 prior **+0.55** boost (`services/bus_aware.py`)
-11. **Bidirectional Lane Fusion** — 마주오는 차들의 감속 비율 + VDS 상행/하행 비대칭 → 사고 즉시 감지 + 권장속도 (`services/bidirectional.py`)
+9. **V2V Cross-Vehicle Perception** — **마주오는 차의 시점**을 내 BEV 에 머지 → "버스 너머 보행자" 직격 (`backend/app/services/v2v.py`)
+10. **Bus-Aware Pedestrian Prior** — 정류장 데이터 + 버스 정차/출발 상태 → 보행자 prior **+0.55** boost (`backend/app/services/bus_aware.py`)
+11. **Bidirectional Lane Fusion** — 마주오는 차들의 감속 비율 + VDS 상행/하행 비대칭 → 사고 즉시 감지 + 권장속도 (`backend/app/services/bidirectional.py`)
 
 ---
 
@@ -108,9 +109,9 @@ github.com/leelang7/AuraView (feat/k-perception)
 │       │                       v2v · bus_aware · bidirectional · pii · dsz_adapter ·
 │       │                       scenario · showreel · hazard_report · public_api
 │       └── tests/              18 통합 테스트 (외부 API fallback)
-├── auraview_fleet/             ★ Flutter (Android + Web) — Perception Eye 아이콘 + 풀스크린 UX
+├── auraview_fleet/             Flutter (Android + Web) — Perception Eye 아이콘 + 풀스크린 UX
 ├── frontend_pwa/               백업 PWA (HTML/JS)
-├── landing/                    allthatai.kr 랜딩 페이지 (GitHub Pages)
+├── landing/                    allthatai.kr 랜딩 페이지 (GitHub Pages 배포 대상)
 ├── static/
 │   ├── slides/                 Reveal.js 발표 12장 (/slides)
 │   └── kiosk/                  무인 자동 시연 9장면 (/kiosk)
@@ -120,7 +121,7 @@ github.com/leelang7/AuraView (feat/k-perception)
 ├── docs/                       WHITEPAPER_KR.md · ROADMAP.md · DATASETS.md
 ├── .github/workflows/          ci.yml (Python+Flutter 자동 테스트) + deploy.yml (push→EC2 자동)
 ├── requirements.txt
-└── README.md (이 파일)
+└── README.md (이 파일 · 모든 모듈 통합 문서)
 ```
 
 ---
@@ -149,23 +150,123 @@ github.com/leelang7/AuraView (feat/k-perception)
 
 ## 🚀 Quickstart
 
+### Backend (FastAPI)
+
 ```bash
-# Backend
 git clone https://github.com/leelang7/AuraView.git
 cd AuraView
 cp .env.example .env    # → SERVICE_KEY 등 실제 값 입력
 pip install -r requirements.txt
 cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# Flutter (Android + Web)
-cd ../auraview_fleet
-flutter pub get
-flutter run -d chrome --web-port 5180 --dart-define=AURAVIEW_API_BASE=http://localhost:8000
-# 또는
-flutter build apk --release --dart-define=AURAVIEW_API_BASE=https://auraview.allthatai.kr
 ```
 
 대시보드: http://localhost:8000/ui · 통합 테스트: `cd backend && pytest tests/`
+
+### Flutter Mobile App (`auraview_fleet/`)
+
+> **Tesla-style Shadow Mode** dashcam 기여 단말. AuraView 백엔드의 `/fleet/contribute`
+> 엔드포인트로 어려운 장면(불확실성·움직임 큰 프레임)만 자동 업로드.
+
+| Platform | Status |
+|---|---|
+| Android | ✅ 빌드·실행 (Android 7.0 / API 24+) · APK 51MB |
+| iOS | 🛠️ 추가 작업 필요 (Mac + Xcode) |
+| Web (PWA) | ✅ Chrome/Edge 데스크톱·모바일 (HTTPS 환경에서 카메라 작동) |
+
+#### 기능
+- **풀스크린 카메라 프리뷰** + 라디얼 비네트
+- 상단 HUD: AuraView 로고 + 누적 카운터 + 연결 상태
+- **단일 알약 버튼** — 탭=시작/정지, 길게 누르기=수동 1장 기여
+- 위로 스와이프 시 상세 시트 (캡처 / 업로드 / 실패 / 서버 누적 4-tile + 마지막 entropy / reason)
+- 캡처/업로드 시 cyan→safe 펄스 링 애니메이션 + Haptic 진동
+- 디바이스 ID 자동 생성 (서버에서 HMAC 가명화)
+- 위치 권한 허용 시 lat/lon 함께 전송
+- 교차로 ID SharedPreferences 영속
+
+#### 빌드 / 실행
+```bash
+cd auraview_fleet
+flutter pub get
+
+# Android 디버그
+flutter devices                        # 연결된 기기 확인
+flutter run -d <device_id>
+
+# Android 릴리스 APK
+flutter build apk --release \
+  --dart-define=AURAVIEW_API_BASE=https://auraview.allthatai.kr
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+
+# Web (PWA-ready)
+flutter run -d chrome --web-port 5180 \
+  --dart-define=AURAVIEW_API_BASE=https://auraview.allthatai.kr
+
+# 앱 아이콘 재생성 (디자인 수정 시)
+python tools/make_icons.py
+# → android/app/src/main/res/mipmap-* (legacy + adaptive) 자동 갱신
+# → web/icons/Icon-*.png · favicon.png 도 동시에 교체
+```
+
+#### 권한
+- **CAMERA** (필수) — 프리뷰 + 캡처
+- **INTERNET** (필수) — 업로드
+- **ACCESS_FINE_LOCATION** (선택) — 위치 함께 보낼 때만
+
+#### 클라이언트 아키텍처
+```
+[ Flutter Camera ]
+        │ takePicture (4초 주기)
+        ▼
+[ image package ]                ← decode → 64×64 grayscale
+        │ entropy + motion 추정
+        ▼
+[ Threshold filter ]             entropy ≥ 0.55 || motion ≥ 0.7 → upload
+        │
+        ▼
+[ http MultipartRequest ]        device_id + entropy + reason + (lat,lon) + JPEG
+        │
+        ▼
+   POST https://auraview.allthatai.kr/fleet/contribute
+                                    └─ 서버에서 PII 마스킹 + 가명화 → 저장
+                                    └─ /collab/v2v/* 풀로도 분기 (TODO)
+```
+
+#### Flutter 앱 TODO
+- [ ] **V2V broadcast 통합** — 폰이 자체 detection 을 `/collab/v2v/broadcast` 로 송신해 같은 교차로 다른 차량과 공유
+- [ ] `startImageStream()` 기반 실시간 onboard 추론
+- [ ] TFLite 로 YOLOv8-nano 온디바이스
+- [ ] iOS 빌드 (Mac 에서 `flutter create --platforms ios .`)
+- [ ] Background Service (foreground notification 으로 차량 운행 중 지속 캡처)
+- [ ] HMAC 사인 헤더로 위변조 방지
+
+### Landing Page (`landing/` → `allthatai.kr`)
+
+> AllThatAI 포트폴리오의 얼굴. 프로젝트 카드 추가는 `landing/index.html` 하단 `.grid` 안에
+> `<a class="card" ...>` 블록 하나 붙여넣으면 자동으로 확장.
+
+#### 배포 — GitHub Pages (무료 · HTTPS 자동)
+**현재 배포 위치**: 별도 리포 [`leelang7/allthatai-landing`](https://github.com/leelang7/allthatai-landing) (Pages 호스팅).
+이 monorepo 의 `landing/` 폴더가 **단일 소스** 이고, 변경 시 해당 리포로 sync push.
+
+```bash
+# 변경 후 sync (manual)
+cd /tmp && rm -rf _land
+git clone https://github.com/leelang7/allthatai-landing.git _land
+cp /path/to/AuraView/landing/index.html _land/index.html
+cp /path/to/AuraView/landing/CNAME _land/CNAME
+cd _land && git add -A && git commit -m "sync from monorepo" && git push
+```
+
+#### DNS (가비아)
+| 타입 | 호스트 | 값 | TTL |
+|---|---|---|---|
+| A | `@` | `185.199.108.153` | 300 |
+| A | `@` | `185.199.109.153` | 300 |
+| A | `@` | `185.199.110.153` | 300 |
+| A | `@` | `185.199.111.153` | 300 |
+| CNAME | `www` | `leelang7.github.io.` | 300 |
+| A | `auraview` | `13.48.70.193` | 300 |
+| A | `lolbutler` | `158.247.200.59` | 300 |
 
 ---
 

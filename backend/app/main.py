@@ -1242,6 +1242,17 @@ def prototype_ui():
 
           <!-- TAB 6 : Accident Reenactment -->
           <div class="tab-panel" id="tab6">
+
+            <!-- ★ 합본 hero — 가장 위에 즉시 재생 (탭 진입시 /showreel/latest 자동 로드) -->
+            <div class="card" style="margin-bottom:18px;">
+              <div class="card-tag" style="background:linear-gradient(135deg, var(--accent), var(--accent2));">⭐ SHOWREEL · LATEST</div>
+              <div class="section-label">// 합본 시연 영상 (음향 포함, 자동 재생)</div>
+              <div id="showreelHero" class="preview-wrap" style="height:480px;display:flex;align-items:center;justify-content:center;background:#000;border-radius:12px;">
+                <div class="placeholder"><div class="placeholder-icon">🎬</div>합본 영상 로딩…</div>
+              </div>
+              <div id="showreelMeta" style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);"></div>
+            </div>
+
             <div class="dashboard-grid">
               <div class="left-col">
                 <div class="card">
@@ -2350,7 +2361,33 @@ def prototype_ui():
             } catch(e) { toast('실행 실패', 'error'); } finally { hideLoader(); }
           }
 
-          /* ── SHOWREEL ── */
+          /* ── SHOWREEL HERO (TAB ⑥ 진입 시 자동 재생) ── */
+          (function setupShowreelHero(){
+            const tab6 = document.querySelector('[data-tab="tab6"]');
+            if (!tab6) return;
+            let loaded = false;
+            tab6.addEventListener('click', async () => {
+              if (loaded) return;
+              loaded = true;
+              try {
+                const res = await fetch(window.location.origin + '/showreel/latest');
+                if (!res.ok) throw new Error('no showreel');
+                const data = await res.json();
+                if (!data.video_url) return;
+                document.getElementById('showreelHero').innerHTML = `
+                  <video controls autoplay muted loop playsinline style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:12px;">
+                    <source src="${data.video_url}" type="video/mp4"/>
+                  </video>`;
+                document.getElementById('showreelMeta').innerHTML =
+                  `${data.name || ''} · ${(data.size_kb||0)} KB · ${(data.age_hours ?? '?')}시간 전 생성 · 음향 포함`;
+              } catch(e) {
+                document.getElementById('showreelHero').innerHTML =
+                  `<div class="placeholder"><div class="placeholder-icon">⚠️</div>합본 영상이 아직 없습니다. 아래 "⭐ 합본 시연 영상" 버튼으로 생성하세요.</div>`;
+              }
+            });
+          })();
+
+          /* ── SHOWREEL build ── */
           async function buildShowreel() {
             showLoader('합본 영상 생성 중 (60초 정도 소요)...');
             try {

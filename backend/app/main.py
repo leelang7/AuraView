@@ -8,7 +8,7 @@ import os
 from .database import Base, engine
 from .routers import (
     intersections, signals, events, risk, detect,
-    occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab, health, summary,
+    occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab, health, summary, benchmark,
 )
 
 # scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
@@ -79,6 +79,7 @@ app.include_router(heatmap.router, prefix="/heatmap", tags=["heatmap"])
 app.include_router(collab.router, prefix="/collab", tags=["collab"])
 app.include_router(health.router, prefix="/healthz", tags=["health"])
 app.include_router(summary.router, prefix="/summary", tags=["summary"])
+app.include_router(benchmark.router, prefix="/benchmark", tags=["benchmark"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
 if _SHOWREEL_OK:

@@ -8,7 +8,7 @@ import os
 from .database import Base, engine
 from .routers import (
     intersections, signals, events, risk, detect,
-    occupancy, fleet, fusion, dsz, kmaas, reports,
+    occupancy, fleet, fusion, dsz, kmaas, reports, heatmap,
 )
 
 # scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
@@ -75,6 +75,7 @@ app.include_router(fusion.router, prefix="/fusion", tags=["fusion"])
 app.include_router(dsz.router, prefix="/dsz", tags=["dsz"])
 app.include_router(kmaas.router, prefix="/kmaas", tags=["kmaas"])
 app.include_router(reports.router, prefix="/reports", tags=["reports"])
+app.include_router(heatmap.router, prefix="/heatmap", tags=["heatmap"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
 if _SHOWREEL_OK:
@@ -82,6 +83,25 @@ if _SHOWREEL_OK:
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# 발표 슬라이드 (Reveal.js) — repo의 static/slides 폴더 자동 탐색
+def _mount_static(app, paths_relative_to_repo, mount_url):
+    """repo의 정적 폴더를 위치 자동 탐색해서 마운트."""
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", *paths_relative_to_repo),
+        os.path.join(os.getcwd(), *paths_relative_to_repo),
+        os.path.join(os.getcwd(), "..", *paths_relative_to_repo),
+    ]
+    for cand in candidates:
+        cand = os.path.abspath(cand)
+        if os.path.isdir(cand):
+            app.mount(mount_url, StaticFiles(directory=cand, html=True), name=mount_url.strip("/"))
+            return True
+    return False
+
+
+_mount_static(app, ["static", "slides"], "/slides")
+_mount_static(app, ["static", "kiosk"], "/kiosk")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)
 _PWA_DIR_CANDIDATES = [
@@ -108,10 +128,26 @@ def prototype_ui():
     <html lang="ko">
     <head>
         <meta charset="utf-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <title>AuraView Dashboard</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+        <meta name="theme-color" content="#00c8ff"/>
+        <meta name="description" content="AuraView K-Perception Platform — Tesla-style occupancy · fleet learning · end-to-end risk prediction. 2026 국토교통 데이터활용 경진대회."/>
+
+        <!-- Open Graph -->
+        <meta property="og:type" content="website"/>
+        <meta property="og:title" content="AuraView · K-Perception"/>
+        <meta property="og:description" content="한국 도심에 이식한 Tesla FSD — 보이지 않는 신호와 공간을 확률로 복원해 사고를 평균 5.7초 먼저 경고합니다."/>
+        <meta property="og:url" content="https://auraview.allthatai.kr/ui"/>
+        <meta property="og:site_name" content="AuraView"/>
+        <meta name="twitter:card" content="summary_large_image"/>
+        <meta name="twitter:title" content="AuraView · K-Perception"/>
+        <meta name="twitter:description" content="한국 도심에 이식한 Tesla FSD"/>
+
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='45%25' r='60%25'%3E%3Cstop offset='0%25' stop-color='%2300d8ff'/%3E%3Cstop offset='100%25' stop-color='%23080c14'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M14 42 Q32 18 50 42' stroke='%23e2eaf5' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='36' r='5' fill='%2300c8ff' stroke='%23e2eaf5' stroke-width='1.5'/%3E%3C/svg%3E"/>
+        <title>AuraView · K-Perception · 2026 국토교통 데이터활용 경진대회</title>
+
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
         <style>
@@ -899,6 +935,27 @@ def prototype_ui():
           <div class="loader-text">ANALYZING...</div>
         </div>
 
+        <!-- Boot splash: 첫 페이지 진입 임팩트 -->
+        <div id="bootSplash" style="position:fixed;inset:0;background:radial-gradient(ellipse at center, #08121e 0%, #04070d 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999;transition:opacity .8s;">
+          <div style="position:relative;width:88px;height:88px;">
+            <div style="position:absolute;inset:0;border-radius:50%;border:3px solid rgba(0,200,255,0.18);border-top-color:#00c8ff;animation:bootspin 1.1s linear infinite;"></div>
+            <div style="position:absolute;inset:14px;border-radius:50%;border:2px solid rgba(124,58,237,0.25);border-bottom-color:#7c3aed;animation:bootspin 1.7s linear infinite reverse;"></div>
+          </div>
+          <div style="font-family:'Black Han Sans',sans-serif;font-size:34px;letter-spacing:-0.5px;">
+            Aura<em style="font-style:normal;background:linear-gradient(135deg,#00c8ff,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent;">View</em>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:5px;color:#5a7a9a;">K-PERCEPTION · BOOTING…</div>
+          <style>@keyframes bootspin { to { transform: rotate(360deg); } }</style>
+        </div>
+        <script>
+          window.addEventListener('load', () => {
+            setTimeout(() => {
+              const s = document.getElementById('bootSplash');
+              if (s) { s.style.opacity = '0'; setTimeout(() => s.remove(), 900); }
+            }, 700);
+          });
+        </script>
+
         <header>
           <div class="header-inner">
             <div class="header-left">
@@ -906,9 +963,13 @@ def prototype_ui():
               <h1><em>AuraView</em> Dashboard</h1>
               <div class="subtitle">보이지 않는 신호를 대신 보여주는 시야 차단 대응형 안전 주행 보조 시스템</div>
             </div>
-            <div class="header-badge">
-              <div class="dot"></div>
-              SYSTEM ONLINE
+            <div style="display:flex;align-items:center;gap:10px;">
+              <a href="/slides/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent);padding:7px 14px;border:1px solid rgba(0,200,255,0.3);border-radius:99px;">▶ SLIDES</a>
+              <a href="/kiosk/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent2);padding:7px 14px;border:1px solid rgba(124,58,237,0.4);border-radius:99px;">⏵ KIOSK</a>
+              <div class="header-badge">
+                <div class="dot"></div>
+                SYSTEM ONLINE
+              </div>
             </div>
           </div>
         </header>
@@ -1029,6 +1090,9 @@ def prototype_ui():
                   <div class="map-header">
                     <div class="k">LIVE RISK MAP</div>
                     <div class="v">AuraView Event Distribution</div>
+                  </div>
+                  <div style="position:absolute;z-index:500;top:14px;right:14px;display:flex;gap:6px;">
+                    <button class="btn-secondary" style="width:auto;padding:7px 12px;font-size:11px;" onclick="toggleTaasHeatmap()">🔥 TAAS 사고 히트맵</button>
                   </div>
                   <div id="map"></div>
                 </div>
@@ -1429,6 +1493,28 @@ def prototype_ui():
             if (score >= 10) return 'rank-item high';
             if (score >= 6)  return 'rank-item mid';
             return 'rank-item';
+          }
+
+          /* ── TAAS HEATMAP ── */
+          let taasLayer = null;
+          async function toggleTaasHeatmap() {
+            if (taasLayer) {
+              map.removeLayer(taasLayer);
+              taasLayer = null;
+              toast('TAAS 히트맵 OFF', 'info', 1500);
+              return;
+            }
+            try {
+              const res = await fetch(window.location.origin + '/heatmap/taas?year=2024');
+              const data = await res.json();
+              taasLayer = L.heatLayer(data.points, {
+                radius: 28, blur: 22, minOpacity: 0.35, maxZoom: 17,
+                gradient: { 0.2: '#00c8ff', 0.45: '#ffb020', 0.7: '#ff8b3b', 0.9: '#ff3b3b' },
+              }).addTo(map);
+              toast(`TAAS 히트맵 ON · ${data.count}건 (${data.source})`, 'success');
+            } catch(e) {
+              toast('TAAS 히트맵 로드 실패', 'error');
+            }
           }
 
           /* ── INTERSECTIONS ── */

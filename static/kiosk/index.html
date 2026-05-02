@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>AuraView · Kiosk Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --accent:#00c8ff; --accent2:#7c3aed; --safe:#00e09a; --warn:#ffb020; --danger:#ff3b3b;
+    --bg:#080c14; --surface:#0d1520; --text:#e2eaf5; --muted:#5a7a9a;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:'Noto Sans KR', system-ui, sans-serif;
+    overflow:hidden;
+  }
+  #wrap { position:relative; width:100vw; height:100vh; }
+  iframe.scene {
+    position:absolute; inset:0; width:100%; height:100%;
+    border:none; opacity:0;
+    transition: opacity 800ms ease;
+  }
+  iframe.scene.active { opacity:1; z-index:2; }
+
+  /* HUD */
+  .hud {
+    position:absolute; top:18px; left:24px; right:24px; z-index:50;
+    display:flex; justify-content:space-between; align-items:center;
+    pointer-events:none;
+  }
+  .brand {
+    font-family:'Black Han Sans', sans-serif; font-size:22px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow: 0 0 24px rgba(0,200,255,0.45);
+  }
+  .clock {
+    font-family:'JetBrains Mono', monospace; font-size:13px; letter-spacing:2px;
+    color: var(--muted); background:rgba(8,12,20,.6); padding:6px 14px; border-radius:99px;
+    border:1px solid rgba(0,200,255,0.2);
+  }
+
+  /* 캡션 카드 */
+  .caption {
+    position:absolute; bottom:38px; left:38px; right:38px; z-index:60;
+    background: rgba(13,21,32,.88);
+    border:1px solid rgba(0,200,255,0.25);
+    border-radius:18px;
+    padding:22px 28px;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 18px 48px rgba(0,0,0,0.55);
+    pointer-events:none;
+  }
+  .caption .eyebrow {
+    font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:4px;
+    color:var(--accent); text-transform:uppercase; opacity:0.9;
+  }
+  .caption .title {
+    font-family:'Black Han Sans', sans-serif; font-size:34px; line-height:1.1; margin-top:8px;
+  }
+  .caption .title em {
+    font-style:normal;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .caption .desc {
+    color: var(--muted); font-size:15px; line-height:1.7; margin-top:8px; max-width:880px;
+  }
+
+  /* 진행바 */
+  .progress {
+    position:absolute; bottom:0; left:0; right:0; height:4px; z-index:70;
+    background: rgba(0,200,255,0.06);
+  }
+  .progress > .fill {
+    height:100%; width:0%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 100ms linear;
+  }
+
+  /* Step indicator */
+  .steps {
+    position:absolute; top:62px; left:50%; transform:translateX(-50%); z-index:50;
+    display:flex; gap:6px; pointer-events:none;
+  }
+  .step {
+    width:42px; height:5px; border-radius:99px; background:rgba(0,200,255,0.15);
+    transition: background 300ms;
+  }
+  .step.active { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .step.done   { background: rgba(0,200,255,0.45); }
+
+  /* Splash */
+  #splash {
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:18px; background:var(--bg); z-index:1000;
+    transition: opacity 600ms; opacity:1;
+  }
+  #splash.fade { opacity:0; pointer-events:none; }
+  #splash .ring {
+    width:64px; height:64px; border-radius:50%;
+    border:4px solid rgba(0,200,255,0.15); border-top-color:var(--accent);
+    animation: spin .9s linear infinite;
+  }
+  #splash h1 { font-family:'Black Han Sans', sans-serif; font-size:42px; }
+  #splash h1 em {
+    font-style:normal;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* 컨트롤 (마우스 호버 시만 노출) */
+  #controls {
+    position:absolute; top:18px; right:24px; z-index:200;
+    display:flex; gap:8px;
+    opacity:0; transition: opacity .25s;
+  }
+  body:hover #controls, #controls:hover { opacity:1; }
+  #controls button {
+    background: rgba(13,21,32,.8); color: var(--text); border:1px solid rgba(0,200,255,0.25);
+    border-radius:10px; padding:8px 14px; font-size:12px; cursor:pointer;
+    font-family: 'JetBrains Mono', monospace; letter-spacing:1px;
+  }
+  #controls button:hover { background: rgba(0,200,255,0.12); }
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="ring"></div>
+  <h1>Aura<em>View</em> Kiosk</h1>
+  <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:3px; color:var(--muted);">
+    AUTONOMOUS DEMO LOADING…
+  </div>
+</div>
+
+<div id="wrap">
+  <div id="controls">
+    <button onclick="prev()">◀ PREV</button>
+    <button onclick="togglePause()" id="pauseBtn">II PAUSE</button>
+    <button onclick="next()">NEXT ▶</button>
+    <button onclick="window.open('/ui','_blank')">OPEN /ui</button>
+  </div>
+
+  <div class="hud">
+    <div class="brand"><em>Aura</em>View · Kiosk</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+
+  <div class="steps" id="steps"></div>
+
+  <iframe class="scene" id="scA"></iframe>
+  <iframe class="scene" id="scB"></iframe>
+
+  <div class="caption">
+    <div class="eyebrow" id="capEyebrow">// LOADING</div>
+    <div class="title" id="capTitle">Aura<em>View</em> 자동 시연</div>
+    <div class="desc" id="capDesc">곧 시작됩니다.</div>
+  </div>
+
+  <div class="progress"><div class="fill" id="prog"></div></div>
+</div>
+
+<script>
+  // ── 시나리오 정의 ──
+  const SCENES = [
+    {
+      url: '/ui',
+      ms: 18000,
+      eye: '// 01 · DASHBOARD',
+      title: 'K-<em>Perception</em> 메인 대시보드',
+      desc: '한국 도심 교차로용 Tesla-style 안전 주행 지원 시스템. 8개 탭 · BEV 3D · 사고 재현 · K-MaaS · 가점 트레이서.',
+    },
+    {
+      url: '/ui#tab2',
+      ms: 16000,
+      eye: '// 02 · BEV OCCUPANCY',
+      title: 'FSD 식 <em>3D 점유 격자</em>',
+      desc: 'Three.js voxel 로 실시간 BEV 점유 확률 시각화. 가려진 영역까지 unknown shadow 로 모델링.',
+    },
+    {
+      url: '/ui#tab3',
+      ms: 14000,
+      eye: '// 03 · 6-SOURCE FUSION',
+      title: '<em>6종 공공데이터</em> 한 응답에',
+      desc: '신호 · VDS · 돌발 · TAAS · ITS · 안심구역 — 한 교차로에 대한 모든 데이터가 한 번의 호출로.',
+    },
+    {
+      url: '/ui#tab6',
+      ms: 18000,
+      eye: '// 04 · ACCIDENT REENACTMENT',
+      title: '"<em>몇 초 먼저</em> 경고할 수 있었을까?"',
+      desc: '합성 시나리오 또는 블랙박스 영상 → HUD 오버레이 + 위험 곡선 + 선행 경고 시간 자동 산출.',
+    },
+    {
+      url: '/ui#tab7',
+      ms: 16000,
+      eye: '// 05 · K-MAAS 특별상',
+      title: '⭐ 위험을 <em>대중교통</em>으로',
+      desc: '전방 위험도 ≥ 6 → 즉시 지하철·버스·따릉이 우회 경로 추천. 노선 운영팀에 데이터 환원.',
+    },
+    {
+      url: '/ui#tab4',
+      ms: 14000,
+      eye: '// 06 · FLEET LEARNING',
+      title: '<em>스마트폰</em>이 학습 데이터를 만든다',
+      desc: 'Android 네이티브 + PWA + Web. PII 자동 마스킹 후 임계 초과 프레임만 자동 업로드.',
+    },
+    {
+      url: '/ui#tab8',
+      ms: 14000,
+      eye: '// 07 · POLICY REPORT',
+      title: '<em>데이터로</em> 정책을 바꾼다',
+      desc: '위험 교차로 Top-N 자동 리포트 (HTML+JSON). 지자체 · 한국도로공사 · K-MaaS 환원용.',
+    },
+    {
+      url: '/ui#tab5',
+      ms: 14000,
+      eye: '// 08 · SCORECARD',
+      title: '가점 <em>25점 + 특별상</em>',
+      desc: 'AI 학습/분석 + 데이터 융합 + 가명결합 + 안심구역 + K-MaaS 특별상 — 라이브 카운터.',
+    },
+    {
+      url: '/slides/',
+      ms: 24000,
+      eye: '// 09 · DECK',
+      title: '<em>발표 슬라이드</em>',
+      desc: '모든 내용을 한 흐름으로. 화면 클릭 시 키보드 화살표로 직접 슬라이드 이동 가능.',
+    },
+  ];
+
+  let idx = 0;
+  let paused = false;
+  let timer = null;
+  let progTimer = null;
+  let activeFrame = 'A';
+  let preloading = false;
+
+  const frA = document.getElementById('scA');
+  const frB = document.getElementById('scB');
+  const capE = document.getElementById('capEyebrow');
+  const capT = document.getElementById('capTitle');
+  const capD = document.getElementById('capDesc');
+  const prog = document.getElementById('prog');
+  const stepsWrap = document.getElementById('steps');
+
+  // 스텝 인디케이터 빌드
+  SCENES.forEach((_, i) => {
+    const s = document.createElement('div');
+    s.className = 'step';
+    s.id = `step-${i}`;
+    stepsWrap.appendChild(s);
+  });
+
+  function render(i) {
+    const sc = SCENES[i];
+    capE.innerHTML = sc.eye;
+    capT.innerHTML = sc.title;
+    capD.textContent = sc.desc;
+
+    const targetFrame = activeFrame === 'A' ? frB : frA;
+    const currentFrame = activeFrame === 'A' ? frA : frB;
+    targetFrame.src = sc.url;
+    targetFrame.onload = () => {
+      targetFrame.classList.add('active');
+      currentFrame.classList.remove('active');
+      activeFrame = activeFrame === 'A' ? 'B' : 'A';
+      // 프리로드: 다음 url 백그라운드로
+      const nextSc = SCENES[(i + 1) % SCENES.length];
+      currentFrame.src = nextSc.url;
+    };
+
+    // 스텝 표식
+    SCENES.forEach((_, k) => {
+      const el = document.getElementById(`step-${k}`);
+      el.classList.toggle('active', k === i);
+      el.classList.toggle('done', k < i);
+    });
+
+    // 진행바
+    const total = sc.ms;
+    let elapsed = 0;
+    clearInterval(progTimer);
+    prog.style.width = '0%';
+    progTimer = setInterval(() => {
+      if (paused) return;
+      elapsed += 100;
+      prog.style.width = Math.min(100, (elapsed / total) * 100) + '%';
+    }, 100);
+
+    clearTimeout(timer);
+    if (!paused) timer = setTimeout(next, sc.ms);
+  }
+
+  function next() {
+    idx = (idx + 1) % SCENES.length;
+    render(idx);
+  }
+  function prev() {
+    idx = (idx - 1 + SCENES.length) % SCENES.length;
+    render(idx);
+  }
+  function togglePause() {
+    paused = !paused;
+    document.getElementById('pauseBtn').textContent = paused ? '▶ RESUME' : 'II PAUSE';
+    if (!paused) render(idx);
+    else clearTimeout(timer);
+  }
+
+  // 키 컨트롤
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') next();
+    else if (e.key === 'ArrowLeft') prev();
+    else if (e.key === ' ') { e.preventDefault(); togglePause(); }
+  });
+
+  // Splash → 첫 시작
+  setTimeout(() => {
+    document.getElementById('splash').classList.add('fade');
+    setTimeout(() => document.getElementById('splash').remove(), 700);
+    render(0);
+  }, 900);
+
+  // 시계
+  setInterval(() => {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }, 1000);
+</script>
+
+</body>
+</html>

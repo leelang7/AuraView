@@ -29,8 +29,8 @@ log = logging.getLogger("auraview.showreel")
 OUT_DIR = Path(os.getenv("SHOWREEL_DIR", "uploads/showreel"))
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-W, H = 960, 540
-FPS = 12
+W, H = 1920, 1080
+FPS = 24
 
 PRESETS: List[Tuple[str, str, str]] = [
     ("crosswalk_truck",
@@ -47,7 +47,8 @@ PRESETS: List[Tuple[str, str, str]] = [
 
 def _draw_card(title: str, sub: str = "", footer: str = "", duration_s: float = 2.5,
                accent: Tuple[int, int, int] = (255, 200, 0)) -> List[np.ndarray]:
-    """단순한 다크 타이틀 카드 프레임 시퀀스."""
+    """단순한 다크 타이틀 카드 프레임 시퀀스. (1920x1080 기준)"""
+    s = W / 960.0   # 스케일 팩터
     frames = int(duration_s * FPS)
     out: List[np.ndarray] = []
     for i in range(frames):
@@ -58,27 +59,28 @@ def _draw_card(title: str, sub: str = "", footer: str = "", duration_s: float = 
             img[y, :] = (int(8 + 18 * t), int(12 + 18 * t), int(20 + 24 * t))
 
         # 좌측 액센트 바
-        cv2.rectangle(img, (40, 100), (54, H - 100), accent, -1)
+        cv2.rectangle(img, (int(40 * s), int(100 * s)), (int(54 * s), H - int(100 * s)), accent, -1)
 
         # 페이드 인
         alpha = min(1.0, i / max(1, FPS // 2))
 
         # title
         title_color = tuple(int(c * alpha) for c in (235, 240, 250))
-        cv2.putText(img, title, (80, int(H * 0.42)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.3, title_color, 2, cv2.LINE_AA)
+        cv2.putText(img, title, (int(80 * s), int(H * 0.42)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.3 * s, title_color, max(2, int(2 * s)), cv2.LINE_AA)
         if sub:
             sub_color = tuple(int(c * alpha) for c in (140, 200, 230))
-            cv2.putText(img, sub, (80, int(H * 0.52)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, sub_color, 1, cv2.LINE_AA)
+            cv2.putText(img, sub, (int(80 * s), int(H * 0.52)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7 * s, sub_color, max(1, int(1 * s)), cv2.LINE_AA)
         if footer:
             footer_color = tuple(int(c * alpha) for c in (110, 140, 170))
-            cv2.putText(img, footer, (80, int(H * 0.92)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, footer_color, 1, cv2.LINE_AA)
+            cv2.putText(img, footer, (int(80 * s), int(H * 0.92)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55 * s, footer_color, max(1, int(1 * s)), cv2.LINE_AA)
 
         # 하단 브랜드
-        cv2.putText(img, "AURAVIEW · K-PERCEPTION", (W - 320, H - 24),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (100, 200, 255), 1, cv2.LINE_AA)
+        brand_text = "AURAVIEW  K-PERCEPTION"
+        cv2.putText(img, brand_text, (W - int(360 * s), H - int(24 * s)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55 * s, (100, 200, 255), max(1, int(1 * s)), cv2.LINE_AA)
         out.append(img)
     return out
 

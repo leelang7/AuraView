@@ -38,7 +38,11 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 RISK_THRESHOLD = 0.45   # 이 값 이상이 되는 프레임 = 경고
 SAMPLE_FPS = 8          # 8fps로 샘플링해 추론 (비용 절감)
-OUTPUT_FPS = 12
+OUTPUT_FPS = 24         # cinematic — 24fps
+
+# 합성 시나리오 출력 해상도 (Full HD)
+SYNTH_W = 1920
+SYNTH_H = 1080
 
 
 @dataclass
@@ -70,8 +74,9 @@ class ReenactmentResult:
 # ──────────────────────────────────────────────────────────────────────
 
 def _draw_hud(frame: np.ndarray, risk: float, t_s: float, peak_t: Optional[float]) -> np.ndarray:
-    """프레임 상단 HUD 오버레이 — 위험도·남은 시간·경고."""
+    """프레임 상단 HUD 오버레이 — 위험도·남은 시간·경고. (해상도 자동 스케일)"""
     h, w = frame.shape[:2]
+    s = w / 960.0   # 기준 폭 960 → 1920 면 s=2.0
     overlay = frame.copy()
 
     # 상단 패널
@@ -82,22 +87,23 @@ def _draw_hud(frame: np.ndarray, risk: float, t_s: float, peak_t: Optional[float
     bar_w = int(w * 0.9)
     bar_x = int(w * 0.05)
     bar_y = int(h * 0.11)
-    cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_w, bar_y + 8), (40, 60, 80), -1)
+    bar_h = max(8, int(8 * s))
+    cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h), (40, 60, 80), -1)
     fill = int(bar_w * min(1.0, risk))
     color = (0, 255, 0)
     if risk > 0.35: color = (0, 200, 255)
     if risk > 0.55: color = (0, 160, 255)
     if risk > 0.75: color = (0, 60, 255)
-    cv2.rectangle(frame, (bar_x, bar_y), (bar_x + fill, bar_y + 8), color, -1)
+    cv2.rectangle(frame, (bar_x, bar_y), (bar_x + fill, bar_y + bar_h), color, -1)
 
     # 텍스트
     cv2.putText(frame, f"AURAVIEW  |  RISK  {risk*100:5.1f}%",
-                (bar_x, bar_y - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (235, 240, 245), 2)
+                (bar_x, bar_y - int(8 * s)), cv2.FONT_HERSHEY_SIMPLEX, 0.72 * s, (235, 240, 245), max(2, int(2 * s)))
     if peak_t is not None and t_s < peak_t:
         lead = peak_t - t_s
         msg = f"EARLY WARNING  T-{lead:0.1f}s"
         cv2.putText(frame, msg, (bar_x, int(h * 0.055)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 100, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8 * s, (0, 100, 255), max(2, int(2 * s)))
 
     # 위험 높으면 하단 경고
     if risk > RISK_THRESHOLD:
@@ -106,7 +112,7 @@ def _draw_hud(frame: np.ndarray, risk: float, t_s: float, peak_t: Optional[float
         frame = cv2.addWeighted(overlay2, 0.45, frame, 0.55, 0)
         cv2.putText(frame, "! COLLISION RISK — BRAKE !",
                     (int(w * 0.08), int(h * 0.92)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.1, (0, 60, 255), 3)
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.1 * s, (0, 60, 255), max(3, int(3 * s)))
     return frame
 
 
@@ -248,26 +254,29 @@ def reenact_from_video(video_path: str, out_name: str) -> ReenactmentResult:
 # ──────────────────────────────────────────────────────────────────────
 
 def _draw_scene_base(w: int, h: int) -> np.ndarray:
-    """도로·차선·원경 하늘을 그린 베이스 장면."""
+    """도로·차선·원경 하늘을 그린 베이스 장면. (해상도 비례)"""
+    s = w / 960.0
     img = np.zeros((h, w, 3), dtype=np.uint8)
     # sky gradient
-    for y in range(int(h * 0.55)):
-        t = y / (h * 0.55)
+    sky_h = int(h * 0.55)
+    for y in range(sky_h):
+        t = y / max(1, sky_h)
         img[y, :] = (int(18 + 60 * t), int(22 + 40 * t), int(28 + 35 * t))
     # road
-    cv2.rectangle(img, (0, int(h * 0.55)), (w, h), (20, 20, 26), -1)
+    cv2.rectangle(img, (0, sky_h), (w, h), (20, 20, 26), -1)
     # perspective lane
-    cv2.line(img, (int(w*0.5), int(h*0.55)), (int(w*0.15), h), (140, 140, 160), 3)
-    cv2.line(img, (int(w*0.5), int(h*0.55)), (int(w*0.85), h), (140, 140, 160), 3)
+    th = max(2, int(3 * s))
+    cv2.line(img, (int(w*0.5), sky_h), (int(w*0.15), h), (140, 140, 160), th)
+    cv2.line(img, (int(w*0.5), sky_h), (int(w*0.85), h), (140, 140, 160), th)
     # center dashed
     for i in range(6):
         y1 = int(h * 0.58 + i * (h * 0.06))
         y2 = y1 + int(h * 0.03)
-        cv2.line(img, (int(w * 0.5), y1), (int(w * 0.5), y2), (200, 200, 80), 2)
+        cv2.line(img, (int(w * 0.5), y1), (int(w * 0.5), y2), (200, 200, 80), max(2, int(2*s)))
     return img
 
 
-def _synthesize_crosswalk_truck(w: int = 960, h: int = 540, frames: int = 120) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
     """대형차가 전방 횡단보도를 가리고 있다가, 보행자가 T=7초에 등장하는 장면."""
     out_frames = []
     risks = []
@@ -319,7 +328,7 @@ def _synthesize_crosswalk_truck(w: int = 960, h: int = 540, frames: int = 120) -
     return out_frames, risks
 
 
-def _synthesize_motorcycle_blindspot(w: int = 960, h: int = 540, frames: int = 120) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_motorcycle_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
     """측면 사각지대에서 이륜차가 추월 접근."""
     out_frames = []
     risks = []
@@ -353,7 +362,7 @@ def _synthesize_motorcycle_blindspot(w: int = 960, h: int = 540, frames: int = 1
     return out_frames, risks
 
 
-def _synthesize_signal_occluded(w: int = 960, h: int = 540, frames: int = 120) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_signal_occluded(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
     """신호등이 전방 버스에 가려져 있다가, 앞차가 급감속하는 장면."""
     out_frames = []
     risks = []

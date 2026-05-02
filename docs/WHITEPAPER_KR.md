@@ -95,6 +95,63 @@ AuraView는 위 네 가지를 **"보이지 않는 공간의 확률 모델링"** 
 
 ---
 
+## 3-A. 한국 도로 특화 — Collaborative Perception 3종 (Tesla 도 못 함)
+
+### 3-A.1 V2V Cross-Vehicle Perception (`services/v2v.py`)
+**Tesla FSD 의 한계**: 자기 카메라가 본 것만 인지 — 마주오는 차 너머의 보행자는 모름.
+**AuraView 의 답**: 같은 교차로의 다른 AuraView 차량들이 공유 풀에 자기 detection 을 게시(`POST /collab/v2v/broadcast`), ego 는 실시간으로 풀을 가져와(`GET /collab/v2v/intersection/{id}`) 자신의 BEV 점유 격자에 머지.
+
+알고리즘:
+1. peer 의 GPS·heading 으로 ego 좌표계 변환 (Haversine + heading 회전)
+2. peer 의 detection 이 ego BEV 영역(전방 40m × 좌우 ±20m) 안에 들어가면 점유 가산
+3. **마주오는 peer (heading 차이 130°+) 는 가중치 0.95** (반대편 시점은 내 사각지대일 가능성 높음)
+4. 같은 방향 peer 는 가중치 0.75
+
+→ "버스가 신호등을 가린 그 너머 보행자" 같은 클래식 사고 패턴이 마주오는 차 1대만 있어도 잡힘.
+
+### 3-A.2 Bus-Aware Pedestrian Prior (`services/bus_aware.py`)
+**핵심 패턴**: 버스가 정류장 정차 후 출발할 때 **버스 뒤에서 보행자가 횡단** 하는 사고가 다발.
+
+알고리즘:
+1. HydraNet 이 전방에 `bus` 검출
+2. 자차 위치에서 주변 정류장 검색 (K-MaaS / BIS API 또는 fallback)
+3. 정류장 거리·자차 속도로 **버스 상태 추정**: `dwelling` / `departing` / `passing` / `approaching`
+4. 상태별 보행자 prior boost 산출:
+   - `dwelling` (정류장 ~30m 이내) → +0.55
+   - `departing` (~80m 이내) → +0.42
+   - `passing` → +0.20~0.22
+5. 버스가 차지하고 있는 BEV 영역의 "뒤쪽 forward 20~36m" 셀들에 prior 가산
+
+### 3-A.3 Bidirectional Lane Fusion (`services/bidirectional.py`)
+**가설**: 마주오는 차들의 비정상 거동 = 전방 위험의 가장 빠른 증거.
+
+알고리즘:
+1. V2V 풀의 peer 메시지에서 heading 차이 130°+ 인 oncoming 만 선별
+2. 그들의 **평균 속도 + 감속 비율 (decel_g ≥ 0.25 인 비율)** 계산
+3. 한국도로공사 VDS 데이터에서 같은 도로의 **상행 vs 하행 평균속도 비대칭** 계산
+4. hazard_probability = 0.55 × (oncoming 절반+ 감속) + 0.18 × (앞차 정체) + 0.20 × (VDS 비대칭)
+5. 0.4 이상이면 권장속도 자동 산출 → HUD 에 "감속 권고 N km/h"
+
+### 3-A.4 Fused Risk (E2E 결합)
+`POST /collab/fused-occupancy` — 이미지 1장 + 위치 + heading 으로:
+1. HydraNet → 객체 검출
+2. Bus context → prior boost
+3. Local Occupancy → V2V 머지 → 보강 셀 수 / 가산 mass 보고
+4. Bidirectional → hazard_probability
+5. Risk Transformer 로 단독 위험 산출 후 V2V/Bus/Bidir 가산:
+
+   ```
+   p_fused = p_local
+           + 0.20 × bidirectional.hazard
+           + 0.15 × bus.pedestrian_prior_boost
+   ```
+
+응답에 `risk_local_only` vs `risk_fused` + `lift_from_v2v_bus_bidir` 동봉 → 발표·심사용 **"단독 vs 협업 비교 그림"** 즉시 가능.
+
+> 시연 데이터 시드: `POST /collab/v2v/seed-demo` 호출 한 번이면 마주오는 차 2대 + 같은 방향 1대가 V2V 풀에 들어가 즉시 시연 가능.
+
+---
+
 ## 4. 가점 25점 + K-MaaS 특별상 매트릭스
 
 | 항목 | 배점 | AuraView 증빙 | 엔드포인트 / 파일 |

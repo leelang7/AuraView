@@ -12,6 +12,7 @@ import os
 
 os.environ.setdefault("ALLOW_FALLBACK", "1")
 os.environ.setdefault("SERVICE_KEY", "test-stub")
+os.environ.setdefault("PUBLIC_API_TIMEOUT", "0.3")  # 테스트 환경에서 외부 API 빠르게 fallback
 
 import pytest
 from fastapi.testclient import TestClient
@@ -127,3 +128,69 @@ def test_intersections_list_endpoint():
     r = client.get("/intersections/")
     assert r.status_code == 200
     assert isinstance(r.json(), list)
+
+
+# ─────────────────────────────────────────────────────────────────
+# Collaborative Perception (V2V + Bus + Bidirectional)
+# ─────────────────────────────────────────────────────────────────
+
+def test_v2v_seed_and_fetch():
+    seed = client.post(
+        "/collab/v2v/seed-demo",
+        params={"intersection_id": "test-1", "lat": 37.56, "lon": 127.04},
+    )
+    assert seed.status_code == 200
+    body = seed.json()
+    assert body["seeded"] >= 3
+    listing = client.get("/collab/v2v/intersection/test-1")
+    assert listing.status_code == 200
+    msgs = listing.json()["messages"]
+    assert len(msgs) >= 3
+
+
+def test_v2v_stats():
+    r = client.get("/collab/v2v/stats")
+    assert r.status_code == 200
+    body = r.json()
+    assert "intersections_active" in body and "total_messages" in body
+
+
+def test_bus_context_endpoint():
+    r = client.post(
+        "/collab/bus-context",
+        json={
+            "bus_detections": [
+                {"class_name": "bus", "confidence": 0.83, "bbox_xyxy": [100, 100, 600, 400]}
+            ],
+            "ego_lat": 37.5651, "ego_lon": 127.0073,
+            "ego_speed_kmh": 3.0,
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["bus_visible"] is True
+    assert body["pedestrian_prior_boost"] > 0
+
+
+def test_bus_context_no_bus():
+    r = client.post(
+        "/collab/bus-context",
+        json={"bus_detections": [], "ego_lat": 37.5, "ego_lon": 127.0, "ego_speed_kmh": 50},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["bus_visible"] is False
+    assert body["pedestrian_prior_boost"] == 0.0
+
+
+def test_bidirectional_after_seed():
+    client.post("/collab/v2v/seed-demo", params={"intersection_id": "bidir-test"})
+    r = client.post(
+        "/collab/bidirectional",
+        json={"intersection_id": "bidir-test", "ego_heading_deg": 270},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    # 시드 차 3대 중 2대 마주오는 + 감속 → hazard 가 어느 정도 잡혀야
+    assert body["oncoming_count"] >= 1
+    assert "hazard_probability" in body

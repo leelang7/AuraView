@@ -8,7 +8,7 @@ import os
 from .database import Base, engine
 from .routers import (
     intersections, signals, events, risk, detect,
-    occupancy, fleet, fusion, dsz, kmaas, reports, heatmap,
+    occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab,
 )
 
 # scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
@@ -76,6 +76,7 @@ app.include_router(dsz.router, prefix="/dsz", tags=["dsz"])
 app.include_router(kmaas.router, prefix="/kmaas", tags=["kmaas"])
 app.include_router(reports.router, prefix="/reports", tags=["reports"])
 app.include_router(heatmap.router, prefix="/heatmap", tags=["heatmap"])
+app.include_router(collab.router, prefix="/collab", tags=["collab"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
 if _SHOWREEL_OK:
@@ -984,6 +985,7 @@ def prototype_ui():
             <div class="tab" data-tab="tab6">⑥ 사고 재현</div>
             <div class="tab" data-tab="tab7">⑦ K-MaaS 연계</div>
             <div class="tab" data-tab="tab8">⑧ 정책 리포트</div>
+            <div class="tab" data-tab="tab9">⑨ V2V 협업 인지</div>
           </div>
         </div>
 
@@ -1367,6 +1369,65 @@ def prototype_ui():
                 <button class="btn-secondary" onclick="loadReportList()">최근 생성물 목록</button>
               </div>
               <div id="reportOut" style="margin-top:14px;"></div>
+            </div>
+          </div>
+
+          <!-- TAB 9 : V2V Collaborative Perception -->
+          <div class="tab-panel" id="tab9">
+            <div class="dashboard-grid">
+              <div class="left-col">
+                <div class="card">
+                  <div class="card-tag">V2V · BUS · BIDIR</div>
+                  <div class="section-label">// 마주오는 차가 본 것을 내 사각지대로</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">Tesla 도 못 하는 한국 특화 협업 인지</div>
+                    <div class="hero-desc">
+                      마주오는 차의 시점 + 버스 정류장 prior + 상행/하행 흐름 비교 →
+                      <em style="color:var(--accent);font-style:normal;">"버스가 신호등을 가린 그 너머 보행자"</em>
+                      를 다중 정보로 보강해 잡아냅니다.
+                    </div>
+                  </div>
+
+                  <div class="form-grid" style="margin-top:14px;">
+                    <div>
+                      <label>현장 이미지 (버스 가림 시나리오 권장)</label>
+                      <label class="file-label" id="cvLabel" for="cv_file">
+                        <span>📷</span><span id="cvName">이미지를 선택하세요</span>
+                      </label>
+                      <input id="cv_file" type="file" accept="image/*" onchange="updateFileLabel('cv_file','cvLabel','cvName')"/>
+                    </div>
+                    <div class="btn-row">
+                      <div><label>교차로 ID</label><input id="cv_iid" type="text" value="1007"/></div>
+                      <div><label>자차 진행방향°</label><input id="cv_head" type="number" step="1" value="270"/></div>
+                    </div>
+                    <div class="btn-row">
+                      <div><label>위도</label><input id="cv_lat" type="number" step="0.000001" value="37.5601"/></div>
+                      <div><label>경도</label><input id="cv_lon" type="number" step="0.000001" value="127.0410"/></div>
+                    </div>
+                    <button class="btn-secondary" onclick="seedV2VDemo()">▶ 시연용 V2V 차량 3대 풀에 게시</button>
+                    <button class="btn-accent" onclick="runFusedOccupancy()">⭐ 협업 인지 실행 (V2V + Bus + Bidir 결합)</button>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="section-label">// V2V 메시지 풀 (해당 교차로)</div>
+                  <pre id="v2vPool" style="max-height:220px;overflow:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;white-space:pre-wrap;">peers 정보가 여기 표시됩니다.</pre>
+                </div>
+              </div>
+
+              <div class="right-col">
+                <div class="card">
+                  <div class="section-label">// 결합된 위험 확률 비교</div>
+                  <div id="cvDiff" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+                </div>
+                <div class="card">
+                  <div class="section-label">// 결합 BEV (보강된 영역 cyan glow)</div>
+                  <div id="cvCanvas" class="preview-wrap" style="height:380px;display:flex;align-items:center;justify-content:center;">
+                    <div class="placeholder"><div class="placeholder-icon">🛰️</div>결합 결과가 여기에 표시됩니다.</div>
+                  </div>
+                  <div id="cvBreakdown" class="rank-body" style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);"></div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2203,6 +2264,71 @@ def prototype_ui():
               <div class="status-meta" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;">
                 ${(data.items || []).slice(0,8).map(i => `${i.created_at.slice(0,19)} · <a href="${i.video_url}" target="_blank" style="color:var(--accent);">${i.name}</a>`).join('<br>')}
               </div>`;
+          }
+
+          /* ── COLLAB (V2V / Bus / Bidir) ── */
+          async function seedV2VDemo() {
+            const iid = document.getElementById('cv_iid').value;
+            const lat = document.getElementById('cv_lat').value;
+            const lon = document.getElementById('cv_lon').value;
+            try {
+              const res = await fetch(window.location.origin + '/collab/v2v/seed-demo?intersection_id=' + iid + '&lat=' + lat + '&lon=' + lon, {method:'POST'});
+              const data = await res.json();
+              await refreshV2VPool(iid);
+              toast('시연용 V2V 차량 ' + data.seeded + '대 게시', 'success');
+            } catch(e) { toast('시드 실패', 'error'); }
+          }
+
+          async function refreshV2VPool(iid) {
+            try {
+              const res = await fetch(window.location.origin + '/collab/v2v/intersection/' + iid);
+              const data = await res.json();
+              document.getElementById('v2vPool').textContent =
+                'count=' + data.count + '\n\n' +
+                (data.messages || []).map(m =>
+                  `${m.device_id || '?'}  hdg=${m.heading_deg}°  spd=${m.speed_kmh}km/h  decel=${m.decel_g||0}\n  detections=${(m.detections||[]).length}  occ=${m.occluded_mass||0}`
+                ).join('\n\n');
+            } catch(e) { /* ignore */ }
+          }
+
+          async function runFusedOccupancy() {
+            const fileInput = document.getElementById('cv_file');
+            if (!fileInput.files.length) { toast('이미지를 선택하세요', 'warn'); return; }
+            const fd = new FormData();
+            fd.append('image', fileInput.files[0]);
+            fd.append('intersection_id', document.getElementById('cv_iid').value);
+            fd.append('ego_lat', document.getElementById('cv_lat').value);
+            fd.append('ego_lon', document.getElementById('cv_lon').value);
+            fd.append('ego_heading_deg', document.getElementById('cv_head').value);
+
+            showLoader('V2V + Bus + Bidir 결합 추론 중...');
+            try {
+              const res = await fetch(window.location.origin + '/collab/fused-occupancy', {method:'POST', body: fd});
+              const data = await res.json();
+              const localP = (data.risk_local_only.p_collision * 100).toFixed(1);
+              const fusedP = (data.risk_fused.p_collision * 100).toFixed(1);
+              const lift = (data.risk_fused.lift_from_v2v_bus_bidir * 100).toFixed(1);
+
+              document.getElementById('cvDiff').innerHTML = `
+                <div class="rank-item"><div class="rank-head"><div class="rank-title">단독 인지</div><span class="badge b-y">${localP}%</span></div>
+                  <div class="rank-body">자차 카메라만 사용 (Tesla 식)</div></div>
+                <div class="rank-item ${data.risk_fused.p_collision > 0.6 ? 'high' : 'mid'}">
+                  <div class="rank-head"><div class="rank-title">⭐ 협업 인지</div><span class="badge b-r">${fusedP}%</span></div>
+                  <div class="rank-body">+${lift}% lift · V2V ${data.v2v.peer_count}대 + 정류장 prior + 상행/하행</div></div>`;
+
+              document.getElementById('cvCanvas').innerHTML =
+                `<img src="${data.occupancy.grid_b64}" style="width:100%;height:100%;object-fit:contain;background:#050a10;image-rendering:pixelated;"/>`;
+
+              document.getElementById('cvBreakdown').innerHTML = `
+                <div>${data.risk_fused.explanation}</div>
+                <div style="margin-top:6px;color:var(--accent);">${data.bus_context.boost_reason || '버스 가림 없음'}</div>
+                <div style="margin-top:4px;color:${data.bidirectional.hazard_probability > 0.45 ? 'var(--danger)' : 'var(--muted)'};">
+                  bidir hazard=${(data.bidirectional.hazard_probability*100).toFixed(0)}% · ${data.bidirectional.insight}</div>
+                <div style="margin-top:4px;">${data.v2v.note} · boosted ${data.v2v.boosted_cells} cells (+${data.v2v.added_mass.toFixed(1)} mass)</div>`;
+
+              await refreshV2VPool(document.getElementById('cv_iid').value);
+              toast('협업 인지 완료', 'success');
+            } catch(e) { toast('실행 실패', 'error'); } finally { hideLoader(); }
           }
 
           /* ── SHOWREEL ── */

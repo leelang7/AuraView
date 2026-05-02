@@ -42,6 +42,9 @@ PRESETS: List[Tuple[str, str, str]] = [
     ("signal_occluded",
      "신호 가림 + 전방 급감속",
      "공공 신호 API 와 결합해 가려진 신호를 복원"),
+    ("v2v_collab",
+     "⭐ V2V 협업 인지 — 마주오는 차의 시점",
+     "Tesla 도 못 하는 한국 도로 협업: 다른 차의 시점이 내 사각지대를 메운다"),
 ]
 
 

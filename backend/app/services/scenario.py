@@ -446,10 +446,123 @@ def _synthesize_signal_occluded(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
     return out_frames, risks
 
 
+def _synthesize_v2v_collab(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+    """
+    V2V 협업 인지 시연 시나리오.
+
+    스토리:
+      T=0~4s : 전방에 큰 트럭이 횡단보도를 가림. ego 의 카메라로는 보행자 보이지 않음.
+                 risk 천천히 증가하지만 임계 미만.
+      T=4s   : 마주오는 차로부터 V2V 메시지 수신 — "내 시점에 보행자 있음".
+                 ego HUD 에 'V2V RECEIVED' 배지 + 트럭 너머에 사이안 dashed circle (가상 보행자) 표시.
+                 risk 즉시 점프.
+      T=4s~7s: dashed circle 이 점점 ego 쪽으로 다가옴 (마주오는 차의 시점에서 본 보행자가 길을 건넘).
+      T=7s   : 실제 보행자가 트럭 옆으로 나타남 — V2V 예측과 일치 → risk 피크.
+                 lead time = 7s - 4s = 3s (V2V 가 없었으면 lead time = ~0).
+    """
+    out_frames = []
+    risks = []
+    for i in range(frames):
+        t = i / OUTPUT_FPS
+        img = _draw_scene_base(w, h)
+
+        # 횡단보도
+        for k in range(6):
+            x1 = int(w * 0.20 + k * w * 0.11)
+            x2 = x1 + int(w * 0.08)
+            y1 = int(h * 0.66)
+            y2 = y1 + int(h * 0.03)
+            cv2.rectangle(img, (x1, y1), (x2, y2), (220, 220, 220), -1)
+
+        # 전방 트럭 (정지 상태로 횡단보도 가림)
+        truck_w = int(w * 0.55)
+        truck_h = int(h * 0.42)
+        tx = (w - truck_w) // 2
+        ty = int(h * 0.48)
+        cv2.rectangle(img, (tx, ty), (tx + truck_w, ty + truck_h), (38, 38, 52), -1)
+        cv2.rectangle(img, (tx, ty), (tx + truck_w, ty + truck_h), (170, 80, 80), 2)
+        cv2.putText(img, "TRUCK", (tx + 12, ty + int(36 * w / 960)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7 * w / 960, (200, 200, 230), 2)
+
+        # 마주오는 차 (작게 옆에 표시 — 시연용)
+        on_w = int(w * 0.10)
+        on_h = int(h * 0.10)
+        ox = int(w * 0.78)
+        oy = int(h * 0.40)
+        cv2.rectangle(img, (ox, oy), (ox + on_w, oy + on_h), (60, 80, 110), -1)
+        cv2.putText(img, "ONCOMING", (ox - int(20 * w / 960), oy - 8),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45 * w / 960, (150, 200, 255), 1)
+
+        # T >= 4s: V2V 수신 표시 + 가상 보행자 dashed circle
+        v2v_active = t >= 4.0
+        if v2v_active:
+            # 우상단 V2V 배지
+            badge_w = int(w * 0.30)
+            badge_h = int(h * 0.07)
+            bx = w - badge_w - int(w * 0.04)
+            by = int(h * 0.20)
+            cv2.rectangle(img, (bx, by), (bx + badge_w, by + badge_h),
+                          (40, 80, 130), -1)
+            cv2.rectangle(img, (bx, by), (bx + badge_w, by + badge_h),
+                          (255, 200, 0), 2)
+            cv2.putText(img, "V2V  RECEIVED",
+                        (bx + int(14 * w / 960), by + int(45 * h / 540)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7 * w / 960,
+                        (220, 235, 255), 2)
+
+            # 가상 보행자 (트럭 너머, 시간이 흐를수록 ego 쪽으로 이동)
+            prog = min(1.0, (t - 4.0) / 3.0)
+            ped_x = int(tx + truck_w * 0.58 - int(w * 0.18) * prog)
+            ped_y = int(ty + truck_h * 0.66 + int(h * 0.07) * prog)
+            radius = int(38 * w / 960)
+            # 사이안 점선 원 (V2V 예측 보행자)
+            for ang in range(0, 360, 24):
+                ar = math.radians(ang)
+                p1 = (int(ped_x + radius * math.cos(ar)),
+                      int(ped_y + radius * math.sin(ar)))
+                p2 = (int(ped_x + (radius + 4) * math.cos(ar + math.radians(14))),
+                      int(ped_y + (radius + 4) * math.sin(ar + math.radians(14))))
+                cv2.line(img, p1, p2, (255, 220, 80), 3)
+            # 'V2V' 라벨
+            cv2.putText(img, "V2V",
+                        (ped_x - int(22 * w / 960), ped_y - radius - int(8 * h / 540)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6 * w / 960, (255, 220, 80), 2)
+
+        # T >= 7s: 실제 보행자 등장
+        ped_visible = t >= 7.0
+        if ped_visible:
+            prog = min(1.0, (t - 7.0) / 1.5)
+            px = int(tx + truck_w * 0.45 - int(w * 0.10) * prog)
+            py = int(ty + truck_h * 0.85)
+            cv2.circle(img, (px, py - int(28 * h / 540)), int(13 * w / 960), (240, 220, 200), -1)
+            cv2.rectangle(img, (px - int(11 * w / 960), py - int(15 * h / 540)),
+                          (px + int(11 * w / 960), py + int(22 * h / 540)),
+                          (220, 60, 60), -1)
+
+        # ── Risk ──
+        # 트럭 가림 → baseline 0.20
+        # T=4s V2V 수신 → 즉시 0.55 점프
+        # T=4s~7s : 0.55 → 0.85 (V2V 가 다가오는 보행자 추적)
+        # T>=7s : 실제 등장 → 0.95+
+        if t < 4.0:
+            base = 0.18 + 0.04 * t                       # 0.18 → 0.34
+        elif t < 7.0:
+            jump = 0.55 + (t - 4.0) / 3.0 * 0.30         # 0.55 → 0.85
+            base = jump
+        else:
+            base = min(0.97, 0.85 + (t - 7.0) * 0.12)
+        base += random.uniform(-0.012, 0.012)
+        risks.append(float(max(0.0, min(0.98, base))))
+
+        out_frames.append(_apply_cinematic_post(img))
+    return out_frames, risks
+
+
 _PRESETS = {
     "crosswalk_truck": _synthesize_crosswalk_truck,
     "motorcycle_blindspot": _synthesize_motorcycle_blindspot,
     "signal_occluded": _synthesize_signal_occluded,
+    "v2v_collab": _synthesize_v2v_collab,
 }
 
 

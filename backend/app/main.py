@@ -1268,6 +1268,7 @@ def prototype_ui():
                         <option value="crosswalk_truck">횡단보도 · 대형차 가림 · 보행자 출현</option>
                         <option value="motorcycle_blindspot">사각지대 · 이륜차 접근</option>
                         <option value="signal_occluded">신호 가림 + 급감속</option>
+                        <option value="v2v_collab">⭐ V2V 협업 인지 (마주오는 차 시점)</option>
                       </select>
                     </div>
                     <button class="btn-accent" onclick="runScenario()">사고 재현 영상 생성</button>

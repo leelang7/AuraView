@@ -64,5 +64,6 @@ def scenario_presets():
             {"id": "crosswalk_truck", "title": "횡단보도 · 대형차 가림 · 보행자 출현"},
             {"id": "motorcycle_blindspot", "title": "사각지대 · 이륜차 접근"},
             {"id": "signal_occluded", "title": "신호 가림 + 급감속"},
+            {"id": "v2v_collab", "title": "⭐ V2V 협업 인지 (마주오는 차 시점)"},
         ]
     }

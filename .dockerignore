@@ -1,0 +1,31 @@
+# 빌드 컨텍스트 다이어트
+.git
+.github
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.dart_tool
+.gradle
+
+# Flutter — 별도 빌드
+auraview_fleet/build
+auraview_fleet/.dart_tool
+
+# 로컬 산출물
+_data
+backend/uploads
+backend/fleet
+dsz_exports/_incoming
+notebooks/_preview
+auraview_fleet/tools/_preview
+
+# 큰 노트북 산출물 (개별 .ipynb 는 OK, 결과물만 제외)
+*.png.bak
+*.mp4
+*.wav
+
+# 환경
+.env
+.env.local
+*.log

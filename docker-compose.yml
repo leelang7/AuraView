@@ -1,0 +1,47 @@
+# AuraView 로컬·심사 환경 한 줄 가동
+#   docker compose up -d              # 백엔드 + nginx (HTTPS 필요시 외부 reverse-proxy)
+#   docker compose logs -f auraview
+#   docker compose down
+#
+# 환경변수: .env (없으면 .env.example 참고)
+# 포트: 호스트 8000 → 컨테이너 8000
+
+services:
+  auraview:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: auraview/k-perception:latest
+    container_name: auraview
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ALLOW_FALLBACK: "1"
+      PUBLIC_API_TIMEOUT: "3.0"
+      ALLOWED_ORIGINS: "*"
+    ports:
+      - "8000:8000"
+    volumes:
+      # 업로드·생성 영상·리포트는 호스트에 보존
+      - ./_data/uploads:/app/backend/uploads
+      - ./_data/dsz_exports:/app/dsz_exports
+    networks: [auraview-net]
+
+  # (선택) 발표·시연용 정적 nginx — auraview/k-perception 컨테이너 앞에서 캐싱 + 압축
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: auraview-nginx
+    profiles: ["edge"]            # `docker compose --profile edge up` 으로 활성화
+    ports:
+      - "80:80"
+    depends_on: [auraview]
+    volumes:
+      - ./scripts/nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [auraview-net]
+    restart: unless-stopped
+
+networks:
+  auraview-net:
+    driver: bridge

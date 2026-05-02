@@ -45,6 +45,12 @@ PRESETS: List[Tuple[str, str, str]] = [
     ("v2v_collab",
      "⭐ V2V 협업 인지 — 마주오는 차의 시점",
      "Tesla 도 못 하는 한국 도로 협업: 다른 차의 시점이 내 사각지대를 메운다"),
+    ("rainy_intersection",
+     "🌧️ 우천 + 우산 보행자",
+     "시야 가림 환경에서도 보행자 의도 추적"),
+    ("night_blindspot",
+     "🌙 야간 사각지대 + 마주오는 헤드라이트",
+     "어두운 도로의 그림자 영역까지 occupancy 로 채운다"),
 ]
 
 

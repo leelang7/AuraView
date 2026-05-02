@@ -1284,6 +1284,8 @@ def prototype_ui():
                         <option value="motorcycle_blindspot">사각지대 · 이륜차 접근</option>
                         <option value="signal_occluded">신호 가림 + 급감속</option>
                         <option value="v2v_collab">⭐ V2V 협업 인지 (마주오는 차 시점)</option>
+                        <option value="rainy_intersection">🌧️ 우천 + 우산 보행자</option>
+                        <option value="night_blindspot">🌙 야간 사각지대 + 마주오는 헤드라이트</option>
                       </select>
                     </div>
                     <button class="btn-accent" onclick="runScenario()">사고 재현 영상 생성</button>

@@ -649,11 +649,167 @@ def _synthesize_v2v_collab(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240
     return out_frames, risks
 
 
+def _add_rain_overlay(img: np.ndarray, intensity: float = 1.0) -> np.ndarray:
+    """우천 효과 — 빗줄기 + 회색조 + 시야 흐림."""
+    h, w = img.shape[:2]
+    out = img.astype(np.float32)
+    # 회색-청색 톤으로 desaturate
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray3 = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR).astype(np.float32)
+    out = cv2.addWeighted(out, 0.5, gray3, 0.5, 0)
+    out *= 0.78  # 어둡게
+    out[..., 0] += 18  # B 살짝 강조
+
+    # 빗줄기 (대각선 짧은 선 ~ 200개)
+    n = int(180 * intensity)
+    rain_layer = np.zeros((h, w, 3), dtype=np.uint8)
+    for _ in range(n):
+        x = int(np.random.rand() * w)
+        y = int(np.random.rand() * h * 0.85)
+        ln = int(8 + np.random.rand() * 20)
+        cv2.line(rain_layer, (x, y), (x - 4, y + ln), (220, 220, 230), 1)
+    out = np.clip(out + rain_layer.astype(np.float32) * 0.55, 0, 255)
+
+    return out.astype(np.uint8)
+
+
+def _synthesize_rainy_intersection(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+    """
+    우천 + 혼잡 교차로. 시야가 흐리고 대형차가 잠시 멈춘 사이 보행자가 우산 쓰고 횡단.
+    T=5s 우산 보행자 등장. 우천 occlusion 으로 인해 lead time 짧음.
+    """
+    out_frames = []
+    risks = []
+    for i in range(frames):
+        t = i / OUTPUT_FPS
+        img = _draw_scene_base(w, h)
+
+        # 횡단보도
+        for k in range(6):
+            x1 = int(w * 0.20 + k * w * 0.11)
+            x2 = x1 + int(w * 0.08)
+            y1 = int(h * 0.66)
+            y2 = y1 + int(h * 0.03)
+            cv2.rectangle(img, (x1, y1), (x2, y2), (180, 180, 180), -1)
+
+        # 정차한 차들 (양쪽으로 두 대)
+        for ox in [int(w * 0.15), int(w * 0.62)]:
+            cv2.rectangle(img, (ox, int(h * 0.55)), (ox + int(w * 0.22), int(h * 0.78)),
+                          (44, 44, 60), -1)
+
+        # 우산 보행자 — T=5s 부터 등장 (우산은 검정 반원)
+        if t >= 5.0:
+            prog = min(1.0, (t - 5.0) / 2.5)
+            px = int(w * (0.78 - 0.50 * prog))
+            py = int(h * 0.74)
+            # 우산 (반원)
+            cv2.ellipse(img, (px, py - int(48 * h / 540)),
+                        (int(28 * w / 960), int(20 * h / 540)),
+                        0, 180, 360, (28, 28, 32), -1)
+            cv2.ellipse(img, (px, py - int(48 * h / 540)),
+                        (int(28 * w / 960), int(20 * h / 540)),
+                        0, 180, 360, (180, 180, 200), 2)
+            # 우산 손잡이
+            cv2.line(img, (px, py - int(48 * h / 540)), (px, py - int(8 * h / 540)),
+                     (170, 170, 190), 2)
+            # 사람
+            cv2.circle(img, (px, py - int(8 * h / 540)), int(8 * w / 960), (240, 220, 200), -1)
+            cv2.rectangle(img, (px - int(9 * w / 960), py),
+                          (px + int(9 * w / 960), py + int(28 * h / 540)),
+                          (60, 80, 130), -1)
+
+        # 우천 효과 — 매 프레임 randomization
+        img = _add_rain_overlay(img, intensity=1.0)
+
+        # Risk: 우천 baseline 0.32 → T=5s 보행자 등장 후 급상승
+        if t < 5.0:
+            base = 0.32 + 0.05 * t
+        else:
+            base = min(0.95, 0.62 + (t - 5.0) * 0.20)
+        base += random.uniform(-0.015, 0.015)
+        risks.append(float(max(0.0, min(0.97, base))))
+
+        out_frames.append(_apply_cinematic_post(img))
+    return out_frames, risks
+
+
+def _synthesize_night_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+    """야간 사각지대 — 어두운 도로, 헤드라이트 콘, 가려진 보행자."""
+    out_frames = []
+    risks = []
+    for i in range(frames):
+        t = i / OUTPUT_FPS
+        # 아주 어두운 베이스
+        img = np.full((h, w, 3), 8, dtype=np.uint8)
+        img[:int(h * 0.55), :] = (16, 14, 18)   # 야간 하늘
+        img[int(h * 0.55):, :] = (12, 11, 14)   # 도로
+
+        # 헤드라이트 콘 (ego 차에서 전방으로 두 갈래)
+        ego_y = h
+        for cx_off in [-int(w * 0.10), int(w * 0.10)]:
+            cone = np.zeros((h, w, 3), dtype=np.uint8)
+            apex = (int(w / 2 + cx_off), ego_y)
+            far_l = (int(w * 0.25), int(h * 0.55))
+            far_r = (int(w * 0.75), int(h * 0.55))
+            pts = np.array([apex, far_l, far_r], dtype=np.int32)
+            cv2.fillPoly(cone, [pts], (180, 200, 230))
+            cone = cv2.GaussianBlur(cone, (0, 0), sigmaX=80 * w / 960, sigmaY=80 * w / 960)
+            img = cv2.add(img, (cone * 0.35).astype(np.uint8))
+
+        # 횡단보도 (헤드라이트 영역 안에서만 보임)
+        for k in range(6):
+            x1 = int(w * 0.30 + k * w * 0.08)
+            x2 = x1 + int(w * 0.06)
+            y1 = int(h * 0.66)
+            y2 = y1 + int(h * 0.025)
+            cv2.rectangle(img, (x1, y1), (x2, y2), (160, 165, 175), -1)
+
+        # 마주오는 차 (헤드라이트 두 점)
+        on_x = int(w * 0.70)
+        on_y = int(h * 0.50)
+        cv2.circle(img, (on_x, on_y), int(10 * w / 960), (235, 240, 245), -1)
+        cv2.circle(img, (on_x + int(40 * w / 960), on_y), int(10 * w / 960), (235, 240, 245), -1)
+        # 글로우
+        for r_off in (16, 26, 38):
+            cv2.circle(img, (on_x, on_y), int(r_off * w / 960), (90, 110, 130), 1)
+            cv2.circle(img, (on_x + int(40 * w / 960), on_y), int(r_off * w / 960), (90, 110, 130), 1)
+
+        # 사이드 사각지대 보행자 — T=4s 부터 좌측 어두운 곳에서 다가옴
+        if t >= 4.0:
+            prog = min(1.0, (t - 4.0) / 4.0)
+            px = int(w * (0.04 + 0.30 * prog))
+            py = int(h * (0.78 - 0.04 * prog))
+            # 그림자에서 점점 드러남
+            alpha = min(1.0, prog * 1.5)
+            color = (int(40 + 100 * alpha), int(50 + 100 * alpha), int(90 + 100 * alpha))
+            cv2.circle(img, (px, py - int(20 * h / 540)), int(9 * w / 960), color, -1)
+            cv2.rectangle(img, (px - int(8 * w / 960), py - int(10 * h / 540)),
+                          (px + int(8 * w / 960), py + int(20 * h / 540)),
+                          (int(60 * alpha), int(60 * alpha), int(120 * alpha)), -1)
+
+        # 약한 비넷·노이즈
+        noise = (np.random.rand(h, w, 3) * 6).astype(np.int16)
+        img = np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+
+        # Risk: 어두움 baseline 0.25 → T=4s 부터 보행자 진입 → 급상승
+        if t < 4.0:
+            base = 0.25 + 0.04 * t
+        else:
+            base = min(0.96, 0.50 + (t - 4.0) * 0.16)
+        base += random.uniform(-0.012, 0.012)
+        risks.append(float(max(0.0, min(0.97, base))))
+
+        out_frames.append(_apply_cinematic_post(img))
+    return out_frames, risks
+
+
 _PRESETS = {
     "crosswalk_truck": _synthesize_crosswalk_truck,
     "motorcycle_blindspot": _synthesize_motorcycle_blindspot,
     "signal_occluded": _synthesize_signal_occluded,
     "v2v_collab": _synthesize_v2v_collab,
+    "rainy_intersection": _synthesize_rainy_intersection,
+    "night_blindspot": _synthesize_night_blindspot,
 }
 
 

@@ -65,5 +65,7 @@ def scenario_presets():
             {"id": "motorcycle_blindspot", "title": "사각지대 · 이륜차 접근"},
             {"id": "signal_occluded", "title": "신호 가림 + 급감속"},
             {"id": "v2v_collab", "title": "⭐ V2V 협업 인지 (마주오는 차 시점)"},
+            {"id": "rainy_intersection", "title": "🌧️ 우천 + 우산 보행자"},
+            {"id": "night_blindspot", "title": "🌙 야간 사각지대 + 마주오는 헤드라이트"},
         ]
     }

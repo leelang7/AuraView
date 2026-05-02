@@ -25,3 +25,9 @@ def build():
 @router.get("/list")
 def list_recent():
     return {"items": showreel_service.list_recent()}
+
+
+@router.get("/latest")
+def latest():
+    """가장 최근 합본 영상 메타 — 없으면 자동 빌드."""
+    return showreel_service.latest()

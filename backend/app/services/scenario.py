@@ -18,7 +18,9 @@ import logging
 import math
 import os
 import random
+import struct
 import subprocess
+import wave
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -116,11 +118,72 @@ def _draw_hud(frame: np.ndarray, risk: float, t_s: float, peak_t: Optional[float
     return frame
 
 
-def _write_video(frames: List[np.ndarray], out_path: Path, fps: int = OUTPUT_FPS) -> Path:
+def _write_audio_track(risks: List[float], fps: int, out_wav: Path) -> bool:
+    """
+    위험도 곡선에 맞춰 procedural 경고음 WAV 생성.
+
+    규칙:
+      risk < 0.45  : 무음
+      0.45~0.75   : 880Hz, 0.10s beep, 0.60s 간격
+      ≥ 0.75      : 1320Hz, 0.10s beep, 0.25s 간격
+    """
+    sr = 44100
+    total_samples = int(len(risks) / fps * sr)
+    if total_samples <= 0:
+        return False
+
+    audio = np.zeros(total_samples, dtype=np.float32)
+    last_beep_t = -10.0
+
+    for i, r in enumerate(risks):
+        if r < 0.45:
+            continue
+        t_now = i / fps
+        if r >= 0.75:
+            interval = 0.25
+            freq = 1320
+            amp = 0.45
+            beep_dur = 0.09
+        else:
+            interval = 0.60
+            freq = 880
+            amp = 0.32
+            beep_dur = 0.10
+
+        if t_now - last_beep_t < interval:
+            continue
+        last_beep_t = t_now
+
+        s = int(t_now * sr)
+        e = min(total_samples, s + int(beep_dur * sr))
+        if e <= s:
+            continue
+        n = e - s
+        tt = np.arange(n) / sr
+        wave_v = np.sin(2 * np.pi * freq * tt) * amp
+        # 페이드 in/out (10ms each)
+        fade = int(sr * 0.01)
+        if n > 2 * fade:
+            wave_v[:fade] *= np.linspace(0, 1, fade)
+            wave_v[-fade:] *= np.linspace(1, 0, fade)
+        audio[s:e] += wave_v.astype(np.float32)
+
+    # clip + 16bit PCM 저장
+    audio = np.clip(audio, -1.0, 1.0)
+    pcm = (audio * 32767).astype(np.int16)
+    with wave.open(str(out_wav), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sr)
+        wf.writeframes(pcm.tobytes())
+    return True
+
+
+def _write_video(frames: List[np.ndarray], out_path: Path, fps: int = OUTPUT_FPS,
+                 risks: Optional[List[float]] = None) -> Path:
     if not frames:
         raise RuntimeError("no frames to write")
     h, w = frames[0].shape[:2]
-    # mp4v: 브라우저 호환성을 위해 H.264 우선, 실패하면 mp4v fallback
     temp_path = out_path.with_suffix(".raw.mp4")
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     vw = cv2.VideoWriter(str(temp_path), fourcc, fps, (w, h))
@@ -128,14 +191,42 @@ def _write_video(frames: List[np.ndarray], out_path: Path, fps: int = OUTPUT_FPS
         vw.write(f)
     vw.release()
 
-    # Try transcode to H.264 for broad browser support
+    # 위험 곡선이 있으면 procedural 경고음 트랙 생성
+    audio_wav: Optional[Path] = None
+    if risks:
+        try:
+            audio_wav = out_path.with_suffix(".wav")
+            ok = _write_audio_track(risks, fps, audio_wav)
+            if not ok:
+                audio_wav = None
+        except Exception as exc:
+            log.warning("audio track gen failed: %s", exc)
+            audio_wav = None
+
+    # H.264 + (있으면) AAC mux
+    if audio_wav and audio_wav.exists():
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", str(temp_path),
+            "-i", str(audio_wav),
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "96k",
+            "-shortest",
+            "-movflags", "+faststart",
+            str(out_path),
+        ]
+    else:
+        cmd = [
+            "ffmpeg", "-y", "-i", str(temp_path),
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart", str(out_path),
+        ]
+
     try:
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", str(temp_path), "-c:v", "libx264",
-             "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out_path)],
-            check=True, capture_output=True, timeout=90,
-        )
+        subprocess.run(cmd, check=True, capture_output=True, timeout=120)
         temp_path.unlink(missing_ok=True)
+        if audio_wav:
+            audio_wav.unlink(missing_ok=True)
     except Exception as exc:
         log.warning("ffmpeg transcode skipped (%s) — serving raw mp4v", exc)
         temp_path.replace(out_path)
@@ -237,7 +328,7 @@ def reenact_from_video(video_path: str, out_name: str) -> ReenactmentResult:
     cap.release()
 
     out_path = OUT_DIR / f"{out_name}.mp4"
-    _write_video(frames_out, out_path, fps=SAMPLE_FPS * 2)
+    _write_video(frames_out, out_path, fps=SAMPLE_FPS * 2, risks=risk_curve)
     return ReenactmentResult(
         video_url=f"/uploads/scenarios/{out_path.name}",
         video_path=str(out_path),
@@ -585,7 +676,7 @@ def synthesize(preset: str, out_name: str) -> ReenactmentResult:
             break
 
     out_path = OUT_DIR / f"{out_name}.mp4"
-    _write_video(rendered, out_path, fps=OUTPUT_FPS)
+    _write_video(rendered, out_path, fps=OUTPUT_FPS, risks=risks)
     return ReenactmentResult(
         video_url=f"/uploads/scenarios/{out_path.name}",
         video_path=str(out_path),

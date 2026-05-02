@@ -17,7 +17,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -126,41 +126,64 @@ def build() -> Dict[str, object]:
     # 2) 합본 프레임 누적
     frames: List[np.ndarray] = []
 
-    frames += _draw_card(
+    # risk timeline 누적 — 카드 구간은 0, 시나리오 클립은 해당 시나리오의 risk_curve 보간
+    risk_timeline: List[float] = []
+
+    intro_a = _draw_card(
         "AuraView", "K-Perception Platform",
         "Tesla-style Occupancy · Fleet · Reenactment",
         duration_s=3.0, accent=(255, 200, 0),
     )
-    frames += _draw_card(
+    frames += intro_a
+    risk_timeline += [0.0] * len(intro_a)
+
+    intro_b = _draw_card(
         "보이지 않는 공간을 확률로 채운다",
         "Occupancy Network · HydraNet · E2E Risk Transformer",
         "auraview.allthatai.kr",
         duration_s=2.5, accent=(0, 200, 255),
     )
+    frames += intro_b
+    risk_timeline += [0.0] * len(intro_b)
 
     for m in metas:
         result = m["result"]  # ReenactmentResult
         lead = float(result.lead_time_s)
         peak = float(result.peak_risk)
-        frames += _draw_card(
+        card = _draw_card(
             str(m["title"]),
             f"선행 경고 {lead:.2f}초 · 피크 위험 {peak*100:.1f}%",
             str(m["hook"]),
             duration_s=2.0, accent=(0, 60, 255),
         )
+        frames += card
+        risk_timeline += [0.0] * len(card)
+
         clip = _resize_video_frames(Path(result.video_path))
         frames += clip
+        # 시나리오 risk_curve 를 클립 길이에 맞춰 보간 (다른 fps 영상 들어와도 OK)
+        rc = list(result.risk_curve)
+        if rc and len(clip) > 0:
+            scale = len(rc) / len(clip)
+            risk_timeline += [
+                float(rc[min(len(rc) - 1, int(i * scale))]) for i in range(len(clip))
+            ]
+        else:
+            risk_timeline += [0.0] * len(clip)
 
     # 3) 마무리 카드
     total_lead = sum(float(m["result"].lead_time_s) for m in metas) / max(1, len(metas))
-    frames += _draw_card(
+    outro = _draw_card(
         "결론",
         f"평균 선행 경고 {total_lead:.2f}초",
         "auraview.allthatai.kr  ·  github.com/leelang7/AuraView",
         duration_s=3.5, accent=(0, 224, 154),
     )
+    frames += outro
+    risk_timeline += [0.0] * len(outro)
 
-    # 4) 출력
+    # 4) 출력 — scenario._write_video 의 음향 합성 로직 재사용
+    from . import scenario as scenario_mod
     raw_path = OUT_DIR / f"{ts}_showreel_raw.mp4"
     out_path = OUT_DIR / f"{ts}_showreel.mp4"
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
@@ -169,14 +192,28 @@ def build() -> Dict[str, object]:
         vw.write(f)
     vw.release()
 
+    audio_wav: Optional[Path] = None
     if _ensure_ffmpeg_available():
         try:
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", str(raw_path), "-c:v", "libx264",
-                 "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out_path)],
-                check=True, capture_output=True, timeout=180,
-            )
+            audio_wav = OUT_DIR / f"{ts}_showreel.wav"
+            scenario_mod._write_audio_track(risk_timeline, FPS, audio_wav)
+        except Exception as exc:
+            log.warning("audio gen failed: %s", exc)
+            audio_wav = None
+
+        cmd_base = ["ffmpeg", "-y", "-i", str(raw_path)]
+        if audio_wav and audio_wav.exists():
+            cmd_base += ["-i", str(audio_wav), "-c:a", "aac", "-b:a", "96k", "-shortest"]
+        cmd_base += [
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
+            str(out_path),
+        ]
+        try:
+            subprocess.run(cmd_base, check=True, capture_output=True, timeout=240)
             raw_path.unlink(missing_ok=True)
+            if audio_wav and audio_wav.exists():
+                audio_wav.unlink(missing_ok=True)
         except Exception as exc:
             log.warning("ffmpeg transcode failed: %s", exc)
             raw_path.replace(out_path)
@@ -196,6 +233,21 @@ def build() -> Dict[str, object]:
         ],
         "average_lead_time_s": round(total_lead, 2),
         "created_at": datetime.utcnow().isoformat(),
+    }
+
+
+def latest():
+    """가장 최근 showreel 메타. 없으면 자동 빌드."""
+    items = sorted(OUT_DIR.glob("*showreel*.mp4"), key=lambda x: x.stat().st_mtime, reverse=True)
+    if not items:
+        return build()
+    p = items[0]
+    return {
+        "name": p.stem,
+        "video_url": f"/uploads/showreel/{p.name}",
+        "created_at": datetime.fromtimestamp(p.stat().st_mtime).isoformat(),
+        "size_kb": round(p.stat().st_size / 1024, 1),
+        "age_hours": round((datetime.now().timestamp() - p.stat().st_mtime) / 3600, 1),
     }
 
 

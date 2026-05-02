@@ -1444,8 +1444,19 @@ def prototype_ui():
             </div>
           </div>
 
-          <!-- TAB 5 : Capability Matrix -->
+          <!-- TAB 5 : Capability Matrix + Metric -->
           <div class="tab-panel" id="tab5">
+
+            <!-- ★ 모델 metric 라이브 카드 (/healthz/details 에서 자동 fetch) -->
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">MODEL METRIC · LIVE</div>
+              <div class="section-label">// Risk Transformer · multi-scenario evaluation</div>
+              <div id="metricGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px;">
+                <div class="placeholder" style="grid-column:1/-1;min-height:80px;">로딩 중…</div>
+              </div>
+              <div id="metricSep" style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);"></div>
+            </div>
+
             <div class="card">
               <div class="card-tag">CAPABILITIES · LIVE</div>
               <div class="section-label">// AuraView 기능 매트릭스 · 라이브 카운터</div>
@@ -2495,6 +2506,50 @@ def prototype_ui():
                   </div>`).join('')}
               </div>`;
           }
+
+          /* ── METRIC LIVE LOAD (TAB ⑤ 진입 시) ── */
+          (function setupMetricLive(){
+            const tab5 = document.querySelector('[data-tab="tab5"]');
+            if (!tab5) return;
+            let loaded = false;
+            const fmtPct = v => (typeof v === 'number') ? (v*100).toFixed(1) + '%' : '—';
+            const tile = (label, value, color) => `
+              <div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;text-align:center;">
+                <div style="color:var(--muted);font-size:9.5px;letter-spacing:1.8px;font-family:'JetBrains Mono',monospace;">${label}</div>
+                <div style="margin-top:6px;font-size:22px;font-weight:900;color:${color||'var(--text)'};">${value}</div>
+              </div>`;
+            tab5.addEventListener('click', async () => {
+              if (loaded) return;
+              loaded = true;
+              try {
+                const res = await fetch(window.location.origin + '/healthz/details');
+                const data = await res.json();
+                const m = data.model_metric || {};
+                const grid = document.getElementById('metricGrid');
+                grid.innerHTML = [
+                  tile('AUC',          m.auc != null ? m.auc.toFixed(3) : '—', 'var(--accent)'),
+                  tile('F1 @ 0.5',     m['f1@0.5'] != null ? m['f1@0.5'].toFixed(3) : '—', 'var(--safe)'),
+                  tile('Precision',    m['precision@0.5'] != null ? m['precision@0.5'].toFixed(3) : '—'),
+                  tile('Recall',       m['recall@0.5'] != null ? m['recall@0.5'].toFixed(3) : '—'),
+                  tile('Lead time',    m.avg_lead_time_synth_s != null ? m.avg_lead_time_synth_s + 's' : '—', 'var(--warn)'),
+                  tile('Samples',      m.samples != null ? m.samples.toLocaleString() : '—'),
+                  tile('Tests',        data.tests || '—', 'var(--safe)'),
+                  tile('Routes',       (data.routes && data.routes.count) || '—'),
+                ].join('');
+                const sep = m.scenario_separation || {};
+                if (Object.keys(sep).length) {
+                  document.getElementById('metricSep').innerHTML =
+                    '시나리오 분리도 (pos avg − neg avg): ' +
+                    Object.entries(sep).map(([k, v]) =>
+                      `<span style="color:var(--accent);">${k}</span> ${v.separation > 0 ? '+' : ''}${v.separation}`
+                    ).join(' · ');
+                }
+              } catch(e) {
+                document.getElementById('metricGrid').innerHTML =
+                  '<div class="placeholder" style="grid-column:1/-1;min-height:60px;">/healthz/details 응답 실패</div>';
+              }
+            });
+          })();
 
           /* ── LIVE SCORECARD COUNTERS ── */
           async function refreshScorecard() {

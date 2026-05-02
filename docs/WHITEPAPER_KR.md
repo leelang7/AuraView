@@ -174,6 +174,10 @@ AuraView 의 K-MaaS 통합:
 
 ## 5. 시스템 아키텍처
 
+![architecture](architecture.svg)
+
+
+
 ```
 ┌────────────────────── Edge ─────────────────────┐
 │ 블랙박스 / 모바일 / HUD                            │

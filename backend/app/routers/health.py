@@ -32,6 +32,16 @@ def _read_metric() -> Dict[str, Any]:
         return {}
 
 
+def _read_trained_metric() -> Dict[str, Any]:
+    p = Path(__file__).resolve().parents[3] / "models" / "risk_transformer_trained_metric.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
 def _read_git_sha() -> str:
     try:
         head = Path(__file__).resolve().parents[3] / ".git" / "HEAD"
@@ -96,5 +106,6 @@ def healthz_details():
         },
         "features": feature_flags,
         "model_metric": metric,
+        "trained_model_metric": _read_trained_metric(),
         "tests": "30 passed (18 endpoint + 12 collab unit)",
     }

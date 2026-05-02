@@ -53,3 +53,28 @@ dsz_exports/manifest.jsonl
 uploads/
 backend/uploads/
 
+# ── Flutter (auraview_fleet) ─────────────────────────────────────
+auraview_fleet/.dart_tool/
+auraview_fleet/.flutter-plugins
+auraview_fleet/.flutter-plugins-dependencies
+auraview_fleet/.metadata
+auraview_fleet/build/
+auraview_fleet/.idea/
+auraview_fleet/*.iml
+auraview_fleet/.packages
+auraview_fleet/local.properties
+# Android Gradle / Kotlin
+auraview_fleet/android/.gradle/
+auraview_fleet/android/local.properties
+auraview_fleet/android/app/debug/
+auraview_fleet/android/app/profile/
+auraview_fleet/android/app/release/
+auraview_fleet/android/captures/
+# iOS (있을 때)
+auraview_fleet/ios/Pods/
+auraview_fleet/ios/.symlinks/
+auraview_fleet/ios/Flutter/Flutter.framework
+auraview_fleet/ios/Flutter/Flutter.podspec
+# Web/macOS/Windows 빌드 산출물
+auraview_fleet/web/build/
+

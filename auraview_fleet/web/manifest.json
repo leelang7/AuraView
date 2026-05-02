@@ -1,0 +1,35 @@
+{
+    "name": "AuraView Fleet",
+    "short_name": "AuraFleet",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#080C14",
+    "theme_color": "#00C8FF",
+    "description": "AuraView Fleet — 카메라 기반 Shadow Mode 기여 단말",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

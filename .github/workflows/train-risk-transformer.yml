@@ -1,0 +1,43 @@
+name: Train Risk Transformer
+
+# notebooks/train_risk_transformer_real.py 또는 risk_transformer.py 변경 시 자동 학습
+# Linux runner 에서 PyTorch CPU 로 ~3분 학습 → 결과 artifact 90일 보관.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "notebooks/train_risk_transformer_real.py"
+      - "backend/app/services/risk_transformer.py"
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install --quiet "torch>=2.0" numpy pydantic
+
+      - name: Train (15 epochs)
+        run: python notebooks/train_risk_transformer_real.py
+
+      - name: Show metric JSON
+        run: cat models/risk_transformer_trained_metric.json
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: risk_transformer_${{ github.sha }}
+          path: |
+            models/risk_transformer.pt
+            models/risk_transformer_trained_metric.json
+          retention-days: 90

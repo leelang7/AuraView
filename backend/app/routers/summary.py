@@ -32,6 +32,16 @@ def _read_metric() -> Dict[str, Any]:
         return {}
 
 
+def _read_trained_metric() -> Dict[str, Any]:
+    p = Path(__file__).resolve().parents[3] / "models" / "risk_transformer_trained_metric.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
 def _count_files(rel: str, glob_pat: str = "*") -> int:
     base = Path(__file__).resolve().parents[2] / rel
     if not base.exists():
@@ -54,6 +64,7 @@ def summary_json(db: Session = Depends(get_db)):
     v2v_stats = v2v_service.stats()
     hazard = _map_data_route(db=db)
     metric = _read_metric()
+    trained_metric = _read_trained_metric()
 
     return {
         "service": "AuraView K-Perception",
@@ -73,7 +84,8 @@ def summary_json(db: Session = Depends(get_db)):
             ),
         },
 
-        "model": {
+        "model_baseline": {
+            "type": "linear-logistic",
             "auc": metric.get("auc"),
             "f1_at_0_5": metric.get("f1@0.5"),
             "precision_at_0_5": metric.get("precision@0.5"),
@@ -83,6 +95,21 @@ def summary_json(db: Session = Depends(get_db)):
             "scenarios": metric.get("scenarios_per_class"),
             "scenario_separation": metric.get("scenario_separation"),
         },
+
+        "model_trained": {
+            "type": "pytorch-transformer-2L-d64",
+            "params": trained_metric.get("params"),
+            "epochs": trained_metric.get("epochs"),
+            "auc": trained_metric.get("auc"),
+            "f1_at_0_5": trained_metric.get("f1@0.5"),
+            "precision_at_0_5": trained_metric.get("precision@0.5"),
+            "recall_at_0_5": trained_metric.get("recall@0.5"),
+            "val_loss": trained_metric.get("val_loss"),
+            "samples": trained_metric.get("samples"),
+            "checkpoint": trained_metric.get("checkpoint"),
+        },
+
+        "model": trained_metric or metric,   # 호환성 — 우선 trained, 없으면 baseline
 
         "operational": {
             "fleet_total_uploads": fleet_stats.get("total", 0),

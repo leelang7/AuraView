@@ -42,10 +42,9 @@ jobs:
   flutter-analyze:
     name: Flutter · analyze (auraview_fleet)
     runs-on: ubuntu-latest
-    if: false   # 별도 리포로 분리되면 활성화. 모노레포에서 켜고 싶으면 false→true
     defaults:
       run:
-        working-directory: ../auraview_fleet
+        working-directory: auraview_fleet
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -53,6 +52,7 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
+      - run: flutter test --no-pub
 
   docs:
     name: Docs · presence check

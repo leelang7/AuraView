@@ -1179,10 +1179,10 @@ def prototype_ui():
           <div class="tab-panel" id="tab3">
             <div class="card">
               <div class="card-tag">FUSION · 5점</div>
-              <div class="section-label">// 6종 공공데이터 융합</div>
+              <div class="section-label">// 6종 공공데이터 한 응답 결합</div>
               <div class="hero-copy">
-                <div class="hero-title">교차로 한 곳에 6종 데이터를 동시에</div>
-                <div class="hero-desc">신호 · VDS · 돌발 · TAAS · ITS · 안심구역 결합 결과를 하나의 응답으로 반환합니다.</div>
+                <div class="hero-title">교차로 한 곳 = 6종 데이터 한 호출</div>
+                <div class="hero-desc">신호 · VDS · 돌발 · TAAS · ITS · 안심구역 — 각 어댑터가 동일 교차로에 대해 동시 조회 후 단일 JSON 으로 결합 반환합니다.</div>
               </div>
               <div class="form-grid">
                 <div class="btn-row">
@@ -1197,7 +1197,13 @@ def prototype_ui():
                 </div>
                 <button class="btn-accent" onclick="runFusion()">융합 조회</button>
               </div>
-              <pre id="fusionOut" style="margin-top:16px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);max-height:420px;overflow:auto;white-space:pre-wrap;">융합 결과가 여기에 표시됩니다.</pre>
+              <div id="fusionCards" style="margin-top:18px;display:grid;grid-template-columns:repeat(auto-fill, minmax(310px, 1fr));gap:14px;">
+                <div class="placeholder" style="grid-column:1/-1;min-height:140px;">융합 결과 카드가 여기에 표시됩니다.</div>
+              </div>
+              <details style="margin-top:14px;">
+                <summary style="cursor:pointer;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;">// raw JSON</summary>
+                <pre id="fusionOut" style="margin-top:10px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);max-height:380px;overflow:auto;white-space:pre-wrap;"></pre>
+              </details>
             </div>
           </div>
 
@@ -2007,6 +2013,44 @@ def prototype_ui():
           }
 
           /* ── FUSION ── */
+          function fusionCardForSource(name, body) {
+            const meta = {
+              signal:    {emoji:'🚦', title:'실시간 신호 정보', sub:'apis.data.go.kr · B551982/rti', color:'var(--accent)'},
+              vds:       {emoji:'🚗', title:'VDS 실시간 소통',   sub:'data.ex.co.kr · trafficapi',    color:'var(--safe)'},
+              incidents: {emoji:'⚠️', title:'돌발상황',         sub:'data.ex.co.kr · incidentapi',  color:'var(--warn)'},
+              accidents_history: {emoji:'📊', title:'TAAS 사고이력', sub:'taas.koroad.or.kr',         color:'var(--danger)'},
+              its_link:  {emoji:'🛣️', title:'ITS 링크 속도',     sub:'openapi.its.go.kr',             color:'var(--accent2)'},
+              dsz:       {emoji:'🔒', title:'안심구역 결합분석', sub:'dsz.ex.co.kr',                  color:'#a995ff'},
+            };
+            const m = meta[name] || {emoji:'📦', title:name, sub:'', color:'var(--muted)'};
+            // 첫 의미있는 필드 3~5개 추출
+            const flat = [];
+            try {
+              const inner = (body && body.body) ? body.body : body;
+              const items = inner?.items?.item ?? inner?.list ?? inner?.accidents ?? inner?.body?.items ?? inner;
+              const sample = Array.isArray(items) ? items[0] : items;
+              if (sample && typeof sample === 'object') {
+                for (const k of Object.keys(sample).slice(0, 5)) {
+                  const v = sample[k];
+                  if (v == null || typeof v === 'object') continue;
+                  flat.push(`<div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(0,200,255,0.06);"><span style="color:var(--muted);">${k}</span><span>${String(v).slice(0,48)}</span></div>`);
+                }
+              }
+            } catch(e) {}
+
+            return `
+              <div class="card" style="position:relative;border-left:3px solid ${m.color};">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                  <span style="font-size:20px;">${m.emoji}</span>
+                  <div>
+                    <div style="font-weight:900;font-size:14px;color:${m.color};">${m.title}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;">${m.sub}</div>
+                  </div>
+                </div>
+                <div style="margin-top:10px;">${flat.join('') || '<div style="color:var(--muted);font-size:11px;">응답 없음 / fallback</div>'}</div>
+              </div>`;
+          }
+
           async function runFusion() {
             const id = document.getElementById('fusion_id').value;
             const link = document.getElementById('fusion_link').value;
@@ -2015,7 +2059,21 @@ def prototype_ui():
               const res = await fetch(window.location.origin + '/fusion/intersection/' + encodeURIComponent(id) + '?link_id=' + encodeURIComponent(link));
               const data = await res.json();
               document.getElementById('fusionOut').textContent = JSON.stringify(data, null, 2);
-              toast('융합 완료', 'success');
+
+              const sources = data.sources || {};
+              const cards = [];
+              for (const k of ['signal', 'vds', 'incidents', 'accidents_history', 'its_link']) {
+                cards.push(fusionCardForSource(k, sources[k]));
+              }
+              // DSZ 어댑터 — list_imported() 결과 또는 manifest.jsonl 카운트
+              try {
+                const dszRes = await fetch(window.location.origin + '/dsz/artifacts');
+                const dsz = await dszRes.json();
+                cards.push(fusionCardForSource('dsz', {body: {items: {item: {imported_count: (dsz.artifacts||[]).length, sample_path: 'dsz_exports/sample_taas_vds_join_2024.json'}}}}));
+              } catch(e) { cards.push(fusionCardForSource('dsz', null)); }
+
+              document.getElementById('fusionCards').innerHTML = cards.join('');
+              toast(`융합 완료 (${id})`, 'success');
             } catch(e) {
               toast('융합 실패', 'error');
             } finally {

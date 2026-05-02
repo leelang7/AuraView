@@ -1,0 +1,10 @@
+{
+  "version": "0.1-baseline-logistic",
+  "samples": 1000,
+  "auc": 0.9384,
+  "f1@0.5": 0.905,
+  "precision@0.5": 0.928,
+  "recall@0.5": 0.8831,
+  "avg_lead_time_synth_s": 3.38,
+  "note": "Risk Transformer 의 해석 가능 baseline (linear logistic) 에 합성 분포로 평가한 결과. 실 데이터·trained Transformer 로 교체 시 AUC ≥ 0.85, F1 ≥ 0.80 목표."
+}

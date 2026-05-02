@@ -1,0 +1,53 @@
+name: Deploy
+
+# main / feat/k-perception 브랜치 push 시 EC2 SSH 로 자동 배포.
+# 활성화 조건: GitHub repo Settings → Secrets 에 다음 4개 등록 필요
+#   EC2_HOST       예: 13.48.70.193
+#   EC2_USER       예: ubuntu
+#   EC2_SSH_KEY    EC2 접속용 private key 전체 (-----BEGIN ...-----END ...-----)
+#   DEPLOY_PATH    예: /home/ubuntu/AuraView
+#
+# 4개가 모두 설정돼야 step 이 실행됩니다 (없으면 경고 후 skip).
+
+on:
+  push:
+    branches: [main, feat/k-perception]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: SSH → git pull → restart uvicorn
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secrets present
+        id: gate
+        run: |
+          if [ -z "${{ secrets.EC2_HOST }}" ] || [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
+            echo "::warning::EC2 deploy secrets not set — skipping. Add EC2_HOST, EC2_USER, EC2_SSH_KEY, DEPLOY_PATH to enable."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: SSH deploy
+        if: steps.gate.outputs.skip == 'false'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+            echo "→ pulling ${GITHUB_REF##*/}"
+            git fetch --all
+            git checkout ${GITHUB_REF##*/}
+            git pull origin ${GITHUB_REF##*/}
+            python3 -m pip install -r requirements.txt --quiet
+            pkill -f "uvicorn app.main:app" || true
+            sleep 2
+            cd backend
+            nohup python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
+            sleep 4
+            curl -fsS http://127.0.0.1:8000/ | head -c 100 || (echo "❌ uvicorn 기동 실패" && tail -n 60 uvicorn.log && exit 1)
+            echo "✅ deploy ok"

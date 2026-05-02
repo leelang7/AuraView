@@ -91,7 +91,7 @@ async def contribute(
 @router.get("/stats")
 def stats():
     if not MANIFEST.exists():
-        return {"total": 0, "hard_ratio": 0.0, "recent": []}
+        return {"total": 0, "hard_count": 0, "hard_ratio": 0.0, "unique_devices": 0, "recent": []}
 
     rows = []
     with MANIFEST.open("r", encoding="utf-8") as f:

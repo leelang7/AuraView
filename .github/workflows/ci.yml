@@ -30,6 +30,15 @@ jobs:
           cd backend
           python -c "from app.main import app; print('ok', len(app.routes), 'routes')"
 
+      - name: Pytest (endpoint integration)
+        env:
+          ALLOW_FALLBACK: "1"
+          SERVICE_KEY: "ci-stub"
+        run: |
+          pip install pytest httpx
+          cd backend
+          pytest tests/ -v --tb=short -x
+
   flutter-analyze:
     name: Flutter · analyze (auraview_fleet)
     runs-on: ubuntu-latest

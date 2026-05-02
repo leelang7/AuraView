@@ -39,6 +39,8 @@ secrets/
 models/*.pt
 models/*.onnx
 models/*.safetensors
+# 단, 공개 baseline trained 가중치는 예외 (재현용·심사용)
+!models/risk_transformer.pt
 
 # Training outputs
 runs/

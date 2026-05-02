@@ -2529,15 +2529,18 @@ def prototype_ui():
               try {
                 const res = await fetch(window.location.origin + '/healthz/details');
                 const data = await res.json();
-                const m = data.model_metric || {};
+                const m = data.trained_model_metric && Object.keys(data.trained_model_metric).length
+                          ? data.trained_model_metric : (data.model_metric || {});
+                const isTrained = !!(data.trained_model_metric && Object.keys(data.trained_model_metric).length);
+                const backend = (data.features && data.features.risk_model_backend) || '—';
                 const grid = document.getElementById('metricGrid');
                 grid.innerHTML = [
-                  tile('AUC',          m.auc != null ? m.auc.toFixed(3) : '—', 'var(--accent)'),
-                  tile('F1 @ 0.5',     m['f1@0.5'] != null ? m['f1@0.5'].toFixed(3) : '—', 'var(--safe)'),
-                  tile('Precision',    m['precision@0.5'] != null ? m['precision@0.5'].toFixed(3) : '—'),
-                  tile('Recall',       m['recall@0.5'] != null ? m['recall@0.5'].toFixed(3) : '—'),
-                  tile('Lead time',    m.avg_lead_time_synth_s != null ? m.avg_lead_time_synth_s + 's' : '—', 'var(--warn)'),
-                  tile('Samples',      m.samples != null ? m.samples.toLocaleString() : '—'),
+                  tile('AUC',          m.auc != null ? m.auc.toFixed(4) : '—', isTrained ? 'var(--safe)' : 'var(--accent)'),
+                  tile('F1 @ 0.5',     m['f1@0.5'] != null ? m['f1@0.5'].toFixed(4) : '—', 'var(--safe)'),
+                  tile('Precision',    m['precision@0.5'] != null ? m['precision@0.5'].toFixed(4) : '—'),
+                  tile('Recall',       m['recall@0.5'] != null ? m['recall@0.5'].toFixed(4) : '—'),
+                  tile('Backend',      backend === 'trained' ? '⭐ trained' : backend, backend === 'trained' ? 'var(--safe)' : 'var(--warn)'),
+                  tile('Params',       m.params != null ? m.params.toLocaleString() : (m.samples != null ? m.samples.toLocaleString() : '—')),
                   tile('Tests',        data.tests || '—', 'var(--safe)'),
                   tile('Routes',       (data.routes && data.routes.count) || '—'),
                 ].join('');

@@ -1,17 +1,16 @@
 """
-End-to-End Risk Transformer (skeleton).
+End-to-End Risk Transformer.
 
-입력: [hydranet_features, occupancy_flat, signal_state, vds_speed, vds_volume,
-        incident_flag, taas_prior, duration, obstacle_onehot, ...]
-출력: P(collision) in [0,1], P(near_miss) in [0,1], 대표 위험 원인 attention
+입력: [duration, vehicle_cnt, vru_cnt, vds_speed, vds_volume, occluded_mass,
+        taas_nearby, signal_stop, incident_flag, obstacle_big]  (10 features)
+출력: P(collision), P(near_miss), feature attention
 
-현재는 학습 전 플레이스홀더이므로 **weighted logistic regression** 형태로 동작하고,
-학습 준비가 끝나면 `models/risk_transformer_*.pt` 로 교체된다.
+기본 동작:
+  - models/risk_transformer.pt 가 있으면 → trained PyTorch Transformer 추론
+  - 없으면 → 해석 가능 linear-logistic fallback (개발·테스트 환경)
 
-설계 의도:
-  - AI활용 · 학습 5점: 실제 Transformer 학습 코드 제공
-  - AI활용 · 분석 5점: 추론 결과를 대시보드에 확률로 표시
-  - 데이터융합 5점: 6종 공공데이터를 한 모델에 투입
+학습 스크립트: notebooks/train_risk_transformer_real.py
+설계 의도: 6종 공공데이터 + Fleet 누적 데이터를 한 모델에 투입.
 """
 
 from __future__ import annotations
@@ -91,13 +90,11 @@ def _sigmoid(x: float) -> float:
     return z / (1.0 + z)
 
 
-def predict(inp: RiskInput) -> RiskOutput:
-    """Linear-Transformer-lite. 학습된 Transformer로 교체되기 전의 계산식."""
+def _make_feats(inp: RiskInput) -> Dict[str, float]:
     big_obstacle = inp.obstacle_type in {"truck", "bus", "top_truck", "van"}
     signal_stop = 1.0 if inp.signal_state == "stop-And-Remain" else 0.0
     incident_flag = 1.0 if inp.incident_flag else 0.0
-
-    feats = {
+    return {
         "duration":      _z("duration", inp.duration),
         "vehicle_cnt":   _z("vehicle_cnt", inp.vehicle_cnt),
         "vru_cnt":       _z("vru_cnt", inp.vru_cnt),
@@ -110,10 +107,96 @@ def predict(inp: RiskInput) -> RiskOutput:
         "obstacle_big":  1.0 if big_obstacle else 0.0,
     }
 
+
+# ─── Trained Transformer lazy loader ───────────────────────────────────
+_TRAINED = None       # cached torch model
+_TRAINED_TRIED = False
+_FEATURE_ORDER = [
+    "duration", "vehicle_cnt", "vru_cnt", "vds_speed", "vds_volume",
+    "occluded_mass", "taas_nearby", "signal_stop", "incident_flag", "obstacle_big",
+]
+
+
+def _try_load_trained():
+    """
+    models/risk_transformer.pt 를 한 번 로드 시도. torch 가 없거나 파일 없으면 None.
+    """
+    global _TRAINED, _TRAINED_TRIED
+    if _TRAINED_TRIED:
+        return _TRAINED
+    _TRAINED_TRIED = True
+    try:
+        import os
+        from pathlib import Path
+        import torch
+        import torch.nn as nn
+
+        ckpt_path = Path(os.path.dirname(__file__)).resolve().parents[2] / "models" / "risk_transformer.pt"
+        if not ckpt_path.exists():
+            return None
+
+        class _Net(nn.Module):
+            def __init__(self, n=10, d=64, h=4, L=2, drop=0.1):
+                super().__init__()
+                self.emb = nn.Linear(1, d)
+                self.pos = nn.Parameter(torch.randn(n, d) * 0.02)
+                layer = nn.TransformerEncoderLayer(d, h, dim_feedforward=128,
+                                                    dropout=drop, batch_first=True)
+                self.enc = nn.TransformerEncoder(layer, L)
+                self.head = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, 2))
+
+            def forward(self, x):
+                h_ = self.emb(x.unsqueeze(-1)) + self.pos
+                h_ = self.enc(h_)
+                return self.head(h_.mean(dim=1))
+
+        ckpt = torch.load(str(ckpt_path), map_location="cpu", weights_only=False)
+        arch = ckpt.get("arch", {})
+        model = _Net(
+            n=arch.get("n_features", 10),
+            d=arch.get("d_model", 64),
+            h=arch.get("n_heads", 4),
+            L=arch.get("n_layers", 2),
+        )
+        model.load_state_dict(ckpt["state_dict"])
+        model.eval()
+        _TRAINED = model
+        return _TRAINED
+    except Exception:
+        _TRAINED = None
+        return None
+
+
+def _trained_predict(feats: Dict[str, float]) -> Optional[float]:
+    model = _try_load_trained()
+    if model is None:
+        return None
+    try:
+        import torch
+        vec = [float(feats.get(k, 0.0)) for k in _FEATURE_ORDER]
+        x = torch.tensor([vec], dtype=torch.float32)
+        with torch.no_grad():
+            logits = model(x)
+            prob = torch.softmax(logits, dim=1)[0, 1].item()
+        return float(prob)
+    except Exception:
+        return None
+
+
+def predict(inp: RiskInput) -> RiskOutput:
+    """학습된 Transformer 우선 — 없으면 해석 가능 linear-logistic fallback."""
+    feats = _make_feats(inp)
+
+    # 1) Trained Transformer 시도
+    trained_p = _trained_predict(feats)
+
+    # 2) Linear contribution (해석성·attention 용으로 항상 계산)
     contrib = {name: WEIGHTS[name] * val for name, val in feats.items()}
     logit_coll = BIAS + sum(contrib.values())
-    p_coll = _sigmoid(logit_coll)
-    p_near = min(1.0, p_coll * 1.6)   # near-miss는 collision 대비 약 1.6배 흔함
+    fallback_p = _sigmoid(logit_coll)
+
+    p_coll = trained_p if trained_p is not None else fallback_p
+    p_near = min(1.0, p_coll * 1.6)
 
     total = sum(abs(v) for v in contrib.values()) or 1e-9
     attention = {k: abs(v) / total for k, v in contrib.items()}
@@ -124,6 +207,10 @@ def predict(inp: RiskInput) -> RiskOutput:
         if weight < 0.03:
             continue
         explanation.append(f"{name} 기여도 {weight*100:.0f}%")
+    if trained_p is not None:
+        explanation.insert(0, "trained Transformer 사용")
+    else:
+        explanation.insert(0, "linear baseline fallback")
 
     return RiskOutput(
         p_collision=p_coll,

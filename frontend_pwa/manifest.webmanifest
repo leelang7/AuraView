@@ -1,0 +1,15 @@
+{
+  "name": "AuraView Fleet",
+  "short_name": "AuraFleet",
+  "description": "AuraView 엣지 단말 — 어려운 장면을 자동 기여합니다.",
+  "start_url": "/pwa/",
+  "scope": "/pwa/",
+  "id": "/pwa/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080c14",
+  "theme_color": "#00c8ff",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

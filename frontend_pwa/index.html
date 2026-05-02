@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#00c8ff"/>
+  <link rel="manifest" href="./manifest.webmanifest"/>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml"/>
+  <title>AuraView Fleet</title>
+  <style>
+    :root {
+      --bg:#080c14; --surface:#0d1520; --surface2:#121d2e;
+      --text:#e2eaf5; --muted:#5a7a9a;
+      --accent:#00c8ff; --danger:#ff3b3b; --safe:#00e09a; --warn:#ffb020;
+      --border:rgba(0,200,255,0.14);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;display:flex;flex-direction:column;}
+    header{padding:18px 20px;border-bottom:1px solid var(--border);background:rgba(13,21,32,.95);display:flex;align-items:center;justify-content:space-between;}
+    header h1{font-size:18px;letter-spacing:1px;}
+    header h1 em{color:var(--accent);font-style:normal;}
+    header .dot{width:8px;height:8px;border-radius:50%;background:var(--safe);box-shadow:0 0 8px var(--safe);}
+    main{flex:1;display:flex;flex-direction:column;padding:14px;gap:14px;overflow:auto;}
+    .video-wrap{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:#000;aspect-ratio:3/4;}
+    video{width:100%;height:100%;object-fit:cover;display:block;}
+    canvas{display:none;}
+    .hud{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:12px;font-family:ui-monospace,monospace;}
+    .hud-top,.hud-bottom{display:flex;gap:8px;flex-wrap:wrap;}
+    .chip{background:rgba(8,12,20,.78);border:1px solid var(--border);padding:6px 10px;border-radius:999px;font-size:11px;letter-spacing:1px;}
+    .chip.alert{border-color:rgba(255,59,59,.45);color:var(--danger);}
+    .chip.ok{border-color:rgba(0,224,154,.45);color:var(--safe);}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    label{font-size:11px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
+    input{width:100%;margin-top:6px;padding:10px 12px;border-radius:10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);font:inherit;}
+    .btn{display:block;width:100%;padding:14px;border-radius:12px;border:none;color:#fff;font-weight:700;letter-spacing:.6px;cursor:pointer;}
+    .btn-primary{background:linear-gradient(135deg,#0078a8,#005580);}
+    .btn-danger{background:linear-gradient(135deg,#8b0000,#5c0000);}
+    .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+    .btn:disabled{opacity:.5;}
+    .muted{color:var(--muted);font-size:12px;}
+    .status{padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);font-family:ui-monospace,monospace;font-size:12px;line-height:1.9;}
+    footer{padding:10px 14px;font-size:10px;color:var(--muted);text-align:center;border-top:1px solid var(--border);}
+  </style>
+</head>
+<body>
+  <header>
+    <h1><em>AuraView</em> · Fleet</h1>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="dot" id="conn-dot"></div>
+      <span style="font-size:11px;letter-spacing:1.5px;color:var(--muted);" id="conn-label">CONNECTED</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="video-wrap">
+      <video id="cam" autoplay playsinline muted></video>
+      <canvas id="snap"></canvas>
+      <div class="hud">
+        <div class="hud-top">
+          <span class="chip" id="chip-entropy">entropy —</span>
+          <span class="chip" id="chip-reason">awaiting</span>
+        </div>
+        <div class="hud-bottom">
+          <span class="chip" id="chip-fps">fps —</span>
+          <span class="chip" id="chip-geo">geo —</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>device id</label>
+          <input id="deviceId" placeholder="차량번호/장치 별칭"/>
+        </div>
+        <div>
+          <label>교차로(선택)</label>
+          <input id="intersectionId" placeholder="1007"/>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:grid;gap:10px;">
+        <button class="btn btn-primary" id="startBtn">Shadow Mode 시작</button>
+        <button class="btn btn-danger" id="capBtn" disabled>수동 기여 (1장)</button>
+        <button class="btn btn-ghost" id="statsBtn">서버 통계 보기</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted" style="margin-bottom:6px;">SERVER STATUS</div>
+      <div class="status" id="serverStatus">대기 중…</div>
+    </div>
+  </main>
+
+  <footer>© AuraView Fleet · PII 자동 마스킹 후 업로드 · 원본 즉시 폐기</footer>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

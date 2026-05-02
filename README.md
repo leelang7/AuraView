@@ -1,150 +1,295 @@
 # AuraView
 
-> 비가시 교통정보 축적·고도화 기반 지능형 안전 주행 지원 시스템
+> **K-Perception Platform — 블랙박스 한 대로 사각지대까지 계산한다.**
+> Tesla-style occupancy · fleet-learning · end-to-end risk prediction 에 **Tesla 도 못 하는 한국 도로 협업 인지(V2V + Bus + Bidirectional)** 까지 결합한 안전 주행 지원 시스템.
 
-보이지 않는 신호와 공간을 계산해 미래 위험을 예측하는 모바일 웹 서비스입니다.  
-앞차나 대형차에 가려진 신호 상황을 YOLOv8 기반으로 감지하고, 공공 신호 API와 결합해 즉시 HUD 경고를 제공합니다.
+### 🌐 Live
 
----
+- **Dashboard:** https://auraview.allthatai.kr/ui ← 9탭 풀 데모
+- **Mobile App (Flutter / PWA):** https://auraview.allthatai.kr/pwa/
+- **Slides (Reveal.js 발표):** https://auraview.allthatai.kr/slides/
+- **Kiosk (무인 자동 시연):** https://auraview.allthatai.kr/kiosk/
+- **API Docs (Swagger):** https://auraview.allthatai.kr/docs
+- **Brand portfolio:** https://allthatai.kr
 
-## Demo
-
-**Dashboard** → `http://13.48.70.193:8000/ui`
-
----
-
-## Pipeline
-
-```
-영상 입력
-  → YOLOv8 시야 차단 인식
-  → 비가시 영역 추정
-  → 공공 신호 API 연동
-  → 위험 스코어링
-  → HUD 경고 출력
-  → 이벤트 DB 축적
-```
+> 본 리포 **monorepo** : 백엔드 · Flutter · 랜딩 · 슬라이드 · 키오스크 · 학습 노트북 · 문서 모두 한 곳.
+> **README 도 이 한 파일**에서 모든 모듈을 다룬다.
 
 ---
 
-## Key Features
+## 🎯 Positioning — Tesla FSD 만으로는 부족하다
 
-- **시야 차단 인식** — YOLOv8-nano 기반 차량/신호 객체 탐지
-- **신호 정보 복원** — 교통안전 공공데이터 API 연동 (교차로별 잔여시간, 신호 상태)
-- **위험 스코어링** — 지속시간 · 장애물 유형 · 누적 이벤트 기반 실시간 점수 산출
-- **이벤트 지도화** — Leaflet 기반 실시간 위험 분포 지도 및 TOP 5 랭킹
-- **이미지 / 영상 분석** — 단일 프레임 오버레이 및 영상 구간별 위험 프레임 추출
-- **HUD 알림** — 텍스트 기반 경고 안내 (신호 가림 감지 / 확인 가능)
-
----
-
-## Tech Stack
-
-| Layer | Stack |
-|---|---|
-| Backend | FastAPI · Uvicorn · SQLAlchemy · SQLite |
-| Vision | YOLOv8-nano (Ultralytics) |
-| Validation | Pydantic |
-| Frontend | Vanilla JS · Leaflet.js (embedded HTML) |
-| External API | 교통안전 실시간 신호등 정보 API (`apis.data.go.kr`) |
-| Infra | AWS EC2 · nohup |
-
----
-
-## Project Structure
-
-```
-AuraView/
-├── backend/
-│   └── app/
-│       ├── main.py              # FastAPI 앱 + 대시보드 UI
-│       ├── config.py            # 환경 변수
-│       ├── database.py          # SQLite 세션
-│       ├── models.py            # ORM 모델
-│       ├── schemas.py           # Pydantic 스키마
-│       ├── routers/
-│       │   ├── detect.py        # 이미지/영상 분석
-│       │   ├── events.py        # 이벤트 CRUD + 지도 데이터
-│       │   ├── risk.py          # 위험 스코어 집계
-│       │   ├── signals.py       # 신호 정보 프록시
-│       │   └── intersections.py # 교차로 동기화
-│       └── services/
-│           ├── detector.py      # YOLOv8 래퍼
-│           ├── public_api.py    # 공공 API 호출
-│           ├── matching.py      # 지오로케이션 매칭
-│           └── scoring.py       # 위험 점수 계산
-├── requirements.txt
-└── README.md
-```
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
+| 구분 | 기존 ADAS / Tesla FSD | **AuraView K-Perception** |
 |---|---|---|
-| `GET` | `/ui` | 대시보드 |
-| `POST` | `/detect/frame` | 이미지 위험 분석 |
-| `POST` | `/detect/video` | 영상 위험 분석 |
-| `GET` | `/events/` | 이벤트 목록 |
-| `GET` | `/events/map-data` | 지도용 집계 데이터 |
-| `GET` | `/risk/` | 교차로별 위험 랭킹 |
-| `GET` | `/signals/{id}` | 교차로 신호 정보 |
-| `GET` | `/intersections/` | 교차로 목록 |
-| `POST` | `/intersections/sync` | 공공 API 동기화 |
+| 출력 | 2D 박스 / 자기 카메라 BEV | **3D Occupancy + V2V 결합 BEV** |
+| 사각지대 | "모름" 처리 | **마주오는 차의 시점**으로 메움 |
+| 추론 | rule + 단일 모델 | **End-to-End Risk Transformer** |
+| 데이터 | 단일 소스 | **6종 공공데이터 + V2V 풀 + 정류장 prior** |
+| 학습 | 고정 모델 | **Fleet Learning 플라이휠** + 자동 재학습 |
+| 대상 | 운전자 | **운전자 + 보행자 + 이륜 노동자 + 지자체 + K-MaaS 운영자** |
 
 ---
 
-## Quickstart
+## 🏆 2026 국토교통 데이터활용 경진대회 — 가점 25점 + K-MaaS 특별상
+
+| 가점 항목 | 배점 | 충족 방식 | 엔드포인트 |
+|---|---:|---|---|
+| **AI 활용 — 학습** | 5 | HydraNet · Risk Transformer · Intent Predictor + Fleet 데이터 (AUC **0.94**) | `/fleet/contribute`, `notebooks/risk_transformer_metric.py` |
+| **AI 활용 — 분석** | 5 | Occupancy 3D · BEV viewer · 사고 재현 영상 · 합본 Showreel | `/occupancy/infer`, `/scenario/reenact`, `/showreel/build` |
+| **데이터 융합** | 5 | 신호 · VDS · 돌발 · TAAS · ITS · 안심구역 6종 한 응답 결합 | `/fusion/intersection/{id}` |
+| **가명정보 결합** | 5 | HMAC 가명화 · k=5 익명성 · 얼굴/번호판 블러 · TAAS×VDS 결합 | `/dsz/join/taas-vds`, `/fleet/contribute` |
+| **안심구역** | 5 | 반입·결합분석·해시 검증 반출 + Top-N 정책 리포트 | `/dsz/verify`, `/reports/generate` |
+| **⭐ K-MaaS 특별상** | +300만원 | 위험 교차로 → 대중교통 우회 추천 + 노선 운영팀 환원 | `/kmaas/alternatives`, `/kmaas/operator-report` |
+
+→ [docs/WHITEPAPER_KR.md](docs/WHITEPAPER_KR.md) · [docs/DATASETS.md](docs/DATASETS.md) · [docs/ROADMAP.md](docs/ROADMAP.md)
+
+---
+
+## 🧠 Tesla-Style 8 + 한국 특화 협업 인지 3
+
+### Tesla AI Day 식 8종
+1. **Occupancy Network** — 40m × 40m × 0.5m BEV voxel 점유 확률
+2. **HydraNet 멀티태스크 백본** — 신호·차량·VRU·차선·표지 동시
+3. **End-to-End Risk Transformer** — 영상+신호+GPS → 5초 충돌 확률
+4. **Intent Prediction** — 가려진 보행자/이륜 경로 분포
+5. **Fleet Learning (Shadow Mode)** — 어려운 장면만 자동 업로드
+6. **BEV 3D Dashboard** — Three.js voxel 실시간 (FSD UI)
+7. **Accident Reenactment** — "AuraView 였다면 N초 먼저"
+8. **C-ITS / V2X 브릿지** — 인프라 신호와 비전 교차 검증
+
+### ⭐ Tesla 도 못 하는 한국 특화 3종 — Collaborative Perception
+9. **V2V Cross-Vehicle Perception** — **마주오는 차의 시점**을 내 BEV 에 머지 → "버스 너머 보행자" 직격 (`backend/app/services/v2v.py`)
+10. **Bus-Aware Pedestrian Prior** — 정류장 데이터 + 버스 정차/출발 상태 → 보행자 prior **+0.55** boost (`backend/app/services/bus_aware.py`)
+11. **Bidirectional Lane Fusion** — 마주오는 차들의 감속 비율 + VDS 상행/하행 비대칭 → 사고 즉시 감지 + 권장속도 (`backend/app/services/bidirectional.py`)
+
+---
+
+## 📊 측정 결과 (백서 §7)
+
+| 지표 | 측정값 | 출처 |
+|---|---:|---|
+| Risk Transformer **AUC** | **0.938** | `models/risk_transformer_metric.json` |
+| F1 @ 0.5 | 0.905 | 상동 (n=1000, 라벨 노이즈 6%) |
+| 사고 재현 영상 평균 **선행 경고 시간** | **5.72s** | 합성 시나리오 3종 |
+| 협업 인지 lift (단독 vs Fused) | **+10~31%p** | TAB ⑨ 실시간 시연 |
+| 통합 테스트 | **18 / 18 PASS** | `backend/tests/` |
+
+---
+
+## 📐 Pipeline (협업 인지 포함)
+
+```
+┌──────────── Edge (차량·블랙박스·Flutter 앱) ────────────┐
+│ 영상 → HydraNet → Local Occupancy → Intent → E2E Risk │
+└─────────────┬────────────────────────────────┬─────────┘
+              │ V2V 메시지 broadcast            │ HUD 경고
+              ▼                                 ▲
+┌──────────── Cloud (auraview.allthatai.kr) ─────────────┐
+│  V2V 풀 (교차로별)  ─┐                                  │
+│  버스 정류장 DB    ──┼─► /collab/fused-occupancy        │
+│  VDS 상행/하행     ──┘    → 단독(local) vs 협업(fused)  │
+│                                                         │
+│  Fleet 하드샘플 ─► PII 마스킹 ─► 자동 재학습 ─► OTA      │
+│  TAAS × VDS 안심구역 결합분석 ─► Top-N 정책 리포트       │
+│  K-MaaS 운영팀 환원 ◄─► 시민용 우회 경로 추천            │
+└────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📦 Monorepo 구조
+
+```
+github.com/leelang7/AuraView (feat/k-perception)
+├── backend/                    FastAPI + 9 라우터 + 18 pytest
+│   └── app/
+│       ├── routers/            occupancy · fleet · fusion · dsz · kmaas ·
+│       │                       reports · scenario · showreel · heatmap · collab
+│       ├── services/           hydranet · occupancy · risk_transformer · intent ·
+│       │                       v2v · bus_aware · bidirectional · pii · dsz_adapter ·
+│       │                       scenario · showreel · hazard_report · public_api
+│       └── tests/              18 통합 테스트 (외부 API fallback)
+├── auraview_fleet/             Flutter (Android + Web) — Perception Eye 아이콘 + 풀스크린 UX
+├── frontend_pwa/               백업 PWA (HTML/JS)
+├── landing/                    allthatai.kr 랜딩 페이지 (GitHub Pages 배포 대상)
+├── static/
+│   ├── slides/                 Reveal.js 발표 12장 (/slides)
+│   └── kiosk/                  무인 자동 시연 9장면 (/kiosk)
+├── notebooks/                  train_*.ipynb · risk_transformer_metric.py · accident_reenactment.ipynb
+├── models/                     risk_transformer_metric.json (AUC 0.94)
+├── dsz_exports/                안심구역 결합분석 샘플 (k=5 익명화)
+├── docs/                       WHITEPAPER_KR.md · ROADMAP.md · DATASETS.md
+├── .github/workflows/          ci.yml (Python+Flutter 자동 테스트) + deploy.yml (push→EC2 자동)
+├── requirements.txt
+└── README.md (이 파일 · 모든 모듈 통합 문서)
+```
+
+---
+
+## 🔌 API 엔드포인트
+
+| Method | Path | 가점 |
+|---|---|---|
+| `GET`  | `/ui` `/pwa` `/slides` `/kiosk` `/docs` | 분석 |
+| `POST` | `/detect/frame` · `/detect/video` | 분석 |
+| `POST` | `/occupancy/infer` · `GET /occupancy/demo` | 학습·분석 |
+| `POST` | `/fleet/contribute` · `GET /fleet/stats` | 가명·학습 |
+| `GET`  | `/fusion/intersection/{id}` · `/fusion/sources` | 융합 |
+| `POST` | `/dsz/verify` · `/dsz/join/taas-vds` · `GET /dsz/artifacts` | 안심·가명 |
+| `POST` | `/reports/generate?top=N` · `GET /reports/list` | 분석·안심 |
+| `POST` | `/scenario/reenact` · `GET /scenario/list` · `/scenario/presets` | 분석 |
+| `POST` | `/showreel/build` · `GET /showreel/list` | 분석 |
+| `GET`  | `/kmaas/alternatives` · `/kmaas/operator-report` | **K-MaaS 특별상** |
+| `GET`  | `/heatmap/taas` | 융합·분석 |
+| `POST` | **`/collab/v2v/broadcast`** · `GET /collab/v2v/intersection/{id}` · `/v2v/stats` | **협업 인지** |
+| `POST` | **`/collab/v2v/seed-demo`** | 시연 시드 |
+| `POST` | **`/collab/bus-context`** · **`/collab/bidirectional`** | 협업 인지 |
+| `POST` | **`/collab/fused-occupancy`** ★ | **단독 vs 협업 비교** |
+
+---
+
+## 🚀 Quickstart
+
+### Backend (FastAPI)
 
 ```bash
-# 의존성 설치
-pip install fastapi uvicorn sqlalchemy pydantic requests python-dotenv ultralytics
-
-# 서버 실행 (개발)
-cd AuraView/backend
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 백그라운드 실행 (운영)
-cd AuraView/backend
-nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
-
-# 서버 종료
-pkill -f "uvicorn app.main:app"
-
-# 로그 확인
-tail -f AuraView/backend/uvicorn.log
+git clone https://github.com/leelang7/AuraView.git
+cd AuraView
+cp .env.example .env    # → SERVICE_KEY 등 실제 값 입력
+pip install -r requirements.txt
+cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 환경 변수 (.env)
+대시보드: http://localhost:8000/ui · 통합 테스트: `cd backend && pytest tests/`
 
+### Flutter Mobile App (`auraview_fleet/`)
+
+> **Tesla-style Shadow Mode** dashcam 기여 단말. AuraView 백엔드의 `/fleet/contribute`
+> 엔드포인트로 어려운 장면(불확실성·움직임 큰 프레임)만 자동 업로드.
+
+| Platform | Status |
+|---|---|
+| Android | ✅ 빌드·실행 (Android 7.0 / API 24+) · APK 51MB |
+| iOS | 🛠️ 추가 작업 필요 (Mac + Xcode) |
+| Web (PWA) | ✅ Chrome/Edge 데스크톱·모바일 (HTTPS 환경에서 카메라 작동) |
+
+#### 기능
+- **풀스크린 카메라 프리뷰** + 라디얼 비네트
+- 상단 HUD: AuraView 로고 + 누적 카운터 + 연결 상태
+- **단일 알약 버튼** — 탭=시작/정지, 길게 누르기=수동 1장 기여
+- 위로 스와이프 시 상세 시트 (캡처 / 업로드 / 실패 / 서버 누적 4-tile + 마지막 entropy / reason)
+- 캡처/업로드 시 cyan→safe 펄스 링 애니메이션 + Haptic 진동
+- 디바이스 ID 자동 생성 (서버에서 HMAC 가명화)
+- 위치 권한 허용 시 lat/lon 함께 전송
+- 교차로 ID SharedPreferences 영속
+
+#### 빌드 / 실행
+```bash
+cd auraview_fleet
+flutter pub get
+
+# Android 디버그
+flutter devices                        # 연결된 기기 확인
+flutter run -d <device_id>
+
+# Android 릴리스 APK
+flutter build apk --release \
+  --dart-define=AURAVIEW_API_BASE=https://auraview.allthatai.kr
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+
+# Web (PWA-ready)
+flutter run -d chrome --web-port 5180 \
+  --dart-define=AURAVIEW_API_BASE=https://auraview.allthatai.kr
+
+# 앱 아이콘 재생성 (디자인 수정 시)
+python tools/make_icons.py
+# → android/app/src/main/res/mipmap-* (legacy + adaptive) 자동 갱신
+# → web/icons/Icon-*.png · favicon.png 도 동시에 교체
 ```
-SERVICE_KEY=<공공데이터포털 API 인증키>
+
+#### 권한
+- **CAMERA** (필수) — 프리뷰 + 캡처
+- **INTERNET** (필수) — 업로드
+- **ACCESS_FINE_LOCATION** (선택) — 위치 함께 보낼 때만
+
+#### 클라이언트 아키텍처
 ```
+[ Flutter Camera ]
+        │ takePicture (4초 주기)
+        ▼
+[ image package ]                ← decode → 64×64 grayscale
+        │ entropy + motion 추정
+        ▼
+[ Threshold filter ]             entropy ≥ 0.55 || motion ≥ 0.7 → upload
+        │
+        ▼
+[ http MultipartRequest ]        device_id + entropy + reason + (lat,lon) + JPEG
+        │
+        ▼
+   POST https://auraview.allthatai.kr/fleet/contribute
+                                    └─ 서버에서 PII 마스킹 + 가명화 → 저장
+                                    └─ /collab/v2v/* 풀로도 분기 (TODO)
+```
+
+#### Flutter 앱 TODO
+- [ ] **V2V broadcast 통합** — 폰이 자체 detection 을 `/collab/v2v/broadcast` 로 송신해 같은 교차로 다른 차량과 공유
+- [ ] `startImageStream()` 기반 실시간 onboard 추론
+- [ ] TFLite 로 YOLOv8-nano 온디바이스
+- [ ] iOS 빌드 (Mac 에서 `flutter create --platforms ios .`)
+- [ ] Background Service (foreground notification 으로 차량 운행 중 지속 캡처)
+- [ ] HMAC 사인 헤더로 위변조 방지
+
+### Landing Page (`landing/` → `allthatai.kr`)
+
+> AllThatAI 포트폴리오의 얼굴. 프로젝트 카드 추가는 `landing/index.html` 하단 `.grid` 안에
+> `<a class="card" ...>` 블록 하나 붙여넣으면 자동으로 확장.
+
+#### 배포 — GitHub Pages (무료 · HTTPS 자동)
+**현재 배포 위치**: 별도 리포 [`leelang7/allthatai-landing`](https://github.com/leelang7/allthatai-landing) (Pages 호스팅).
+이 monorepo 의 `landing/` 폴더가 **단일 소스** 이고, 변경 시 해당 리포로 sync push.
+
+```bash
+# 변경 후 sync (manual)
+cd /tmp && rm -rf _land
+git clone https://github.com/leelang7/allthatai-landing.git _land
+cp /path/to/AuraView/landing/index.html _land/index.html
+cp /path/to/AuraView/landing/CNAME _land/CNAME
+cd _land && git add -A && git commit -m "sync from monorepo" && git push
+```
+
+#### DNS (가비아)
+| 타입 | 호스트 | 값 | TTL |
+|---|---|---|---|
+| A | `@` | `185.199.108.153` | 300 |
+| A | `@` | `185.199.109.153` | 300 |
+| A | `@` | `185.199.110.153` | 300 |
+| A | `@` | `185.199.111.153` | 300 |
+| CNAME | `www` | `leelang7.github.io.` | 300 |
+| A | `auraview` | `13.48.70.193` | 300 |
+| A | `lolbutler` | `158.247.200.59` | 300 |
 
 ---
 
-## Use Cases
+## 💡 Use Cases
 
-**신호 가림 상황**  
-전방 대형차로 신호가 보이지 않을 때 → `신호 가림 감지 / 잔여 12초`
-
-**보행자 출현 예측**  
-횡단보도·골목 위험 구간 접근 시 → `보행자 출현 가능`
-
-**사각지대 차량 접근**  
-측면/후방 비가시 구역 → `충돌 위험`
+- **횡단보도에서 버스가 신호등을 가림** → 신호 API + Bus prior + V2V 마주오는 차 → 보행자 직격
+- **사각지대 이륜차** → BEV occupancy + intent + 마주오는 차 시점
+- **전방 교차로 위험 ≥ 6** → K-MaaS 우회 대중교통 3종 추천
+- **상습 위험 교차로** → Top-N 정책 리포트 자동 생성 → 지자체·도로공사·K-MaaS 환원
+- **무인 시연 부스** → `/kiosk` 한 화면에 9장면 자동 순회
 
 ---
 
-## Roadmap
+## 🗺️ Roadmap
 
-- [ ] Transformer 기반 시계열 위험 예측 모델
-- [ ] 프론트엔드 분리 (React / Vue)
-- [ ] PostgreSQL 전환
-- [ ] API 인증 (JWT)
-- [ ] 업로드 파일 자동 정리
+- [x] Week 1 — Occupancy PoC + HydraNet skeleton
+- [x] Week 2 — 6종 어댑터 + 가명결합 + E2E baseline (AUC 0.94)
+- [x] Week 3 — BEV 3D · Fleet PWA · Flutter 앱 · 안심구역 결과물 · 사고 재현 영상
+- [x] Week 3.5 — V2V + Bus + Bidirectional 협업 인지 + Reveal 발표 + Kiosk
+- [ ] Week 4 — 발표 슬라이드 v2 · 시연 리허설 · 제출 패키지 마감
+
+상세 → [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ---
 
-> **보이지 않는 정보를 데이터화하고, 보이지 않는 공간을 계산하여 미래 위험을 예측한다**
+> **보이지 않는 정보를 데이터화하고, 보이지 않는 공간을 계산하여, 다른 차량의 시점까지 빌려와 미래 위험을 예측한다.**

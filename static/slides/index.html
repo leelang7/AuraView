@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=1280, initial-scale=1, viewport-fit=cover"/>
+<title>AuraView · K-Perception · 발표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/reveal.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/theme/black.min.css" id="theme"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --accent:#00c8ff; --accent2:#7c3aed; --safe:#00e09a; --warn:#ffb020; --danger:#ff3b3b;
+    --bg:#080c14; --surface:#0d1520; --surface2:#121d2e; --text:#e2eaf5; --muted:#5a7a9a;
+  }
+  .reveal { font-family:'Noto Sans KR', system-ui, sans-serif; color: var(--text); }
+  .reveal h1, .reveal h2, .reveal h3 { font-family:'Black Han Sans', sans-serif; color:var(--text); letter-spacing:-0.5px; line-height:1.1; }
+  .reveal h1 em, .reveal h2 em, .reveal h3 em {
+    font-style:normal;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip:text; color:transparent;
+  }
+  .reveal section { background: var(--bg); }
+  .reveal .slide-number { color: var(--muted); font-family:'JetBrains Mono', monospace; }
+  .reveal pre, .reveal code { font-family:'JetBrains Mono', monospace; }
+  .reveal ul, .reveal ol { line-height:1.6; }
+  .reveal a { color: var(--accent); text-decoration: none; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 15% 20%, rgba(0,200,255,0.07) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 0%, rgba(124,58,237,0.06) 0%, transparent 55%);
+  }
+  .eyebrow {
+    font-family:'JetBrains Mono', monospace; font-size:14px; letter-spacing:5px;
+    color:var(--accent); text-transform:uppercase; opacity:0.8; margin-bottom:18px;
+  }
+  .lede { color:var(--muted); font-size:24px; line-height:1.6; max-width:880px; margin:0 auto; }
+  .pulse {
+    display:inline-block; width:10px; height:10px; border-radius:50%;
+    background:var(--safe); box-shadow:0 0 10px var(--safe);
+    animation: pulse 1.6s ease-in-out infinite; margin-right:10px;
+  }
+  @keyframes pulse { 50% { opacity:.4; transform:scale(.7);} }
+
+  .grid2, .grid3, .grid4 { display:grid; gap:18px; }
+  .grid2 { grid-template-columns:1fr 1fr; }
+  .grid3 { grid-template-columns:repeat(3, 1fr); }
+  .grid4 { grid-template-columns:repeat(4, 1fr); }
+  .card {
+    background: var(--surface); border:1px solid rgba(0,200,255,0.18);
+    border-radius:14px; padding:22px; text-align:left;
+  }
+  .card h3 { font-size:22px; margin-bottom:8px; }
+  .card .sub { color:var(--accent); font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:1.5px; margin-bottom:8px; }
+  .card p { color:var(--muted); font-size:14px; line-height:1.7; }
+  .badge {
+    display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px;
+    padding:3px 9px; border-radius:5px; border:1px solid rgba(0,200,255,0.25);
+    background: rgba(0,200,255,0.08); color: var(--accent); margin-right:5px;
+  }
+  .badge.warn { background:rgba(255,176,32,0.10); color:var(--warn); border-color:rgba(255,176,32,0.30); }
+  .badge.safe { background:rgba(0,224,154,0.10); color:var(--safe); border-color:rgba(0,224,154,0.30); }
+  .badge.special { background:rgba(124,58,237,0.12); color:#a995ff; border-color:rgba(124,58,237,0.35); }
+
+  .stat { text-align:center; padding:20px; background:var(--surface); border:1px solid rgba(0,200,255,0.18); border-radius:14px; }
+  .stat .n { font-family:'Black Han Sans', sans-serif; font-size:64px; line-height:1;
+             background: linear-gradient(135deg, var(--accent), var(--accent2));
+             -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .stat .l { font-family:'JetBrains Mono', monospace; color:var(--muted); font-size:11px; letter-spacing:2px; margin-top:8px; }
+
+  table { width:100%; border-collapse:collapse; font-size:18px; }
+  th, td { padding:12px 14px; border-bottom:1px solid rgba(0,200,255,0.10); text-align:left; }
+  th { background:rgba(0,200,255,0.06); color:var(--accent); font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:1.5px; }
+
+  .live-iframe {
+    width:100%; height:520px; border:1px solid rgba(0,200,255,0.18);
+    border-radius:14px; background:#000;
+  }
+
+  .footer-brand {
+    position:absolute; bottom:18px; left:36px; right:36px;
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:2px;
+    color:var(--muted); pointer-events:none;
+  }
+  .footer-brand em { color:var(--accent); font-style:normal; }
+</style>
+</head>
+<body>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- 1. TITLE -->
+    <section data-background-color="#080c14">
+      <div class="eyebrow">2026 국토교통 데이터활용 경진대회</div>
+      <h1>Aura<em>View</em></h1>
+      <h3 style="font-size:32px; margin-top:14px;">한국 도심에 이식한 <em>Tesla FSD</em></h3>
+      <p class="lede" style="margin-top:30px;">
+        보이지 않는 신호와 공간을 확률로 복원해<br>
+        <em style="font-style:normal;color:var(--accent);">사고를 평균 5.7초 먼저</em> 경고하는 K-Perception 플랫폼
+      </p>
+      <div style="margin-top:38px;">
+        <span class="pulse"></span>
+        <span style="font-family:'JetBrains Mono', monospace; font-size:13px; letter-spacing:2px; color:var(--safe);">SYSTEM ONLINE · auraview.allthatai.kr</span>
+      </div>
+    </section>
+
+    <!-- 2. PROBLEM -->
+    <section>
+      <div class="eyebrow">// PROBLEM</div>
+      <h2>지금 ADAS 는 <em>보이는 것</em>만 본다</h2>
+      <div class="grid4" style="margin-top:36px;">
+        <div class="stat"><div class="n">45%</div><div class="l">교통사고 중 교차로 비중</div></div>
+        <div class="stat"><div class="n">12%</div><div class="l">사망자 중 이륜 비중</div></div>
+        <div class="stat"><div class="n">60%+</div><div class="l">보행자 사망의 65세 이상</div></div>
+        <div class="stat"><div class="n">5만+</div><div class="l">연간 교차로 사고 건수</div></div>
+      </div>
+      <p class="lede" style="margin-top:28px;">
+        대형차 뒤 보행자, 가려진 신호, 사각지대 이륜차 — <br>
+        <em style="font-style:normal;color:var(--warn);">"보이지 않는 영역"</em> 은 그저 모름으로 처리된다.
+      </p>
+    </section>
+
+    <!-- 3. SOLUTION -->
+    <section>
+      <div class="eyebrow">// SOLUTION</div>
+      <h2>보이지 않는 공간을 <em>확률로</em> 채운다</h2>
+      <div class="grid2" style="margin-top:30px;">
+        <div class="card">
+          <div class="sub">// OCCUPANCY NETWORK</div>
+          <h3>3D 점유 격자</h3>
+          <p>40m × 40m × 0.5m BEV voxel 로 교차로 전체 공간을 확률 점유 추정. 가려진 영역 unknown shadow 까지 명시적으로 모델링 — Tesla AI Day 의 시그니처 기술을 한국 도심에 이식.</p>
+        </div>
+        <div class="card">
+          <div class="sub">// E2E RISK TRANSFORMER</div>
+          <h3>End-to-End 위험 예측</h3>
+          <p>영상 + 신호 API + GPS + 궤적을 단일 모델에서 향후 5초 충돌 확률로 산출. 룰 기반이 아니라 <em style="color:var(--accent);">학습 기반</em> — FSD v12 철학.</p>
+        </div>
+        <div class="card">
+          <div class="sub">// FLEET LEARNING</div>
+          <h3>Shadow Mode 데이터 플라이휠</h3>
+          <p>스마트폰 블랙박스 PWA / Flutter 앱이 어려운 장면만 자동 업로드. 한국 블랙박스 보급률 90%+ 환경에서 Tesla 보다 유리.</p>
+        </div>
+        <div class="card">
+          <div class="sub">// HYDRANET</div>
+          <h3>멀티태스크 백본</h3>
+          <p>한 백본 → 신호·차량·VRU·차선·표지 동시 추론. 추론 비용 고정, 정보량 6~8배.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. DEMO -->
+    <section>
+      <div class="eyebrow">// LIVE DEMO</div>
+      <h2><em>지금 작동</em>합니다</h2>
+      <iframe class="live-iframe" src="https://auraview.allthatai.kr/ui" loading="lazy"></iframe>
+      <p style="font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--muted); margin-top:14px;">
+        ↑ <em style="color:var(--accent); font-style:normal;">실시간 임베드</em> · 화살표 키로 다른 슬라이드 이동, F 키로 전체화면
+      </p>
+    </section>
+
+    <!-- 5. SCORECARD -->
+    <section>
+      <div class="eyebrow">// 가점 정조준</div>
+      <h2>가점 25점 + <em>특별상 300만원</em></h2>
+      <table style="margin-top:20px;">
+        <thead>
+          <tr><th>항목</th><th>배점</th><th>증빙</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>AI 활용 · 학습</td><td>5점</td><td>HydraNet · Risk Transformer · Intent Predictor + Fleet 누적 학습 데이터</td></tr>
+          <tr><td>AI 활용 · 분석</td><td>5점</td><td>Occupancy 3D · BEV viewer · 사고 재현 영상</td></tr>
+          <tr><td>데이터 융합</td><td>5점</td><td>신호 · VDS · 돌발 · TAAS · ITS · 안심구역 6종</td></tr>
+          <tr><td>가명정보 결합</td><td>5점</td><td>HMAC 가명화 · k=5 익명성 · 얼굴/번호판 블러</td></tr>
+          <tr><td>안심구역</td><td>5점</td><td>반입·결합분석·해시 검증 반출 + 정책 리포트</td></tr>
+          <tr style="background:rgba(124,58,237,0.08);"><td>⭐ K-MaaS 특별상</td><td>+300만</td><td>위험 교차로 → 대중교통 우회 + 운영팀 환원</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 6. TECH STACK -->
+    <section>
+      <div class="eyebrow">// STACK</div>
+      <h2>Tesla 식 <em>풀 스택</em></h2>
+      <div class="grid3" style="margin-top:24px;">
+        <div class="card">
+          <div class="sub">// PERCEPTION</div>
+          <h3>Edge</h3>
+          <p>YOLOv8n · HydraNet · Occupancy Net · Intent Predictor</p>
+          <div style="margin-top:10px;">
+            <span class="badge">Ultralytics</span><span class="badge">PyTorch</span><span class="badge">Numpy</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sub">// CLOUD</div>
+          <h3>Backend</h3>
+          <p>FastAPI · SQLAlchemy · Pydantic v2 · 6종 API 어댑터 · Showreel · Reports</p>
+          <div style="margin-top:10px;">
+            <span class="badge">FastAPI</span><span class="badge">Nginx</span><span class="badge">Let's Encrypt</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sub">// FRONT</div>
+          <h3>Visual</h3>
+          <p>Three.js BEV 3D · Leaflet 지도 · Reveal.js 발표 · Flutter 모바일 + PWA</p>
+          <div style="margin-top:10px;">
+            <span class="badge">Three.js</span><span class="badge">Leaflet</span><span class="badge">Flutter 3.41</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. K-MAAS -->
+    <section data-background-color="#0a0518">
+      <div class="eyebrow special" style="color:#a995ff;">// SPECIAL PRIZE</div>
+      <h2><span style="color:#a995ff;">⭐</span> K-MaaS <em>특별상</em></h2>
+      <p class="lede" style="margin-top:18px;">위험을 감지하면 <em style="color:#a995ff;font-style:normal;">즉시 대중교통으로</em></p>
+      <div class="grid2" style="margin-top:30px;">
+        <div class="card">
+          <div class="sub" style="color:#a995ff;">// B2C — 시민용</div>
+          <h3>지하철 · 버스 · 따릉이 추천</h3>
+          <p>전방 위험도 ≥ 6 일 때 즉시 우회 경로 3종. 소요시간 · 요금 · CO₂ 절감 · 우회 가치 점수 동봉.</p>
+          <pre style="margin-top:10px;font-size:12px;background:#1a0a3a;border:1px solid rgba(124,58,237,0.3);border-radius:8px;padding:14px;">GET /kmaas/alternatives</pre>
+        </div>
+        <div class="card">
+          <div class="sub" style="color:#a995ff;">// B2G — 운영자용</div>
+          <h3>노선 운영팀 데이터 환원</h3>
+          <p>상습 위험 교차로를 시군구별로 집계해 노선 우회 / 신호 연장 권고로 환원.</p>
+          <pre style="margin-top:10px;font-size:12px;background:#1a0a3a;border:1px solid rgba(124,58,237,0.3);border-radius:8px;padding:14px;">GET /kmaas/operator-report</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. SOCIAL VALUE -->
+    <section>
+      <div class="eyebrow">// SOCIAL VALUE</div>
+      <h2>약자에게 <em>먼저 닿는</em> AI</h2>
+      <div class="grid3" style="margin-top:30px;">
+        <div class="card">
+          <div class="sub safe">// 고령 보행자</div>
+          <h3>👵 횡단 위험 선행 감지</h3>
+          <p>Intent Predictor 가 횡단 확률 2초 전에 알림 → 자동 신호 연장 권고.</p>
+        </div>
+        <div class="card">
+          <div class="sub safe">// 이륜 노동자</div>
+          <h3>🏍️ 사각지대 보호</h3>
+          <p>배달·라스트마일 이륜차 접근을 BEV 점유로 표시. 사고율 30% 감소 목표.</p>
+        </div>
+        <div class="card">
+          <div class="sub safe">// 지자체</div>
+          <h3>📊 데이터 정책 연동</h3>
+          <p>위험 교차로 Top-N 자동 리포트로 신호 운영·도로 설계 의사결정 지원.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. PHONE DEMO -->
+    <section>
+      <div class="eyebrow">// EDGE TERMINAL</div>
+      <h2>지금 <em>이 폰</em>이 학습 데이터를 만든다</h2>
+      <div class="grid2" style="margin-top:24px; align-items:center;">
+        <div>
+          <ul style="font-size:22px; line-height:1.9; color:var(--text);">
+            <li>📱 Flutter 네이티브 + PWA 동시 빌드</li>
+            <li>🎥 4초 주기 자동 캡처 (Shadow Mode)</li>
+            <li>🔐 PII 자동 마스킹 + HMAC 가명화</li>
+            <li>📤 임계 초과 프레임만 업로드 — 데이터 플라이휠</li>
+            <li>🌐 같은 코드 한 벌, Android / Web / iOS</li>
+          </ul>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div class="sub">// 직접 설치</div>
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=https://auraview.allthatai.kr/pwa/&bgcolor=ffffff&color=080c14" style="width:280px; height:280px; border-radius:12px; background:#fff; padding:8px;"/>
+          <p style="margin-top:14px;font-family:'JetBrains Mono', monospace; font-size:13px;">auraview.allthatai.kr/pwa/</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. ROADMAP -->
+    <section>
+      <div class="eyebrow">// ROADMAP</div>
+      <h2>4주 압축 → <em>지금 작동</em></h2>
+      <div class="grid4" style="margin-top:24px;">
+        <div class="card"><div class="sub safe">// W1 ✓</div><h3>PoC</h3><p>Occupancy + HydraNet skeleton</p></div>
+        <div class="card"><div class="sub safe">// W2 ✓</div><h3>Fusion</h3><p>6종 어댑터 + 가명결합</p></div>
+        <div class="card"><div class="sub safe">// W3 ✓</div><h3>BEV/Fleet</h3><p>3D viewer + PWA + Flutter</p></div>
+        <div class="card"><div class="sub" style="color:var(--warn);">// W4 ◔</div><h3>Submit</h3><p>발표 자료 · 영상 · 백서</p></div>
+      </div>
+      <p class="lede" style="margin-top:30px;">
+        <em style="font-style:normal;color:var(--accent);">접수 마감 D-29</em>까지 모든 항목 ✓
+      </p>
+    </section>
+
+    <!-- 11. CTA -->
+    <section data-background-color="#080c14">
+      <div class="eyebrow">// EXPLORE</div>
+      <h2>지금 <em>한 번 눌러보세요</em></h2>
+      <div class="grid2" style="margin-top:36px;">
+        <div class="card">
+          <div class="sub">// DASHBOARD</div>
+          <h3>auraview.allthatai.kr/ui</h3>
+          <p>8개 탭 · BEV 3D · 사고 재현 · K-MaaS · 가점 트레이서</p>
+        </div>
+        <div class="card">
+          <div class="sub">// SOURCE</div>
+          <h3>github.com/leelang7/AuraView</h3>
+          <p>FastAPI + Flutter + Three.js · MIT 핵심 모듈 공개</p>
+        </div>
+      </div>
+      <h3 style="margin-top:50px; font-size:36px;">감사합니다.</h3>
+      <p style="margin-top:14px;font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--muted); letter-spacing:3px;">
+        AURAVIEW · K-PERCEPTION · ALLTHATAI 2026
+      </p>
+    </section>
+
+  </div>
+</div>
+
+<div class="footer-brand">
+  <span><em>Aura</em>View · K-Perception</span>
+  <span>auraview.allthatai.kr</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/reveal.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'fade',
+    width: 1280,
+    height: 760,
+    margin: 0.06,
+    controls: true,
+    progress: true,
+    keyboard: true,
+    overview: true,
+  });
+</script>
+
+</body>
+</html>

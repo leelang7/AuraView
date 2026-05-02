@@ -28,3 +28,53 @@ env/
 
 uploads/
 backend/uploads/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+secrets/
+
+# Model artifacts
+models/*.pt
+models/*.onnx
+models/*.safetensors
+
+# Training outputs
+runs/
+wandb/
+mlruns/
+
+# 안심구역 임시 검증/감사 로그 (manifest.jsonl 만 commit, 그 외 제외)
+dsz_exports/_incoming/
+dsz_exports/manifest.jsonl
+
+# Showreel / scenarios 산출물 (코드는 추적, 영상 파일은 제외)
+uploads/
+backend/uploads/
+
+# ── Flutter (auraview_fleet) ─────────────────────────────────────
+auraview_fleet/.dart_tool/
+auraview_fleet/.flutter-plugins
+auraview_fleet/.flutter-plugins-dependencies
+auraview_fleet/.metadata
+auraview_fleet/build/
+auraview_fleet/.idea/
+auraview_fleet/*.iml
+auraview_fleet/.packages
+auraview_fleet/local.properties
+# Android Gradle / Kotlin
+auraview_fleet/android/.gradle/
+auraview_fleet/android/local.properties
+auraview_fleet/android/app/debug/
+auraview_fleet/android/app/profile/
+auraview_fleet/android/app/release/
+auraview_fleet/android/captures/
+# iOS (있을 때)
+auraview_fleet/ios/Pods/
+auraview_fleet/ios/.symlinks/
+auraview_fleet/ios/Flutter/Flutter.framework
+auraview_fleet/ios/Flutter/Flutter.podspec
+# Web/macOS/Windows 빌드 산출물
+auraview_fleet/web/build/
+

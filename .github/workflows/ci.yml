@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  python-syntax:
+    name: Python · syntax + import smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install minimal deps for import smoke
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn sqlalchemy "pydantic>=2.0" requests python-dotenv python-multipart numpy Pillow
+      - name: Compile every backend python file
+        run: |
+          set -e
+          find backend/app -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
+      - name: Import smoke (FastAPI app)
+        env:
+          ALLOW_FALLBACK: "1"
+          SERVICE_KEY: "ci-stub"
+        run: |
+          cd backend
+          python -c "from app.main import app; print('ok', len(app.routes), 'routes')"
+
+      - name: Pytest (endpoint integration)
+        env:
+          ALLOW_FALLBACK: "1"
+          SERVICE_KEY: "ci-stub"
+        run: |
+          pip install pytest httpx
+          cd backend
+          pytest tests/ -v --tb=short -x
+
+  flutter-analyze:
+    name: Flutter · analyze (auraview_fleet)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: auraview_fleet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test --no-pub
+
+  docs:
+    name: Docs · presence check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required docs exist
+        run: |
+          for f in README.md docs/WHITEPAPER_KR.md docs/ROADMAP.md docs/DATASETS.md; do
+            test -f "$f" && echo "ok $f" || (echo "missing $f" && exit 1)
+          done

@@ -1,22 +1,120 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+import os
+
 from .database import Base, engine
-from .routers import intersections, signals, events, risk, detect
+from .routers import (
+    intersections, signals, events, risk, detect,
+    occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab,
+)
+
+# scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
+try:
+    from .routers import scenario  # noqa: F401
+    _SCENARIO_OK = True
+except Exception as _exc:
+    import logging
+    logging.getLogger("auraview").warning(
+        "scenario router disabled (install opencv-python to enable): %s", _exc
+    )
+    scenario = None
+    _SCENARIO_OK = False
+
+try:
+    from .routers import showreel  # noqa: F401
+    _SHOWREEL_OK = True
+except Exception as _exc:
+    showreel = None
+    _SHOWREEL_OK = False
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="AuraView Prototype")
+app = FastAPI(
+    title="AuraView — K-Perception Platform",
+    description="테슬라식 Occupancy · HydraNet · Fleet Learning을 한국 도심 교차로에 이식한 안전 주행 지원 시스템",
+    version="0.2.0",
+)
 
+# CORS — Flutter Web · 외부 데모 클라이언트가 직접 호출 가능하도록
+# 운영 시 화이트리스트로 좁히려면 ALLOWED_ORIGINS 환경변수에 콤마 구분으로 지정.
+_default_origins = [
+    "https://auraview.allthatai.kr",
+    "https://allthatai.kr",
+    "http://localhost",
+    "http://localhost:5180",
+    "http://127.0.0.1",
+    "http://127.0.0.1:5180",
+]
+_env_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+_allowed = [o.strip() for o in _env_origins.split(",") if o.strip()] if _env_origins else _default_origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Process-Time"],
+    max_age=600,
+)
+
+# Core routers
 app.include_router(intersections.router, prefix="/intersections", tags=["intersections"])
 app.include_router(signals.router, prefix="/signals", tags=["signals"])
 app.include_router(events.router, prefix="/events", tags=["events"])
 app.include_router(risk.router, prefix="/risk", tags=["risk"])
 app.include_router(detect.router, prefix="/detect", tags=["detect"])
 
+# K-Perception extensions (경진대회 가점 25점 커버리지)
+app.include_router(occupancy.router, prefix="/occupancy", tags=["occupancy"])
+app.include_router(fleet.router, prefix="/fleet", tags=["fleet"])
+app.include_router(fusion.router, prefix="/fusion", tags=["fusion"])
+app.include_router(dsz.router, prefix="/dsz", tags=["dsz"])
+app.include_router(kmaas.router, prefix="/kmaas", tags=["kmaas"])
+app.include_router(reports.router, prefix="/reports", tags=["reports"])
+app.include_router(heatmap.router, prefix="/heatmap", tags=["heatmap"])
+app.include_router(collab.router, prefix="/collab", tags=["collab"])
+if _SCENARIO_OK:
+    app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
+if _SHOWREEL_OK:
+    app.include_router(showreel.router, prefix="/showreel", tags=["showreel"])
+
+os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-app.mount("/app", StaticFiles(directory="app"), name="app")
+
+# 발표 슬라이드 (Reveal.js) — repo의 static/slides 폴더 자동 탐색
+def _mount_static(app, paths_relative_to_repo, mount_url):
+    """repo의 정적 폴더를 위치 자동 탐색해서 마운트."""
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", *paths_relative_to_repo),
+        os.path.join(os.getcwd(), *paths_relative_to_repo),
+        os.path.join(os.getcwd(), "..", *paths_relative_to_repo),
+    ]
+    for cand in candidates:
+        cand = os.path.abspath(cand)
+        if os.path.isdir(cand):
+            app.mount(mount_url, StaticFiles(directory=cand, html=True), name=mount_url.strip("/"))
+            return True
+    return False
+
+
+_mount_static(app, ["static", "slides"], "/slides")
+_mount_static(app, ["static", "kiosk"], "/kiosk")
+
+# Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)
+_PWA_DIR_CANDIDATES = [
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend_pwa"),
+    os.path.join(os.getcwd(), "frontend_pwa"),
+    os.path.join(os.getcwd(), "..", "frontend_pwa"),
+]
+for cand in _PWA_DIR_CANDIDATES:
+    cand = os.path.abspath(cand)
+    if os.path.isdir(cand):
+        app.mount("/pwa", StaticFiles(directory=cand, html=True), name="pwa")
+        break
 
 
 @app.get("/")
@@ -31,10 +129,28 @@ def prototype_ui():
     <html lang="ko">
     <head>
         <meta charset="utf-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <title>AuraView Dashboard</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+        <meta name="theme-color" content="#00c8ff"/>
+        <meta name="description" content="AuraView K-Perception Platform — Tesla-style occupancy · fleet learning · end-to-end risk prediction. 2026 국토교통 데이터활용 경진대회."/>
+
+        <!-- Open Graph -->
+        <meta property="og:type" content="website"/>
+        <meta property="og:title" content="AuraView · K-Perception"/>
+        <meta property="og:description" content="한국 도심에 이식한 Tesla FSD — 보이지 않는 신호와 공간을 확률로 복원해 사고를 평균 5.7초 먼저 경고합니다."/>
+        <meta property="og:url" content="https://auraview.allthatai.kr/ui"/>
+        <meta property="og:site_name" content="AuraView"/>
+        <meta name="twitter:card" content="summary_large_image"/>
+        <meta name="twitter:title" content="AuraView · K-Perception"/>
+        <meta name="twitter:description" content="한국 도심에 이식한 Tesla FSD"/>
+
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='45%25' r='60%25'%3E%3Cstop offset='0%25' stop-color='%2300d8ff'/%3E%3Cstop offset='100%25' stop-color='%23080c14'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M14 42 Q32 18 50 42' stroke='%23e2eaf5' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='36' r='5' fill='%2300c8ff' stroke='%23e2eaf5' stroke-width='1.5'/%3E%3C/svg%3E"/>
+        <title>AuraView · K-Perception · 2026 국토교통 데이터활용 경진대회</title>
+
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
@@ -820,6 +936,27 @@ def prototype_ui():
           <div class="loader-text">ANALYZING...</div>
         </div>
 
+        <!-- Boot splash: 첫 페이지 진입 임팩트 -->
+        <div id="bootSplash" style="position:fixed;inset:0;background:radial-gradient(ellipse at center, #08121e 0%, #04070d 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999;transition:opacity .8s;">
+          <div style="position:relative;width:88px;height:88px;">
+            <div style="position:absolute;inset:0;border-radius:50%;border:3px solid rgba(0,200,255,0.18);border-top-color:#00c8ff;animation:bootspin 1.1s linear infinite;"></div>
+            <div style="position:absolute;inset:14px;border-radius:50%;border:2px solid rgba(124,58,237,0.25);border-bottom-color:#7c3aed;animation:bootspin 1.7s linear infinite reverse;"></div>
+          </div>
+          <div style="font-family:'Black Han Sans',sans-serif;font-size:34px;letter-spacing:-0.5px;">
+            Aura<em style="font-style:normal;background:linear-gradient(135deg,#00c8ff,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent;">View</em>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:5px;color:#5a7a9a;">K-PERCEPTION · BOOTING…</div>
+          <style>@keyframes bootspin { to { transform: rotate(360deg); } }</style>
+        </div>
+        <script>
+          window.addEventListener('load', () => {
+            setTimeout(() => {
+              const s = document.getElementById('bootSplash');
+              if (s) { s.style.opacity = '0'; setTimeout(() => s.remove(), 900); }
+            }, 700);
+          });
+        </script>
+
         <header>
           <div class="header-inner">
             <div class="header-left">
@@ -827,9 +964,13 @@ def prototype_ui():
               <h1><em>AuraView</em> Dashboard</h1>
               <div class="subtitle">보이지 않는 신호를 대신 보여주는 시야 차단 대응형 안전 주행 보조 시스템</div>
             </div>
-            <div class="header-badge">
-              <div class="dot"></div>
-              SYSTEM ONLINE
+            <div style="display:flex;align-items:center;gap:10px;">
+              <a href="/slides/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent);padding:7px 14px;border:1px solid rgba(0,200,255,0.3);border-radius:99px;">▶ SLIDES</a>
+              <a href="/kiosk/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent2);padding:7px 14px;border:1px solid rgba(124,58,237,0.4);border-radius:99px;">⏵ KIOSK</a>
+              <div class="header-badge">
+                <div class="dot"></div>
+                SYSTEM ONLINE
+              </div>
             </div>
           </div>
         </header>
@@ -837,8 +978,14 @@ def prototype_ui():
         <div class="tabs">
           <div class="tabs-inner">
             <div class="tab active" data-tab="tab1">① AuraView 데모</div>
-            <div class="tab" data-tab="tab2">② 실시간 위험 판단</div>
-            <div class="tab" data-tab="tab3">③ 위험 지도화</div>
+            <div class="tab" data-tab="tab2">② BEV Occupancy</div>
+            <div class="tab" data-tab="tab3">③ 데이터 융합</div>
+            <div class="tab" data-tab="tab4">④ Fleet Learning</div>
+            <div class="tab" data-tab="tab5">⑤ 가점 25점 트레이서</div>
+            <div class="tab" data-tab="tab6">⑥ 사고 재현</div>
+            <div class="tab" data-tab="tab7">⑦ K-MaaS 연계</div>
+            <div class="tab" data-tab="tab8">⑧ 정책 리포트</div>
+            <div class="tab" data-tab="tab9">⑨ V2V 협업 인지</div>
           </div>
         </div>
 
@@ -946,6 +1093,9 @@ def prototype_ui():
                     <div class="k">LIVE RISK MAP</div>
                     <div class="v">AuraView Event Distribution</div>
                   </div>
+                  <div style="position:absolute;z-index:500;top:14px;right:14px;display:flex;gap:6px;">
+                    <button class="btn-secondary" style="width:auto;padding:7px 12px;font-size:11px;" onclick="toggleTaasHeatmap()">🔥 TAAS 사고 히트맵</button>
+                  </div>
                   <div id="map"></div>
                 </div>
 
@@ -959,14 +1109,378 @@ def prototype_ui():
             </div>
           </div>
 
-          <!-- TAB 2 -->
+          <!-- TAB 2 : BEV Occupancy -->
           <div class="tab-panel" id="tab2">
-            <div class="panel-placeholder">실시간 위험 판단 기능은 준비 중입니다.</div>
+            <div class="dashboard-grid">
+              <div class="left-col">
+                <div class="card">
+                  <div class="card-tag">OCCUPANCY</div>
+                  <div class="section-label">// BEV 점유 추정 입력</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">보이지 않는 공간을 확률로 채운다</div>
+                    <div class="hero-desc">Tesla Occupancy Network 방식의 경량 버전. 영상 프레임에서 BEV(조감도) 40m × 40m 범위 점유 확률을 실시간으로 복원합니다.</div>
+                  </div>
+
+                  <div class="form-grid">
+                    <div>
+                      <label>현장 이미지</label>
+                      <label class="file-label" id="occLabel" for="occ_file">
+                        <span>📷</span>
+                        <span id="occName">이미지를 선택하세요</span>
+                      </label>
+                      <input id="occ_file" type="file" accept="image/*" onchange="updateFileLabel('occ_file','occLabel','occName')"/>
+                    </div>
+                    <div class="btn-row">
+                      <div>
+                        <label>지속시간(s)</label>
+                        <input id="occ_duration" type="number" step="0.1" value="3.5"/>
+                      </div>
+                      <div>
+                        <label>장애물</label>
+                        <select id="occ_obstacle">
+                          <option value="truck">truck</option>
+                          <option value="bus">bus</option>
+                          <option value="van">van</option>
+                          <option value="car">car</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button class="btn-accent" onclick="runOccupancy()">BEV Occupancy 추정</button>
+                    <button class="btn-secondary" onclick="loadOccupancyDemo()">데모 그리드 보기</button>
+                  </div>
+
+                  <div id="occResultBox" class="status">
+                    <div class="status-title">BEV RESULT</div>
+                    <div class="status-main">대기 중</div>
+                    <div class="status-meta">Occupancy mass · Intent · Risk 확률이 여기에 표시됩니다.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="right-col">
+                <div class="card">
+                  <div class="section-label">// BEV Occupancy · <span id="occModeLabel">2D Heatmap</span></div>
+                  <div style="display:flex;gap:8px;margin-bottom:10px;">
+                    <button class="btn-secondary" style="width:auto;padding:8px 14px;" onclick="setOccMode('2d')">2D Heatmap</button>
+                    <button class="btn-accent" style="width:auto;padding:8px 14px;" onclick="setOccMode('3d')">3D Voxel (FSD-style)</button>
+                  </div>
+                  <div class="preview-wrap" id="occCanvasWrap" style="height:560px;display:flex;align-items:center;justify-content:center;">
+                    <div class="placeholder"><div class="placeholder-icon">🗺️</div>BEV 추정 결과가 여기에 표시됩니다.</div>
+                  </div>
+                  <canvas id="occThreeCanvas" style="display:none;width:100%;height:560px;border-radius:12px;background:#04080e;"></canvas>
+                </div>
+                <div class="card">
+                  <div class="section-label">// Attention (E2E Risk Transformer)</div>
+                  <div id="occAttention" class="rank-body">모델이 어느 feature에 주목했는지 표시됩니다.</div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- TAB 3 -->
+          <!-- TAB 3 : Fusion -->
           <div class="tab-panel" id="tab3">
-            <div class="panel-placeholder">위험 지도화 기능은 준비 중입니다.</div>
+            <div class="card">
+              <div class="card-tag">FUSION · 5점</div>
+              <div class="section-label">// 6종 공공데이터 한 응답 결합</div>
+              <div class="hero-copy">
+                <div class="hero-title">교차로 한 곳 = 6종 데이터 한 호출</div>
+                <div class="hero-desc">신호 · VDS · 돌발 · TAAS · ITS · 안심구역 — 각 어댑터가 동일 교차로에 대해 동시 조회 후 단일 JSON 으로 결합 반환합니다.</div>
+              </div>
+              <div class="form-grid">
+                <div class="btn-row">
+                  <div>
+                    <label>교차로 ID</label>
+                    <input id="fusion_id" type="text" value="1007"/>
+                  </div>
+                  <div>
+                    <label>Link ID</label>
+                    <input id="fusion_link" type="text" value="1000000100"/>
+                  </div>
+                </div>
+                <button class="btn-accent" onclick="runFusion()">융합 조회</button>
+              </div>
+              <div id="fusionCards" style="margin-top:18px;display:grid;grid-template-columns:repeat(auto-fill, minmax(310px, 1fr));gap:14px;">
+                <div class="placeholder" style="grid-column:1/-1;min-height:140px;">융합 결과 카드가 여기에 표시됩니다.</div>
+              </div>
+              <details style="margin-top:14px;">
+                <summary style="cursor:pointer;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;">// raw JSON</summary>
+                <pre id="fusionOut" style="margin-top:10px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);max-height:380px;overflow:auto;white-space:pre-wrap;"></pre>
+              </details>
+            </div>
+          </div>
+
+          <!-- TAB 4 : Fleet -->
+          <div class="tab-panel" id="tab4">
+            <div class="dashboard-grid">
+              <div class="left-col">
+                <div class="card">
+                  <div class="card-tag">FLEET · SHADOW MODE</div>
+                  <div class="section-label">// Fleet Learning 기여 현황</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">쓸수록 똑똑해지는 AuraView</div>
+                    <div class="hero-desc">엣지 단말이 '어려운 장면'만 PII 마스킹 후 업로드합니다. 주기적으로 모델이 재학습됩니다.</div>
+                  </div>
+                  <button class="btn-secondary" onclick="loadFleetStats()" style="margin-top:12px;">통계 새로고침</button>
+                  <pre id="fleetOut" style="margin-top:16px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);max-height:420px;overflow:auto;white-space:pre-wrap;">Fleet 통계가 여기에 표시됩니다.</pre>
+                </div>
+              </div>
+              <div class="right-col">
+                <div class="card">
+                  <div class="section-label">// 엣지 단말 PWA 설치</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">📱 스마트폰이 그대로 엣지 단말</div>
+                    <div class="hero-desc">아래 QR을 스캔하면 AuraView Fleet PWA가 설치됩니다. 카메라로 Shadow Mode가 자동 시작됩니다.</div>
+                  </div>
+                  <div id="pwaQr" style="margin-top:14px;display:flex;justify-content:center;background:#fff;border-radius:12px;padding:16px;"></div>
+                  <div style="margin-top:12px;text-align:center;">
+                    <a id="pwaLink" href="/pwa" target="_blank" style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:12px;">/pwa</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 6 : Accident Reenactment -->
+          <div class="tab-panel" id="tab6">
+            <div class="dashboard-grid">
+              <div class="left-col">
+                <div class="card">
+                  <div class="card-tag">REENACTMENT</div>
+                  <div class="section-label">// 2분 사고 재현 영상 생성</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">AuraView 였다면 몇 초 먼저 경고할 수 있었을까?</div>
+                    <div class="hero-desc">블랙박스 영상을 업로드하거나, TAAS 사고를 바탕으로 합성된 장면을 선택해 Before/After 오버레이 영상을 자동 생성합니다.</div>
+                  </div>
+
+                  <div class="form-grid" style="margin-top:14px;">
+                    <div>
+                      <label>블랙박스 영상 (선택)</label>
+                      <label class="file-label" id="scnLabel" for="scn_video">
+                        <span>🎬</span>
+                        <span id="scnName">영상을 선택하거나 합성 시나리오를 고르세요</span>
+                      </label>
+                      <input id="scn_video" type="file" accept="video/*" onchange="updateFileLabel('scn_video','scnLabel','scnName')"/>
+                    </div>
+                    <div>
+                      <label>합성 시나리오</label>
+                      <select id="scn_preset">
+                        <option value="">— 선택 안 함 —</option>
+                        <option value="crosswalk_truck">횡단보도 · 대형차 가림 · 보행자 출현</option>
+                        <option value="motorcycle_blindspot">사각지대 · 이륜차 접근</option>
+                        <option value="signal_occluded">신호 가림 + 급감속</option>
+                      </select>
+                    </div>
+                    <button class="btn-accent" onclick="runScenario()">사고 재현 영상 생성</button>
+                    <button class="btn-secondary" onclick="loadScenarioList()">최근 생성물 목록</button>
+                    <button class="btn-video" onclick="buildShowreel()">⭐ 합본 시연 영상 (3장면 + 타이틀)</button>
+                  </div>
+
+                  <div id="scnStatus" class="status" style="margin-top:14px;">
+                    <div class="status-title">REENACTMENT STATUS</div>
+                    <div class="status-main">대기 중</div>
+                    <div class="status-meta">영상 또는 합성 시나리오를 선택하세요.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="right-col">
+                <div class="card">
+                  <div class="section-label">// Before / After Overlay</div>
+                  <div id="scnVideoWrap" class="preview-wrap" style="height:480px;display:flex;align-items:center;justify-content:center;">
+                    <div class="placeholder"><div class="placeholder-icon">🎞️</div>생성된 재현 영상이 여기에 재생됩니다.</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="section-label">// Risk Curve</div>
+                  <canvas id="scnRiskChart" style="width:100%;height:140px;"></canvas>
+                  <div class="muted" id="scnRiskMeta" style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">선행 경고 시간 · 위험 확률 피크가 여기에 표시됩니다.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 7 : K-MaaS -->
+          <div class="tab-panel" id="tab7">
+            <div class="dashboard-grid">
+              <div class="left-col">
+                <div class="card">
+                  <div class="card-tag">K-MAAS · 특별상</div>
+                  <div class="section-label">// 위험 교차로 우회 대중교통 추천</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">위험을 감지하면 즉시 대중교통으로</div>
+                    <div class="hero-desc">전방 위험 교차로를 K-MaaS 데이터와 결합해 지하철·버스·공유 자전거 우회 경로 3종을 즉시 추천. 경진대회 K-MaaS 특별상 겨냥.</div>
+                  </div>
+                  <div class="form-grid" style="margin-top:14px;">
+                    <div class="btn-row">
+                      <div>
+                        <label>출발 위도</label>
+                        <input id="km_olat" type="number" step="0.000001" value="37.5601"/>
+                      </div>
+                      <div>
+                        <label>출발 경도</label>
+                        <input id="km_olon" type="number" step="0.000001" value="127.0410"/>
+                      </div>
+                    </div>
+                    <div class="btn-row">
+                      <div>
+                        <label>도착 위도</label>
+                        <input id="km_dlat" type="number" step="0.000001" value="37.5665"/>
+                      </div>
+                      <div>
+                        <label>도착 경도</label>
+                        <input id="km_dlon" type="number" step="0.000001" value="126.9780"/>
+                      </div>
+                    </div>
+                    <div>
+                      <label>현 위험 점수</label>
+                      <input id="km_risk" type="number" step="0.1" value="11.5"/>
+                    </div>
+                    <button class="btn-accent" onclick="runKmaas()">K-MaaS 대안 조회</button>
+                    <button class="btn-secondary" onclick="loadKmaasOperator()">노선 운영팀 리포트</button>
+                  </div>
+                </div>
+              </div>
+              <div class="right-col">
+                <div class="card">
+                  <div class="section-label">// 추천 결과</div>
+                  <div id="kmaasOut" style="margin-top:8px;display:grid;gap:10px;">
+                    <div class="placeholder" style="min-height:120px;">대안 조회 결과가 여기에 카드로 표시됩니다.</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="section-label">// 노선 운영팀 환원 데이터</div>
+                  <pre id="kmaasOpOut" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;max-height:300px;overflow:auto;white-space:pre-wrap;">시민용 추천 + 운영팀용 데이터를 동시에 제공합니다.</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 8 : Hazard Report -->
+          <div class="tab-panel" id="tab8">
+            <div class="card">
+              <div class="card-tag">POLICY REPORT</div>
+              <div class="section-label">// 위험 교차로 Top-N 자동 리포트 (지자체·도로공사·K-MaaS 환원)</div>
+              <div class="hero-copy">
+                <div class="hero-title">데이터로 정책을 바꾼다</div>
+                <div class="hero-desc">현재까지 누적된 Fleet 이벤트 + 융합 데이터로 위험 교차로 Top-N 을 자동 산출하고, 각 지점별 권고 액션과 함께 HTML/JSON 리포트를 생성합니다.</div>
+              </div>
+              <div class="btn-row" style="margin-top:14px;">
+                <button class="btn-accent" onclick="generateReport(20)">Top 20 리포트 생성</button>
+                <button class="btn-secondary" onclick="loadReportList()">최근 생성물 목록</button>
+              </div>
+              <div id="reportOut" style="margin-top:14px;"></div>
+            </div>
+          </div>
+
+          <!-- TAB 9 : V2V Collaborative Perception -->
+          <div class="tab-panel" id="tab9">
+            <div class="dashboard-grid">
+              <div class="left-col">
+                <div class="card">
+                  <div class="card-tag">V2V · BUS · BIDIR</div>
+                  <div class="section-label">// 마주오는 차가 본 것을 내 사각지대로</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">Tesla 도 못 하는 한국 특화 협업 인지</div>
+                    <div class="hero-desc">
+                      마주오는 차의 시점 + 버스 정류장 prior + 상행/하행 흐름 비교 →
+                      <em style="color:var(--accent);font-style:normal;">"버스가 신호등을 가린 그 너머 보행자"</em>
+                      를 다중 정보로 보강해 잡아냅니다.
+                    </div>
+                  </div>
+
+                  <div class="form-grid" style="margin-top:14px;">
+                    <div>
+                      <label>현장 이미지 (버스 가림 시나리오 권장)</label>
+                      <label class="file-label" id="cvLabel" for="cv_file">
+                        <span>📷</span><span id="cvName">이미지를 선택하세요</span>
+                      </label>
+                      <input id="cv_file" type="file" accept="image/*" onchange="updateFileLabel('cv_file','cvLabel','cvName')"/>
+                    </div>
+                    <div class="btn-row">
+                      <div><label>교차로 ID</label><input id="cv_iid" type="text" value="1007"/></div>
+                      <div><label>자차 진행방향°</label><input id="cv_head" type="number" step="1" value="270"/></div>
+                    </div>
+                    <div class="btn-row">
+                      <div><label>위도</label><input id="cv_lat" type="number" step="0.000001" value="37.5601"/></div>
+                      <div><label>경도</label><input id="cv_lon" type="number" step="0.000001" value="127.0410"/></div>
+                    </div>
+                    <button class="btn-secondary" onclick="seedV2VDemo()">▶ 시연용 V2V 차량 3대 풀에 게시</button>
+                    <button class="btn-accent" onclick="runFusedOccupancy()">⭐ 협업 인지 실행 (V2V + Bus + Bidir 결합)</button>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="section-label">// V2V 메시지 풀 (해당 교차로)</div>
+                  <pre id="v2vPool" style="max-height:220px;overflow:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;white-space:pre-wrap;">peers 정보가 여기 표시됩니다.</pre>
+                </div>
+              </div>
+
+              <div class="right-col">
+                <div class="card">
+                  <div class="section-label">// 결합된 위험 확률 비교</div>
+                  <div id="cvDiff" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+                </div>
+                <div class="card">
+                  <div class="section-label">// 결합 BEV (보강된 영역 cyan glow)</div>
+                  <div id="cvCanvas" class="preview-wrap" style="height:380px;display:flex;align-items:center;justify-content:center;">
+                    <div class="placeholder"><div class="placeholder-icon">🛰️</div>결합 결과가 여기에 표시됩니다.</div>
+                  </div>
+                  <div id="cvBreakdown" class="rank-body" style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 5 : Scorecard -->
+          <div class="tab-panel" id="tab5">
+            <div class="card">
+              <div class="card-tag">SCORECARD · LIVE</div>
+              <div class="section-label">// 2026 국토교통 데이터활용 경진대회 · 가점 25점 + 특별상 트레이서</div>
+              <div class="ranking">
+                <div class="rank-item mid">
+                  <div class="rank-head"><div class="rank-title">AI 활용 · 학습</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-body">
+                    HydraNet · Risk Transformer · Intent Predictor 학습 스크립트<br>
+                    Fleet 누적 학습 데이터 · <span id="sc_fleet" style="color:var(--accent);font-weight:700;">… 건</span>
+                  </div>
+                </div>
+                <div class="rank-item mid">
+                  <div class="rank-head"><div class="rank-title">AI 활용 · 분석</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-body">
+                    BEV Occupancy 3D · E2E 위험 확률 · Attention 해석<br>
+                    재현 영상 · <span id="sc_scenarios" style="color:var(--accent);font-weight:700;">… 편</span>
+                  </div>
+                </div>
+                <div class="rank-item mid">
+                  <div class="rank-head"><div class="rank-title">데이터 융합</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-body">
+                    신호 · VDS · 돌발 · TAAS · ITS · 안심구역<br>
+                    소스 어댑터 활성 · <span id="sc_fusion" style="color:var(--accent);font-weight:700;">…종</span>
+                  </div>
+                </div>
+                <div class="rank-item mid">
+                  <div class="rank-head"><div class="rank-title">가명정보 결합</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-body">
+                    HMAC 가명화 · k-익명성 · 얼굴·번호판 블러<br>
+                    /dsz/join/taas-vds · /fleet/contribute (자동 마스킹)
+                  </div>
+                </div>
+                <div class="rank-item mid">
+                  <div class="rank-head"><div class="rank-title">안심구역</div><span class="badge b-y">5점</span></div>
+                  <div class="rank-body">
+                    dsz.ex.co.kr 반입·결합분석·해시 검증 반출<br>
+                    정책 리포트 누적 · <span id="sc_reports" style="color:var(--accent);font-weight:700;">… 개</span>
+                  </div>
+                </div>
+                <div class="rank-item high" style="border-left-color:var(--accent2);">
+                  <div class="rank-head"><div class="rank-title">⭐ K-MaaS 특별상</div><span class="badge" style="background:rgba(124,58,237,0.18);color:#a995ff;border:1px solid rgba(124,58,237,0.3);">+300만원</span></div>
+                  <div class="rank-body">
+                    위험 교차로 → 대중교통 우회 추천 + 운영팀 환원<br>
+                    /kmaas/alternatives · /kmaas/operator-report
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -1046,6 +1560,28 @@ def prototype_ui():
             if (score >= 10) return 'rank-item high';
             if (score >= 6)  return 'rank-item mid';
             return 'rank-item';
+          }
+
+          /* ── TAAS HEATMAP ── */
+          let taasLayer = null;
+          async function toggleTaasHeatmap() {
+            if (taasLayer) {
+              map.removeLayer(taasLayer);
+              taasLayer = null;
+              toast('TAAS 히트맵 OFF', 'info', 1500);
+              return;
+            }
+            try {
+              const res = await fetch(window.location.origin + '/heatmap/taas?year=2024');
+              const data = await res.json();
+              taasLayer = L.heatLayer(data.points, {
+                radius: 28, blur: 22, minOpacity: 0.35, maxZoom: 17,
+                gradient: { 0.2: '#00c8ff', 0.45: '#ffb020', 0.7: '#ff8b3b', 0.9: '#ff3b3b' },
+              }).addTo(map);
+              toast(`TAAS 히트맵 ON · ${data.count}건 (${data.source})`, 'success');
+            } catch(e) {
+              toast('TAAS 히트맵 로드 실패', 'error');
+            }
           }
 
           /* ── INTERSECTIONS ── */
@@ -1334,8 +1870,596 @@ def prototype_ui():
             await loadRiskRanking();
           }
 
+          /* ── OCCUPANCY (2D / 3D) ── */
+          let occMode = '2d';
+          let lastOccData = null;
+          let threeCtx = null;   // { renderer, scene, camera, voxels }
+
+          function setOccMode(mode) {
+            occMode = mode;
+            document.getElementById('occModeLabel').textContent = mode === '3d' ? '3D Voxel (FSD-style)' : '2D Heatmap';
+            document.getElementById('occCanvasWrap').style.display = mode === '2d' ? 'flex' : 'none';
+            document.getElementById('occThreeCanvas').style.display = mode === '3d' ? 'block' : 'none';
+            if (lastOccData) renderOccCanvas(lastOccData);
+          }
+
+          function renderOccCanvas(data) {
+            lastOccData = data;
+            if (occMode === '3d') {
+              renderOcc3D(data);
+            } else {
+              renderOcc2D(data);
+            }
+          }
+
+          function renderOcc2D(data) {
+            const wrap = document.getElementById('occCanvasWrap');
+            wrap.innerHTML = '';
+            if (!data.grid_b64) {
+              wrap.innerHTML = '<div class="placeholder"><div class="placeholder-icon">⚠️</div>BEV 이미지를 생성하지 못했습니다.</div>';
+              return;
+            }
+            const img = document.createElement('img');
+            img.src = data.grid_b64;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            img.style.imageRendering = 'pixelated';
+            img.style.background = '#050a10';
+            wrap.appendChild(img);
+          }
+
+          function ensureThree() {
+            const canvas = document.getElementById('occThreeCanvas');
+            if (threeCtx) return threeCtx;
+            const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+            renderer.setPixelRatio(window.devicePixelRatio);
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x04080e);
+
+            // 전방 → Z+, 좌우 → X, 높이 → Y
+            const camera = new THREE.PerspectiveCamera(55, 16/9, 0.1, 500);
+            camera.position.set(-22, 20, -22);
+            camera.lookAt(0, 2, 20);
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0x88aacc, 0.6));
+            const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+            dir.position.set(30, 50, 10);
+            scene.add(dir);
+
+            // Ground + gridline
+            const ground = new THREE.Mesh(
+              new THREE.PlaneGeometry(40, 40),
+              new THREE.MeshBasicMaterial({color:0x0a1624})
+            );
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.z = 20;
+            scene.add(ground);
+            const grid = new THREE.GridHelper(40, 40, 0x0f2a44, 0x0a1a2e);
+            grid.position.z = 20;
+            scene.add(grid);
+
+            // Ego car (indicator)
+            const ego = new THREE.Mesh(
+              new THREE.BoxGeometry(1.8, 1.4, 4),
+              new THREE.MeshStandardMaterial({color:0x00c8ff, emissive:0x003b55, metalness:0.6, roughness:0.3})
+            );
+            ego.position.set(0, 0.7, 0);
+            scene.add(ego);
+
+            const voxelGroup = new THREE.Group();
+            scene.add(voxelGroup);
+
+            threeCtx = {renderer, scene, camera, voxelGroup, t: 0};
+
+            let yaw = 0;
+            function animate() {
+              threeCtx.t += 0.005;
+              yaw = 0.0005 + yaw;
+              camera.position.x = Math.cos(threeCtx.t * 0.25) * 30;
+              camera.position.z = Math.sin(threeCtx.t * 0.25) * 30 + 10;
+              camera.lookAt(0, 2, 18);
+              renderer.render(scene, camera);
+              requestAnimationFrame(animate);
+            }
+            function resize() {
+              const w = canvas.clientWidth || 800;
+              const h = 560;
+              renderer.setSize(w, h, false);
+              camera.aspect = w / h;
+              camera.updateProjectionMatrix();
+            }
+            window.addEventListener('resize', resize);
+            resize();
+            animate();
+            return threeCtx;
+          }
+
+          function renderOcc3D(data) {
+            const ctx = ensureThree();
+            // Clear previous voxels
+            while (ctx.voxelGroup.children.length) {
+              const m = ctx.voxelGroup.children.pop();
+              m.geometry && m.geometry.dispose();
+              m.material && m.material.dispose();
+            }
+            if (!data.grid_flat || !data.grid_shape_flat) return;
+
+            const [rows, cols] = data.grid_shape_flat;
+            const cell = data.grid_cell_m_flat || (data.cell_m * 2);
+            const forward = data.forward_m || 40;
+            const lateral = data.lateral_m || 20;
+            const voxMat = new THREE.MeshStandardMaterial({vertexColors:false, metalness:0.1, roughness:0.6});
+            const geom = new THREE.BoxGeometry(cell * 0.9, 1, cell * 0.9);
+
+            const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+            const lerp = (a, b, t) => a + (b - a) * t;
+
+            for (let r = 0; r < rows; r++) {
+              for (let c = 0; c < cols; c++) {
+                const p = data.grid_flat[r * cols + c] || 0;
+                if (p < 0.08) continue;
+                const height = clamp(p * 6, 0.2, 6);
+                const x = -lateral + c * cell + cell / 2;
+                const z = r * cell + cell / 2;
+                // color ramp: cyan (low) → orange → red (high)
+                const t = clamp(p, 0, 1);
+                const color = new THREE.Color(
+                  lerp(0.0, 1.0, t),
+                  lerp(0.8, 0.2, t),
+                  lerp(1.0, 0.1, t)
+                );
+                const mat = new THREE.MeshStandardMaterial({color, emissive: color.clone().multiplyScalar(0.25), transparent:true, opacity:0.85});
+                const box = new THREE.Mesh(geom, mat);
+                box.position.set(x, height / 2, z);
+                box.scale.y = height;
+                ctx.voxelGroup.add(box);
+              }
+            }
+          }
+
+          async function loadOccupancyDemo() {
+            const res = await fetch(window.location.origin + '/occupancy/demo');
+            const data = await res.json();
+            renderOccCanvas(data);
+            document.getElementById('occResultBox').className = 'status info';
+            document.getElementById('occResultBox').innerHTML = `
+              <div class="status-title">DEMO GRID</div>
+              <div class="status-main">점유 mass ${data.occluded_mass.toFixed(1)}</div>
+              <div class="status-meta">shape ${data.shape[0]}×${data.shape[1]} · cell ${data.cell_m}m</div>`;
+          }
+
+          async function runOccupancy() {
+            const fileInput = document.getElementById('occ_file');
+            if (!fileInput.files.length) {
+              toast('이미지를 선택하세요.', 'warn');
+              return;
+            }
+            showLoader('BEV OCCUPANCY 추정 중...');
+            const fd = new FormData();
+            fd.append('image', fileInput.files[0]);
+            fd.append('duration', document.getElementById('occ_duration').value);
+            fd.append('obstacle_type', document.getElementById('occ_obstacle').value);
+            fd.append('signal_state', 'stop-And-Remain');
+            fd.append('taas_nearby', '2');
+            try {
+              const res = await fetch(window.location.origin + '/occupancy/infer', {method:'POST', body: fd});
+              const data = await res.json();
+              renderOccCanvas(data.occupancy);
+
+              const box = document.getElementById('occResultBox');
+              const p = (data.risk.p_collision * 100).toFixed(1);
+              box.className = data.risk.p_collision > 0.4 ? 'status warning' : 'status safe';
+              box.innerHTML = `
+                <div class="status-title">AURAVIEW K-PERCEPTION</div>
+                <div class="status-main">충돌 확률 ${p}%</div>
+                <div class="status-meta">
+                  occluded_mass &nbsp;${data.occupancy.occluded_mass}<br>
+                  pedestrian_prob &nbsp;${(data.intent.pedestrian_crossing_prob*100).toFixed(1)}%<br>
+                  motorcycle_prob &nbsp;${(data.intent.motorcycle_approach_prob*100).toFixed(1)}%<br>
+                  vehicles &nbsp;${data.hydranet.vehicles} · vrus &nbsp;${data.hydranet.vrus} · signals &nbsp;${data.hydranet.signals}
+                </div>`;
+
+              const att = data.risk.attention || {};
+              const rows = Object.entries(att).sort((a,b)=>b[1]-a[1]).slice(0,6)
+                .map(([k,v])=>`${k.padEnd(16)} ${'█'.repeat(Math.round(v*40)).padEnd(40)} ${(v*100).toFixed(1)}%`).join('<br>');
+              document.getElementById('occAttention').innerHTML = '<pre style="font-family:JetBrains Mono, monospace;font-size:11px;color:var(--text);margin:0;white-space:pre;">' + rows + '</pre>';
+              toast('BEV 추정 완료', 'success');
+            } catch(e) {
+              toast('BEV 추정 실패', 'error');
+            } finally {
+              hideLoader();
+            }
+          }
+
+          /* ── FUSION ── */
+          function fusionCardForSource(name, body) {
+            const meta = {
+              signal:    {emoji:'🚦', title:'실시간 신호 정보', sub:'apis.data.go.kr · B551982/rti', color:'var(--accent)'},
+              vds:       {emoji:'🚗', title:'VDS 실시간 소통',   sub:'data.ex.co.kr · trafficapi',    color:'var(--safe)'},
+              incidents: {emoji:'⚠️', title:'돌발상황',         sub:'data.ex.co.kr · incidentapi',  color:'var(--warn)'},
+              accidents_history: {emoji:'📊', title:'TAAS 사고이력', sub:'taas.koroad.or.kr',         color:'var(--danger)'},
+              its_link:  {emoji:'🛣️', title:'ITS 링크 속도',     sub:'openapi.its.go.kr',             color:'var(--accent2)'},
+              dsz:       {emoji:'🔒', title:'안심구역 결합분석', sub:'dsz.ex.co.kr',                  color:'#a995ff'},
+            };
+            const m = meta[name] || {emoji:'📦', title:name, sub:'', color:'var(--muted)'};
+            // 첫 의미있는 필드 3~5개 추출
+            const flat = [];
+            try {
+              const inner = (body && body.body) ? body.body : body;
+              const items = inner?.items?.item ?? inner?.list ?? inner?.accidents ?? inner?.body?.items ?? inner;
+              const sample = Array.isArray(items) ? items[0] : items;
+              if (sample && typeof sample === 'object') {
+                for (const k of Object.keys(sample).slice(0, 5)) {
+                  const v = sample[k];
+                  if (v == null || typeof v === 'object') continue;
+                  flat.push(`<div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(0,200,255,0.06);"><span style="color:var(--muted);">${k}</span><span>${String(v).slice(0,48)}</span></div>`);
+                }
+              }
+            } catch(e) {}
+
+            return `
+              <div class="card" style="position:relative;border-left:3px solid ${m.color};">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                  <span style="font-size:20px;">${m.emoji}</span>
+                  <div>
+                    <div style="font-weight:900;font-size:14px;color:${m.color};">${m.title}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;">${m.sub}</div>
+                  </div>
+                </div>
+                <div style="margin-top:10px;">${flat.join('') || '<div style="color:var(--muted);font-size:11px;">응답 없음 / fallback</div>'}</div>
+              </div>`;
+          }
+
+          async function runFusion() {
+            const id = document.getElementById('fusion_id').value;
+            const link = document.getElementById('fusion_link').value;
+            showLoader('6종 데이터 융합 중...');
+            try {
+              const res = await fetch(window.location.origin + '/fusion/intersection/' + encodeURIComponent(id) + '?link_id=' + encodeURIComponent(link));
+              const data = await res.json();
+              document.getElementById('fusionOut').textContent = JSON.stringify(data, null, 2);
+
+              const sources = data.sources || {};
+              const cards = [];
+              for (const k of ['signal', 'vds', 'incidents', 'accidents_history', 'its_link']) {
+                cards.push(fusionCardForSource(k, sources[k]));
+              }
+              // DSZ 어댑터 — list_imported() 결과 또는 manifest.jsonl 카운트
+              try {
+                const dszRes = await fetch(window.location.origin + '/dsz/artifacts');
+                const dsz = await dszRes.json();
+                cards.push(fusionCardForSource('dsz', {body: {items: {item: {imported_count: (dsz.artifacts||[]).length, sample_path: 'dsz_exports/sample_taas_vds_join_2024.json'}}}}));
+              } catch(e) { cards.push(fusionCardForSource('dsz', null)); }
+
+              document.getElementById('fusionCards').innerHTML = cards.join('');
+              toast(`융합 완료 (${id})`, 'success');
+            } catch(e) {
+              toast('융합 실패', 'error');
+            } finally {
+              hideLoader();
+            }
+          }
+
+          /* ── PWA QR ── */
+          (function drawPwaQR(){
+            try {
+              const url = window.location.origin + '/pwa';
+              document.getElementById('pwaLink').href = url;
+              document.getElementById('pwaLink').textContent = url;
+              const qr = qrcode(0, 'M');
+              qr.addData(url);
+              qr.make();
+              document.getElementById('pwaQr').innerHTML = qr.createImgTag(6, 12);
+            } catch(e) {}
+          })();
+
+          /* ── FLEET ── */
+          async function loadFleetStats() {
+            const res = await fetch(window.location.origin + '/fleet/stats');
+            const data = await res.json();
+            document.getElementById('fleetOut').textContent = JSON.stringify(data, null, 2);
+          }
+
+          /* ── SCENARIO REENACTMENT ── */
+          function drawRiskCurve(series) {
+            const canvas = document.getElementById('scnRiskChart');
+            if (!canvas || !series || !series.length) return;
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const W = canvas.clientWidth, H = canvas.clientHeight || 140;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, W, H);
+
+            // axes
+            ctx.strokeStyle = 'rgba(0,200,255,0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i <= 4; i++) {
+              const y = (H - 10) * (i / 4) + 5;
+              ctx.moveTo(0, y); ctx.lineTo(W, y);
+            }
+            ctx.stroke();
+
+            // risk line
+            const grad = ctx.createLinearGradient(0, 0, 0, H);
+            grad.addColorStop(0, '#ff3b3b');
+            grad.addColorStop(0.6, '#ffb020');
+            grad.addColorStop(1, '#00c8ff');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            series.forEach((v, i) => {
+              const x = (i / (series.length - 1)) * W;
+              const y = H - Math.max(2, v * (H - 10));
+              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // fill
+            ctx.lineTo(W, H); ctx.lineTo(0, H);
+            ctx.fillStyle = 'rgba(0,200,255,0.10)';
+            ctx.fill();
+          }
+
+          async function runScenario() {
+            const fileInput = document.getElementById('scn_video');
+            const preset = document.getElementById('scn_preset').value;
+            const hasVideo = fileInput.files && fileInput.files.length > 0;
+            if (!hasVideo && !preset) {
+              toast('영상을 선택하거나 합성 시나리오를 골라주세요.', 'warn');
+              return;
+            }
+            showLoader('사고 재현 영상 생성 중...');
+            const fd = new FormData();
+            if (hasVideo) fd.append('video', fileInput.files[0]);
+            if (preset) fd.append('preset', preset);
+            try {
+              const res = await fetch(window.location.origin + '/scenario/reenact', {method:'POST', body: fd});
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.detail || 'fail');
+
+              const wrap = document.getElementById('scnVideoWrap');
+              wrap.innerHTML = `
+                <video controls autoplay muted loop style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:12px;">
+                  <source src="${data.video_url}?t=${Date.now()}" type="video/mp4"/>
+                </video>`;
+
+              const box = document.getElementById('scnStatus');
+              box.className = 'status info';
+              box.innerHTML = `
+                <div class="status-title">REENACTMENT READY</div>
+                <div class="status-main">선행 경고 ${data.lead_time_s}초</div>
+                <div class="status-meta">
+                  피크 위험 &nbsp;${(data.peak_risk*100).toFixed(1)}%<br>
+                  프레임 수 &nbsp;${data.frame_count}<br>
+                  출력 &nbsp;${data.video_url}
+                </div>`;
+
+              drawRiskCurve(data.risk_curve || []);
+              const meta = document.getElementById('scnRiskMeta');
+              if (meta && data.risk_curve) {
+                meta.textContent = `lead_time=${data.lead_time_s}s · peak=${(data.peak_risk*100).toFixed(1)}% · frames=${data.frame_count}`;
+              }
+
+              toast('재현 영상 생성 완료', 'success');
+            } catch(e) {
+              toast('재현 영상 생성 실패', 'error');
+            } finally {
+              hideLoader();
+            }
+          }
+
+          async function loadScenarioList() {
+            const res = await fetch(window.location.origin + '/scenario/list');
+            const data = await res.json();
+            const box = document.getElementById('scnStatus');
+            box.className = 'status';
+            box.innerHTML = `
+              <div class="status-title">RECENT REENACTMENTS</div>
+              <div class="status-main">${(data.items || []).length}건</div>
+              <div class="status-meta" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;">
+                ${(data.items || []).slice(0,8).map(i => `${i.created_at.slice(0,19)} · <a href="${i.video_url}" target="_blank" style="color:var(--accent);">${i.name}</a>`).join('<br>')}
+              </div>`;
+          }
+
+          /* ── COLLAB (V2V / Bus / Bidir) ── */
+          async function seedV2VDemo() {
+            const iid = document.getElementById('cv_iid').value;
+            const lat = document.getElementById('cv_lat').value;
+            const lon = document.getElementById('cv_lon').value;
+            try {
+              const res = await fetch(window.location.origin + '/collab/v2v/seed-demo?intersection_id=' + iid + '&lat=' + lat + '&lon=' + lon, {method:'POST'});
+              const data = await res.json();
+              await refreshV2VPool(iid);
+              toast('시연용 V2V 차량 ' + data.seeded + '대 게시', 'success');
+            } catch(e) { toast('시드 실패', 'error'); }
+          }
+
+          async function refreshV2VPool(iid) {
+            try {
+              const res = await fetch(window.location.origin + '/collab/v2v/intersection/' + iid);
+              const data = await res.json();
+              document.getElementById('v2vPool').textContent =
+                'count=' + data.count + '\n\n' +
+                (data.messages || []).map(m =>
+                  `${m.device_id || '?'}  hdg=${m.heading_deg}°  spd=${m.speed_kmh}km/h  decel=${m.decel_g||0}\n  detections=${(m.detections||[]).length}  occ=${m.occluded_mass||0}`
+                ).join('\n\n');
+            } catch(e) { /* ignore */ }
+          }
+
+          async function runFusedOccupancy() {
+            const fileInput = document.getElementById('cv_file');
+            if (!fileInput.files.length) { toast('이미지를 선택하세요', 'warn'); return; }
+            const fd = new FormData();
+            fd.append('image', fileInput.files[0]);
+            fd.append('intersection_id', document.getElementById('cv_iid').value);
+            fd.append('ego_lat', document.getElementById('cv_lat').value);
+            fd.append('ego_lon', document.getElementById('cv_lon').value);
+            fd.append('ego_heading_deg', document.getElementById('cv_head').value);
+
+            showLoader('V2V + Bus + Bidir 결합 추론 중...');
+            try {
+              const res = await fetch(window.location.origin + '/collab/fused-occupancy', {method:'POST', body: fd});
+              const data = await res.json();
+              const localP = (data.risk_local_only.p_collision * 100).toFixed(1);
+              const fusedP = (data.risk_fused.p_collision * 100).toFixed(1);
+              const lift = (data.risk_fused.lift_from_v2v_bus_bidir * 100).toFixed(1);
+
+              document.getElementById('cvDiff').innerHTML = `
+                <div class="rank-item"><div class="rank-head"><div class="rank-title">단독 인지</div><span class="badge b-y">${localP}%</span></div>
+                  <div class="rank-body">자차 카메라만 사용 (Tesla 식)</div></div>
+                <div class="rank-item ${data.risk_fused.p_collision > 0.6 ? 'high' : 'mid'}">
+                  <div class="rank-head"><div class="rank-title">⭐ 협업 인지</div><span class="badge b-r">${fusedP}%</span></div>
+                  <div class="rank-body">+${lift}% lift · V2V ${data.v2v.peer_count}대 + 정류장 prior + 상행/하행</div></div>`;
+
+              document.getElementById('cvCanvas').innerHTML =
+                `<img src="${data.occupancy.grid_b64}" style="width:100%;height:100%;object-fit:contain;background:#050a10;image-rendering:pixelated;"/>`;
+
+              document.getElementById('cvBreakdown').innerHTML = `
+                <div>${data.risk_fused.explanation}</div>
+                <div style="margin-top:6px;color:var(--accent);">${data.bus_context.boost_reason || '버스 가림 없음'}</div>
+                <div style="margin-top:4px;color:${data.bidirectional.hazard_probability > 0.45 ? 'var(--danger)' : 'var(--muted)'};">
+                  bidir hazard=${(data.bidirectional.hazard_probability*100).toFixed(0)}% · ${data.bidirectional.insight}</div>
+                <div style="margin-top:4px;">${data.v2v.note} · boosted ${data.v2v.boosted_cells} cells (+${data.v2v.added_mass.toFixed(1)} mass)</div>`;
+
+              await refreshV2VPool(document.getElementById('cv_iid').value);
+              toast('협업 인지 완료', 'success');
+            } catch(e) { toast('실행 실패', 'error'); } finally { hideLoader(); }
+          }
+
+          /* ── SHOWREEL ── */
+          async function buildShowreel() {
+            showLoader('합본 영상 생성 중 (60초 정도 소요)...');
+            try {
+              const res = await fetch(window.location.origin + '/showreel/build', {method:'POST'});
+              if (!res.ok) throw new Error(await res.text());
+              const data = await res.json();
+              const wrap = document.getElementById('scnVideoWrap');
+              wrap.innerHTML = `
+                <video controls autoplay muted loop style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:12px;">
+                  <source src="${data.video_url}?t=${Date.now()}" type="video/mp4"/>
+                </video>`;
+              const box = document.getElementById('scnStatus');
+              box.className = 'status info';
+              box.innerHTML = `
+                <div class="status-title">SHOWREEL READY</div>
+                <div class="status-main">평균 선행 경고 ${data.average_lead_time_s}초</div>
+                <div class="status-meta">
+                  포함 시나리오 &nbsp;${data.scenarios.length}<br>
+                  프레임 수 &nbsp;${data.frame_count}<br>
+                  파일 &nbsp;${data.video_url}
+                </div>`;
+              toast('합본 영상 생성 완료', 'success');
+            } catch(e) { toast('합본 영상 생성 실패', 'error'); } finally { hideLoader(); }
+          }
+
+          /* ── K-MaaS ── */
+          async function runKmaas() {
+            const q = new URLSearchParams({
+              origin_lat: document.getElementById('km_olat').value,
+              origin_lon: document.getElementById('km_olon').value,
+              dest_lat: document.getElementById('km_dlat').value,
+              dest_lon: document.getElementById('km_dlon').value,
+              risk: document.getElementById('km_risk').value,
+            }).toString();
+            showLoader('K-MaaS 대안 조회 중...');
+            try {
+              const res = await fetch(window.location.origin + '/kmaas/alternatives?' + q);
+              const data = await res.json();
+              const wrap = document.getElementById('kmaasOut');
+              wrap.innerHTML = '';
+              const head = document.createElement('div');
+              head.className = 'rank-item ' + ((data.risk_score||0) >= 10 ? 'high' : 'mid');
+              head.innerHTML = `<div class="rank-head"><div class="rank-title">${data.headline||''}</div></div>`;
+              wrap.appendChild(head);
+              (data.alternatives || []).forEach((a, i) => {
+                const div = document.createElement('div');
+                div.className = 'rank-item ' + (a.risk_avoidance_score >= 0.85 ? 'high' : 'mid');
+                const legs = (a.legs||[]).map(l => `<span class="badge">${l.mode} · ${l.duration_min}분 · ${l.distance_km}km</span>`).join(' ');
+                div.innerHTML = `
+                  <div class="rank-head">
+                    <div class="rank-title">#${i+1} ${a.label}</div>
+                    <span class="badge b-y">우회 가치 ${(a.risk_avoidance_score*100).toFixed(0)}%</span>
+                  </div>
+                  <div class="rank-body">
+                    소요 ${a.total_min}분 · 요금 ${a.total_fare.toLocaleString()}원 · CO₂ ${a.total_co2_saved_g}g 절감<br>
+                    <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${legs}</div>
+                  </div>`;
+                wrap.appendChild(div);
+              });
+              toast('K-MaaS 대안 ' + (data.alternatives||[]).length + '건', 'success');
+            } catch(e) { toast('K-MaaS 조회 실패', 'error'); } finally { hideLoader(); }
+          }
+
+          async function loadKmaasOperator() {
+            try {
+              const res = await fetch(window.location.origin + '/kmaas/operator-report');
+              const data = await res.json();
+              document.getElementById('kmaasOpOut').textContent = JSON.stringify(data, null, 2);
+            } catch(e) { toast('운영팀 리포트 조회 실패', 'error'); }
+          }
+
+          /* ── HAZARD REPORT ── */
+          async function generateReport(top) {
+            showLoader('Top ' + top + ' 리포트 생성 중...');
+            try {
+              const res = await fetch(window.location.origin + '/reports/generate?top=' + top, {method:'POST'});
+              const data = await res.json();
+              document.getElementById('reportOut').innerHTML = `
+                <div class="status info" style="margin-top:14px;">
+                  <div class="status-title">REPORT GENERATED</div>
+                  <div class="status-main">${data.entries}개 교차로 분석 완료</div>
+                  <div class="status-meta">
+                    HTML &nbsp;<a style="color:var(--accent)" target="_blank" href="${data.html_url}">${data.html_url}</a><br>
+                    JSON &nbsp;<a style="color:var(--accent)" target="_blank" href="${data.json_url}">${data.json_url}</a><br>
+                    생성 시각 &nbsp;${data.generated_at}
+                  </div>
+                </div>
+                <iframe src="${data.html_url}" style="width:100%;height:540px;margin-top:14px;border:1px solid var(--border);border-radius:14px;background:#fff;"></iframe>`;
+              toast('리포트 생성 완료', 'success');
+            } catch(e) { toast('리포트 생성 실패', 'error'); } finally { hideLoader(); }
+          }
+
+          async function loadReportList() {
+            const res = await fetch(window.location.origin + '/reports/list');
+            const data = await res.json();
+            const items = data.items || [];
+            document.getElementById('reportOut').innerHTML = `
+              <div class="card" style="margin-top:14px;">
+                <div class="section-label">// 최근 ${items.length}건</div>
+                ${items.map(i => `
+                  <div class="rank-item" style="margin-top:8px;">
+                    <div class="rank-head"><div class="rank-title">${i.name}</div><span class="badge b-g">${i.size_kb} KB</span></div>
+                    <div class="rank-body">${i.created_at} · <a style="color:var(--accent)" target="_blank" href="${i.html_url}">HTML</a> · <a style="color:var(--accent)" target="_blank" href="${i.json_url}">JSON</a></div>
+                  </div>`).join('')}
+              </div>`;
+          }
+
+          /* ── LIVE SCORECARD COUNTERS ── */
+          async function refreshScorecard() {
+            try {
+              const [fl, sc, rep, fu] = await Promise.all([
+                fetch(window.location.origin + '/fleet/stats').then(r=>r.json()).catch(()=>({})),
+                fetch(window.location.origin + '/scenario/list').then(r=>r.json()).catch(()=>({items:[]})),
+                fetch(window.location.origin + '/reports/list').then(r=>r.json()).catch(()=>({items:[]})),
+                fetch(window.location.origin + '/fusion/sources').then(r=>r.json()).catch(()=>({count:0})),
+              ]);
+              const setIfExists = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+              setIfExists('sc_fleet', (fl.total ?? 0) + ' 건');
+              setIfExists('sc_scenarios', (sc.items||[]).length + ' 편');
+              setIfExists('sc_reports', (rep.items||[]).length + ' 개');
+              setIfExists('sc_fusion', (fu.count ?? 0) + '종');
+            } catch(e) {}
+          }
+
           loadIntersections();
           refreshAll();
+          refreshScorecard();
+          setInterval(refreshScorecard, 15000);
         </script>
     </body>
     </html>

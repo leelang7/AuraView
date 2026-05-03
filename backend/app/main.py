@@ -2332,10 +2332,10 @@ def prototype_ui():
               const res = await fetch(window.location.origin + '/collab/v2v/intersection/' + iid);
               const data = await res.json();
               document.getElementById('v2vPool').textContent =
-                'count=' + data.count + '\n\n' +
+                'count=' + data.count + '\\n\\n' +
                 (data.messages || []).map(m =>
-                  `${m.device_id || '?'}  hdg=${m.heading_deg}°  spd=${m.speed_kmh}km/h  decel=${m.decel_g||0}\n  detections=${(m.detections||[]).length}  occ=${m.occluded_mass||0}`
-                ).join('\n\n');
+                  `${m.device_id || '?'}  hdg=${m.heading_deg}°  spd=${m.speed_kmh}km/h  decel=${m.decel_g||0}\\n  detections=${(m.detections||[]).length}  occ=${m.occluded_mass||0}`
+                ).join('\\n\\n');
             } catch(e) { /* ignore */ }
           }
 

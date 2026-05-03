@@ -1,0 +1,133 @@
+name: EC2 Diagnose
+
+# 수동 실행 (workflow_dispatch) 으로 SSH 키 / 사용자명 조합을 테스트.
+# Permission denied (publickey) 의 정확한 원인 분리 — 키 vs 사용자.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show secret meta + derived public key fingerprint
+        env:
+          KEY:    ${{ secrets.EC2_SSH_KEY }}
+          HOST:   ${{ secrets.EC2_HOST }}
+          USER:   ${{ secrets.EC2_USER }}
+          DPATH:  ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set +e
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_test
+          chmod 600 ~/.ssh/id_test
+
+          {
+            echo "## 🔍 EC2 진단"
+            echo ""
+            echo "### Secret 형식"
+            echo "| key | length / lines |"
+            echo "|---|---:|"
+            echo "| EC2_SSH_KEY | $(wc -c < ~/.ssh/id_test) chars · $(wc -l < ~/.ssh/id_test) lines |"
+            echo "| EC2_HOST    | $(printf '%s' "$HOST" | wc -c) chars |"
+            echo "| EC2_USER    | $(printf '%s' "$USER" | wc -c) chars |"
+            echo "| DEPLOY_PATH | $(printf '%s' "$DPATH" | wc -c) chars |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Derive public key from private — 일치하는지 ec2 authorized_keys 와 직접 대조 가능
+          if pub=$(ssh-keygen -y -f ~/.ssh/id_test 2>/dev/null); then
+            algo=$(echo "$pub" | awk '{print $1}')
+            head=$(echo "$pub" | awk '{print $2}' | head -c 24)
+            tail=$(echo "$pub" | awk '{print $2}' | tail -c 12)
+            fp=$(ssh-keygen -lf ~/.ssh/id_test 2>/dev/null | head -c 80)
+            {
+              echo "### 공개키 (개인키에서 유도)"
+              echo "- algo: \`$algo\`"
+              echo "- head: \`$head...\`"
+              echo "- tail: \`...$tail\`"
+              echo "- fingerprint: \`$fp\`"
+              echo ""
+              echo "→ EC2 의 \`~/.ssh/authorized_keys\` 첫 줄과 head/tail 이 일치해야 SSH 작동."
+              echo "→ EC2 콘솔에서 'Connect' → SSH 탭 → key fingerprint 확인 가능."
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "[OK] public key 유도 성공"
+          else
+            echo "[FAIL] private key 형식 깨짐 — ssh-keygen -y 실패" >&2
+            echo "::error::private key 형식 불일치 — 줄바꿈 손실 또는 절단된 값" >&2
+            exit 2
+          fi
+
+      - name: Try SSH with multiple users
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          set +e
+          # 운영체제별 흔한 user 후보 + secret 값
+          users="$USER ubuntu ec2-user admin debian root centos"
+          # 중복 제거 (순서 유지)
+          users=$(printf '%s\n' $users | awk '!seen[$0]++' | xargs)
+
+          {
+            echo "### 사용자명 시도 결과"
+            echo "| user | port 22 | 결과 |"
+            echo "|---|:---:|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          any_ok=0
+          for u in $users; do
+            echo ""
+            echo "→ $u@$HOST"
+
+            # 1) TCP 22 확인
+            tcp_ok="—"
+            if timeout 5 bash -c "exec 3<>/dev/tcp/$HOST/22 && echo open" 2>/dev/null | grep -q open; then
+              tcp_ok="✓"
+            else
+              tcp_ok="✗"
+            fi
+
+            # 2) SSH 시도
+            out=$(ssh -i ~/.ssh/id_test \
+                       -o StrictHostKeyChecking=no \
+                       -o UserKnownHostsFile=/dev/null \
+                       -o ConnectTimeout=10 \
+                       -o BatchMode=yes \
+                       -o LogLevel=ERROR \
+                       -o NumberOfPasswordPrompts=0 \
+                       "$u@$HOST" "echo CONNECTED:\$(whoami)" 2>&1)
+            rc=$?
+            short=$(echo "$out" | tail -c 200 | tr '\n' ' ')
+            if echo "$out" | grep -q "CONNECTED:"; then
+              echo "  [OK] $out"
+              echo "| \`$u\` | $tcp_ok | ✅ $(echo "$out" | grep CONNECTED) |" >> "$GITHUB_STEP_SUMMARY"
+              any_ok=1
+            else
+              # 흔한 에러 패턴 분류
+              cls="?"
+              echo "$out" | grep -q "Permission denied"          && cls="permission-denied (키 불일치)"
+              echo "$out" | grep -q "Connection timed out"       && cls="timeout (네트워크/방화벽)"
+              echo "$out" | grep -q "Connection refused"         && cls="refused (sshd 다운)"
+              echo "$out" | grep -q "Host key verification"      && cls="host-key (StrictHostKey)"
+              echo "$out" | grep -q "Could not resolve hostname" && cls="DNS"
+              echo "  [FAIL/$rc] $cls — $short"
+              echo "| \`$u\` | $tcp_ok | ❌ $cls |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          {
+            echo ""
+            if [ "$any_ok" = "1" ]; then
+              echo "**해결**: 위 ✅ 사용자를 \`EC2_USER\` secret 에 등록 (현재값과 다를 경우)."
+            else
+              echo "**원인 가능성** (위 결과로 판별):"
+              echo "1. 모든 사용자가 \`permission-denied\` → **EC2_SSH_KEY 가 이 EC2 의 키 페어가 아님**. 진짜 .pem 으로 재등록."
+              echo "2. 모든 사용자가 \`timeout\` → EC2 인스턴스 STOP / SG 22번 차단 / IP 변경됨."
+              echo "3. \`refused\` → sshd 서비스 정지."
+              echo "4. \`DNS\` → EC2_HOST 오타."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

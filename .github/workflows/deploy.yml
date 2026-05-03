@@ -10,8 +10,8 @@ name: Deploy
 # 4개가 모두 설정돼야 step 이 실행됩니다 (없으면 경고 후 skip).
 
 on:
-  # SSH 자동 배포는 manual 전용으로 보류 (push 마다 실패 노이즈 방지).
-  # SSH 키 정합성 확보되면 'push' 다시 활성화.
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -72,25 +72,57 @@ jobs:
           [ "$fail" -eq 1 ] && exit 2
           echo "✓ secret 형식 정상 — SSH 연결 단계로 진행"
 
-      - name: SSH deploy
+      - name: SSH deploy (direct shell — appleboy/ssh-action 우회)
         if: steps.gate.outputs.skip == 'false'
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }}
-            echo "→ pulling ${GITHUB_REF##*/}"
-            git fetch --all
-            git checkout ${GITHUB_REF##*/}
-            git pull origin ${GITHUB_REF##*/}
-            python3 -m pip install -r requirements.txt --quiet
-            pkill -f "uvicorn app.main:app" || true
-            sleep 2
-            cd backend
-            nohup python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
-            sleep 4
-            curl -fsS http://127.0.0.1:8000/ | head -c 100 || (echo "❌ uvicorn 기동 실패" && tail -n 60 uvicorn.log && exit 1)
-            echo "✅ deploy ok"
+        env:
+          KEY:   ${{ secrets.EC2_SSH_KEY }}
+          HOST:  ${{ secrets.EC2_HOST }}
+          USER:  ${{ secrets.EC2_USER }}
+          DPATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+
+          SSH_OPTS=( -i ~/.ssh/id_deploy
+                     -o StrictHostKeyChecking=no
+                     -o UserKnownHostsFile=/dev/null
+                     -o ConnectTimeout=15
+                     -o BatchMode=yes
+                     -o LogLevel=ERROR
+                     -o ServerAliveInterval=20 )
+
+          BRANCH="${GITHUB_REF##*/}"
+          echo "→ deploy to $USER@$HOST · branch=$BRANCH · path=$DPATH"
+
+          # heredoc 으로 원격 스크립트 전송. \$ 는 원격에서 평가, $ 는 워크플로 변수.
+          ssh "${SSH_OPTS[@]}" "$USER@$HOST" bash -s <<REMOTE
+          set -euo pipefail
+          cd "$DPATH"
+          echo "[remote] cwd: \$(pwd)"
+          git fetch --all
+          git checkout "$BRANCH"
+          git pull origin "$BRANCH"
+          echo "[remote] HEAD: \$(git rev-parse --short HEAD)"
+
+          python3 -m pip install -r requirements.txt --quiet
+          # torch 는 옵션 — 이미 설치되어 있으면 skip 빠름
+          python3 -c "import torch" 2>/dev/null || python3 -m pip install --quiet torch numpy
+
+          pkill -f "uvicorn app.main:app" || true
+          sleep 2
+          cd backend
+          nohup python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
+          sleep 5
+
+          if curl -fsS http://127.0.0.1:8000/healthz > /tmp/health.json; then
+            echo "[remote] healthz: \$(cat /tmp/health.json | head -c 200)"
+          else
+            echo "[remote] ❌ uvicorn 기동 실패"
+            tail -n 80 uvicorn.log
+            exit 1
+          fi
+
+          echo "[remote] ✅ deploy ok"
+          REMOTE

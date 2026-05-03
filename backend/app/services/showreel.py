@@ -243,10 +243,17 @@ def build() -> Dict[str, object]:
 
 
 def latest():
-    """가장 최근 showreel 메타. 없으면 자동 빌드."""
+    """가장 최근 showreel 메타. 없으면 placeholder 응답 (자동 빌드 안 함 — 워커 블로킹 방지)."""
     items = sorted(OUT_DIR.glob("*showreel*.mp4"), key=lambda x: x.stat().st_mtime, reverse=True)
     if not items:
-        return build()
+        return {
+            "name": None,
+            "video_url": None,
+            "created_at": None,
+            "size_kb": 0,
+            "age_hours": None,
+            "note": "아직 빌드된 합본 영상 없음. POST /showreel/build 로 생성 (1~3분 소요).",
+        }
     p = items[0]
     return {
         "name": p.stem,

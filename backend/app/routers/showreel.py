@@ -38,9 +38,12 @@ def latest():
 
 @router.get("/latest.mp4")
 def latest_mp4():
-    """슬라이드/키오스크 <video> 가 직접 임베드할 수 있는 안정 URL → 최신 영상으로 redirect."""
+    """슬라이드/키오스크 <video> 가 직접 임베드할 수 있는 안정 URL → 최신 영상으로 redirect.
+
+    합본 영상이 아직 없으면 404 (자동 빌드 X — 워커 블로킹 방지).
+    """
     meta = showreel_service.latest()
     url = meta.get("video_url") if isinstance(meta, dict) else None
     if not url:
-        raise HTTPException(status_code=404, detail="no showreel")
+        raise HTTPException(status_code=404, detail="no showreel — POST /showreel/build 로 생성")
     return RedirectResponse(url=url, status_code=302)

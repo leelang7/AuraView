@@ -29,6 +29,27 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Debug secret format (no leak)
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          # 값 자체는 GitHub 가 자동 마스킹 — 줄수·길이·BEGIN/END 존재 여부만 확인.
+          lines=$(printf '%s\n' "$KEY" | wc -l)
+          chars=$(printf '%s' "$KEY" | wc -c)
+          first=$(printf '%s' "$KEY" | head -1 | head -c 30)
+          last=$(printf '%s' "$KEY" | tail -1 | head -c 30)
+          echo "EC2_SSH_KEY lines=$lines chars=$chars"
+          echo "first line preview (will be ***-masked if it contains the secret value):"
+          echo "  $first"
+          echo "last line preview:"
+          echo "  $last"
+          if printf '%s' "$KEY" | grep -q "BEGIN"; then echo "✓ has BEGIN marker"; else echo "✗ NO BEGIN marker — 키 형식 깨짐"; fi
+          if printf '%s' "$KEY" | grep -q "END"; then echo "✓ has END marker"; else echo "✗ NO END marker — 키 형식 깨짐"; fi
+          # 정상: 26~28 lines, 1600~1800 chars, BEGIN/END 둘 다 있음
+          [ "$lines" -lt 5 ] && echo "::warning::EC2_SSH_KEY 가 한 줄로 들어옴 — 줄바꿈이 사라진 상태일 가능성"
+          true
+
       - name: SSH deploy
         if: steps.gate.outputs.skip == 'false'
         uses: appleboy/ssh-action@v1.0.3

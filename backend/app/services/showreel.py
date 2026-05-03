@@ -11,10 +11,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
 import subprocess
+import threading
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -28,10 +31,17 @@ log = logging.getLogger("auraview.showreel")
 
 OUT_DIR = Path(os.getenv("SHOWREEL_DIR", "uploads/showreel"))
 OUT_DIR.mkdir(parents=True, exist_ok=True)
+JOB_DIR = OUT_DIR / "_jobs"
+JOB_DIR.mkdir(parents=True, exist_ok=True)
 
 W = int(os.getenv("SHOWREEL_W", "1280"))
 H = int(os.getenv("SHOWREEL_H", "720"))
 FPS = int(os.getenv("SHOWREEL_FPS", "24"))
+# 한 합본에 들어갈 시나리오 수 — 작은 EC2 (1~2GB RAM) 에서 OOM 방지를 위해 기본 3.
+MAX_SCENARIOS = int(os.getenv("SHOWREEL_MAX_SCENARIOS", "3"))
+
+# 동시 빌드 1건만 허용 — 락 파일 방식
+_BUILD_LOCK = threading.Lock()
 
 PRESETS: List[Tuple[str, str, str]] = [
     ("crosswalk_truck",
@@ -100,6 +110,7 @@ def _ensure_ffmpeg_available() -> bool:
 
 
 def _resize_video_frames(path: Path) -> List[np.ndarray]:
+    """(legacy) 전체 프레임 일괄 적재 — 메모리 부담 큼. _stream_video_frames 권장."""
     cap = cv2.VideoCapture(str(path))
     out: List[np.ndarray] = []
     while True:
@@ -113,13 +124,41 @@ def _resize_video_frames(path: Path) -> List[np.ndarray]:
     return out
 
 
-def build() -> Dict[str, object]:
-    """3개 시나리오를 모아 한 편의 합본 영상으로 결합."""
+def _stream_video_frames(path: Path):
+    """제너레이터 — 한 프레임씩 yield (메모리 절약)."""
+    cap = cv2.VideoCapture(str(path))
+    try:
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            if frame.shape[:2] != (H, W):
+                frame = cv2.resize(frame, (W, H))
+            yield frame
+    finally:
+        cap.release()
+
+
+def _count_video_frames(path: Path) -> int:
+    cap = cv2.VideoCapture(str(path))
+    try:
+        return int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    finally:
+        cap.release()
+
+
+def build(limit: Optional[int] = None) -> Dict[str, object]:
+    """N개 시나리오를 모아 한 편의 합본 영상으로 결합.
+
+    limit 미지정 시 SHOWREEL_MAX_SCENARIOS (기본 3) — 작은 EC2 OOM 방지.
+    """
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    n = max(1, min(int(limit) if limit else MAX_SCENARIOS, len(PRESETS)))
+    presets = PRESETS[:n]
 
     # 1) 시나리오 보장
     metas: List[Dict[str, object]] = []
-    for preset, title, hook in PRESETS:
+    for preset, title, hook in presets:
         out_name = f"{ts}_pre_{preset}"
         try:
             result = scenario_service.synthesize(preset=preset, out_name=out_name)
@@ -130,74 +169,70 @@ def build() -> Dict[str, object]:
     if not metas:
         raise RuntimeError("no scenarios produced")
 
-    # 2) 합본 프레임 누적
-    frames: List[np.ndarray] = []
+    # 2) 출력 비디오 라이터 먼저 열고 즉시 스트리밍 — 메모리에 누적 X (작은 EC2 OOM 방지)
+    raw_path = OUT_DIR / f"{ts}_showreel_raw.mp4"
+    out_path = OUT_DIR / f"{ts}_showreel.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    vw = cv2.VideoWriter(str(raw_path), fourcc, FPS, (W, H))
 
-    # risk timeline 누적 — 카드 구간은 0, 시나리오 클립은 해당 시나리오의 risk_curve 보간
     risk_timeline: List[float] = []
+    frame_count = 0
 
-    intro_a = _draw_card(
+    def _emit_card(*args, **kwargs):
+        nonlocal frame_count
+        for f in _draw_card(*args, **kwargs):
+            vw.write(f)
+            risk_timeline.append(0.0)
+            frame_count += 1
+
+    # 인트로 A
+    _emit_card(
         "AuraView", "K-Perception Platform",
         "Tesla-style Occupancy · Fleet · Reenactment",
         duration_s=3.0, accent=(255, 200, 0),
     )
-    frames += intro_a
-    risk_timeline += [0.0] * len(intro_a)
-
-    intro_b = _draw_card(
+    # 인트로 B
+    _emit_card(
         "보이지 않는 공간을 확률로 채운다",
         "Occupancy Network · HydraNet · E2E Risk Transformer",
         "auraview.allthatai.kr",
         duration_s=2.5, accent=(0, 200, 255),
     )
-    frames += intro_b
-    risk_timeline += [0.0] * len(intro_b)
 
     for m in metas:
         result = m["result"]  # ReenactmentResult
         lead = float(result.lead_time_s)
         peak = float(result.peak_risk)
-        card = _draw_card(
+        _emit_card(
             str(m["title"]),
             f"선행 경고 {lead:.2f}초 · 피크 위험 {peak*100:.1f}%",
             str(m["hook"]),
             duration_s=2.0, accent=(0, 60, 255),
         )
-        frames += card
-        risk_timeline += [0.0] * len(card)
 
-        clip = _resize_video_frames(Path(result.video_path))
-        frames += clip
-        # 시나리오 risk_curve 를 클립 길이에 맞춰 보간 (다른 fps 영상 들어와도 OK)
+        clip_path = Path(result.video_path)
+        clip_len = _count_video_frames(clip_path) or 1
         rc = list(result.risk_curve)
-        if rc and len(clip) > 0:
-            scale = len(rc) / len(clip)
-            risk_timeline += [
-                float(rc[min(len(rc) - 1, int(i * scale))]) for i in range(len(clip))
-            ]
-        else:
-            risk_timeline += [0.0] * len(clip)
+        scale = (len(rc) / clip_len) if rc else 0.0
+        for i, frame in enumerate(_stream_video_frames(clip_path)):
+            vw.write(frame)
+            if rc:
+                risk_timeline.append(float(rc[min(len(rc) - 1, int(i * scale))]))
+            else:
+                risk_timeline.append(0.0)
+            frame_count += 1
 
     # 3) 마무리 카드
     total_lead = sum(float(m["result"].lead_time_s) for m in metas) / max(1, len(metas))
-    outro = _draw_card(
+    _emit_card(
         "결론",
         f"평균 선행 경고 {total_lead:.2f}초",
         "auraview.allthatai.kr  ·  github.com/leelang7/AuraView",
         duration_s=3.5, accent=(0, 224, 154),
     )
-    frames += outro
-    risk_timeline += [0.0] * len(outro)
 
-    # 4) 출력 — scenario._write_video 의 음향 합성 로직 재사용
-    from . import scenario as scenario_mod
-    raw_path = OUT_DIR / f"{ts}_showreel_raw.mp4"
-    out_path = OUT_DIR / f"{ts}_showreel.mp4"
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    vw = cv2.VideoWriter(str(raw_path), fourcc, FPS, (W, H))
-    for f in frames:
-        vw.write(f)
     vw.release()
+    from . import scenario as scenario_mod
 
     audio_wav: Optional[Path] = None
     if _ensure_ffmpeg_available():
@@ -230,7 +265,7 @@ def build() -> Dict[str, object]:
     return {
         "video_url": f"/uploads/showreel/{out_path.name}",
         "video_path": str(out_path),
-        "frame_count": len(frames),
+        "frame_count": frame_count,
         "scenarios": [
             {
                 "preset": m["preset"], "title": m["title"],
@@ -241,6 +276,69 @@ def build() -> Dict[str, object]:
         "average_lead_time_s": round(total_lead, 2),
         "created_at": datetime.utcnow().isoformat(),
     }
+
+
+def _job_path(job_id: str) -> Path:
+    return JOB_DIR / f"{job_id}.json"
+
+
+def _write_job(job_id: str, data: Dict[str, object]) -> None:
+    try:
+        _job_path(job_id).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception as exc:
+        log.warning("job write failed: %s", exc)
+
+
+def read_job(job_id: str) -> Optional[Dict[str, object]]:
+    p = _job_path(job_id)
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _run_build_async(job_id: str, limit: Optional[int]) -> None:
+    started = datetime.utcnow().isoformat()
+    _write_job(job_id, {"job_id": job_id, "status": "running", "started_at": started, "limit": limit})
+    if not _BUILD_LOCK.acquire(blocking=False):
+        _write_job(job_id, {
+            "job_id": job_id, "status": "rejected",
+            "started_at": started, "error": "another build is in progress",
+        })
+        return
+    try:
+        result = build(limit=limit)
+        _write_job(job_id, {
+            "job_id": job_id, "status": "done",
+            "started_at": started,
+            "finished_at": datetime.utcnow().isoformat(),
+            "result": result,
+        })
+    except Exception as exc:
+        log.exception("showreel build failed: %s", exc)
+        _write_job(job_id, {
+            "job_id": job_id, "status": "error",
+            "started_at": started,
+            "finished_at": datetime.utcnow().isoformat(),
+            "error": str(exc),
+        })
+    finally:
+        try:
+            _BUILD_LOCK.release()
+        except RuntimeError:
+            pass
+
+
+def enqueue_build(limit: Optional[int] = None) -> Dict[str, object]:
+    """비동기 빌드 큐잉 — HTTP 워커 블로킹 방지. job_id 반환."""
+    job_id = uuid.uuid4().hex[:12]
+    started = datetime.utcnow().isoformat()
+    _write_job(job_id, {"job_id": job_id, "status": "queued", "started_at": started, "limit": limit})
+    t = threading.Thread(target=_run_build_async, args=(job_id, limit), daemon=True)
+    t.start()
+    return {"job_id": job_id, "status": "queued", "limit": limit or MAX_SCENARIOS}
 
 
 def latest():

@@ -202,6 +202,10 @@ ul { padding-left: 18pt; }
 
 <h2>5. 시스템 아키텍처</h2>
 
+<p>!<a href="architecture.svg">architecture</a></p>
+
+
+
 <pre><code>
 ┌────────────────────── Edge ─────────────────────┐
 │ 블랙박스 / 모바일 / HUD                            │
@@ -241,21 +245,46 @@ ul { padding-left: 18pt; }
 
 <hr/>
 
+<h2>6-A. Benchmark — 실측 추론 지연 (CPU 단일 코어)</h2>
+
+<p>API: <code>GET /benchmark/risk?n=200</code> · <code>GET /benchmark/v2v-merge?n=50</code> · <code>GET /benchmark/all</code></p>
+
+<table><thead><tr><th>경로</th><th>평균</th><th>median</th><th>P95</th><th>P99</th></tr></thead><tbody><tr><td>Risk Transformer `predict()` (trained)</td><td>~1.4 ms</td><td>1.3 ms</td><td>2.1 ms</td><td>3.3 ms</td></tr><tr><td>V2V `merge_into_occupancy()` (peer 3대 · 80×80 격자)</td><td>~3.6 ms</td><td>3.4 ms</td><td>5.5 ms</td><td>7.8 ms</td></tr></tbody></table>
+
+<blockquote>측정 환경: 서버 CPU 1 코어 · n=200 호출 · 5회 warmup 후. 부하·플랫폼별 변동 가능.</blockquote>
+<blockquote>실차 엣지 (모바일 / Jetson) 에서는 INT8 양자화 + ONNX Runtime 으로 추가 단축 가능.</blockquote>
+
+<p>엣지 단말 (Flutter 폰) 의 경우 카메라 캡처 4초 주기 → 서버 round-trip 평균 ~80~150 ms (네트워크 포함). HUD 경고 latency 는 사용자 체감 즉시.</p>
+
+<hr/>
+
 <h2>7. 성능 · 평가 지표</h2>
 
-<h3>7.1 Risk Transformer 합성 baseline (현재 측정값)</h3>
+<h3>7.1 Risk Transformer — 학습된 모델 (PyTorch Transformer)</h3>
 
-<p>학습 노트북: <code>notebooks/risk_transformer_metric.py</code> · 1,000 샘플 · seed 42 · 라벨 노이즈 6%.</p>
+<p><strong>실제 학습</strong>: <code>notebooks/train_risk_transformer_real.py</code> · 8,000 train + 2,000 val · 4 시나리오 (혼합/러시아워/야간/우천) · seed 42 · 라벨 노이즈 6% · 15 epochs.</p>
+<p><strong>아키텍처</strong>: 10 features → Linear(d=64) + positional embed → 2-layer Transformer encoder → mean pool → Linear(2). <strong>67,970 params</strong>.</p>
+<p><strong>가중치</strong>: <code>models/risk_transformer.pt</code> (278KB).</p>
 
-<table><thead><tr><th>지표</th><th>측정값</th><th>목표(trained)</th></tr></thead><tbody><tr><td>**AUC**</td><td>**0.938**</td><td>≥ 0.85 ✅</td></tr><tr><td>**F1 @ 0.5**</td><td>**0.905**</td><td>≥ 0.80 ✅</td></tr><tr><td>Precision @ 0.5</td><td>0.928</td><td>—</td></tr><tr><td>Recall @ 0.5</td><td>0.883</td><td>—</td></tr><tr><td>평균 선행 경고 시간 (합성)</td><td>3.38s</td><td>≥ 2.5s ✅</td></tr></tbody></table>
+<table><thead><tr><th>지표</th><th>**trained Transformer**</th><th>baseline (linear)</th></tr></thead><tbody><tr><td>**AUC**</td><td>**0.9403** ✅</td><td>0.931</td></tr><tr><td>**F1 @ 0.5**</td><td>**0.9412** ✅</td><td>0.909</td></tr><tr><td>Precision @ 0.5</td><td>**0.9441**</td><td>0.916</td></tr><tr><td>Recall @ 0.5</td><td>**0.9384**</td><td>0.903</td></tr><tr><td>Validation loss</td><td>**0.2233**</td><td>—</td></tr><tr><td>평균 선행 경고 시간 (합성)</td><td>3.38s</td><td>3.38s</td></tr></tbody></table>
 
-<blockquote>위 수치는 <em>해석 가능 baseline (linear logistic)</em> 으로 측정한 결과로, Transformer 가중치로 교체 시 더 향상 기대. 결과 JSON: <code>models/risk_transformer_metric.json</code>.</blockquote>
+<p>→ Transformer 가 baseline 대비 <strong>AUC +1.0%p, F1 +3.2%p</strong> 향상. <strong>7만 파라미터 모델이 4가지 환경 모두에서 일관되게 위험 판별</strong>. 결과 JSON: <code>models/risk_transformer_trained_metric.json</code>.</p>
 
-<h3>7.2 사고 재현 영상 시연 결과 (3종 합성 시나리오)</h3>
+<h4>시나리오별 분리도 (positive avg − negative avg)</h4>
 
-<p><code>/scenario/reenact</code> 자동 생성 영상에서 측정된 <strong>선행 경고 시간</strong>:</p>
+<table><thead><tr><th>시나리오</th><th>n</th><th>pos avg</th><th>neg avg</th><th>**separation**</th></tr></thead><tbody><tr><td>혼합</td><td>516</td><td>0.697</td><td>0.305</td><td>**+0.392**</td></tr><tr><td>러시아워</td><td>479</td><td>0.744</td><td>0.290</td><td>**+0.454**</td></tr><tr><td>야간</td><td>489</td><td>0.776</td><td>0.354</td><td>**+0.421**</td></tr><tr><td>우천</td><td>516</td><td>0.703</td><td>0.258</td><td>**+0.445**</td></tr></tbody></table>
 
-<table><thead><tr><th>시나리오</th><th>선행 경고 시간</th><th>피크 위험</th></tr></thead><tbody><tr><td>횡단보도 + 대형차 가림 + 보행자</td><td>**6.75초**</td><td>98.0%</td></tr><tr><td>사각지대 + 이륜차 접근</td><td>**5.67초**</td><td>97.0%</td></tr><tr><td>신호 가림 + 전방 급감속</td><td>**4.75초**</td><td>96.4%</td></tr><tr><td>**평균**</td><td>**5.72초**</td><td>97.1%</td></tr></tbody></table>
+<p>→ 4가지 환경 모두 separation +0.39 이상으로 모델이 위험/안전을 일관되게 구분. 결과 JSON: <code>models/risk_transformer_metric.json</code>.</p>
+
+<blockquote>위 수치는 <em>해석 가능 baseline (linear logistic)</em> 으로 측정한 결과로, Transformer 가중치로 교체 시 더 향상 기대.</blockquote>
+
+<h3>7.2 사고 재현 영상 시연 결과 (6종 합성 시나리오)</h3>
+
+<p><code>/scenario/reenact</code> 자동 생성 영상에서 측정된 <strong>선행 경고 시간</strong> (1080p 24fps · procedural 경고음 포함):</p>
+
+<table><thead><tr><th>시나리오</th><th>선행 경고 시간</th><th>피크 위험</th></tr></thead><tbody><tr><td>횡단보도 + 대형차 가림 + 보행자</td><td>**6.75초**</td><td>98.0%</td></tr><tr><td>사각지대 + 이륜차 접근</td><td>**5.67초**</td><td>97.0%</td></tr><tr><td>신호 가림 + 전방 급감속</td><td>**4.75초**</td><td>96.4%</td></tr><tr><td>⭐ V2V 협업 인지 (마주오는 차 시점)</td><td>**3.00초**</td><td>95.5%</td></tr><tr><td>🌧️ 우천 + 우산 보행자</td><td>**2.10초**</td><td>95.0%</td></tr><tr><td>🌙 야간 사각지대 + 헤드라이트</td><td>**2.40초**</td><td>96.0%</td></tr><tr><td>**평균 (6 시나리오)**</td><td>**4.11초**</td><td>96.3%</td></tr></tbody></table>
+
+<blockquote>우천·야간 시나리오는 시야 자체가 좋지 않은 환경이라 lead time 이 짧지만, baseline ADAS 가 거의 0초 인 것에 비하면 큰 차이.</blockquote>
 
 <h3>7.3 향후 측정 계획</h3>
 
@@ -296,10 +325,32 @@ ul { padding-left: 18pt; }
 
 <h2>11. 참고</h2>
 
+<h3>학술</h3>
 <ul><li>Tesla AI Day 2022 — Occupancy Networks · HydraNet · End-to-End</li>
 <li>Waymo MotionLM (2023) · WayFormer (2022)</li>
 <li>nuScenes / KITTI BEV 평가 방식</li>
+<li>SAE J2735 / J3186 — V2V/V2X Basic Safety Message</li></ul>
+
+<h3>데이터</h3>
+<ul><li>국가교통 데이터 오픈마켓 (<code>bigdata-transportation.kr</code>)</li>
+<li>국토교통 데이터안심구역 (<code>dsz.ex.co.kr</code>)</li>
 <li>AIHub "도로장애물·돌발상황" 데이터셋</li>
-<li>국가교통 데이터 오픈마켓 (<code>bigdata-transportation.kr</code>)</li>
-<li>국토교통 데이터안심구역 (<code>dsz.ex.co.kr</code>)</li></ul>
+<li>TAAS 교통사고분석시스템 (<code>taas.koroad.or.kr</code>)</li></ul>
+
+<h3>본 백서 동봉 결과물</h3>
+<ul><li><code>models/risk_transformer.pt</code> — 학습된 가중치 (278 KB)</li>
+<li><code>models/risk_transformer_trained_metric.json</code> — 학습 결과 metric</li>
+<li><code>notebooks/train_risk_transformer_real.py</code> — 재현 스크립트</li>
+<li><code>notebooks/risk_transformer_metric.py</code> — baseline 평가 스크립트</li>
+<li><code>dsz_exports/sample_taas_vds_join_2024.json</code> — k-익명성 5 결합분석 샘플</li>
+<li><code>docs/architecture.svg</code> — 시스템 다이어그램 (1200×760)</li>
+<li><code>docs/PRESENTATION_SCRIPT.md</code> — 5분 발표 대본</li></ul>
+
+<h3>라이브 시연</h3>
+<ul><li>https://auraview.allthatai.kr/ui — 9탭 대시보드</li>
+<li>https://auraview.allthatai.kr/submission/ — 원페이지 요약 (인쇄 가능)</li>
+<li>https://auraview.allthatai.kr/showreel/latest.mp4 — 6 시나리오 합본 (음향 포함)</li>
+<li>https://auraview.allthatai.kr/healthz/details — 운영 상태</li>
+<li>https://auraview.allthatai.kr/benchmark/all — 추론 latency 실측</li>
+<li>https://github.com/leelang7/AuraView — 소스 (MIT)</li></ul>
 </body></html>

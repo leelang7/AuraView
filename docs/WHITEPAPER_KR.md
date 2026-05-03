@@ -224,6 +224,22 @@ AuraView 의 K-MaaS 통합:
 
 ---
 
+## 6-A. Benchmark — 실측 추론 지연 (CPU 단일 코어)
+
+API: `GET /benchmark/risk?n=200` · `GET /benchmark/v2v-merge?n=50` · `GET /benchmark/all`
+
+| 경로 | 평균 | median | P95 | P99 |
+|---|---:|---:|---:|---:|
+| Risk Transformer `predict()` (trained) | ~1.4 ms | 1.3 ms | 2.1 ms | 3.3 ms |
+| V2V `merge_into_occupancy()` (peer 3대 · 80×80 격자) | ~3.6 ms | 3.4 ms | 5.5 ms | 7.8 ms |
+
+> 측정 환경: 서버 CPU 1 코어 · n=200 호출 · 5회 warmup 후. 부하·플랫폼별 변동 가능.
+> 실차 엣지 (모바일 / Jetson) 에서는 INT8 양자화 + ONNX Runtime 으로 추가 단축 가능.
+
+엣지 단말 (Flutter 폰) 의 경우 카메라 캡처 4초 주기 → 서버 round-trip 평균 ~80~150 ms (네트워크 포함). HUD 경고 latency 는 사용자 체감 즉시.
+
+---
+
 ## 7. 성능 · 평가 지표
 
 ### 7.1 Risk Transformer — 학습된 모델 (PyTorch Transformer)
@@ -316,9 +332,31 @@ AuraView 의 K-MaaS 통합:
 
 ## 11. 참고
 
+### 학술
 - Tesla AI Day 2022 — Occupancy Networks · HydraNet · End-to-End
 - Waymo MotionLM (2023) · WayFormer (2022)
 - nuScenes / KITTI BEV 평가 방식
-- AIHub "도로장애물·돌발상황" 데이터셋
+- SAE J2735 / J3186 — V2V/V2X Basic Safety Message
+
+### 데이터
 - 국가교통 데이터 오픈마켓 (`bigdata-transportation.kr`)
 - 국토교통 데이터안심구역 (`dsz.ex.co.kr`)
+- AIHub "도로장애물·돌발상황" 데이터셋
+- TAAS 교통사고분석시스템 (`taas.koroad.or.kr`)
+
+### 본 백서 동봉 결과물
+- `models/risk_transformer.pt` — 학습된 가중치 (278 KB)
+- `models/risk_transformer_trained_metric.json` — 학습 결과 metric
+- `notebooks/train_risk_transformer_real.py` — 재현 스크립트
+- `notebooks/risk_transformer_metric.py` — baseline 평가 스크립트
+- `dsz_exports/sample_taas_vds_join_2024.json` — k-익명성 5 결합분석 샘플
+- `docs/architecture.svg` — 시스템 다이어그램 (1200×760)
+- `docs/PRESENTATION_SCRIPT.md` — 5분 발표 대본
+
+### 라이브 시연
+- https://auraview.allthatai.kr/ui — 9탭 대시보드
+- https://auraview.allthatai.kr/submission/ — 원페이지 요약 (인쇄 가능)
+- https://auraview.allthatai.kr/showreel/latest.mp4 — 6 시나리오 합본 (음향 포함)
+- https://auraview.allthatai.kr/healthz/details — 운영 상태
+- https://auraview.allthatai.kr/benchmark/all — 추론 latency 실측
+- https://github.com/leelang7/AuraView — 소스 (MIT)

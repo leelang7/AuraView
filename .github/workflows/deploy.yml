@@ -29,26 +29,48 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Debug secret format (no leak)
+      - name: Validate EC2_SSH_KEY format (fails loudly)
         if: steps.gate.outputs.skip == 'false'
         env:
           KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+          PATH_DEPLOY: ${{ secrets.DEPLOY_PATH }}
         run: |
-          # 값 자체는 GitHub 가 자동 마스킹 — 줄수·길이·BEGIN/END 존재 여부만 확인.
+          # 값 자체는 마스킹 — 메타만 노출 + GitHub Job Summary 에 기록.
           lines=$(printf '%s\n' "$KEY" | wc -l)
           chars=$(printf '%s' "$KEY" | wc -c)
-          first=$(printf '%s' "$KEY" | head -1 | head -c 30)
-          last=$(printf '%s' "$KEY" | tail -1 | head -c 30)
-          echo "EC2_SSH_KEY lines=$lines chars=$chars"
-          echo "first line preview (will be ***-masked if it contains the secret value):"
-          echo "  $first"
-          echo "last line preview:"
-          echo "  $last"
-          if printf '%s' "$KEY" | grep -q "BEGIN"; then echo "✓ has BEGIN marker"; else echo "✗ NO BEGIN marker — 키 형식 깨짐"; fi
-          if printf '%s' "$KEY" | grep -q "END"; then echo "✓ has END marker"; else echo "✗ NO END marker — 키 형식 깨짐"; fi
-          # 정상: 26~28 lines, 1600~1800 chars, BEGIN/END 둘 다 있음
-          [ "$lines" -lt 5 ] && echo "::warning::EC2_SSH_KEY 가 한 줄로 들어옴 — 줄바꿈이 사라진 상태일 가능성"
-          true
+          has_begin=$(printf '%s' "$KEY" | grep -c "BEGIN" || true)
+          has_end=$(printf '%s' "$KEY"   | grep -c "END"   || true)
+          host_len=$(printf '%s' "$HOST" | wc -c)
+          user_len=$(printf '%s' "$USER" | wc -c)
+          path_len=$(printf '%s' "$PATH_DEPLOY" | wc -c)
+
+          {
+            echo "## 🔐 Deploy secret diagnostic"
+            echo "| key | lines | chars | BEGIN | END |"
+            echo "|---|---:|---:|---:|---:|"
+            echo "| EC2_SSH_KEY | $lines | $chars | $has_begin | $has_end |"
+            echo ""
+            echo "| key | length |"
+            echo "|---|---:|"
+            echo "| EC2_HOST    | $host_len |"
+            echo "| EC2_USER    | $user_len |"
+            echo "| DEPLOY_PATH | $path_len |"
+            echo ""
+            echo "정상 기준: SSH_KEY lines 25~30 · chars 1500~1900 · BEGIN/END 각 1+"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          fail=0
+          [ "$lines" -lt 5 ]      && { echo "::error::EC2_SSH_KEY가 한 줄로 들어옴 (lines=$lines). 줄바꿈 손실 — 다시 등록 필요."; fail=1; }
+          [ "$chars" -lt 1000 ]   && { echo "::error::EC2_SSH_KEY 너무 짧음 (chars=$chars). 일부만 복사된 듯."; fail=1; }
+          [ "$has_begin" -lt 1 ]  && { echo "::error::EC2_SSH_KEY 에 BEGIN 마커 없음."; fail=1; }
+          [ "$has_end" -lt 1 ]    && { echo "::error::EC2_SSH_KEY 에 END 마커 없음."; fail=1; }
+          [ "$host_len" -lt 7 ]   && { echo "::error::EC2_HOST 비어있거나 너무 짧음."; fail=1; }
+          [ "$user_len" -lt 1 ]   && { echo "::error::EC2_USER 비어있음."; fail=1; }
+          [ "$path_len" -lt 5 ]   && { echo "::error::DEPLOY_PATH 비어있거나 너무 짧음."; fail=1; }
+          [ "$fail" -eq 1 ] && exit 2
+          echo "✓ secret 형식 정상 — SSH 연결 단계로 진행"
 
       - name: SSH deploy
         if: steps.gate.outputs.skip == 'false'

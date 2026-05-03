@@ -42,9 +42,10 @@ RISK_THRESHOLD = 0.45   # 이 값 이상이 되는 프레임 = 경고
 SAMPLE_FPS = 8          # 8fps로 샘플링해 추론 (비용 절감)
 OUTPUT_FPS = 24         # cinematic — 24fps
 
-# 합성 시나리오 출력 해상도 (Full HD)
-SYNTH_W = 1920
-SYNTH_H = 1080
+# 합성 시나리오 출력 해상도 — env 로 조정 가능 (소형 인스턴스 대응)
+# SHOWREEL_W/H 와 동일 변수 사용 (한 영상 흐름이라 일관 유지)
+SYNTH_W = int(os.getenv("SHOWREEL_W", "1280"))
+SYNTH_H = int(os.getenv("SHOWREEL_H", "720"))
 
 
 @dataclass

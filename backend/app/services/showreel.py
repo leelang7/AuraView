@@ -29,8 +29,9 @@ log = logging.getLogger("auraview.showreel")
 OUT_DIR = Path(os.getenv("SHOWREEL_DIR", "uploads/showreel"))
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-W, H = 1920, 1080
-FPS = 24
+W = int(os.getenv("SHOWREEL_W", "1280"))
+H = int(os.getenv("SHOWREEL_H", "720"))
+FPS = int(os.getenv("SHOWREEL_FPS", "24"))
 
 PRESETS: List[Tuple[str, str, str]] = [
     ("crosswalk_truck",

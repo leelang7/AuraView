@@ -153,6 +153,42 @@
       </div>
     </section>
 
+    <!-- 3b. IMPACT NUMBERS -->
+    <section data-background-color="#04140c">
+      <div class="eyebrow" style="color:#00e09a;">// PROJECTED IMPACT · TAAS 2024</div>
+      <h2>한 줄로: <em>연간 N건 · M명</em> 예방</h2>
+      <div id="slideImpactHeadline" style="margin-top:18px;font-family:'Black Han Sans',sans-serif;font-size:38px;line-height:1.25;color:#00e09a;">로딩 중…</div>
+      <div id="slideImpactSubtext" style="margin-top:8px;color:#7892a8;font-size:15px;font-family:'JetBrains Mono',monospace;"></div>
+      <table style="margin-top:24px;width:80%;margin-left:auto;margin-right:auto;">
+        <thead>
+          <tr><th>시나리오</th><th>도입</th><th>사고 예방</th><th>사망 감소</th><th>부상 감소</th></tr>
+        </thead>
+        <tbody id="slideImpactScenarios"></tbody>
+      </table>
+      <p style="margin-top:14px;font-size:13px;color:#5a7a9a;font-family:'JetBrains Mono',monospace;">
+        preventability = min(0.85, 0.25 × lead) · 보행/측면/신호 사고 비중 42% · 도시교차로 46%
+      </p>
+      <script>
+        (async () => {
+          try {
+            const im = await fetch('https://auraview.allthatai.kr/impact').then(r => r.json());
+            const sc = await fetch('https://auraview.allthatai.kr/impact/scenarios').then(r => r.json());
+            document.getElementById('slideImpactHeadline').textContent = im.projected_prevented.headline;
+            document.getElementById('slideImpactSubtext').textContent =
+              'lead time ' + im.inputs.avg_lead_time_s.toFixed(2) + 's · 회피율 ' + (im.preventability*100).toFixed(1) + '% · 도시교차로 ' + (im.inputs.coverage_urban_intersections*100).toFixed(0) + '% 도입';
+            const tb = document.getElementById('slideImpactScenarios');
+            tb.innerHTML = sc.scenarios.map(s =>
+              '<tr><td style="color:#00c8ff;">' + s.label + '</td>' +
+              '<td>' + (s.coverage*100).toFixed(0) + '%</td>' +
+              '<td style="color:#00c8ff;font-weight:700;">' + s.prevented_accidents.toLocaleString() + '건</td>' +
+              '<td style="color:#ff3b3b;font-weight:700;">' + s.prevented_deaths.toLocaleString() + '명</td>' +
+              '<td>' + s.prevented_injured.toLocaleString() + '명</td></tr>'
+            ).join('');
+          } catch(e) {}
+        })();
+      </script>
+    </section>
+
     <!-- 4. DEMO -->
     <section>
       <div class="eyebrow">// LIVE DEMO</div>

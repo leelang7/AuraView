@@ -187,6 +187,49 @@
       </div>
     </section>
 
+    <!-- 임팩트 헤드라인 — 라이브 /impact 데이터 fetch -->
+    <section style="margin-top:42px;">
+      <div style="background:linear-gradient(135deg,rgba(0,224,154,0.10),rgba(0,200,255,0.06));border:1px solid rgba(0,224,154,0.30);border-radius:18px;padding:28px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--safe);margin-bottom:8px;">
+          // PROJECTED ANNUAL PREVENTION  ·  TAAS 2024 BASE
+        </div>
+        <div id="impactHeadline" style="font-family:'Black Han Sans',sans-serif;font-size:30px;line-height:1.25;">
+          AuraView 가 <em style="font-style:normal;color:var(--safe);">연간 사고 N건 · 사망 N명 · 부상 N명</em> 예방
+        </div>
+        <div id="impactSubtext" style="margin-top:10px;color:var(--muted);font-size:13px;">로딩 중…</div>
+        <div style="margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+          <div id="impactPilot"   style="background:rgba(0,200,255,0.06);border:1px solid var(--border);border-radius:12px;padding:14px;"></div>
+          <div id="impactRollout" style="background:rgba(0,200,255,0.06);border:1px solid var(--border);border-radius:12px;padding:14px;"></div>
+          <div id="impactNation"  style="background:rgba(0,200,255,0.06);border:1px solid var(--border);border-radius:12px;padding:14px;"></div>
+        </div>
+        <div style="margin-top:10px;color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace;">
+          출처: 도로교통공단 TAAS 2024 (사망 2,581 / 부상 290,400) · KOTI ITS 효과 (1초→25%, 3초→75% 회피율)
+          · <a href="https://auraview.allthatai.kr/impact" target="_blank" style="color:var(--accent);">/impact JSON 열기</a>
+        </div>
+      </div>
+    </section>
+    <script>
+      (async () => {
+        try {
+          const sx = await fetch('https://auraview.allthatai.kr/impact/scenarios').then(r => r.json());
+          const im = await fetch('https://auraview.allthatai.kr/impact').then(r => r.json());
+          document.getElementById('impactHeadline').innerHTML =
+            'AuraView 가 <em style="font-style:normal;color:var(--safe);">' + im.projected_prevented.headline + '</em>';
+          document.getElementById('impactSubtext').textContent =
+            'lead time ' + im.inputs.avg_lead_time_s.toFixed(2) + 's · 회피율 ' + (im.preventability*100).toFixed(1) + '% · 도시교차로 도입 ' + (im.inputs.coverage_urban_intersections*100).toFixed(0) + '% 가정';
+          const tile = (s, color) =>
+            '<div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;letter-spacing:2px;color:' + color + ';margin-bottom:6px;">' + s.label.toUpperCase() + '</div>' +
+            '<div style="font-family:\\'Black Han Sans\\',sans-serif;font-size:22px;color:var(--text);">' + s.prevented_accidents.toLocaleString() + '건</div>' +
+            '<div style="margin-top:4px;color:var(--muted);font-size:11px;">사망 ' + s.prevented_deaths.toLocaleString() + ' · 부상 ' + s.prevented_injured.toLocaleString() + '</div>';
+          document.getElementById('impactPilot').innerHTML   = tile(sx.scenarios[0], 'var(--safe)');
+          document.getElementById('impactRollout').innerHTML = tile(sx.scenarios[1], 'var(--accent)');
+          document.getElementById('impactNation').innerHTML  = tile(sx.scenarios[2], 'var(--accent2,#7c3aed)');
+        } catch (e) {
+          document.getElementById('impactSubtext').textContent = '백엔드 일시 오프라인 — /impact 직접 확인';
+        }
+      })();
+    </script>
+
     <div class="section-head" id="projects">
       <h2>Projects</h2>
       <div class="meta">// currently live &amp; in progress</div>

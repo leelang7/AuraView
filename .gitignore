@@ -55,6 +55,11 @@ dsz_exports/manifest.jsonl
 uploads/
 backend/uploads/
 
+# deploy 시 다운로드되는 폰트 (대용량, 라이센스상 repo 미커밋)
+backend/assets/*.otf
+backend/assets/*.ttf
+backend/assets/*.ttc
+
 # ── Flutter (auraview_fleet) ─────────────────────────────────────
 auraview_fleet/.dart_tool/
 auraview_fleet/.flutter-plugins

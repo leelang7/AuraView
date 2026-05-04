@@ -67,13 +67,20 @@ PRESETS: List[Tuple[str, str, str]] = [
 
 def _find_korean_font() -> Optional[str]:
     """시스템 한글 폰트 후보 — 첫 번째 존재하는 것 반환. cv2.putText 는 한글 못 그리므로 PIL 사용."""
+    # repo-bundled 폰트 (deploy 시 curl 다운로드)
+    backend_root = Path(__file__).resolve().parent.parent.parent  # backend/
     candidates = [
         # 환경변수 우선
         os.getenv("AURAVIEW_FONT"),
-        # 리눅스 (apt fonts-noto-cjk)
+        # 1) deploy.yml 이 다운로드한 repo-local 폰트 (가장 확실)
+        str(backend_root / "assets" / "NotoSansKR-Regular.otf"),
+        str(Path.cwd() / "backend" / "assets" / "NotoSansKR-Regular.otf"),
+        str(Path.cwd() / "assets" / "NotoSansKR-Regular.otf"),
+        # 2) apt fonts-noto-cjk
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        # 3) apt fonts-nanum
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
         "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
         # 윈도우

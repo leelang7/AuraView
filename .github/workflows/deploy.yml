@@ -110,18 +110,26 @@ jobs:
           # torch 는 옵션 — 이미 설치되어 있으면 skip 빠름
           python3 -c "import torch" 2>/dev/null || python3 -m pip install --quiet torch numpy
 
-          # ffmpeg + 한글 폰트 — showreel 카드의 한글 렌더에 필수.
-          # ffmpeg 없으면 mp4v 코덱(브라우저 재생 X), fonts-noto-cjk 없으면 한글 ??? 표시.
-          NEED_APT=""
-          command -v ffmpeg >/dev/null 2>&1 || NEED_APT="$NEED_APT ffmpeg"
-          [ -f /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc ] || NEED_APT="$NEED_APT fonts-noto-cjk"
-          if [ -n "$NEED_APT" ]; then
-            echo "[remote] apt 설치: $NEED_APT"
+          # ffmpeg — showreel mp4 의 H.264 transcode 에 필수.
+          if ! command -v ffmpeg >/dev/null 2>&1; then
             sudo DEBIAN_FRONTEND=noninteractive apt-get update -y -qq
-            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $NEED_APT
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg
           fi
           ffmpeg -version | head -1
-          # PIL 보장 (한글 텍스트 그리기)
+
+          # 한글 폰트 — apt 가 실패하는 환경 대비해 GitHub raw 직접 다운로드로 보장.
+          # 위치: backend/assets/NotoSansKR-Regular.otf (코드에서 절대경로로 사용)
+          mkdir -p backend/assets
+          FONT_PATH="backend/assets/NotoSansKR-Regular.otf"
+          if [ ! -s "$FONT_PATH" ]; then
+            echo "[remote] download Noto Sans KR..."
+            curl -fsSL --retry 3 -o "$FONT_PATH" \
+              https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf \
+              || echo "[remote] WARN: noto download 실패"
+          fi
+          ls -lh "$FONT_PATH" 2>/dev/null || echo "[remote] no font file"
+
+          # PIL 보장
           python3 -c "import PIL" 2>/dev/null || python3 -m pip install --quiet Pillow
 
           pkill -f "uvicorn app.main:app" || true

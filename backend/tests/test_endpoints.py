@@ -284,3 +284,22 @@ def test_impact_top_intersections_lead_param_changes_prevention():
     r1 = client.get("/impact/top-intersections", params={"lead": 1.0}).json()
     r2 = client.get("/impact/top-intersections", params={"lead": 3.5}).json()
     assert r2["total_prevented_kis_yearly"] > r1["total_prevented_kis_yearly"]
+
+
+def test_impact_top_intersections_national_scope():
+    r = client.get("/impact/top-intersections", params={"scope": "national", "top_n": 22})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["scope"] == "national"
+    assert body["count"] == 22  # 서울 12 + 5대 광역 10
+    cities = {item["city"] for item in body["intersections"]}
+    assert "서울" in cities
+    assert {"부산", "대구", "인천", "대전", "광주"} & cities
+
+
+def test_impact_top_intersections_seoul_default():
+    r = client.get("/impact/top-intersections")
+    body = r.json()
+    assert body["scope"] == "seoul"
+    for item in body["intersections"]:
+        assert item.get("city") == "서울"

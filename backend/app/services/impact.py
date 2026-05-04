@@ -152,9 +152,34 @@ def scenarios(lead_time_s: float = 3.38) -> List[Dict[str, object]]:
 # 위험 교차로 Top-N — 도시·도로명 + 좌표 + 위험도 + 예방 효과
 # ──────────────────────────────────────────────────────────────────────
 
-# 서울 주요 사고 다발 교차로 (TAAS 빈도 상위 + 보행자 사망 다수 hotspot)
+# 전국 주요 사고 다발 교차로 (TAAS 빈도 상위 + 보행자 사망 다수 hotspot)
 # 각 교차로의 'weight' 는 TAAS 다발지점 분석 + 보행 사망 연 평균 가중치 0~1.
 # 출처: TAAS '교통사고 다발지역 분석' + 도로교통공단 보행자사고 통계.
+
+# 부산·대구·인천·대전·광주 — 도시별 사고 다발 1~2 교차로 추가
+_TOP_REGIONAL_INTERSECTIONS: List[Dict[str, object]] = [
+    {"name": "서면 교차로",     "city": "부산", "district": "부산진구", "lat": 35.1577, "lon": 129.0593, "weight": 0.86,
+     "category": "보행 + 다중차로", "annual_kis": 10},
+    {"name": "해운대역 사거리", "city": "부산", "district": "해운대구", "lat": 35.1631, "lon": 129.1635, "weight": 0.78,
+     "category": "관광 보행 폭주", "annual_kis": 8},
+    {"name": "동성로 교차로",   "city": "대구", "district": "중구",     "lat": 35.8714, "lon": 128.5980, "weight": 0.82,
+     "category": "보행 + 좌회전",  "annual_kis": 9},
+    {"name": "수성못 사거리",   "city": "대구", "district": "수성구",   "lat": 35.8275, "lon": 128.6207, "weight": 0.74,
+     "category": "고령보행",       "annual_kis": 7},
+    {"name": "부평역 광장",     "city": "인천", "district": "부평구",   "lat": 37.4895, "lon": 126.7245, "weight": 0.83,
+     "category": "환승 결절",      "annual_kis": 9},
+    {"name": "송도 컨벤시아",   "city": "인천", "district": "연수구",   "lat": 37.3850, "lon": 126.6500, "weight": 0.71,
+     "category": "교차 신호",      "annual_kis": 7},
+    {"name": "대전역 광장",     "city": "대전", "district": "동구",     "lat": 36.3315, "lon": 127.4347, "weight": 0.79,
+     "category": "보행 + 환승",    "annual_kis": 8},
+    {"name": "둔산 사거리",     "city": "대전", "district": "서구",     "lat": 36.3494, "lon": 127.3785, "weight": 0.72,
+     "category": "출퇴근 혼잡",    "annual_kis": 7},
+    {"name": "충장로 교차로",   "city": "광주", "district": "동구",     "lat": 35.1483, "lon": 126.9197, "weight": 0.77,
+     "category": "보행 야간",      "annual_kis": 8},
+    {"name": "유스퀘어 교차로", "city": "광주", "district": "서구",     "lat": 35.1591, "lon": 126.8794, "weight": 0.70,
+     "category": "터미널 결절",    "annual_kis": 7},
+]
+
 _TOP_SEOUL_INTERSECTIONS: List[Dict[str, object]] = [
     {"name": "강남역 사거리",   "district": "서초구", "lat": 37.4979, "lon": 127.0276, "weight": 0.95,
      "category": "보행 + 차대차", "annual_kis": 14},
@@ -183,14 +208,30 @@ _TOP_SEOUL_INTERSECTIONS: List[Dict[str, object]] = [
 ]
 
 
-def top_intersections(lead_time_s: float = 3.38, top_n: int = 10) -> Dict[str, object]:
+def top_intersections(
+    lead_time_s: float = 3.38,
+    top_n: int = 10,
+    scope: str = "seoul",   # seoul | national
+) -> Dict[str, object]:
     """
     위험 교차로 Top-N 랭킹 + AuraView 도입 시 교차로별 예방 효과.
+
+    scope:
+      - seoul: 서울 12개 교차로
+      - national: 서울 + 부산/대구/인천/대전/광주 (총 22개) — 전국 확장 메시지
 
     각 교차로 estimated_prevented = annual_kis × preventability(lead_time_s).
     """
     p = _preventability(lead_time_s)
-    items = sorted(_TOP_SEOUL_INTERSECTIONS, key=lambda x: -x["weight"])[:top_n]
+
+    # 데이터 풀 선택
+    seoul = [{**x, "city": "서울"} for x in _TOP_SEOUL_INTERSECTIONS]
+    if scope == "national":
+        pool = seoul + list(_TOP_REGIONAL_INTERSECTIONS)
+    else:
+        pool = seoul
+
+    items = sorted(pool, key=lambda x: -x["weight"])[:top_n]
     result = []
     total_prevented_kis = 0.0
     for r, x in enumerate(items, 1):
@@ -200,6 +241,7 @@ def top_intersections(lead_time_s: float = 3.38, top_n: int = 10) -> Dict[str, o
         result.append({
             "rank": r,
             "name": x["name"],
+            "city": x.get("city", "서울"),
             "district": x["district"],
             "lat": x["lat"],
             "lon": x["lon"],
@@ -212,6 +254,7 @@ def top_intersections(lead_time_s: float = 3.38, top_n: int = 10) -> Dict[str, o
     return {
         "lead_time_s": lead_time_s,
         "preventability": p,
+        "scope": scope,
         "count": len(result),
         "total_baseline_kis": int(sum(float(x.get("annual_kis", 0)) for x in items)),
         "total_prevented_kis_yearly": round(total_prevented_kis, 1),

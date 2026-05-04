@@ -1288,6 +1288,41 @@ def prototype_ui():
 
           <!-- TAB 4 : Fleet -->
           <div class="tab-panel" id="tab4">
+            <!-- 데이터 흐름 다이어그램 — Flutter 폰 → AuraView → 재학습 -->
+            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,200,255,0.06),rgba(124,58,237,0.04));">
+              <div class="card-tag">FLEET LEARNING FLYWHEEL · LIVE</div>
+              <div class="section-label">// 폰 → 엣지 추론 → 어려운 장면만 PII 마스킹 → 업로드 → 모델 재학습</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;">
+                <div style="flex:1 1 140px;min-width:140px;text-align:center;padding:14px;background:rgba(0,200,255,0.06);border:1px solid var(--border);border-radius:10px;">
+                  <div style="font-size:32px;">📱</div>
+                  <div style="font-weight:700;color:var(--accent);">Flutter 앱</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px;">엣지 추론 + 임계 초과만 업로드</div>
+                </div>
+                <div style="font-size:24px;color:var(--muted);">→</div>
+                <div style="flex:1 1 140px;min-width:140px;text-align:center;padding:14px;background:rgba(255,176,32,0.06);border:1px solid var(--border);border-radius:10px;">
+                  <div style="font-size:32px;">🔒</div>
+                  <div style="font-weight:700;color:var(--warn);">PII 마스킹</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px;">얼굴/번호판 자동 블러</div>
+                </div>
+                <div style="font-size:24px;color:var(--muted);">→</div>
+                <div style="flex:1 1 140px;min-width:140px;text-align:center;padding:14px;background:rgba(0,224,154,0.06);border:1px solid var(--border);border-radius:10px;">
+                  <div style="font-size:32px;">📥</div>
+                  <div style="font-weight:700;color:var(--safe);">업로드 누적</div>
+                  <div id="flowUploadCount" style="font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--text);margin-top:2px;">…</div>
+                  <div id="flowDeviceCount" style="font-size:11px;color:var(--muted);">… 단말</div>
+                </div>
+                <div style="font-size:24px;color:var(--muted);">→</div>
+                <div style="flex:1 1 140px;min-width:140px;text-align:center;padding:14px;background:rgba(124,58,237,0.06);border:1px solid var(--border);border-radius:10px;">
+                  <div style="font-size:32px;">🧠</div>
+                  <div style="font-weight:700;color:var(--accent2);">모델 재학습</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px;">AUC <span id="flowAuc">…</span></div>
+                </div>
+              </div>
+              <div style="margin-top:10px;text-align:center;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
+                실데이터 → <a href="/fleet/stats" target="_blank" style="color:var(--accent);">/fleet/stats</a> · <a href="/healthz/details" target="_blank" style="color:var(--accent);">/healthz/details</a>
+              </div>
+            </div>
+
             <div class="dashboard-grid">
               <div class="left-col">
                 <div class="card">
@@ -2153,11 +2188,30 @@ def prototype_ui():
             const res = await fetch(window.location.origin + '/occupancy/demo');
             const data = await res.json();
             renderOccCanvas(data);
-            document.getElementById('occResultBox').className = 'status info';
-            document.getElementById('occResultBox').innerHTML = `
-              <div class="status-title">DEMO GRID</div>
-              <div class="status-main">점유 mass ${data.occluded_mass.toFixed(1)}</div>
-              <div class="status-meta">shape ${data.shape[0]}×${data.shape[1]} · cell ${data.cell_m}m</div>`;
+            const sc = data.scenario || {};
+            const rs = data.risk_summary || {};
+            const hs = (data.hotspots || []).map(h =>
+              '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);"><span>' +
+              (h.kind === 'occluded_shadow' ? '🌫️' :
+               h.kind === 'intent_prior' ? '⭐' :
+               h.kind === 'signal_shadow' ? '🚦' :
+               h.class === 'motorcycle' ? '🏍️' : '🚛') +
+              ' ' + h.label + '</span><span style="color:var(--accent);">' + h.distance_m + 'm</span></div>'
+            ).join('');
+            const box = document.getElementById('occResultBox');
+            box.className = 'status info';
+            box.innerHTML = `
+              <div class="status-title">${sc.title || 'BEV DEMO'}</div>
+              <div class="status-main" style="font-size:14px;line-height:1.45;">${sc.narrative || ''}</div>
+              <div class="status-meta" style="margin-top:10px;">
+                <div style="font-weight:700;color:var(--accent);">감지된 객체 + 가려진 영역</div>
+                ${hs}
+                <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">
+                  <span style="color:var(--danger);font-weight:700;">충돌 확률 ${(rs.p_collision*100).toFixed(0)}%</span>
+                  · 선행 경고 <span style="color:var(--safe);font-weight:700;">${rs.lead_time_s}s</span>
+                  · ${rs.recommended_action}
+                </div>
+              </div>`;
           }
 
           // ⭐ TAB ② 진입 시 자동 BEV 데모 로드 + 3D 모드 — 빈 플레이스홀더 안 보이게
@@ -2322,6 +2376,17 @@ def prototype_ui():
             const res = await fetch(window.location.origin + '/fleet/stats');
             const data = await res.json();
             document.getElementById('fleetOut').textContent = JSON.stringify(data, null, 2);
+            // flywheel 다이어그램 라이브 카운터 갱신
+            const u = document.getElementById('flowUploadCount');
+            const dv = document.getElementById('flowDeviceCount');
+            if (u) u.textContent = (data.total ?? 0) + '건';
+            if (dv) dv.textContent = (data.unique_devices ?? 0) + ' 단말';
+            try {
+              const hz = await fetch(window.location.origin + '/healthz/details').then(r=>r.json());
+              const auc = hz.trained_model_metric?.auc;
+              const fa = document.getElementById('flowAuc');
+              if (fa && auc) fa.textContent = auc.toFixed(4);
+            } catch(e) {}
           }
 
           /* ── SCENARIO REENACTMENT ── */

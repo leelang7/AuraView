@@ -123,6 +123,13 @@ for cand in _PWA_DIR_CANDIDATES:
 
 @app.get("/")
 def root():
+    """루트 → /ui 자동 이동 (브라우저 접속자가 JSON 만 보고 영상 없다고 착각하는 문제 회피)."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/ui", status_code=302)
+
+
+@app.get("/api")
+def api_root():
     return {"message": "AuraView Prototype Running"}
 
 
@@ -2379,30 +2386,35 @@ def prototype_ui():
             } catch(e) { toast('실행 실패', 'error'); } finally { hideLoader(); }
           }
 
-          /* ── SHOWREEL HERO (TAB ⑥ 진입 시 자동 재생) ── */
+          /* ── SHOWREEL HERO (페이지 첫 로드 시 즉시 + TAB ⑥ 진입 시 재로드) ── */
           (function setupShowreelHero(){
-            const tab6 = document.querySelector('[data-tab="tab6"]');
-            if (!tab6) return;
             let loaded = false;
-            tab6.addEventListener('click', async () => {
+            async function loadHero() {
               if (loaded) return;
               loaded = true;
               try {
                 const res = await fetch(window.location.origin + '/showreel/latest');
                 if (!res.ok) throw new Error('no showreel');
                 const data = await res.json();
-                if (!data.video_url) return;
-                document.getElementById('showreelHero').innerHTML = `
+                if (!data.video_url) throw new Error('no video_url');
+                const hero = document.getElementById('showreelHero');
+                if (hero) hero.innerHTML = `
                   <video controls autoplay muted loop playsinline style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:12px;">
                     <source src="${data.video_url}" type="video/mp4"/>
                   </video>`;
-                document.getElementById('showreelMeta').innerHTML =
+                const meta = document.getElementById('showreelMeta');
+                if (meta) meta.innerHTML =
                   `${data.name || ''} · ${(data.size_kb||0)} KB · ${(data.age_hours ?? '?')}시간 전 생성 · 음향 포함`;
               } catch(e) {
-                document.getElementById('showreelHero').innerHTML =
+                const hero = document.getElementById('showreelHero');
+                if (hero) hero.innerHTML =
                   `<div class="placeholder"><div class="placeholder-icon">⚠️</div>합본 영상이 아직 없습니다. 아래 "⭐ 합본 시연 영상" 버튼으로 생성하세요.</div>`;
               }
-            });
+            }
+            // 페이지 로드 직후 즉시 시도 (TAB 클릭 안 해도 영상 로드)
+            loadHero();
+            const tab6 = document.querySelector('[data-tab="tab6"]');
+            if (tab6) tab6.addEventListener('click', loadHero);
           })();
 
           /* ── SHOWREEL build (async + poll) ── */

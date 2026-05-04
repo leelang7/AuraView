@@ -160,26 +160,35 @@ def render_html(body_html: str) -> str:
 </head><body>{body_html}</body></html>"""
 
 
-def main():
-    if not SRC.exists():
-        print(f"[err] {SRC} 가 없습니다.", file=sys.stderr)
-        sys.exit(1)
-
-    md = SRC.read_text(encoding="utf-8")
+def _convert(src: Path, out_html: Path, out_pdf: Path) -> bool:
+    if not src.exists():
+        print(f"[skip] {src} 없음")
+        return False
+    md = src.read_text(encoding="utf-8")
     body = md_to_html(md)
     html = render_html(body)
-    OUT_HTML.write_text(html, encoding="utf-8")
-    print(f"[ok] HTML : {OUT_HTML}")
-
+    out_html.write_text(html, encoding="utf-8")
+    print(f"[ok] HTML : {out_html}")
     try:
         from weasyprint import HTML  # type: ignore
     except ImportError:
-        print("[hint] PDF 까지 만들려면 'pip install weasyprint' 후 다시 실행.")
-        return
+        print(f"[hint] PDF skip ({src.name}): pip install weasyprint")
+        return True
+    HTML(string=html).write_pdf(str(out_pdf))
+    size_kb = out_pdf.stat().st_size // 1024
+    print(f"[ok] PDF  : {out_pdf}  ({size_kb} KB)")
+    return True
 
-    HTML(string=html).write_pdf(str(OUT_PDF))
-    size_kb = OUT_PDF.stat().st_size // 1024
-    print(f"[ok] PDF  : {OUT_PDF}  ({size_kb} KB)")
+
+def main():
+    # 1) Whitepaper
+    _convert(SRC, OUT_HTML, OUT_PDF)
+    # 2) Press Kit (있으면 같이 빌드 — 한 페이지 수상 자료)
+    _convert(
+        ROOT / "docs" / "PRESS_KIT.md",
+        ROOT / "docs" / "PRESS_KIT.html",
+        ROOT / "docs" / "PRESS_KIT.pdf",
+    )
 
 
 if __name__ == "__main__":

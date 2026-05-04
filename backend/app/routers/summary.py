@@ -86,7 +86,7 @@ def summary_json(db: Session = Depends(get_db)):
 
     return {
         "service": "AuraView K-Perception",
-        "version": "0.4-collab-perception",
+        "version": "0.5-quantified-impact",
         "ts": datetime.utcnow().isoformat() + "Z",
 
         "positioning": {
@@ -178,7 +178,7 @@ def summary_json(db: Session = Depends(get_db)):
             "methodology_endpoint": "/impact",
         },
 
-        "tests": {"total": 36, "passed": 36, "split": "18 endpoint + 12 collab unit + 6 impact/positioning"},
+        "tests": {"total": 38, "passed": 38, "split": "18 endpoint + 12 collab unit + 8 impact/positioning"},
 
         "repo": {
             "url": "https://github.com/leelang7/AuraView",

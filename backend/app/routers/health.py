@@ -99,7 +99,7 @@ def healthz_details():
     return {
         "status": "ok",
         "service": "AuraView K-Perception",
-        "version": "0.4-collab-perception",
+        "version": "0.5-quantified-impact",
         "git": _read_git_sha(),
         "boot_at": _BOOT_AT.isoformat() + "Z",
         "uptime_s": round((datetime.utcnow() - _BOOT_AT).total_seconds(), 1),
@@ -115,5 +115,5 @@ def healthz_details():
         "features": feature_flags,
         "model_metric": metric,
         "trained_model_metric": _read_trained_metric(),
-        "tests": "30 passed (18 endpoint + 12 collab unit)",
+        "tests": "38 passed (18 endpoint + 12 collab unit + 8 impact/positioning)",
     }

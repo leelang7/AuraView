@@ -209,6 +209,19 @@
   </section>
 
   <section>
+    <h2><em>위험 교차로</em> Top-10 — 도입 시 교차로별 예방 효과</h2>
+    <p id="topInxIntro" style="color:var(--muted);font-size:13px;margin-bottom:10px;">로딩 중…</p>
+    <table id="topInxTable" style="width:100%;border-collapse:collapse;">
+      <thead><tr><th>#</th><th>교차로</th><th>구</th><th>유형</th><th>연 사망·중상</th><th>예방 (도입 시)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p style="margin-top:8px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
+      출처: TAAS 다발지역 분석 + 도로교통공단 보행자사고 통계 ·
+      <a href="https://auraview.allthatai.kr/impact/top-intersections" target="_blank" style="color:var(--accent);">/impact/top-intersections JSON</a>
+    </p>
+  </section>
+
+  <section>
     <h2><em>위험 교차로</em> 히트맵 — 서울 (TAAS 2024)</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">
       TAAS 사고이력 + 시연용 hotspot augmentation. AuraView 가 우선 도입될 핫스팟 시각화.
@@ -366,6 +379,25 @@
             <td style="color:var(--muted);font-size:12px;">${r.korea_specific}</td>
           </tr>`).join('');
       } catch(e) { $('positioningIntro').textContent = '/positioning 응답 실패'; }
+
+      // ── 위험 교차로 Top-10 표
+      try {
+        const ti = await fetch(API_BASE + '/impact/top-intersections').then(r => r.json());
+        if (ti && ti.intersections) {
+          $('topInxIntro').innerHTML =
+            '<strong style="color:var(--safe);">' + ti.headline + '</strong> — preventability ' + (ti.preventability*100).toFixed(1) + '%';
+          const tb = document.querySelector('#topInxTable tbody');
+          tb.innerHTML = ti.intersections.map(x =>
+            `<tr>
+              <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;width:36px;">#${x.rank}</td>
+              <td style="font-weight:700;color:var(--accent);">${x.name}</td>
+              <td style="color:var(--muted);font-size:12px;">${x.district}</td>
+              <td style="color:var(--muted);font-size:12px;">${x.category}</td>
+              <td style="color:var(--danger);font-weight:700;">${x.annual_kis_baseline}</td>
+              <td style="color:var(--safe);font-weight:700;">${x.prevented_kis_yearly}명</td>
+            </tr>`).join('');
+        }
+      } catch(e) { $('topInxIntro').textContent = '/impact/top-intersections 응답 실패'; }
 
       // ── 위험 교차로 히트맵
       try {

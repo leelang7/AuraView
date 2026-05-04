@@ -347,30 +347,35 @@ def reenact_from_video(video_path: str, out_name: str) -> ReenactmentResult:
 # B. Procedural 합성 시나리오
 # ──────────────────────────────────────────────────────────────────────
 
+_SCENE_CACHE: Dict[Tuple[int, int], np.ndarray] = {}
+
+
 def _draw_scene_base(w: int, h: int) -> np.ndarray:
-    """CARLA-풍 도시 도로 베이스 — 그라디언트 하늘+태양 + 빌딩 실루엣 + 다중차로 + 대기 원근."""
+    """CARLA-풍 도시 도로 베이스 — 캐시. 시나리오마다 한 번만 그리고 매 프레임 .copy()."""
+    cached = _SCENE_CACHE.get((w, h))
+    if cached is not None:
+        return cached.copy()
+
     s = w / 960.0
     img = np.zeros((h, w, 3), dtype=np.uint8)
     sky_h = int(h * 0.55)
 
-    # ── 1) 하늘 — 도시 황혼 그라디언트 + 태양
-    for y in range(sky_h):
-        t = y / max(1, sky_h)
-        # 위쪽: 진한 네이비 → 지평선: 따뜻한 핑크/오렌지
-        b = int(38 + 95 * t)
-        g = int(28 + 85 * t)
-        r = int(22 + 140 * t)
-        img[y, :] = (b, g, r)
+    # ── 1) 하늘 — 도시 황혼 그라디언트 (벡터화)
+    ys = np.arange(sky_h, dtype=np.float32) / max(1, sky_h)
+    sky_col = np.stack([
+        38 + 95 * ys,
+        28 + 85 * ys,
+        22 + 140 * ys,
+    ], axis=1).astype(np.uint8)
+    img[:sky_h, :] = sky_col[:, None, :]
 
-    # 태양 — 우상단에서 빛나는 원
-    sun_x = int(w * 0.78)
-    sun_y = int(sky_h * 0.55)
+    # 태양 + 헤일로 — 작은 블러로 가벼움
+    sun_x = int(w * 0.78); sun_y = int(sky_h * 0.55)
     sun_r = max(20, int(40 * s))
-    # 헤일로
     halo = np.zeros_like(img)
     cv2.circle(halo, (sun_x, sun_y), sun_r * 4, (160, 200, 240), -1)
-    halo = cv2.GaussianBlur(halo, (0, 0), sigmaX=40 * s, sigmaY=40 * s)
-    img = cv2.addWeighted(img, 1.0, halo, 0.30, 0)
+    halo = cv2.GaussianBlur(halo, (0, 0), sigmaX=20 * s, sigmaY=20 * s)
+    img = cv2.addWeighted(img, 1.0, halo, 0.28, 0)
     cv2.circle(img, (sun_x, sun_y), sun_r, (200, 220, 250), -1)
 
     # ── 2) 빌딩 실루엣 (지평선) — 가짜 도시 스카이라인
@@ -421,16 +426,18 @@ def _draw_scene_base(w: int, h: int) -> np.ndarray:
         cx = int(w * 0.5)
         cv2.line(img, (cx, y1), (cx, y2), (180, 200, 110), max(2, int((1 + prog * 3) * s)))
 
-    # ── 5) 대기 원근 (지평선 안개)
+    # ── 5) 대기 원근 (지평선 안개) — 벡터화
     haze = np.zeros_like(img)
     haze_h = int(h * 0.20)
-    for y in range(sky_h - haze_h // 2, sky_h + haze_h // 2):
-        if y < 0 or y >= h: continue
+    y_start = max(0, sky_h - haze_h // 2)
+    y_end = min(h, sky_h + haze_h // 2)
+    for y in range(y_start, y_end):
         alpha = 1.0 - abs(y - sky_h) / (haze_h / 2)
         haze[y, :] = (int(130 * alpha), int(120 * alpha), int(115 * alpha))
     img = cv2.addWeighted(img, 1.0, haze, 0.50, 0)
 
-    return img
+    _SCENE_CACHE[(w, h)] = img
+    return img.copy()
 
 
 def _draw_vehicle(img: np.ndarray, cx: int, cy: int, scale: float,
@@ -464,13 +471,10 @@ def _draw_vehicle(img: np.ndarray, cx: int, cy: int, scale: float,
         [cx - bw // 2, bot_y],
     ], dtype=np.int32)
 
-    # 그림자 (블러)
-    shadow_pts = pts.copy()
-    shadow_pts[:, 1] += int(8 * s)
-    shadow = np.zeros_like(img)
-    cv2.fillPoly(shadow, [shadow_pts], (0, 0, 0))
-    shadow = cv2.GaussianBlur(shadow, (0, 0), sigmaX=8 * s, sigmaY=4 * s)
-    img = cv2.addWeighted(img, 1.0, shadow, 0.55, 0)
+    # 그림자 — 가벼운 ellipse (가우시안 블러 X)
+    cv2.ellipse(img, (cx, bot_y + int(6 * s)),
+                (int(bw * 0.55), max(2, int(8 * s))),
+                0, 0, 360, (8, 8, 12), -1)
 
     # body
     cv2.fillPoly(img, [pts], body_color)
@@ -505,12 +509,10 @@ def _draw_vehicle(img: np.ndarray, cx: int, cy: int, scale: float,
     cv2.rectangle(img, (cx + bw // 2 - int(6 * s) - tail_w, tail_y),
                   (cx + bw // 2 - int(6 * s), tail_y + tail_h), tail_color, -1)
     if brake:
-        # 브레이크 글로우
-        glow = np.zeros_like(img)
-        cv2.rectangle(glow, (cx - bw // 2, tail_y - int(4 * s)),
-                      (cx + bw // 2, tail_y + tail_h + int(4 * s)), (40, 60, 240), -1)
-        glow = cv2.GaussianBlur(glow, (0, 0), sigmaX=6 * s, sigmaY=3 * s)
-        img = cv2.addWeighted(img, 1.0, glow, 0.45, 0)
+        # 브레이크 글로우 — 가벼운 큰 반투명 ellipse
+        cv2.ellipse(img, (cx, tail_y + tail_h // 2),
+                    (int(bw * 0.55), max(3, int(8 * s))),
+                    0, 0, 360, (60, 90, 255), -1)
 
     # 바퀴 (좌우) — 어두운 타원
     wheel_r = max(3, int(10 * s))
@@ -671,12 +673,10 @@ def _synthesize_motorcycle_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames:
                      (mx + ms, my + int(ms * 1.6)), (200, 50, 50), max(2, int(ms * 0.5)))
             # 라이더 머리
             cv2.circle(img, (mx + ms, my - int(ms * 0.6)), int(ms * 0.6), (40, 30, 30), -1)
-            # 헤드라이트 글로우 (위협감)
+            # 헤드라이트 글로우 — 가벼운 ring
             if prog > 0.3:
-                glow = np.zeros_like(img)
-                cv2.circle(glow, (mx + ms, my), int(ms * 1.2), (80, 220, 240), -1)
-                glow = cv2.GaussianBlur(glow, (0, 0), sigmaX=4, sigmaY=4)
-                img = cv2.addWeighted(img, 1.0, glow, 0.45, 0)
+                cv2.circle(img, (mx + ms, my), int(ms * 1.4), (120, 220, 240), 2)
+                cv2.circle(img, (mx + ms, my), int(ms * 0.5), (200, 240, 255), -1)
 
         # risk
         base_risk = 0.10 + 0.025 * t

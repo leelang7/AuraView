@@ -110,14 +110,19 @@ jobs:
           # torch 는 옵션 — 이미 설치되어 있으면 skip 빠름
           python3 -c "import torch" 2>/dev/null || python3 -m pip install --quiet torch numpy
 
-          # ffmpeg — showreel/scenario mp4 의 H.264 transcode 에 필수.
-          # 없으면 cv2 의 mp4v 코덱 그대로 → 브라우저 재생 불가 (검은 화면).
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            echo "[remote] ffmpeg 미설치 — apt-get install"
+          # ffmpeg + 한글 폰트 — showreel 카드의 한글 렌더에 필수.
+          # ffmpeg 없으면 mp4v 코덱(브라우저 재생 X), fonts-noto-cjk 없으면 한글 ??? 표시.
+          NEED_APT=""
+          command -v ffmpeg >/dev/null 2>&1 || NEED_APT="$NEED_APT ffmpeg"
+          [ -f /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc ] || NEED_APT="$NEED_APT fonts-noto-cjk"
+          if [ -n "$NEED_APT" ]; then
+            echo "[remote] apt 설치: $NEED_APT"
             sudo DEBIAN_FRONTEND=noninteractive apt-get update -y -qq
-            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $NEED_APT
           fi
           ffmpeg -version | head -1
+          # PIL 보장 (한글 텍스트 그리기)
+          python3 -c "import PIL" 2>/dev/null || python3 -m pip install --quiet Pillow
 
           pkill -f "uvicorn app.main:app" || true
           sleep 2

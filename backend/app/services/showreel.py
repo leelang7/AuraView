@@ -65,12 +65,70 @@ PRESETS: List[Tuple[str, str, str]] = [
 ]
 
 
+def _find_korean_font() -> Optional[str]:
+    """시스템 한글 폰트 후보 — 첫 번째 존재하는 것 반환. cv2.putText 는 한글 못 그리므로 PIL 사용."""
+    candidates = [
+        # 환경변수 우선
+        os.getenv("AURAVIEW_FONT"),
+        # 리눅스 (apt fonts-noto-cjk)
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+        # 윈도우
+        "C:/Windows/Fonts/malgun.ttf",
+        "C:/Windows/Fonts/malgunbd.ttf",
+        # macOS
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+    ]
+    for p in candidates:
+        if p and Path(p).exists():
+            return p
+    return None
+
+
+_FONT_PATH = _find_korean_font()
+if _FONT_PATH:
+    log.info("korean font: %s", _FONT_PATH)
+else:
+    log.warning("no korean font found — 한글 텍스트가 ??? 로 표시됨. apt-get install fonts-noto-cjk 필요")
+
+
+def _draw_text_pil(img: np.ndarray, text: str, xy: Tuple[int, int],
+                   px: int, color: Tuple[int, int, int]) -> np.ndarray:
+    """PIL 로 한글 포함 텍스트 그리기. 폰트 없으면 cv2 fallback (한글은 ??? 됨)."""
+    if not text:
+        return img
+    if _FONT_PATH:
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            draw = ImageDraw.Draw(pil)
+            font = ImageFont.truetype(_FONT_PATH, px)
+            # PIL color 는 RGB, cv2 는 BGR — 우리 color 인자는 BGR 가정 → reverse
+            draw.text(xy, text, font=font, fill=(int(color[2]), int(color[1]), int(color[0])))
+            return cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
+        except Exception as exc:
+            log.warning("PIL text draw failed (%s) — cv2 fallback", exc)
+    # fallback (한글 깨짐)
+    cv2.putText(img, text, xy, cv2.FONT_HERSHEY_SIMPLEX, px / 32.0, color,
+                max(1, px // 18), cv2.LINE_AA)
+    return img
+
+
 def _draw_card(title: str, sub: str = "", footer: str = "", duration_s: float = 2.5,
                accent: Tuple[int, int, int] = (255, 200, 0)) -> List[np.ndarray]:
-    """단순한 다크 타이틀 카드 프레임 시퀀스. (1920x1080 기준)"""
+    """단순한 다크 타이틀 카드 프레임 시퀀스 — 한글 PIL 렌더."""
     s = W / 960.0   # 스케일 팩터
     frames = int(duration_s * FPS)
     out: List[np.ndarray] = []
+
+    title_px = max(20, int(40 * s))
+    sub_px = max(14, int(22 * s))
+    footer_px = max(12, int(18 * s))
+    brand_px = max(11, int(16 * s))
+
     for i in range(frames):
         img = np.zeros((H, W, 3), dtype=np.uint8)
         # 그라디언트 배경
@@ -86,21 +144,21 @@ def _draw_card(title: str, sub: str = "", footer: str = "", duration_s: float = 
 
         # title
         title_color = tuple(int(c * alpha) for c in (235, 240, 250))
-        cv2.putText(img, title, (int(80 * s), int(H * 0.42)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.3 * s, title_color, max(2, int(2 * s)), cv2.LINE_AA)
+        img = _draw_text_pil(img, title, (int(80 * s), int(H * 0.42) - title_px),
+                             title_px, title_color)
         if sub:
             sub_color = tuple(int(c * alpha) for c in (140, 200, 230))
-            cv2.putText(img, sub, (int(80 * s), int(H * 0.52)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7 * s, sub_color, max(1, int(1 * s)), cv2.LINE_AA)
+            img = _draw_text_pil(img, sub, (int(80 * s), int(H * 0.52) - sub_px),
+                                 sub_px, sub_color)
         if footer:
             footer_color = tuple(int(c * alpha) for c in (110, 140, 170))
-            cv2.putText(img, footer, (int(80 * s), int(H * 0.92)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.55 * s, footer_color, max(1, int(1 * s)), cv2.LINE_AA)
+            img = _draw_text_pil(img, footer, (int(80 * s), int(H * 0.92) - footer_px),
+                                 footer_px, footer_color)
 
-        # 하단 브랜드
-        brand_text = "AURAVIEW  K-PERCEPTION"
-        cv2.putText(img, brand_text, (W - int(360 * s), H - int(24 * s)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55 * s, (100, 200, 255), max(1, int(1 * s)), cv2.LINE_AA)
+        # 하단 브랜드 — ASCII only
+        img = _draw_text_pil(img, "AURAVIEW  K-PERCEPTION",
+                             (W - int(360 * s), H - int(24 * s) - brand_px),
+                             brand_px, (100, 200, 255))
         out.append(img)
     return out
 

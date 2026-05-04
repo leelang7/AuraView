@@ -1475,6 +1475,15 @@ def prototype_ui():
               </div>
             </div>
 
+            <!-- ⭐ 위험 교차로 Top-10 + 예방 효과 (서울) -->
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--danger),var(--accent2,#7c3aed));">RISK INTERSECTIONS · TOP-10 · SEOUL</div>
+              <div class="section-label">// 도입 우선순위 — 강남역·잠실·광화문 등 다발 교차로 + 교차로별 예방 효과</div>
+              <div id="topInxHeadline" style="margin-top:10px;font-family:'Black Han Sans',sans-serif;font-size:18px;color:var(--safe);">로딩 중…</div>
+              <div id="topInxList" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;"></div>
+              <div style="margin-top:8px;font-size:11px;color:var(--muted);">출처: TAAS 다발지역 + 도로교통공단 · <a href="/impact/top-intersections" target="_blank" style="color:var(--accent);">/impact/top-intersections</a></div>
+            </div>
+
             <!-- 데이터 freshness 배지 -->
             <div class="card" style="margin-bottom:14px;">
               <div class="card-tag">DATA FRESHNESS · LIVE POLLING</div>
@@ -2666,6 +2675,22 @@ def prototype_ui():
                     '</div>';
                 }).join('');
               }
+
+              // 위험 교차로 Top-10
+              try {
+                const ti = await fetch(window.location.origin + '/impact/top-intersections').then(r=>r.json());
+                if (ti && ti.intersections) {
+                  document.getElementById('topInxHeadline').textContent = ti.headline;
+                  document.getElementById('topInxList').innerHTML = ti.intersections.slice(0, 10).map(function(x){
+                    return '<div style="padding:10px 12px;border-left:3px solid var(--danger);background:rgba(255,59,59,0.04);border-radius:8px;">' +
+                      '<div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;color:var(--muted);">#' + x.rank + ' · ' + x.district + '</div>' +
+                      '<div style="font-weight:700;color:var(--accent);margin-top:2px;">' + x.name + '</div>' +
+                      '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' + x.category + '</div>' +
+                      '<div style="margin-top:6px;font-size:11px;">연 KIS <span style="color:var(--danger);font-weight:700;">' + x.annual_kis_baseline + '</span> → 예방 <span style="color:var(--safe);font-weight:700;">' + x.prevented_kis_yearly + '</span></div>' +
+                      '</div>';
+                  }).join('');
+                }
+              } catch(e) {}
 
               const fEl = document.getElementById('freshGrid');
               if (fEl && fr) {

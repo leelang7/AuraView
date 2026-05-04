@@ -66,14 +66,14 @@ PRESETS: List[Tuple[str, str, str]] = [
 
 
 _BUNDLED_FONT_URL = (
-    "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
 )
 
 
 def _ensure_bundled_font() -> Optional[Path]:
     """모듈 import 시 한글 폰트가 시스템에 없으면 자동 다운로드. 한 번만 받고 캐시."""
     backend_root = Path(__file__).resolve().parent.parent.parent  # backend/
-    target = backend_root / "assets" / "NotoSansKR-Regular.otf"
+    target = backend_root / "assets" / "NanumGothic-Regular.ttf"
     if target.exists() and target.stat().st_size > 100_000:
         return target
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,8 @@ def _find_korean_font() -> Optional[str]:
     candidates = [
         os.getenv("AURAVIEW_FONT"),
         # 자가-다운로드 위치
-        str(backend_root / "assets" / "NotoSansKR-Regular.otf"),
+        str(backend_root / "assets" / "NanumGothic-Regular.ttf"),
+        str(backend_root / "assets" / "NotoSansKR-Regular.otf"),  # 구버전 호환
         # 시스템 설치 (apt fonts-noto-cjk / fonts-nanum)
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",

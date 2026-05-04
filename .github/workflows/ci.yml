@@ -85,7 +85,27 @@ jobs:
           docker run -d --rm --name auraview-test -p 8000:8000 \
                 -e ALLOW_FALLBACK=1 -e SERVICE_KEY=ci-stub \
                 auraview/k-perception:ci
-          sleep 8
-          curl -fsS http://localhost:8000/healthz || (docker logs auraview-test && exit 1)
+
+          # 부팅 retry (최대 30s) — torch/ultralytics import 가 처음에 느림
+          ok=0
+          for i in $(seq 1 30); do
+            sleep 1
+            if curl -fsS http://localhost:8000/healthz >/dev/null 2>&1; then
+              ok=1
+              echo "[smoke] healthz OK after ${i}s"
+              break
+            fi
+          done
+
+          # 항상 컨테이너 로그 출력 (성공/실패 무관)
+          echo "=== docker logs (last 100 lines) ==="
+          docker logs --tail 100 auraview-test
+
+          if [ "$ok" != "1" ]; then
+            echo "::error::healthz 응답 없음 (30s 대기)"
+            exit 1
+          fi
+
           curl -fsS http://localhost:8000/fusion/sources >/dev/null
+          curl -fsS http://localhost:8000/impact >/dev/null
           docker stop auraview-test

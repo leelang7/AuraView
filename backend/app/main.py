@@ -2064,14 +2064,133 @@ def prototype_ui():
               wrap.innerHTML = '<div class="placeholder"><div class="placeholder-icon">⚠️</div>BEV 이미지를 생성하지 못했습니다.</div>';
               return;
             }
-            const img = document.createElement('img');
+            // 캔버스에 그리드 이미지 + hotspot 박스/라벨/거리 오버레이 그리기
+            const canvas = document.createElement('canvas');
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.background = '#050a10';
+            canvas.style.borderRadius = '12px';
+            canvas.style.imageRendering = 'pixelated';
+            wrap.appendChild(canvas);
+
+            const img = new Image();
+            img.onload = () => {
+              const W = canvas.clientWidth || 800;
+              const H = canvas.clientHeight || 560;
+              const dpr = window.devicePixelRatio || 1;
+              canvas.width = W * dpr; canvas.height = H * dpr;
+              const ctx = canvas.getContext('2d');
+              ctx.scale(dpr, dpr);
+              ctx.imageSmoothingEnabled = false;
+
+              // 1) 그리드 이미지 — letterbox 해서 가로 가득
+              const gw = data.shape[1], gh = data.shape[0];
+              const sc = Math.min(W / gw, H / gh);
+              const dw = gw * sc, dh = gh * sc;
+              const ox = (W - dw) / 2, oy = (H - dh) / 2;
+              ctx.drawImage(img, ox, oy, dw, dh);
+
+              // 좌표 변환: BEV row/col → canvas px (BEV row 0 = ego, row 79 = far)
+              // 우리 그리드는 row=forward distance. 보통 시각화는 ego 가 화면 하단.
+              // → row 0 → bottom, row 79 → top
+              const bevToPx = (row, col) => ({
+                x: ox + (col / (gw - 1)) * dw,
+                y: oy + dh - (row / (gh - 1)) * dh,
+              });
+
+              // 2) 차로 가이드 (vertical white dashed) — 시각 깊이감
+              ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 6]);
+              for (let cx of [29, 39, 49]) {
+                const a = bevToPx(0, cx), b = bevToPx(gh - 1, cx);
+                ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+              }
+              ctx.setLineDash([]);
+
+              // 3) Ego 위치 표시 (하단 중앙)
+              const ego = bevToPx(0, 39);
+              ctx.fillStyle = 'rgba(0,200,255,0.85)';
+              ctx.beginPath(); ctx.arc(ego.x, ego.y - 4, 6, 0, Math.PI * 2); ctx.fill();
+              ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+              ctx.fillStyle = 'rgba(0,200,255,0.95)'; ctx.font = 'bold 11px JetBrains Mono, monospace';
+              ctx.fillText('EGO', ego.x - 12, ego.y + 14);
+
+              // 4) Hotspot 박스 + 라벨
+              const colorOf = kind => ({
+                object:           'rgba(255, 59, 59, 0.95)',
+                occluded_shadow:  'rgba(255, 176, 32, 0.95)',
+                intent_prior:     'rgba(0, 224, 154, 1.00)',
+                signal_shadow:    'rgba(124, 58, 237, 0.95)',
+              }[kind] || 'rgba(0,200,255,0.95)');
+              const iconOf = kind => ({
+                object:           '🚛',
+                occluded_shadow:  '🌫️',
+                intent_prior:     '⭐',
+                signal_shadow:    '🚦',
+              }[kind] || '◆');
+              ctx.font = 'bold 12px Noto Sans KR, sans-serif';
+              for (const h of (data.hotspots || [])) {
+                const p = bevToPx(h.row, h.col);
+                const c = colorOf(h.kind);
+                // Box
+                ctx.strokeStyle = c; ctx.lineWidth = 2;
+                ctx.strokeRect(p.x - 18, p.y - 14, 36, 28);
+                // Marker dot
+                ctx.fillStyle = c;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+                // Label background
+                const txt = `${iconOf(h.kind)} ${h.label} · ${h.distance_m}m`;
+                const tw = ctx.measureText(txt).width;
+                let lx = p.x + 24;
+                let ly = p.y + 4;
+                if (lx + tw + 8 > W) lx = p.x - tw - 28;  // 오른쪽 잘림 방지
+                if (ly < 14) ly = 14;
+                ctx.fillStyle = 'rgba(8, 12, 20, 0.85)';
+                ctx.fillRect(lx - 4, ly - 12, tw + 8, 16);
+                ctx.strokeStyle = c; ctx.lineWidth = 1;
+                ctx.strokeRect(lx - 4, ly - 12, tw + 8, 16);
+                ctx.fillStyle = c;
+                ctx.fillText(txt, lx, ly);
+              }
+
+              // 5) 우상단 risk_summary
+              const rs = data.risk_summary;
+              if (rs) {
+                const lines = [
+                  `충돌 확률 ${(rs.p_collision*100).toFixed(0)}%`,
+                  `선행 경고 ${rs.lead_time_s}s`,
+                  rs.recommended_action,
+                ];
+                ctx.font = 'bold 12px JetBrains Mono, monospace';
+                const boxW = 200, boxH = 70;
+                const bx = W - boxW - 14, by = 14;
+                ctx.fillStyle = 'rgba(255,59,59,0.10)';
+                ctx.fillRect(bx, by, boxW, boxH);
+                ctx.strokeStyle = 'rgba(255,59,59,0.6)'; ctx.lineWidth = 1;
+                ctx.strokeRect(bx, by, boxW, boxH);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillText(lines[0], bx + 10, by + 22);
+                ctx.fillStyle = '#00e09a';
+                ctx.fillText(lines[1], bx + 10, by + 40);
+                ctx.fillStyle = '#e2eaf5';
+                ctx.font = '11px Noto Sans KR, sans-serif';
+                ctx.fillText(lines[2], bx + 10, by + 58);
+              }
+
+              // 6) 좌상단 시나리오 타이틀
+              if (data.scenario && data.scenario.title) {
+                ctx.fillStyle = 'rgba(0,200,255,0.10)';
+                const tT = data.scenario.title;
+                ctx.font = 'bold 14px Noto Sans KR, sans-serif';
+                const ttw = ctx.measureText(tT).width;
+                ctx.fillRect(14, 14, ttw + 18, 28);
+                ctx.strokeStyle = 'rgba(0,200,255,0.6)'; ctx.lineWidth = 1;
+                ctx.strokeRect(14, 14, ttw + 18, 28);
+                ctx.fillStyle = '#00c8ff'; ctx.fillText(tT, 23, 33);
+              }
+            };
             img.src = data.grid_b64;
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'contain';
-            img.style.imageRendering = 'pixelated';
-            img.style.background = '#050a10';
-            wrap.appendChild(img);
           }
 
           function ensureThree() {
@@ -2181,6 +2300,58 @@ def prototype_ui():
                 box.scale.y = height;
                 ctx.voxelGroup.add(box);
               }
+            }
+
+            // 3D hotspot 마커 — 큰 발광 sphere + 위에 떠있는 라벨 plane
+            const hotspots = data.hotspots || [];
+            const fineCellM = data.cell_m || 0.5;
+            const fineRows = data.shape ? data.shape[0] : 80;
+            const fineCols = data.shape ? data.shape[1] : 80;
+            const colorByKind = (k) => ({
+              object:           new THREE.Color(1.00, 0.23, 0.23),
+              occluded_shadow:  new THREE.Color(1.00, 0.69, 0.13),
+              intent_prior:     new THREE.Color(0.00, 0.88, 0.60),
+              signal_shadow:    new THREE.Color(0.49, 0.23, 0.93),
+            }[k] || new THREE.Color(0, 0.78, 1));
+            for (const h of hotspots) {
+              const x = -lateral + (h.col / (fineCols - 1)) * lateral * 2;
+              const z = (h.row / (fineRows - 1)) * forward;
+              const col = colorByKind(h.kind);
+              // 글로우 sphere
+              const sph = new THREE.Mesh(
+                new THREE.SphereGeometry(0.7, 16, 16),
+                new THREE.MeshBasicMaterial({color: col, transparent:true, opacity:0.9})
+              );
+              sph.position.set(x, 4.5, z);
+              ctx.voxelGroup.add(sph);
+              // 빔 (sphere → 바닥)
+              const beam = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.06, 4.5, 8),
+                new THREE.MeshBasicMaterial({color: col, transparent:true, opacity:0.5})
+              );
+              beam.position.set(x, 2.25, z);
+              ctx.voxelGroup.add(beam);
+              // 라벨 — Canvas2D → Texture → Sprite
+              const lc = document.createElement('canvas');
+              lc.width = 512; lc.height = 96;
+              const lctx = lc.getContext('2d');
+              lctx.fillStyle = 'rgba(8,12,20,0.85)';
+              lctx.fillRect(0, 0, 512, 96);
+              lctx.strokeStyle = '#' + col.getHexString();
+              lctx.lineWidth = 4;
+              lctx.strokeRect(2, 2, 508, 92);
+              lctx.fillStyle = '#' + col.getHexString();
+              lctx.font = 'bold 36px Noto Sans KR, sans-serif';
+              lctx.fillText((h.label || '').slice(0, 18), 16, 50);
+              lctx.fillStyle = '#e2eaf5';
+              lctx.font = '24px JetBrains Mono, monospace';
+              lctx.fillText(h.distance_m + 'm', 16, 82);
+              const tex = new THREE.CanvasTexture(lc);
+              const sprMat = new THREE.SpriteMaterial({map: tex, transparent:true});
+              const spr = new THREE.Sprite(sprMat);
+              spr.scale.set(8, 1.5, 1);
+              spr.position.set(x, 6.5, z);
+              ctx.voxelGroup.add(spr);
             }
           }
 

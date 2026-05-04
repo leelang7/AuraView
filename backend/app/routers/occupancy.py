@@ -127,12 +127,17 @@ def occupancy_demo():
     # 5) 좌상단 신호등 가림 zone — 트럭 위쪽
     grid[24:30, 50:54] = 0.45          # signal occluded shadow
 
+    # 3D voxel 용 — 다운샘플 (40x40 = 1600 voxels) 로 가벼움
+    coarse = grid[::2, ::2]
     return {
         "shape": list(grid.shape),
         "cell_m": 0.5,
         "forward_m": 40.0,
         "lateral_m": 20.0,
         "grid_b64": occupancy_service._grid_to_base64(grid),
+        "grid_flat": [round(float(v), 3) for v in coarse.flatten()],
+        "grid_shape_flat": list(coarse.shape),
+        "grid_cell_m_flat": 1.0,
         "occluded_mass": float(grid.sum()),
         "scenario": {
             "title": "트럭 뒤 가려진 보행자 — 정지선 진입 12m 전",

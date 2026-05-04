@@ -44,6 +44,13 @@ def list_recent():
     return {"items": showreel_service.list_recent()}
 
 
+@router.post("/cleanup")
+def cleanup(keep: int = 1):
+    """오래된 합본 영상 정리 — 최신 keep 개만 남기고 삭제. 기본 keep=1."""
+    result = showreel_service.cleanup_old(keep=keep)
+    return result
+
+
 @router.get("/latest")
 def latest():
     return showreel_service.latest()

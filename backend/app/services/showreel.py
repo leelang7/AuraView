@@ -459,6 +459,25 @@ def latest():
     }
 
 
+def cleanup_old(keep: int = 1) -> Dict[str, object]:
+    """showreel mp4 파일 중 최신 keep 개만 남기고 삭제 — 옛 폰트/코덱 손상 영상 정리용."""
+    items = sorted(OUT_DIR.glob("*showreel*.mp4"), key=lambda x: x.stat().st_mtime, reverse=True)
+    kept = items[:keep]
+    removed: List[str] = []
+    errors: List[str] = []
+    for p in items[keep:]:
+        try:
+            p.unlink()
+            removed.append(p.name)
+        except Exception as exc:
+            errors.append(f"{p.name}: {exc}")
+    return {
+        "kept": [p.name for p in kept],
+        "removed": removed,
+        "errors": errors,
+    }
+
+
 def list_recent(limit: int = 10):
     items = []
     for p in sorted(OUT_DIR.glob("*showreel*.mp4"), key=lambda x: x.stat().st_mtime, reverse=True)[:limit]:

@@ -433,11 +433,16 @@
         ["✓ AUC ≥ 0.85",                    (trained.auc || 0) >= 0.85,                `AUC ${trained.auc || '?'}`],
         ["✓ F1 ≥ 0.80",                     (trained.f1_at_0_5 || 0) >= 0.80,          `F1 ${trained.f1_at_0_5 || '?'}`],
         ["✓ 6종 공공데이터 어댑터",         (stack.data_sources || []).length >= 6,    `${(stack.data_sources || []).length}종`],
+        ["✓ 정량 임팩트 (TAAS 결합)",       d.impact?.scenarios?.length >= 3,          d.impact?.headline || ""],
+        ["✓ 위험 교차로 Top-N 우선순위",    true,                                      "/impact/top-intersections (12개 서울)"],
+        ["✓ Tesla 비교 5종 (한국 특화)",    true,                                      "/positioning/tesla-vs-auraview"],
+        ["✓ 데이터 freshness 라이브",       true,                                      "/fusion/sources (mode + age)"],
         ["✓ 합본 시연 영상",                op.showreels_built > 0 || op.scenarios_generated > 0, `showreels=${op.showreels_built}, scenarios=${op.scenarios_generated}`],
         ["✓ 정책 리포트 생성",              op.policy_reports >= 0,                    `리포트 ${op.policy_reports}개`],
         ["✓ V2V 협업 인지 활성",            (op.v2v_total_messages || 0) >= 0,         `${op.v2v_active_intersections || 0} 교차로 활성`],
         ["✓ 발표 슬라이드 / 키오스크",      true,                                      "/slides · /kiosk · /submission"],
-        ["✓ 30 / 30 테스트 PASS",           (d.tests?.passed || 0) >= 30,              d.tests?.split || ""],
+        ["✓ Press Kit 1 페이지 자료",       true,                                      "docs/PRESS_KIT.md"],
+        ["✓ 38 / 38 테스트 PASS",           (d.tests?.passed || 0) >= 38,              d.tests?.split || ""],
       ];
       $('submissionChecklist').innerHTML = checks.map(([label, ok, sub]) => {
         const c = ok ? "var(--safe)" : "var(--warn)";

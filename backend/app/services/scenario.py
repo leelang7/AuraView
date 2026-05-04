@@ -581,15 +581,17 @@ def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
             cv2.rectangle(img, (x_left, y_center), (x_right, y_center + stripe_thick),
                           (220, 220, 220), -1)
 
-        # 좌측 차로의 다른 차 (씬 밀도)
-        side_scale = 0.4 + 0.005 * i
-        img = _draw_vehicle(img, int(w * 0.18), int(h * (0.62 + 0.005 * i)),
-                            scale=min(0.7, side_scale * s_global), body_color=(180, 80, 60))
+        # 좌측 차로의 다른 차 (씬 밀도) — 거의 정지 상태
+        side_prog = i / max(1, frames - 1)
+        side_scale = 0.4 + 0.15 * side_prog
+        img = _draw_vehicle(img, int(w * 0.18), int(h * (0.64 + 0.04 * side_prog)),
+                            scale=min(0.65, side_scale * s_global), body_color=(180, 80, 60))
 
-        # 전방 트럭 — 중앙, 점점 접근
-        truck_scale = 0.55 + 0.018 * i
+        # 전방 트럭 — 중앙, 점점 접근 (frame ratio 사용 → 화면 안에 머무름)
+        prog = i / max(1, frames - 1)
+        truck_scale = 0.45 + 0.55 * prog   # 0.45 ~ 1.0 (clamped by 1.4)
         truck_cx = int(w * 0.5)
-        truck_cy = int(h * (0.55 + 0.015 * i))
+        truck_cy = int(h * (0.55 + 0.10 * prog))   # 0.55 ~ 0.65 (화면 안)
         img = _draw_vehicle(img, truck_cx, truck_cy,
                             scale=min(1.4, truck_scale * s_global),
                             body_color=(35, 38, 50), vehicle_type="truck")
@@ -702,9 +704,11 @@ def _synthesize_signal_occluded(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
         # 빨간불 (가려져야 의미 있음)
         cv2.circle(img, (sig_x, sig_y - int(20 * s_global)), int(7 * s_global), (60, 60, 240), -1)
 
-        # 전방 버스 — 점점 접근, 신호 가림
-        bus_scale = 0.85 + 0.012 * i
-        img = _draw_vehicle(img, int(w * 0.5), int(h * (0.50 + 0.012 * i)),
+        # 전방 버스 — 점점 접근, 신호 가림 (frame ratio 로 화면 안 유지)
+        prog = i / max(1, frames - 1)
+        bus_scale = 0.65 + 0.55 * prog   # 0.65 ~ 1.2
+        bus_cy = int(h * (0.55 + 0.08 * prog))
+        img = _draw_vehicle(img, int(w * 0.5), bus_cy,
                             scale=min(1.6, bus_scale * s_global),
                             body_color=(60, 80, 130), vehicle_type="bus",
                             brake=(t >= 4.5))

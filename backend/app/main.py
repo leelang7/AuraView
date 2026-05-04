@@ -1463,6 +1463,25 @@ def prototype_ui():
           <!-- TAB 5 : Capability Matrix + Metric -->
           <div class="tab-panel" id="tab5">
 
+            <!-- ⭐ 임팩트 카드 (TAAS 2024 결합) -->
+            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,224,154,0.10),rgba(0,200,255,0.06));border:1px solid rgba(0,224,154,0.30);">
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">PROJECTED IMPACT · TAAS 2024</div>
+              <div class="section-label">// 도입 시 연간 사고/사망/부상 예방 효과 — preventability = min(0.85, 0.25 × lead_time_s)</div>
+              <div id="impactHero" style="font-family:'Black Han Sans',sans-serif;font-size:24px;line-height:1.3;margin-top:10px;">로딩 중…</div>
+              <div id="impactSub" style="margin-top:6px;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;"></div>
+              <div id="impactScn" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;"></div>
+              <div style="margin-top:8px;font-size:11px;color:var(--muted);">
+                출처 TAAS · KOTI ITS · 라이브 검증 → <a href="/impact" target="_blank" style="color:var(--accent);">/impact JSON</a>
+              </div>
+            </div>
+
+            <!-- 데이터 freshness 배지 -->
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-tag">DATA FRESHNESS · LIVE POLLING</div>
+              <div class="section-label">// 6종 공공데이터 마지막 호출 시각 + 응답 모드</div>
+              <div id="freshGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px;">로딩 중…</div>
+            </div>
+
             <!-- ★ 모델 metric 라이브 카드 (/healthz/details 에서 자동 fetch) -->
             <div class="card" style="margin-bottom:14px;">
               <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">MODEL METRIC · LIVE</div>
@@ -2619,10 +2638,55 @@ def prototype_ui():
             } catch(e) {}
           }
 
+          // ⭐ 임팩트 + 데이터 freshness (TAB ⑤ 에서 표시) — 30초 주기로 갱신
+          async function refreshImpactAndFreshness() {
+            try {
+              // /fusion/intersection/10 호출해서 freshness 강제 갱신
+              fetch(window.location.origin + '/fusion/intersection/10').catch(()=>{});
+
+              const [im, sc, fr] = await Promise.all([
+                fetch(window.location.origin + '/impact').then(r=>r.json()).catch(()=>null),
+                fetch(window.location.origin + '/impact/scenarios').then(r=>r.json()).catch(()=>null),
+                fetch(window.location.origin + '/fusion/sources').then(r=>r.json()).catch(()=>null),
+              ]);
+
+              const heroEl = document.getElementById('impactHero');
+              const subEl  = document.getElementById('impactSub');
+              const scnEl  = document.getElementById('impactScn');
+              if (heroEl && im) {
+                heroEl.innerHTML = '<span style="color:var(--safe);">' + im.projected_prevented.headline + '</span>';
+                subEl.textContent = 'lead time ' + im.inputs.avg_lead_time_s.toFixed(2) + 's · 회피율 ' + (im.preventability*100).toFixed(1) + '% · 도시교차로 도입 ' + (im.inputs.coverage_urban_intersections*100).toFixed(0) + '% 가정';
+              }
+              if (scnEl && sc) {
+                scnEl.innerHTML = sc.scenarios.map(function(s){
+                  return '<div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:rgba(0,200,255,0.04);">' +
+                    '<div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">' + s.label.toUpperCase() + '</div>' +
+                    '<div style="font-family:\\'Black Han Sans\\',sans-serif;font-size:18px;">' + s.prevented_accidents.toLocaleString() + '건</div>' +
+                    '<div style="margin-top:2px;color:var(--muted);font-size:10px;">사망 ' + s.prevented_deaths.toLocaleString() + ' · 부상 ' + s.prevented_injured.toLocaleString() + '</div>' +
+                    '</div>';
+                }).join('');
+              }
+
+              const fEl = document.getElementById('freshGrid');
+              if (fEl && fr) {
+                const modeColor = function(m) { return ({live:'var(--safe)', stub:'var(--warn)', error:'var(--danger)'}[m]) || 'var(--muted)'; };
+                fEl.innerHTML = (fr.sources||[]).map(function(s){
+                  return '<div style="padding:10px 12px;border-left:3px solid ' + modeColor(s.mode) + ';background:rgba(0,200,255,0.03);border-radius:8px;">' +
+                    '<div style="font-family:\\'JetBrains Mono\\',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);">' + s.id.toUpperCase() + '</div>' +
+                    '<div style="font-weight:700;color:' + modeColor(s.mode) + ';margin-top:2px;">' + (s.mode||'?').toUpperCase() + '</div>' +
+                    '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + (s.age_s != null ? s.age_s.toFixed(1) + 's ago' : '미호출') + '</div>' +
+                    '</div>';
+                }).join('');
+              }
+            } catch(e) {}
+          }
+
           loadIntersections();
           refreshAll();
           refreshScorecard();
+          refreshImpactAndFreshness();
           setInterval(refreshScorecard, 15000);
+          setInterval(refreshImpactAndFreshness, 30000);
         </script>
     </body>
     </html>

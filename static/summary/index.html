@@ -92,6 +92,26 @@
            color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:11px;
            display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
 
+  /* 모바일 (≤ 720px) — 테이블 가로 스크롤 + 폰트 압축 */
+  @media (max-width: 720px) {
+    .wrap { padding: 24px 14px 60px; }
+    h1 { font-size: 28px; }
+    h1 em { display: inline-block; }
+    section h2 { font-size: 18px; }
+    /* 모든 테이블을 가로 스크롤 가능한 컨테이너로 */
+    table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    table thead, table tbody { display: table; width: 100%; }
+    .grid-stats { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+    .card-grid { grid-template-columns: 1fr !important; gap: 10px; }
+    .stat .n { font-size: 22px; }
+    /* 임팩트 hero 폰트 압축 */
+    #impactHeadlineText { font-size: 18px !important; }
+    /* 프레쉬니스 그리드도 2열 */
+    #freshnessGrid { grid-template-columns: repeat(2, 1fr) !important; }
+    /* 지도 높이 줄이기 */
+    #taasMap { height: 280px !important; }
+  }
+
   @media print {
     @page { size: A4; margin: 12mm; }
     body { background:#fff; color:#1a2030; font-size: 11px; line-height: 1.45; }

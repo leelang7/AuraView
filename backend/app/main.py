@@ -921,6 +921,31 @@ def prototype_ui():
               .header-badge { display: none; }
             }
 
+            /* ── MOBILE (≤ 720px) ── */
+            @media (max-width: 720px) {
+              header, .tabs, .content { padding-left: 12px; padding-right: 12px; }
+              h1 { font-size: 22px; }
+              .tabs { gap: 4px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+              .tab { font-size: 11px; padding: 8px 10px; }
+              .tab-panel { padding-top: 10px; }
+              .card { padding: 14px; }
+              .card h2, .card h3 { font-size: 16px; }
+              .ranking { gap: 8px; }
+              .form-grid { grid-template-columns: 1fr !important; }
+              .preview-wrap { min-height: 220px !important; height: auto !important; }
+              #map { min-height: 280px !important; }
+              /* 표 가로 스크롤 */
+              table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+              table thead, table tbody { display: table; width: 100%; }
+              /* freshness/Top-N 그리드 */
+              #freshGrid, #topInxList { grid-template-columns: repeat(2, 1fr) !important; }
+              #impactScn { grid-template-columns: 1fr !important; }
+              /* metric grid 더 작게 */
+              #metricGrid { grid-template-columns: repeat(2, 1fr) !important; }
+              /* 비디오 wrap 너무 크지 않게 */
+              video { width: 100% !important; max-height: 240px; }
+            }
+
             /* ── LEAFLET DARK POPUP ── */
             .leaflet-popup-content-wrapper {
               background: var(--surface) !important;

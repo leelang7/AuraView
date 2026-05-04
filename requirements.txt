@@ -9,7 +9,7 @@ python-multipart
 
 # Vision / ML
 ultralytics
-opencv-python
+opencv-python-headless
 numpy
 Pillow
 

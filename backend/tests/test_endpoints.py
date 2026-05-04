@@ -194,3 +194,74 @@ def test_bidirectional_after_seed():
     # 시드 차 3대 중 2대 마주오는 + 감속 → hazard 가 어느 정도 잡혀야
     assert body["oncoming_count"] >= 1
     assert "hazard_probability" in body
+
+
+# ── /impact + /positioning + freshness 회귀 보호 ─────────────────────
+
+def test_impact_default_returns_headline():
+    r = client.get("/impact")
+    assert r.status_code == 200
+    body = r.json()
+    assert "preventability" in body
+    assert 0.0 <= body["preventability"] <= 0.85
+    assert "projected_prevented" in body
+    assert "headline" in body["projected_prevented"]
+    assert "annual_baseline" in body
+    assert body["annual_baseline"]["accidents_total"] > 0
+    assert "methodology" in body
+    assert len(body["methodology"]["sources"]) >= 2
+
+
+def test_impact_scenarios_three_levels():
+    r = client.get("/impact/scenarios")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["scenarios"]) == 3
+    coverages = [s["coverage"] for s in body["scenarios"]]
+    assert coverages == sorted(coverages)
+    # 모든 시나리오에 예방 사고 수 양수
+    for s in body["scenarios"]:
+        assert s["prevented_accidents"] >= 0
+        assert s["prevented_deaths"] >= 0
+
+
+def test_impact_lead_time_param_changes_preventability():
+    r1 = client.get("/impact", params={"lead": 1.0, "coverage": 0.10}).json()
+    r2 = client.get("/impact", params={"lead": 3.5, "coverage": 0.10}).json()
+    assert r2["preventability"] > r1["preventability"]
+    assert r2["projected_prevented"]["prevented_accidents"] > r1["projected_prevented"]["prevented_accidents"]
+
+
+def test_positioning_tesla_comparison():
+    r = client.get("/positioning/tesla-vs-auraview")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["rows"]) == 5
+    for row in body["rows"]:
+        for k in ("category", "tesla", "auraview", "korea_specific", "endpoint"):
+            assert k in row, f"row missing {k}"
+    assert "metric_summary" in body
+    assert body["metric_summary"]["trained_auc"] > 0.9
+
+
+def test_fusion_sources_freshness_metadata():
+    # 한 번 호출해서 freshness 강제 갱신
+    client.get("/fusion/intersection/10")
+    r = client.get("/fusion/sources")
+    assert r.status_code == 200
+    body = r.json()
+    for s in body["sources"]:
+        # 호출 후 mode/age_s 가 반영되거나 (signal/vds/incidents/taas/its 5개 중 일부)
+        # dsz 는 별도라 None 일 수 있음
+        if s["id"] in {"signal", "vds", "incidents", "taas", "its"}:
+            assert s.get("mode") in {"live", "stub", "error"}, f"{s['id']} no mode"
+
+
+def test_summary_includes_impact():
+    r = client.get("/summary.json")
+    assert r.status_code == 200
+    body = r.json()
+    assert "impact" in body
+    assert "headline" in body["impact"]
+    assert "scenarios" in body["impact"]
+    assert len(body["impact"]["scenarios"]) == 3

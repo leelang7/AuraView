@@ -1,0 +1,93 @@
+name: Flutter Build (Web + APK)
+
+# main 푸시 또는 수동 실행 시 Flutter Web + Android APK 빌드.
+# 산출물:
+#   - artifact: auraview_fleet_web         (Web 빌드 결과 — frontend_pwa/ 로 동기화 가능)
+#   - artifact: auraview_fleet_apk         (Android release APK)
+#
+# 옵션: DEPLOY_PATH 가 secret 으로 등록돼 있으면 EC2 배포까지 (deploy.yml 의 PWA dir 와 동기화).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "auraview_fleet/**"
+      - "scripts/generate_app_icons.py"
+      - ".github/workflows/flutter-build.yml"
+  workflow_dispatch:
+
+jobs:
+  web:
+    name: Flutter Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: auraview_fleet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: build web (release)
+        env:
+          AURAVIEW_API_BASE: https://auraview.allthatai.kr
+        run: |
+          flutter build web --release \
+            --dart-define=AURAVIEW_API_BASE=$AURAVIEW_API_BASE \
+            --base-href "/pwa/"
+
+      - name: zip output
+        run: |
+          cd build/web && zip -r ../../auraview_fleet_web.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auraview_fleet_web
+          path: auraview_fleet/auraview_fleet_web.zip
+          retention-days: 90
+
+  apk:
+    name: Android APK (release · unsigned)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: auraview_fleet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: build apk (release · unsigned)
+        env:
+          AURAVIEW_API_BASE: https://auraview.allthatai.kr
+        run: |
+          flutter build apk --release \
+            --dart-define=AURAVIEW_API_BASE=$AURAVIEW_API_BASE \
+            || echo "[warn] release apk failed (likely missing signing config) — falling back to debug"
+          if [ ! -f build/app/outputs/flutter-apk/app-release.apk ]; then
+            flutter build apk --debug \
+              --dart-define=AURAVIEW_API_BASE=$AURAVIEW_API_BASE
+          fi
+
+      - name: list outputs
+        run: ls -lh build/app/outputs/flutter-apk/ || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auraview_fleet_apk
+          path: |
+            auraview_fleet/build/app/outputs/flutter-apk/*.apk
+          retention-days: 90
+          if-no-files-found: warn

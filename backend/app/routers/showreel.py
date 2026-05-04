@@ -49,6 +49,42 @@ def latest():
     return showreel_service.latest()
 
 
+@router.get("/debug-font")
+def debug_font():
+    """현재 한글 렌더에 쓰이는 폰트 진단 — 글리프 존재 여부까지 확인."""
+    import glob
+    info = {
+        "selected": showreel_service._FONT_PATH,
+        "candidates_found": [
+            p for p in [
+                "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+                "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+                "C:/Windows/Fonts/malgun.ttf",
+            ] if showreel_service.Path(p).exists()
+        ],
+        "all_noto_ttc": glob.glob("/usr/share/fonts/**/Noto*", recursive=True)[:30],
+        "korean_glyph_test": None,
+    }
+    if showreel_service._FONT_PATH:
+        try:
+            from PIL import ImageFont
+            f = ImageFont.truetype(showreel_service._FONT_PATH, 30)
+            # check glyph presence for '한'
+            has_glyph = f.getmask("한").size != (0, 0) if hasattr(f, "getmask") else None
+            info["korean_glyph_test"] = {
+                "char": "한",
+                "ord": ord("한"),
+                "mask_size": list(f.getmask("한").size) if hasattr(f, "getmask") else None,
+                "has_glyph": has_glyph,
+                "font_family": f.font.family if hasattr(f, "font") else None,
+            }
+        except Exception as exc:
+            info["korean_glyph_test"] = {"error": str(exc)}
+    return info
+
+
 @router.get("/latest.mp4")
 def latest_mp4():
     """슬라이드/키오스크 <video> 안정 임베드 URL → 최신 영상으로 redirect.

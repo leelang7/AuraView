@@ -125,6 +125,12 @@ class _FleetHomeState extends State<FleetHome>
   DateTime? _prevSpeedTs;
   StreamSubscription<Position>? _posSub;
 
+  // BEV 오버레이 — 도시정보(신호/VDS/TAAS) 결합
+  bool _bevOpen = false;
+  Map<String, dynamic>? _bev;
+  Map<String, dynamic>? _fusion;
+  Timer? _bevTimer;
+
   @override
   void initState() {
     super.initState();
@@ -139,10 +145,46 @@ class _FleetHomeState extends State<FleetHome>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
+    _bevTimer?.cancel();
     _posSub?.cancel();
     _cam?.dispose();
     _pulseAnim.dispose();
     super.dispose();
+  }
+
+  /// BEV 오버레이 toggle — ON 이면 5초마다 /occupancy/demo + /fusion/intersection 폴링
+  void _toggleBev() {
+    HapticFeedback.lightImpact();
+    setState(() => _bevOpen = !_bevOpen);
+    if (_bevOpen) {
+      _fetchBev();
+      _bevTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchBev());
+    } else {
+      _bevTimer?.cancel();
+      _bevTimer = null;
+    }
+  }
+
+  Future<void> _fetchBev() async {
+    try {
+      final r = await http.get(Uri.parse('$kApiBase/occupancy/demo'))
+          .timeout(const Duration(seconds: 6));
+      if (r.statusCode == 200) {
+        final body = jsonDecode(r.body) as Map<String, dynamic>;
+        if (mounted) setState(() => _bev = body);
+      }
+    } catch (_) {}
+    final iid = _intersectionId;
+    if (iid != null && iid.isNotEmpty) {
+      try {
+        final r = await http.get(Uri.parse('$kApiBase/fusion/intersection/$iid'))
+            .timeout(const Duration(seconds: 6));
+        if (r.statusCode == 200) {
+          final body = jsonDecode(r.body) as Map<String, dynamic>;
+          if (mounted) setState(() => _fusion = body);
+        }
+      } catch (_) {}
+    }
   }
 
   /// 실시간 위치 스트림 — heading/speed 를 V2V broadcast 에 사용
@@ -547,6 +589,8 @@ class _FleetHomeState extends State<FleetHome>
                   children: [
                     _BrandLogo(),
                     const Spacer(),
+                    _BevToggleChip(active: _bevOpen, onTap: _toggleBev),
+                    const SizedBox(width: 8),
                     _CounterChip(uploads: _uploads, serverTotal: _serverTotal),
                     const SizedBox(width: 8),
                     _StatusOrb(online: _serverError.isEmpty, shadowOn: _shadowOn),
@@ -554,6 +598,18 @@ class _FleetHomeState extends State<FleetHome>
                 ),
               ),
             ),
+
+            // BEV 오버레이 패널 — 도시정보 결합 (Tesla-style + signal/VDS/TAAS)
+            if (_bevOpen)
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 70, 14, 0),
+                    child: _BevPanel(bev: _bev, fusion: _fusion),
+                  ),
+                ),
+              ),
 
             // Shadow 가동 중일 때 하단 라이브 인디케이터
             if (_shadowOn)
@@ -621,6 +677,298 @@ class _FullCameraPreview extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// BEV 오버레이 — 도시정보 결합 (Tesla-style 단안 카메라 + signal/VDS/TAAS)
+// ─────────────────────────────────────────────────────────────────
+
+class _BevToggleChip extends StatelessWidget {
+  final bool active;
+  final VoidCallback onTap;
+  const _BevToggleChip({required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: active ? _accent.withValues(alpha: 0.20) : _surface.withValues(alpha: 0.7),
+          border: Border.all(color: active ? _accent : _muted.withValues(alpha: 0.4)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.grid_view_rounded, size: 14,
+                 color: active ? _accent : _muted),
+            const SizedBox(width: 6),
+            Text('BEV',
+                 style: TextStyle(
+                   color: active ? _accent : _muted,
+                   fontSize: 12, fontWeight: FontWeight.w700,
+                   letterSpacing: 1.0,
+                 )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BevPanel extends StatelessWidget {
+  final Map<String, dynamic>? bev;
+  final Map<String, dynamic>? fusion;
+  const _BevPanel({this.bev, this.fusion});
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final w = size.width.clamp(280.0, 400.0).toDouble();
+    final panelW = (w * 0.85).clamp(240.0, 340.0);
+    return Container(
+      width: panelW,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: _bg.withValues(alpha: 0.85),
+        border: Border.all(color: _accent.withValues(alpha: 0.45)),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 16)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(children: [
+            Icon(Icons.flash_on, size: 13, color: _accent),
+            const SizedBox(width: 4),
+            Text('BEV · CITY-AUGMENTED',
+                 style: TextStyle(color: _accent, fontSize: 10,
+                                  fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+          ]),
+          const SizedBox(height: 4),
+          AspectRatio(
+            aspectRatio: 1.0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: CustomPaint(
+                size: Size.square(panelW - 16),
+                painter: _BevPainter(bev: bev, fusion: fusion),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (bev != null) _BevStatLine(bev: bev!),
+          if (fusion != null) _CityInfoLine(fusion: fusion!),
+          const SizedBox(height: 2),
+          Text(
+            bev == null ? '로딩 중…' : '단안 카메라 + 도시정보 결합',
+            style: const TextStyle(color: _muted, fontSize: 9, letterSpacing: 1.2),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BevStatLine extends StatelessWidget {
+  final Map<String, dynamic> bev;
+  const _BevStatLine({required this.bev});
+  @override
+  Widget build(BuildContext context) {
+    final rs = bev['risk_summary'] as Map<String, dynamic>?;
+    if (rs == null) return const SizedBox.shrink();
+    final p = ((rs['p_collision'] ?? 0) as num).toDouble();
+    final lead = ((rs['lead_time_s'] ?? 0) as num).toDouble();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(children: [
+        Text('${(p * 100).toStringAsFixed(0)}% 충돌',
+             style: const TextStyle(color: _danger, fontSize: 11,
+                                    fontWeight: FontWeight.w700)),
+        const SizedBox(width: 8),
+        Text('·', style: TextStyle(color: _muted)),
+        const SizedBox(width: 8),
+        Text('${lead.toStringAsFixed(1)}s 선행',
+             style: const TextStyle(color: _safe, fontSize: 11,
+                                    fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
+}
+
+class _CityInfoLine extends StatelessWidget {
+  final Map<String, dynamic> fusion;
+  const _CityInfoLine({required this.fusion});
+  @override
+  Widget build(BuildContext context) {
+    final src = fusion['sources'] as Map<String, dynamic>?;
+    String sigState = '?', vdsKmh = '?', taas = '?';
+    try {
+      final sig = src?['signal']?['body']?['items']?['item']?['stPdsgSttsNm'];
+      if (sig is String) sigState = sig.contains('Stop') ? '정지' : '진행';
+      final vds = src?['vds']?['list'];
+      if (vds is List && vds.isNotEmpty) {
+        final v = vds[0];
+        if (v is Map && v['speed'] != null) vdsKmh = '${v['speed']}km/h';
+      }
+      final acc = src?['accidents_history'];
+      if (acc is List) taas = '${acc.length}';
+    } catch (_) {}
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(children: [
+        Icon(Icons.traffic, size: 11, color: _accent),
+        const SizedBox(width: 3),
+        Text(sigState, style: const TextStyle(color: _text, fontSize: 10)),
+        const SizedBox(width: 8),
+        Icon(Icons.speed, size: 11, color: _accent),
+        const SizedBox(width: 3),
+        Text(vdsKmh, style: const TextStyle(color: _text, fontSize: 10)),
+        const SizedBox(width: 8),
+        Icon(Icons.warning_amber, size: 11, color: _warn),
+        const SizedBox(width: 3),
+        Text('TAAS $taas', style: const TextStyle(color: _text, fontSize: 10)),
+      ]),
+    );
+  }
+}
+
+class _BevPainter extends CustomPainter {
+  final Map<String, dynamic>? bev;
+  final Map<String, dynamic>? fusion;
+  _BevPainter({this.bev, this.fusion});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bg = Paint()..color = const Color(0xFF050A10);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(8)),
+      bg,
+    );
+
+    final w = size.width, h = size.height;
+    // 1) 차로 가이드 점선 (수직 3개) — 깊이감
+    final lanePaint = Paint()
+      ..color = const Color(0x10FFFFFF)
+      ..strokeWidth = 1;
+    for (final cx in [w * 0.30, w * 0.50, w * 0.70]) {
+      double y = 4;
+      while (y < h - 4) {
+        canvas.drawLine(Offset(cx, y), Offset(cx, y + 6), lanePaint);
+        y += 12;
+      }
+    }
+
+    // 2) 그리드 점유 (40x40 다운샘플) — 색상 ramp cyan→orange→red
+    final gflat = bev?['grid_flat'];
+    final gshape = bev?['grid_shape_flat'];
+    if (gflat is List && gshape is List && gshape.length == 2) {
+      final rows = (gshape[0] as num).toInt();
+      final cols = (gshape[1] as num).toInt();
+      final cellW = w / cols, cellH = h / rows;
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          final p = ((gflat[r * cols + c] ?? 0) as num).toDouble();
+          if (p < 0.08) continue;
+          final t = p.clamp(0.0, 1.0);
+          // EGO 가 화면 하단 → row 0 = bottom, row max = top
+          final yTop = h - (r + 1) * cellH;
+          final xLeft = c * cellW;
+          final col = Color.fromARGB(
+            (220 * t.clamp(0.4, 1.0)).round(),
+            (255 * t).round(),
+            (180 - 140 * t).clamp(20, 200).round(),
+            (200 * (1 - t)).round(),
+          );
+          canvas.drawRect(
+            Rect.fromLTWH(xLeft, yTop, cellW + 0.5, cellH + 0.5),
+            Paint()..color = col,
+          );
+        }
+      }
+    }
+
+    // 3) EGO 마커 (하단 중앙)
+    final ego = Offset(w * 0.5, h - 8);
+    canvas.drawCircle(ego, 5, Paint()..color = _accent);
+    canvas.drawCircle(ego, 5, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0xFFFFFFFF));
+
+    // 4) Hotspot 마커 + 거리
+    final hotspots = bev?['hotspots'] as List?;
+    if (hotspots != null) {
+      final shape = bev?['shape'] as List?;
+      final fineRows = shape != null ? (shape[0] as num).toInt() : 80;
+      final fineCols = shape != null ? (shape[1] as num).toInt() : 80;
+      for (final h0 in hotspots) {
+        if (h0 is! Map) continue;
+        final row = (h0['row'] as num?)?.toInt() ?? 0;
+        final col = (h0['col'] as num?)?.toInt() ?? 0;
+        final kind = h0['kind'] as String? ?? 'object';
+        final dist = (h0['distance_m'] as num?)?.toDouble() ?? 0;
+        final px = (col / (fineCols - 1)) * w;
+        final py = h - (row / (fineRows - 1)) * h;
+        Color color;
+        switch (kind) {
+          case 'occluded_shadow': color = _warn; break;
+          case 'intent_prior':    color = _safe; break;
+          case 'signal_shadow':   color = _accent2; break;
+          default:                color = _danger;
+        }
+        // 외곽 box (작게)
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset(px, py), width: 14, height: 14),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5
+            ..color = color,
+        );
+        canvas.drawCircle(Offset(px, py), 2, Paint()..color = color);
+        // 거리 텍스트
+        final tp = TextPainter(
+          text: TextSpan(
+            text: '${dist.toInt()}m',
+            style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w700),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        var lx = px + 10;
+        var ly = py - 10;
+        if (lx + tp.width > w) lx = px - tp.width - 10;
+        if (ly < 0) ly = 0;
+        tp.paint(canvas, Offset(lx, ly));
+      }
+    }
+
+    // 5) 도시정보 결합 표시 — 좌상단 작은 배지
+    if (fusion != null) {
+      final tp = TextPainter(
+        text: const TextSpan(
+          text: '도시정보 결합',
+          style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w700),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(4, 4, tp.width + 10, 14),
+          const Radius.circular(4),
+        ),
+        Paint()..color = _safe.withValues(alpha: 0.15),
+      );
+      tp.paint(canvas, const Offset(9, 4.5));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BevPainter oldDelegate) =>
+      oldDelegate.bev != bev || oldDelegate.fusion != fusion;
 }
 
 class _CameraPlaceholder extends StatelessWidget {

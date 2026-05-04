@@ -147,24 +147,25 @@
   </section>
 
   <section>
-    <h2>Tesla 도 <em>못 하는</em> 한국 특화 3종</h2>
-    <div class="card-grid">
-      <div class="card">
-        <div class="sub">// V2V CROSS-VEHICLE</div>
-        <h3>마주오는 차의 시점</h3>
-        <p>같은 교차로의 다른 AuraView 차량 detection 을 ego BEV 격자에 머지. heading 차이 130°+ peer 가중치 0.95. "버스 너머 보행자" 직격.</p>
-      </div>
-      <div class="card">
-        <div class="sub">// BUS-AWARE PRIOR</div>
-        <h3>정류장 + 정차 상태 prior</h3>
-        <p>버스 검출 + K-MaaS 정류장 데이터 → dwelling/departing/passing 추정 → 보행자 prior +0.55 까지 boost.</p>
-      </div>
-      <div class="card">
-        <div class="sub">// BIDIRECTIONAL FUSION</div>
-        <h3>마주오는 차들의 감속 패턴</h3>
-        <p>oncoming 감속 비율 50%+ → hazard +0.55. VDS 상행/하행 비대칭 40%+ → +0.20. 권장속도 자동 산출.</p>
-      </div>
-    </div>
+    <h2>Tesla 도 <em>못 하는</em> 한국 특화 — 5 항목 비교</h2>
+    <p id="positioningIntro" style="color:var(--muted);font-size:14px;margin-bottom:10px;">로딩 중…</p>
+    <table id="positioningTable" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr><th>카테고리</th><th>Tesla 방식</th><th>AuraView</th><th>한국 특화 이유</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p style="margin-top:10px;color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace;">
+      라이브 데이터 — <a href="https://auraview.allthatai.kr/positioning/tesla-vs-auraview" target="_blank" style="color:var(--accent);">/positioning/tesla-vs-auraview</a>
+    </p>
+  </section>
+
+  <section>
+    <h2><em>데이터</em> Freshness — 라이브 폴링 증명</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">
+      각 공공 데이터 소스의 마지막 호출 시각 + 응답 모드. 라이브 호출 후 <code style="color:var(--accent);">/fusion/sources</code> 가 자동 갱신.
+    </p>
+    <div id="freshnessGrid" class="grid-stats" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));"></div>
   </section>
 
   <section>
@@ -292,6 +293,34 @@
       $('dataSources').innerHTML = '<table><thead><tr><th>#</th><th>출처</th></tr></thead><tbody>' +
         (stack.data_sources || []).map((s, i) => `<tr><td style="width:36px;color:var(--muted);">${i+1}</td><td>${s}</td></tr>`).join('') +
         '</tbody></table>';
+
+      // ── Tesla 비교 표 (라이브 /positioning)
+      try {
+        const pos = await fetch(API_BASE + '/positioning/tesla-vs-auraview').then(r => r.json());
+        $('positioningIntro').textContent = pos.intro;
+        const ptb = document.querySelector('#positioningTable tbody');
+        ptb.innerHTML = pos.rows.map(r => `
+          <tr>
+            <td style="font-weight:700;color:var(--accent);">${r.category}</td>
+            <td style="color:var(--muted);font-size:13px;">${r.tesla}</td>
+            <td style="font-size:13px;line-height:1.5;">${r.auraview}<br><code style="font-size:11px;color:var(--accent2,#7c3aed);">${r.endpoint}</code></td>
+            <td style="color:var(--muted);font-size:12px;">${r.korea_specific}</td>
+          </tr>`).join('');
+      } catch(e) { $('positioningIntro').textContent = '/positioning 응답 실패'; }
+
+      // ── 데이터 freshness 카드
+      try {
+        // 한 번 호출해서 freshness 갱신
+        await fetch(API_BASE + '/fusion/intersection/10');
+        const fr = await fetch(API_BASE + '/fusion/sources').then(r => r.json());
+        const modeColor = m => ({'live':'var(--safe)', 'stub':'var(--warn)', 'error':'var(--danger)'}[m] || 'var(--muted)');
+        $('freshnessGrid').innerHTML = fr.sources.map(s => `
+          <div class="stat" style="border-left:3px solid ${modeColor(s.mode)};">
+            <div class="l">${s.id.toUpperCase()}</div>
+            <div class="n"><em style="font-size:18px;-webkit-text-fill-color:${modeColor(s.mode)};background:none;">${(s.mode || '?').toUpperCase()}</em></div>
+            <div class="sub">${s.age_s != null ? s.age_s + 's ago' : '미호출'} · ${s.origin}</div>
+          </div>`).join('');
+      } catch(e) {}
 
       // 제출 체크리스트 — /summary.json 의 실측치 기반 자동 평가
       const checks = [

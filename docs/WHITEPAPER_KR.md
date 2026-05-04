@@ -21,6 +21,16 @@
 
 모든 추론은 **한국 공공 인프라 데이터 6종(신호 · VDS · 돌발 · TAAS · ITS · 안심구역 결합분석)** 과 융합되어 운영된다.
 
+### 정량 임팩트 (TAAS 2024 기준)
+
+| 도입 시나리오 | 사고 예방/년 | 사망 감소 | 부상 감소 |
+|---|---:|---:|---:|
+| Pilot 5%   | 1,694건 | 21명  | 2,370명 |
+| 확산 25%   | 8,470건 | 105명 | 11,852명 |
+| 전국 100%  | 33,880건 | 421명 | 47,408명 |
+
+**산출 근거**: TAAS 2024 (사망 2,581 / 부상 290,400) × 도시교차로 비중 46% × AuraView 적용 시나리오 42% × `min(0.85, 0.25 × lead_time_s)` (KOTI ITS 효과 분석). lead time = 트레인드 모델 평균 3.38s. 모든 가정 라이브 검증: <https://auraview.allthatai.kr/impact>
+
 ---
 
 ## 2. 시장·사회적 문제
@@ -357,6 +367,9 @@ API: `GET /benchmark/risk?n=200` · `GET /benchmark/v2v-merge?n=50` · `GET /ben
 - https://auraview.allthatai.kr/ui — 9탭 대시보드
 - https://auraview.allthatai.kr/submission/ — 원페이지 요약 (인쇄 가능)
 - https://auraview.allthatai.kr/showreel/latest.mp4 — 6 시나리오 합본 (음향 포함)
+- https://auraview.allthatai.kr/impact — 정량 사고 예방 효과 (TAAS 결합)
+- https://auraview.allthatai.kr/positioning/tesla-vs-auraview — Tesla 5종 비교
+- https://auraview.allthatai.kr/fusion/sources — 6종 데이터 freshness
 - https://auraview.allthatai.kr/healthz/details — 운영 상태
 - https://auraview.allthatai.kr/benchmark/all — 추론 latency 실측
 - https://github.com/leelang7/AuraView — 소스 (MIT)

@@ -2405,30 +2405,57 @@ def prototype_ui():
             });
           })();
 
-          /* ── SHOWREEL build ── */
+          /* ── SHOWREEL build (async + poll) ── */
           async function buildShowreel() {
-            showLoader('합본 영상 생성 중 (60초 정도 소요)...');
+            showLoader('합본 영상 생성 중 (1~2분 소요)...');
             try {
-              const res = await fetch(window.location.origin + '/showreel/build', {method:'POST'});
-              if (!res.ok) throw new Error(await res.text());
-              const data = await res.json();
+              const enq = await fetch(window.location.origin + '/showreel/build?limit=3', {method:'POST'});
+              if (!enq.ok) throw new Error(await enq.text());
+              const job = await enq.json();
+              if (!job.job_id) throw new Error('no job_id');
+              toast('빌드 큐잉됨 · 진행률 폴링 중', 'info');
+              // 최대 3분 폴링 (5초 간격)
+              let result = null;
+              for (let i = 0; i < 36; i++) {
+                await new Promise(r => setTimeout(r, 5000));
+                const r2 = await fetch(window.location.origin + '/showreel/jobs/' + job.job_id);
+                if (!r2.ok) continue;
+                const j = await r2.json();
+                if (j.status === 'done') { result = j.result; break; }
+                if (j.status === 'error' || j.status === 'rejected') throw new Error(j.error || j.status);
+              }
+              if (!result) throw new Error('timeout');
               const wrap = document.getElementById('scnVideoWrap');
-              wrap.innerHTML = `
-                <video controls autoplay muted loop style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:12px;">
-                  <source src="${data.video_url}?t=${Date.now()}" type="video/mp4"/>
-                </video>`;
+              if (wrap) {
+                wrap.innerHTML = `
+                  <video controls autoplay muted loop style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:12px;">
+                    <source src="${result.video_url}?t=${Date.now()}" type="video/mp4"/>
+                  </video>`;
+              }
+              // 상단 hero 도 갱신
+              const hero = document.getElementById('showreelHero');
+              if (hero) {
+                hero.innerHTML = `
+                  <video controls autoplay muted loop playsinline style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:12px;">
+                    <source src="${result.video_url}?t=${Date.now()}" type="video/mp4"/>
+                  </video>`;
+              }
               const box = document.getElementById('scnStatus');
-              box.className = 'status info';
-              box.innerHTML = `
-                <div class="status-title">SHOWREEL READY</div>
-                <div class="status-main">평균 선행 경고 ${data.average_lead_time_s}초</div>
-                <div class="status-meta">
-                  포함 시나리오 &nbsp;${data.scenarios.length}<br>
-                  프레임 수 &nbsp;${data.frame_count}<br>
-                  파일 &nbsp;${data.video_url}
-                </div>`;
+              if (box) {
+                box.className = 'status info';
+                box.innerHTML = `
+                  <div class="status-title">SHOWREEL READY</div>
+                  <div class="status-main">평균 선행 경고 ${result.average_lead_time_s}초</div>
+                  <div class="status-meta">
+                    포함 시나리오 &nbsp;${result.scenarios.length}<br>
+                    프레임 수 &nbsp;${result.frame_count}<br>
+                    파일 &nbsp;${result.video_url}
+                  </div>`;
+              }
               toast('합본 영상 생성 완료', 'success');
-            } catch(e) { toast('합본 영상 생성 실패', 'error'); } finally { hideLoader(); }
+            } catch(e) {
+              toast('합본 영상 생성 실패: ' + (e.message || ''), 'error');
+            } finally { hideLoader(); }
           }
 
           /* ── K-MaaS ── */

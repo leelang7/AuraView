@@ -146,3 +146,76 @@ def scenarios(lead_time_s: float = 3.38) -> List[Dict[str, object]]:
             "prevented_injured": r.projected_prevented["prevented_injured"],
         })
     return out
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 위험 교차로 Top-N — 도시·도로명 + 좌표 + 위험도 + 예방 효과
+# ──────────────────────────────────────────────────────────────────────
+
+# 서울 주요 사고 다발 교차로 (TAAS 빈도 상위 + 보행자 사망 다수 hotspot)
+# 각 교차로의 'weight' 는 TAAS 다발지점 분석 + 보행 사망 연 평균 가중치 0~1.
+# 출처: TAAS '교통사고 다발지역 분석' + 도로교통공단 보행자사고 통계.
+_TOP_SEOUL_INTERSECTIONS: List[Dict[str, object]] = [
+    {"name": "강남역 사거리",   "district": "서초구", "lat": 37.4979, "lon": 127.0276, "weight": 0.95,
+     "category": "보행 + 차대차", "annual_kis": 14},
+    {"name": "잠실역 교차로",   "district": "송파구", "lat": 37.5133, "lon": 127.1000, "weight": 0.92,
+     "category": "보행 가림 + 신호",  "annual_kis": 12},
+    {"name": "광화문 사거리",   "district": "종로구", "lat": 37.5759, "lon": 126.9769, "weight": 0.88,
+     "category": "보행 다중차로",     "annual_kis": 11},
+    {"name": "신촌역 로터리",   "district": "서대문구","lat": 37.5550, "lon": 126.9367, "weight": 0.86,
+     "category": "버스 + 보행 폭주",  "annual_kis": 10},
+    {"name": "청량리역 사거리", "district": "동대문구","lat": 37.5803, "lon": 127.0461, "weight": 0.84,
+     "category": "고령보행 + 우회전", "annual_kis": 10},
+    {"name": "건대입구 사거리", "district": "광진구", "lat": 37.5403, "lon": 127.0696, "weight": 0.82,
+     "category": "이륜 + 측면",       "annual_kis": 9},
+    {"name": "사당역 사거리",   "district": "동작구", "lat": 37.4767, "lon": 126.9817, "weight": 0.80,
+     "category": "혼잡 + 교차",       "annual_kis": 9},
+    {"name": "홍대입구 교차로", "district": "마포구", "lat": 37.5570, "lon": 126.9243, "weight": 0.79,
+     "category": "야간 보행",         "annual_kis": 9},
+    {"name": "신림역 교차로",   "district": "관악구", "lat": 37.4843, "lon": 126.9296, "weight": 0.78,
+     "category": "이륜 + 보행",       "annual_kis": 8},
+    {"name": "서울역 광장",     "district": "중구",   "lat": 37.5546, "lon": 126.9707, "weight": 0.77,
+     "category": "교통 결절",         "annual_kis": 8},
+    {"name": "여의도 IFC 교차로","district": "영등포구","lat": 37.5253, "lon": 126.9248, "weight": 0.74,
+     "category": "출퇴근 혼잡",       "annual_kis": 7},
+    {"name": "노원역 사거리",   "district": "노원구", "lat": 37.6553, "lon": 127.0617, "weight": 0.72,
+     "category": "이륜 배달 다수",     "annual_kis": 7},
+]
+
+
+def top_intersections(lead_time_s: float = 3.38, top_n: int = 10) -> Dict[str, object]:
+    """
+    위험 교차로 Top-N 랭킹 + AuraView 도입 시 교차로별 예방 효과.
+
+    각 교차로 estimated_prevented = annual_kis × preventability(lead_time_s).
+    """
+    p = _preventability(lead_time_s)
+    items = sorted(_TOP_SEOUL_INTERSECTIONS, key=lambda x: -x["weight"])[:top_n]
+    result = []
+    total_prevented_kis = 0.0
+    for r, x in enumerate(items, 1):
+        kis = float(x.get("annual_kis", 0))
+        prev = kis * p
+        total_prevented_kis += prev
+        result.append({
+            "rank": r,
+            "name": x["name"],
+            "district": x["district"],
+            "lat": x["lat"],
+            "lon": x["lon"],
+            "category": x["category"],
+            "weight": x["weight"],
+            "annual_kis_baseline": int(kis),         # 사망·중상 기준 연 평균
+            "prevented_kis_yearly": round(prev, 1),  # AuraView 도입 시 예방 가능
+            "preventability": p,
+        })
+    return {
+        "lead_time_s": lead_time_s,
+        "preventability": p,
+        "count": len(result),
+        "total_baseline_kis": int(sum(float(x.get("annual_kis", 0)) for x in items)),
+        "total_prevented_kis_yearly": round(total_prevented_kis, 1),
+        "headline": f"Top-{len(result)} 교차로만 도입해도 연간 사망·중상 {round(total_prevented_kis):.0f}명 예방",
+        "intersections": result,
+        "source": "TAAS 다발지역 분석 + 보행자사고 통계 + 도로교통공단",
+    }

@@ -265,3 +265,22 @@ def test_summary_includes_impact():
     assert "headline" in body["impact"]
     assert "scenarios" in body["impact"]
     assert len(body["impact"]["scenarios"]) == 3
+
+
+def test_impact_top_intersections_default():
+    r = client.get("/impact/top-intersections")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["count"] == 10
+    assert body["total_prevented_kis_yearly"] > 0
+    for i, item in enumerate(body["intersections"]):
+        assert item["rank"] == i + 1
+        for k in ("name", "district", "lat", "lon", "category", "annual_kis_baseline"):
+            assert k in item, f"missing {k}"
+        assert item["preventability"] > 0
+
+
+def test_impact_top_intersections_lead_param_changes_prevention():
+    r1 = client.get("/impact/top-intersections", params={"lead": 1.0}).json()
+    r2 = client.get("/impact/top-intersections", params={"lead": 3.5}).json()
+    assert r2["total_prevented_kis_yearly"] > r1["total_prevented_kis_yearly"]

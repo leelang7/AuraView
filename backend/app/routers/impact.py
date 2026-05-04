@@ -36,3 +36,12 @@ def scenarios(lead: float = Query(3.38)):
         "lead_time_s": lead,
         "scenarios": impact_service.scenarios(lead_time_s=lead),
     }
+
+
+@router.get("/top-intersections")
+def top_intersections(
+    lead: float = Query(3.38, description="평균 선행경고 시간 (초)"),
+    top_n: int = Query(10, ge=1, le=12, description="반환할 Top-N 교차로 수"),
+):
+    """위험 교차로 Top-N 랭킹 + 교차로별 예방 효과 (사망·중상 기준)."""
+    return impact_service.top_intersections(lead_time_s=lead, top_n=top_n)

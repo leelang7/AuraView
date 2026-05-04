@@ -65,34 +65,56 @@ PRESETS: List[Tuple[str, str, str]] = [
 ]
 
 
+_BUNDLED_FONT_URL = (
+    "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
+)
+
+
+def _ensure_bundled_font() -> Optional[Path]:
+    """모듈 import 시 한글 폰트가 시스템에 없으면 자동 다운로드. 한 번만 받고 캐시."""
+    backend_root = Path(__file__).resolve().parent.parent.parent  # backend/
+    target = backend_root / "assets" / "NotoSansKR-Regular.otf"
+    if target.exists() and target.stat().st_size > 100_000:
+        return target
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        import urllib.request
+        log.info("downloading Korean font: %s", _BUNDLED_FONT_URL)
+        urllib.request.urlretrieve(_BUNDLED_FONT_URL, str(target))
+        if target.stat().st_size > 100_000:
+            log.info("font downloaded: %s (%d bytes)", target, target.stat().st_size)
+            return target
+        log.warning("downloaded font too small: %d bytes — corrupted", target.stat().st_size)
+        target.unlink(missing_ok=True)
+    except Exception as exc:
+        log.warning("font auto-download failed: %s", exc)
+    return None
+
+
 def _find_korean_font() -> Optional[str]:
     """시스템 한글 폰트 후보 — 첫 번째 존재하는 것 반환. cv2.putText 는 한글 못 그리므로 PIL 사용."""
-    # repo-bundled 폰트 (deploy 시 curl 다운로드)
     backend_root = Path(__file__).resolve().parent.parent.parent  # backend/
     candidates = [
-        # 환경변수 우선
         os.getenv("AURAVIEW_FONT"),
-        # 1) deploy.yml 이 다운로드한 repo-local 폰트 (가장 확실)
+        # 자가-다운로드 위치
         str(backend_root / "assets" / "NotoSansKR-Regular.otf"),
-        str(Path.cwd() / "backend" / "assets" / "NotoSansKR-Regular.otf"),
-        str(Path.cwd() / "assets" / "NotoSansKR-Regular.otf"),
-        # 2) apt fonts-noto-cjk
+        # 시스템 설치 (apt fonts-noto-cjk / fonts-nanum)
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-        # 3) apt fonts-nanum
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
         "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
-        # 윈도우
+        # 윈도우 / macOS
         "C:/Windows/Fonts/malgun.ttf",
         "C:/Windows/Fonts/malgunbd.ttf",
-        # macOS
         "/System/Library/Fonts/AppleSDGothicNeo.ttc",
     ]
     for p in candidates:
         if p and Path(p).exists():
             return p
-    return None
+    # 시스템 폰트 못 찾으면 자가-다운로드 시도
+    bundled = _ensure_bundled_font()
+    return str(bundled) if bundled else None
 
 
 _FONT_PATH = _find_korean_font()

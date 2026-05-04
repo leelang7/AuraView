@@ -51,34 +51,64 @@ def latest():
 
 @router.get("/debug-font")
 def debug_font():
-    """현재 한글 렌더에 쓰이는 폰트 진단 — 글리프 존재 여부까지 확인."""
-    import glob
+    """현재 한글 렌더에 쓰이는 폰트 진단 + 강제 다운로드 시도."""
+    import glob, os, subprocess
+    from pathlib import Path
+    backend_root = Path(showreel_service.__file__).resolve().parent.parent.parent
+    asset_dir = backend_root / "assets"
+
     info = {
         "selected": showreel_service._FONT_PATH,
+        "backend_root": str(backend_root),
+        "cwd": os.getcwd(),
+        "asset_dir": str(asset_dir),
+        "asset_dir_exists": asset_dir.exists(),
+        "asset_dir_contents": [str(p) for p in asset_dir.glob("*")] if asset_dir.exists() else [],
         "candidates_found": [
             p for p in [
                 "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-                "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
                 "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
                 "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-                "C:/Windows/Fonts/malgun.ttf",
-            ] if showreel_service.Path(p).exists()
+            ] if Path(p).exists()
         ],
-        "all_noto_ttc": glob.glob("/usr/share/fonts/**/Noto*", recursive=True)[:30],
+        "all_fonts_ttf": glob.glob("/usr/share/fonts/**/*.ttf", recursive=True)[:10] +
+                        glob.glob("/usr/share/fonts/**/*.otf", recursive=True)[:10] +
+                        glob.glob("/usr/share/fonts/**/*.ttc", recursive=True)[:10],
         "korean_glyph_test": None,
+        "force_download_attempt": None,
     }
+
+    # Try forcing the download right now
+    target = asset_dir / "NotoSansKR-Regular.otf"
+    if not (target.exists() and target.stat().st_size > 100_000):
+        try:
+            asset_dir.mkdir(parents=True, exist_ok=True)
+            import urllib.request, time
+            t0 = time.time()
+            urllib.request.urlretrieve(showreel_service._BUNDLED_FONT_URL, str(target))
+            elapsed = time.time() - t0
+            sz = target.stat().st_size if target.exists() else 0
+            info["force_download_attempt"] = {
+                "url": showreel_service._BUNDLED_FONT_URL,
+                "elapsed_s": round(elapsed, 2),
+                "saved_size": sz,
+                "ok": sz > 100_000,
+            }
+            if sz > 100_000:
+                # 모듈 _FONT_PATH 갱신
+                showreel_service._FONT_PATH = str(target)
+                info["selected"] = showreel_service._FONT_PATH
+        except Exception as exc:
+            info["force_download_attempt"] = {"error": str(exc)}
+
     if showreel_service._FONT_PATH:
         try:
             from PIL import ImageFont
             f = ImageFont.truetype(showreel_service._FONT_PATH, 30)
-            # check glyph presence for '한'
-            has_glyph = f.getmask("한").size != (0, 0) if hasattr(f, "getmask") else None
+            mask = f.getmask("한") if hasattr(f, "getmask") else None
             info["korean_glyph_test"] = {
-                "char": "한",
-                "ord": ord("한"),
-                "mask_size": list(f.getmask("한").size) if hasattr(f, "getmask") else None,
-                "has_glyph": has_glyph,
-                "font_family": f.font.family if hasattr(f, "font") else None,
+                "mask_size": list(mask.size) if mask else None,
+                "has_glyph": (mask.size != (0, 0)) if mask else False,
             }
         except Exception as exc:
             info["korean_glyph_test"] = {"error": str(exc)}

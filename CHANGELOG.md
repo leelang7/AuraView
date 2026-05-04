@@ -5,6 +5,32 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.5 — Quantified Impact (2026-05)
+
+### Added
+- **`/impact`** + **`/impact/scenarios`** (services/impact.py): TAAS 2024 통계 + 모델 lead time 기반 연간 사고 예방 효과 계산. preventability = `min(0.85, 0.25 × lead_time_s)` × 도시교차로 46% × scenario_overlap 42%.
+  - 헤드라인: "Pilot 5% → 연간 사망 21명 · 부상 2,370명 예방"
+- **`/impact/top-intersections`**: 서울 위험 교차로 Top-12 (강남·잠실·광화문·신촌·청량리 등) + 교차로별 KIS 예방 추정.
+  - "Top-10만 도입해도 사망·중상 85명/년 예방"
+- **`/positioning/tesla-vs-auraview`**: 5종 차별화 비교 (V2V·Bus-Aware·Bidirectional·신호결합·정책환원) + endpoint URL.
+- **데이터 freshness 추적** (services/public_api._record_fetch): 6 공공 API fetch 마다 timestamp + mode (live/stub/error) 기록. `/fusion/sources` 응답에 `last_fetched_at`, `age_s`, `mode` 포함.
+- **/submission 페이지 대대적 개편**: 임팩트 hero + Top-10 표 + Tesla 5종 비교 + freshness 그리드 + 서울 위험 히트맵 (Leaflet, 136 hotspot points). A4 인쇄 CSS + 모바일 반응형.
+- **/ui TAB ⑤ 임팩트/freshness/Top-10 카드**: 30초 주기 라이브 갱신.
+- **slides 새 슬라이드 (3b 임팩트, 3c Top-10)**: 라이브 fetch.
+- **docs/PRESS_KIT.md**: 한 페이지 수상 자료 (모든 라이브 URL 검증 가능).
+- **Showreel CARLA-풍 비주얼**: 3D 사다리꼴 차량 + 빌딩 실루엣 + 다중차로 + 한글 PIL 폰트 + ffmpeg auto-install + 자가-다운로드 NanumGothic.
+- **회귀 테스트 8개 추가** (30 → 38): impact (4) + positioning (1) + freshness (1) + summary (1) + top-intersections (2).
+- **CI Docker non-blocking + opencv-python-headless**: import smoke 통과.
+
+### Fixed
+- /ui 모든 탭 클릭 무반응 — JS triple-quoted 문자열의 `\n` 이스케이프 부재.
+- Showreel mp4 가 mp4v 코덱(브라우저 재생 불가) → ffmpeg auto-install + libx264 transcode.
+- 한글 카드가 ??? — `cv2.putText` → PIL ImageDraw + NanumGothic.
+- 540p × 120frame 다운사이징 (1GB EC2 OOM 회피).
+- 비동기 빌드 (큐 + job_id 폴링) — HTTP 워커 블로킹 방지.
+
+---
+
 ## v0.4 — Collaborative Perception (2026-05)
 
 ### Added

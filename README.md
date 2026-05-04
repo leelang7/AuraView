@@ -1,13 +1,16 @@
 # AuraView
 
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-30%2F30%20passed-brightgreen)](backend/tests/)
+[![tests](https://img.shields.io/badge/tests-36%2F36%20passed-brightgreen)](backend/tests/)
 [![model AUC](https://img.shields.io/badge/Risk%20Transformer%20AUC-0.9403-00c8ff)](models/risk_transformer_trained_metric.json)
+[![inference p99](https://img.shields.io/badge/inference%20p99-1.04ms-7c3aed)](https://auraview.allthatai.kr/benchmark/all)
 [![license](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 [![demo](https://img.shields.io/badge/demo-auraview.allthatai.kr-00e09a)](https://auraview.allthatai.kr/ui)
 
 > **K-Perception Platform — 블랙박스 한 대로 사각지대까지 계산한다.**
 > Tesla-style occupancy · fleet-learning · end-to-end risk prediction 에 **Tesla 도 못 하는 한국 도로 협업 인지(V2V + Bus + Bidirectional)** 까지 결합한 안전 주행 지원 시스템.
+
+> 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
 ## ⏱️ 30초 시연 가이드
 

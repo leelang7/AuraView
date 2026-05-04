@@ -143,3 +143,40 @@ A: 현재는 HTTP 풀 (시연용). 운영은 C-ITS WAVE / 5G-V2X 표준 위에 �
 **Q: 평균 5.7초 선행 경고 — baseline 대비?**
 A: 일반 ADAS 의 lead time 은 0.5~1초.
    AuraView 가 가려진 영역까지 확률로 모델링하므로 4~5배 빠른 감지.
+
+**Q: 임팩트 숫자 (사망 21명) 의 산출 근거는?**
+A: 모든 가정이 `/impact` JSON 에 공개됩니다 — judge 가 라이브로 검증 가능.
+   - TAAS 2024 통계 (사망 2,581 · 부상 290,400)
+   - 도시교차로 비중 46% (TAAS 도로종류별 분류)
+   - AuraView 적용 시나리오 비중 42% (보행 가림 22% + 측면 11% + 신호 9%)
+   - 회피율 = `min(0.85, 0.25 × lead_time_s)` (KOTI ITS 효과 분석 모델)
+   - lead time = 트레인드 모델 평균 3.38s → 회피율 84.5%
+   - Pilot 5% × 회피율 = 사망 21명/년
+
+**Q: 어디부터 도입하면 효과가 큰가?**
+A: 서울 12 + 5 광역시 10 = **Top-22 교차로** (`/impact/top-intersections?scope=national`).
+   이 22개만 도입해도 연간 사망·중상 **164명** 예방. 1위는 강남역 사거리 (11.8명/년).
+   각 교차로 좌표·구·유형·예방 효과 모두 JSON 공개.
+
+**Q: 데모 데이터는 합성인데 실제 동작 보장하나?**
+A: `/fusion/sources` 가 6 공공 API 호출 시각·모드·age_s 를 라이브 노출.
+   본 시연 환경은 SERVICE_KEY 없어 stub 응답이지만, 정식 키 등록 시 mode=live 즉시 반영.
+   추론 코드는 stub 의존 X — 같은 코드 경로.
+
+**Q: Tesla 와 비교해 정확히 무엇이 다른가?**
+A: `/positioning/tesla-vs-auraview` 5 항목 — 모두 endpoint URL 까지 노출:
+   1. V2V Cross-Vehicle (마주오는 차의 detection 머지)
+   2. Bus-Aware Pedestrian Prior (정류장 prior +0.55)
+   3. Bidirectional Lane Fusion (oncoming 감속 + VDS 비대칭)
+   4. 공공 신호 API 결합 (한국 신호 API 발달)
+   5. 정책 환원 루프 (위험 교차로 Top-N 자동 리포트)
+
+**Q: 학습/추론 비용은?**
+A: 모델 278 KB · 67,970 params · CPU 1코어 추론 **p99 = 1.04 ms**.
+   재학습은 4 시나리오 × 10,000 샘플 = 약 3분 (`notebooks/train_risk_transformer_real.py`).
+   /benchmark/all 에서 100회 측정 latency 분포 확인 가능.
+
+**Q: 재현 가능한가?**
+A: `git clone && docker compose up -d` 로 5분 안에 로컬 동작.
+   38/38 테스트 + CI green 확인 (`pytest backend/tests/`).
+   별도 GPU/특수 하드웨어 필요 없음.

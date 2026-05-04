@@ -93,10 +93,35 @@
            display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
 
   @media print {
-    body { background:#fff; color:#1a2030; }
+    @page { size: A4; margin: 12mm; }
+    body { background:#fff; color:#1a2030; font-size: 11px; line-height: 1.45; }
     body::before { display:none; }
-    .stat, .card, table { background:#fff; border:1px solid #d8e1ec; }
-    h1 em, .stat .n em { color:#006b9c !important; -webkit-text-fill-color:#006b9c !important; }
+    .wrap { max-width: 100%; padding: 0; }
+    .stat, .card, table { background:#fff; border:1px solid #b8c4d4; box-shadow: none; }
+    .card { padding:10px; min-height: auto; }
+    .stat { padding:8px 10px; }
+    .stat .n { font-size: 18px; }
+    .stat .l { font-size: 10px; }
+    h1 { font-size: 26px; }
+    h1 em, .stat .n em, em { color:#005a85 !important; -webkit-text-fill-color:#005a85 !important; background:none !important; }
+    section { page-break-inside: avoid; margin-top: 14px; }
+    section h2 { font-size: 16px; margin-bottom: 6px; }
+    table { font-size: 10px; }
+    .pulse { display: none; }
+    /* 라이브 fetch 영역은 인쇄에서 정적 텍스트로 가독성 우선 */
+    #taasMap { display:none !important; }
+    /* freshness 그리드와 카드 그리드는 4열로 압축 */
+    .grid-stats { grid-template-columns: repeat(4, 1fr) !important; gap: 4px !important; }
+    .card-grid  { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+    /* 링크는 검은 글씨 */
+    a, a:visited { color:#1a2030 !important; text-decoration: underline; }
+    /* 체크리스트 좌측 컬러 바 살리기 */
+    .card[style*="border-left"] { border-left-width: 2px !important; }
+    /* 인쇄에서 페이지 바뀔 때 헤더 보이도록 */
+    header { page-break-after: avoid; }
+    .footer-brand { display: none; }
+    /* 인쇄 푸터 (날짜) */
+    @page :footer { content: "AuraView · Press Kit · " counter(page); }
   }
 </style>
 </head>

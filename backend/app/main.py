@@ -1033,6 +1033,43 @@ def prototype_ui():
 
           <!-- TAB 1 -->
           <div class="tab-panel active" id="tab1">
+
+            <!-- ⭐ IMPACT BANNER — 첫 화면 시각 헤드라인 -->
+            <div style="margin-bottom:14px;padding:18px 20px;background:linear-gradient(135deg,rgba(0,224,154,0.10),rgba(0,200,255,0.06));border:1px solid rgba(0,224,154,0.30);border-radius:14px;display:flex;flex-wrap:wrap;align-items:center;gap:18px;">
+              <div style="flex:1 1 280px;min-width:0;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--safe);">
+                  // PROJECTED ANNUAL PREVENTION · TAAS 2024
+                </div>
+                <div id="tab1ImpactHeadline" style="margin-top:6px;font-family:'Black Han Sans',sans-serif;font-size:22px;line-height:1.3;color:var(--safe);">
+                  Pilot 5% 도입 → 연간 사망 21명 · 부상 2,370명 예방
+                </div>
+                <div id="tab1ImpactSub" style="margin-top:6px;color:var(--muted);font-size:12px;">
+                  Top-22 광역시 도입 시 164명 예방 · Top-1 강남역 11.8명/년
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="/impact" target="_blank" style="background:rgba(0,200,255,0.10);color:var(--accent);padding:8px 14px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;border:1px solid var(--border);">/impact JSON</a>
+                <a href="/submission/" target="_blank" style="background:rgba(0,224,154,0.10);color:var(--safe);padding:8px 14px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;border:1px solid rgba(0,224,154,0.30);">제출 페이지 →</a>
+              </div>
+            </div>
+            <script>
+              (async function(){
+                try {
+                  const im = await fetch(window.location.origin + '/impact').then(r => r.json());
+                  const ti = await fetch(window.location.origin + '/impact/top-intersections?scope=national&top_n=22').then(r => r.json());
+                  const sc = await fetch(window.location.origin + '/impact/scenarios').then(r => r.json());
+                  const pilot = sc.scenarios.find(s => Math.abs(s.coverage - 0.05) < 0.001);
+                  if (pilot) document.getElementById('tab1ImpactHeadline').textContent =
+                    'Pilot 5% 도입 → 연간 사망 ' + pilot.prevented_deaths.toLocaleString() + '명 · 부상 ' + pilot.prevented_injured.toLocaleString() + '명 예방';
+                  if (ti) {
+                    const top1 = ti.intersections[0];
+                    document.getElementById('tab1ImpactSub').textContent =
+                      'Top-22 광역시 도입 시 ' + Math.round(ti.total_prevented_kis_yearly) + '명 예방 · Top-1 ' + top1.name + ' ' + top1.prevented_kis_yearly + '명/년';
+                  }
+                } catch(e) {}
+              })();
+            </script>
+
             <div class="dashboard-grid">
               <div class="left-col">
                 <div class="card control-card">

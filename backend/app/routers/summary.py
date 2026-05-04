@@ -74,6 +74,16 @@ def summary_json(db: Session = Depends(get_db)):
     metric = _read_metric()
     trained_metric = _read_trained_metric()
 
+    # ── 정량 임팩트 (TAAS 통계 + 모델 lead time 기반)
+    from ..services import impact as impact_service
+    avg_lead = (trained_metric.get("avg_lead_time_synth_s")
+                or metric.get("avg_lead_time_synth_s") or 3.38)
+    impact_data = impact_service.estimate(
+        impact_service.ImpactInputs(avg_lead_time_s=float(avg_lead),
+                                    coverage_urban_intersections=0.10)
+    ).to_dict()
+    impact_scenarios = impact_service.scenarios(lead_time_s=float(avg_lead))
+
     return {
         "service": "AuraView K-Perception",
         "version": "0.4-collab-perception",
@@ -156,6 +166,16 @@ def summary_json(db: Session = Depends(get_db)):
             "showreel_latest_mp4": "https://auraview.allthatai.kr/showreel/latest.mp4",
             "swagger": "https://auraview.allthatai.kr/docs",
             "healthz": "https://auraview.allthatai.kr/healthz/details",
+        },
+
+        "impact": {
+            "headline": impact_data["projected_prevented"]["headline"],
+            "preventability_rate": impact_data["preventability"],
+            "default_assumptions": impact_data["inputs"],
+            "annual_baseline": impact_data["annual_baseline"],
+            "projected_prevented_at_10pct": impact_data["projected_prevented"],
+            "scenarios": impact_scenarios,
+            "methodology_endpoint": "/impact",
         },
 
         "tests": {"total": 30, "passed": 30, "split": "18 endpoint + 12 collab unit"},

@@ -209,10 +209,16 @@
   </section>
 
   <section>
-    <h2><em>위험 교차로</em> Top-10 — 도입 시 교차로별 예방 효과</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <h2><em>위험 교차로</em> Top — 도입 시 교차로별 예방 효과</h2>
+      <div id="scopeToggle" style="display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;font-size:12px;">
+        <button data-scope="seoul"   class="scope-btn active" style="padding:6px 14px;background:var(--accent);color:#000;border:0;cursor:pointer;font-weight:700;">서울 (12)</button>
+        <button data-scope="national" class="scope-btn"        style="padding:6px 14px;background:transparent;color:var(--muted);border:0;cursor:pointer;">전국 (22)</button>
+      </div>
+    </div>
     <p id="topInxIntro" style="color:var(--muted);font-size:13px;margin-bottom:10px;">로딩 중…</p>
     <table id="topInxTable" style="width:100%;border-collapse:collapse;">
-      <thead><tr><th>#</th><th>교차로</th><th>구</th><th>유형</th><th>연 사망·중상</th><th>예방 (도입 시)</th></tr></thead>
+      <thead><tr><th>#</th><th>교차로</th><th>도시·구</th><th>유형</th><th>연 사망·중상</th><th>예방 (도입 시)</th></tr></thead>
       <tbody></tbody>
     </table>
     <p style="margin-top:8px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
@@ -380,10 +386,12 @@
           </tr>`).join('');
       } catch(e) { $('positioningIntro').textContent = '/positioning 응답 실패'; }
 
-      // ── 위험 교차로 Top-10 표
-      try {
-        const ti = await fetch(API_BASE + '/impact/top-intersections').then(r => r.json());
-        if (ti && ti.intersections) {
+      // ── 위험 교차로 Top-N 표 (scope toggle: seoul/national)
+      async function renderTopInx(scope) {
+        try {
+          const top_n = scope === 'national' ? 22 : 12;
+          const ti = await fetch(API_BASE + '/impact/top-intersections?scope=' + scope + '&top_n=' + top_n).then(r => r.json());
+          if (!ti || !ti.intersections) return;
           $('topInxIntro').innerHTML =
             '<strong style="color:var(--safe);">' + ti.headline + '</strong> — preventability ' + (ti.preventability*100).toFixed(1) + '%';
           const tb = document.querySelector('#topInxTable tbody');
@@ -391,13 +399,29 @@
             `<tr>
               <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;width:36px;">#${x.rank}</td>
               <td style="font-weight:700;color:var(--accent);">${x.name}</td>
-              <td style="color:var(--muted);font-size:12px;">${x.district}</td>
+              <td style="color:var(--muted);font-size:12px;">${x.city||'서울'} · ${x.district}</td>
               <td style="color:var(--muted);font-size:12px;">${x.category}</td>
               <td style="color:var(--danger);font-weight:700;">${x.annual_kis_baseline}</td>
               <td style="color:var(--safe);font-weight:700;">${x.prevented_kis_yearly}명</td>
             </tr>`).join('');
-        }
-      } catch(e) { $('topInxIntro').textContent = '/impact/top-intersections 응답 실패'; }
+        } catch(e) { $('topInxIntro').textContent = '/impact/top-intersections 응답 실패'; }
+      }
+      renderTopInx('seoul');
+      document.querySelectorAll('.scope-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.scope-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.background = 'transparent';
+            b.style.color = 'var(--muted)';
+            b.style.fontWeight = '400';
+          });
+          btn.classList.add('active');
+          btn.style.background = 'var(--accent)';
+          btn.style.color = '#000';
+          btn.style.fontWeight = '700';
+          renderTopInx(btn.dataset.scope);
+        });
+      });
 
       // ── 위험 교차로 히트맵
       try {

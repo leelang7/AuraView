@@ -34,8 +34,8 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 JOB_DIR = OUT_DIR / "_jobs"
 JOB_DIR.mkdir(parents=True, exist_ok=True)
 
-W = int(os.getenv("SHOWREEL_W", "1280"))
-H = int(os.getenv("SHOWREEL_H", "720"))
+W = int(os.getenv("SHOWREEL_W", "960"))
+H = int(os.getenv("SHOWREEL_H", "540"))
 FPS = int(os.getenv("SHOWREEL_FPS", "24"))
 # 한 합본에 들어갈 시나리오 수 — 작은 EC2 (1~2GB RAM) 에서 OOM 방지를 위해 기본 3.
 MAX_SCENARIOS = int(os.getenv("SHOWREEL_MAX_SCENARIOS", "3"))

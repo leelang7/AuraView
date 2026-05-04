@@ -44,8 +44,10 @@ OUTPUT_FPS = 24         # cinematic — 24fps
 
 # 합성 시나리오 출력 해상도 — env 로 조정 가능 (소형 인스턴스 대응)
 # SHOWREEL_W/H 와 동일 변수 사용 (한 영상 흐름이라 일관 유지)
-SYNTH_W = int(os.getenv("SHOWREEL_W", "1280"))
-SYNTH_H = int(os.getenv("SHOWREEL_H", "720"))
+# 기본 960×540 + 120 frames ≈ 187MB/시나리오 (1GB EC2 OOM 회피, 한 번에 한 시나리오만)
+SYNTH_W = int(os.getenv("SHOWREEL_W", "960"))
+SYNTH_H = int(os.getenv("SHOWREEL_H", "540"))
+SYNTH_FRAMES = int(os.getenv("SHOWREEL_SCENARIO_FRAMES", "120"))
 
 
 @dataclass
@@ -421,7 +423,7 @@ def _apply_cinematic_post(frame: np.ndarray) -> np.ndarray:
     return out
 
 
-def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = SYNTH_FRAMES) -> Tuple[List[np.ndarray], List[float]]:
     """대형차가 전방 횡단보도를 가리고 있다가, 보행자가 T=7초에 등장하는 장면."""
     out_frames = []
     risks = []
@@ -473,7 +475,7 @@ def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
     return out_frames, risks
 
 
-def _synthesize_motorcycle_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_motorcycle_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = SYNTH_FRAMES) -> Tuple[List[np.ndarray], List[float]]:
     """측면 사각지대에서 이륜차가 추월 접근."""
     out_frames = []
     risks = []
@@ -507,7 +509,7 @@ def _synthesize_motorcycle_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames:
     return out_frames, risks
 
 
-def _synthesize_signal_occluded(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_signal_occluded(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = SYNTH_FRAMES) -> Tuple[List[np.ndarray], List[float]]:
     """신호등이 전방 버스에 가려져 있다가, 앞차가 급감속하는 장면."""
     out_frames = []
     risks = []
@@ -538,7 +540,7 @@ def _synthesize_signal_occluded(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
     return out_frames, risks
 
 
-def _synthesize_v2v_collab(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_v2v_collab(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = SYNTH_FRAMES) -> Tuple[List[np.ndarray], List[float]]:
     """
     V2V 협업 인지 시연 시나리오.
 
@@ -674,7 +676,7 @@ def _add_rain_overlay(img: np.ndarray, intensity: float = 1.0) -> np.ndarray:
     return out.astype(np.uint8)
 
 
-def _synthesize_rainy_intersection(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_rainy_intersection(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = SYNTH_FRAMES) -> Tuple[List[np.ndarray], List[float]]:
     """
     우천 + 혼잡 교차로. 시야가 흐리고 대형차가 잠시 멈춘 사이 보행자가 우산 쓰고 횡단.
     T=5s 우산 보행자 등장. 우천 occlusion 으로 인해 lead time 짧음.
@@ -734,7 +736,7 @@ def _synthesize_rainy_intersection(w: int = SYNTH_W, h: int = SYNTH_H, frames: i
     return out_frames, risks
 
 
-def _synthesize_night_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = 240) -> Tuple[List[np.ndarray], List[float]]:
+def _synthesize_night_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames: int = SYNTH_FRAMES) -> Tuple[List[np.ndarray], List[float]]:
     """야간 사각지대 — 어두운 도로, 헤드라이트 콘, 가려진 보행자."""
     out_frames = []
     risks = []

@@ -110,6 +110,15 @@ jobs:
           # torch 는 옵션 — 이미 설치되어 있으면 skip 빠름
           python3 -c "import torch" 2>/dev/null || python3 -m pip install --quiet torch numpy
 
+          # ffmpeg — showreel/scenario mp4 의 H.264 transcode 에 필수.
+          # 없으면 cv2 의 mp4v 코덱 그대로 → 브라우저 재생 불가 (검은 화면).
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            echo "[remote] ffmpeg 미설치 — apt-get install"
+            sudo DEBIAN_FRONTEND=noninteractive apt-get update -y -qq
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg
+          fi
+          ffmpeg -version | head -1
+
           pkill -f "uvicorn app.main:app" || true
           sleep 2
           cd backend

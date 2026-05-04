@@ -2160,6 +2160,22 @@ def prototype_ui():
               <div class="status-meta">shape ${data.shape[0]}×${data.shape[1]} · cell ${data.cell_m}m</div>`;
           }
 
+          // ⭐ TAB ② 진입 시 자동 BEV 데모 로드 + 3D 모드 — 빈 플레이스홀더 안 보이게
+          (function setupBEVAutoLoad(){
+            const tab2 = document.querySelector('[data-tab="tab2"]');
+            if (!tab2) return;
+            let loaded = false;
+            tab2.addEventListener('click', async () => {
+              if (loaded) return;
+              loaded = true;
+              try {
+                await loadOccupancyDemo();
+                // 자동으로 3D voxel 모드로 전환 (FSD-style)
+                if (typeof setOccMode === 'function') setOccMode('3d');
+              } catch(e) { /* placeholder 유지 */ }
+            });
+          })();
+
           async function runOccupancy() {
             const fileInput = document.getElementById('occ_file');
             if (!fileInput.files.length) {

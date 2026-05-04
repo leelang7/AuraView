@@ -178,7 +178,7 @@ def summary_json(db: Session = Depends(get_db)):
             "methodology_endpoint": "/impact",
         },
 
-        "tests": {"total": 30, "passed": 30, "split": "18 endpoint + 12 collab unit"},
+        "tests": {"total": 36, "passed": 36, "split": "18 endpoint + 12 collab unit + 6 impact/positioning"},
 
         "repo": {
             "url": "https://github.com/leelang7/AuraView",

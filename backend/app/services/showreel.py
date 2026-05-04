@@ -119,8 +119,12 @@ def _draw_text_pil(img: np.ndarray, text: str, xy: Tuple[int, int],
 
 def _draw_card(title: str, sub: str = "", footer: str = "", duration_s: float = 2.5,
                accent: Tuple[int, int, int] = (255, 200, 0)) -> List[np.ndarray]:
-    """단순한 다크 타이틀 카드 프레임 시퀀스 — 한글 PIL 렌더."""
-    s = W / 960.0   # 스케일 팩터
+    """타이틀 카드 프레임 시퀀스 — 텍스트는 1회만 PIL 렌더 후 alpha blend.
+
+    이전: 프레임마다 PIL 렌더 → 720프레임에 7분+
+    지금: 베이스 1장 만들고 alpha 곱셈만 → 수십 초.
+    """
+    s = W / 960.0
     frames = int(duration_s * FPS)
     out: List[np.ndarray] = []
 
@@ -129,36 +133,40 @@ def _draw_card(title: str, sub: str = "", footer: str = "", duration_s: float = 
     footer_px = max(12, int(18 * s))
     brand_px = max(11, int(16 * s))
 
+    # 1) 배경(그라디언트 + 액센트 바) 1장
+    bg = np.zeros((H, W, 3), dtype=np.uint8)
+    for y in range(H):
+        t = y / H
+        bg[y, :] = (int(8 + 18 * t), int(12 + 18 * t), int(20 + 24 * t))
+    cv2.rectangle(bg, (int(40 * s), int(100 * s)), (int(54 * s), H - int(100 * s)), accent, -1)
+
+    # 2) 텍스트 레이어 1장 (검은 배경에 풀컬러 텍스트만) — 한 번만 PIL 렌더
+    text_layer = np.zeros((H, W, 3), dtype=np.uint8)
+    text_layer = _draw_text_pil(text_layer, title,
+                                (int(80 * s), int(H * 0.42) - title_px),
+                                title_px, (235, 240, 250))
+    if sub:
+        text_layer = _draw_text_pil(text_layer, sub,
+                                    (int(80 * s), int(H * 0.52) - sub_px),
+                                    sub_px, (140, 200, 230))
+    if footer:
+        text_layer = _draw_text_pil(text_layer, footer,
+                                    (int(80 * s), int(H * 0.92) - footer_px),
+                                    footer_px, (110, 140, 170))
+    text_layer = _draw_text_pil(text_layer, "AURAVIEW  K-PERCEPTION",
+                                (W - int(360 * s), H - int(24 * s) - brand_px),
+                                brand_px, (100, 200, 255))
+
+    # 3) 프레임마다 alpha 만 갱신 — bg + text*alpha
+    fade_in = max(1, FPS // 2)
     for i in range(frames):
-        img = np.zeros((H, W, 3), dtype=np.uint8)
-        # 그라디언트 배경
-        for y in range(H):
-            t = y / H
-            img[y, :] = (int(8 + 18 * t), int(12 + 18 * t), int(20 + 24 * t))
-
-        # 좌측 액센트 바
-        cv2.rectangle(img, (int(40 * s), int(100 * s)), (int(54 * s), H - int(100 * s)), accent, -1)
-
-        # 페이드 인
-        alpha = min(1.0, i / max(1, FPS // 2))
-
-        # title
-        title_color = tuple(int(c * alpha) for c in (235, 240, 250))
-        img = _draw_text_pil(img, title, (int(80 * s), int(H * 0.42) - title_px),
-                             title_px, title_color)
-        if sub:
-            sub_color = tuple(int(c * alpha) for c in (140, 200, 230))
-            img = _draw_text_pil(img, sub, (int(80 * s), int(H * 0.52) - sub_px),
-                                 sub_px, sub_color)
-        if footer:
-            footer_color = tuple(int(c * alpha) for c in (110, 140, 170))
-            img = _draw_text_pil(img, footer, (int(80 * s), int(H * 0.92) - footer_px),
-                                 footer_px, footer_color)
-
-        # 하단 브랜드 — ASCII only
-        img = _draw_text_pil(img, "AURAVIEW  K-PERCEPTION",
-                             (W - int(360 * s), H - int(24 * s) - brand_px),
-                             brand_px, (100, 200, 255))
+        a = min(1.0, i / fade_in)
+        # text_layer 의 픽셀에 alpha 곱: text_alpha = text_layer * a
+        if a >= 1.0:
+            img = cv2.add(bg, text_layer)
+        else:
+            scaled = (text_layer.astype(np.float32) * a).clip(0, 255).astype(np.uint8)
+            img = cv2.add(bg, scaled)
         out.append(img)
     return out
 

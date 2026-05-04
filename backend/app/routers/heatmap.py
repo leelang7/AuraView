@@ -88,10 +88,13 @@ def taas_heatmap(
         elif "경상" in sev: weight = 0.55
         points.append([float(lat), float(lon), weight])
 
-    if not points:
-        # fallback — 시연용
+    # 너무 sparse 하면 (≤ 3 포인트) 시연용 hotspot 으로 augment — 시각적 의미 확보
+    if len(points) <= 3:
         random.seed(42)
-        points = _expand_hotspots(_SEOUL_HOTSPOTS, n_per_seed=8, jitter=0.004)
+        seed_points = points if points else []
+        # 기존 실 데이터 보존 + 합성 hotspot 산포
+        synthetic = _expand_hotspots(_SEOUL_HOTSPOTS, n_per_seed=8, jitter=0.004)
+        points = seed_points + synthetic
 
     return {
         "year": year,
@@ -99,5 +102,5 @@ def taas_heatmap(
         "count": len(points),
         "max_weight": max((p[2] for p in points), default=1.0),
         "points": points,
-        "source": "TAAS open API" if accidents else "시연용 합성 (TAAS 키 미설정 시)",
+        "source": "TAAS open API + Seoul hotspots augmentation" if accidents else "시연용 합성 (TAAS 키 미설정 시)",
     }

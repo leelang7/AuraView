@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>AuraView · K-Perception · One-Page Summary</title>
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
   :root {
     --bg:#080c14; --surface:#0d1520; --surface2:#121d2e;
@@ -161,6 +164,17 @@
   </section>
 
   <section>
+    <h2><em>위험 교차로</em> 히트맵 — 서울 (TAAS 2024)</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">
+      TAAS 사고이력 + 시연용 hotspot augmentation. AuraView 가 우선 도입될 핫스팟 시각화.
+    </p>
+    <div id="taasMap" style="width:100%;height:380px;border-radius:14px;border:1px solid var(--border);background:#0a121e;"></div>
+    <p style="margin-top:8px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
+      라이브 데이터 → <a href="https://auraview.allthatai.kr/heatmap/taas" target="_blank" style="color:var(--accent);">/heatmap/taas</a>
+    </p>
+  </section>
+
+  <section>
     <h2><em>데이터</em> Freshness — 라이브 폴링 증명</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">
       각 공공 데이터 소스의 마지막 호출 시각 + 응답 모드. 라이브 호출 후 <code style="color:var(--accent);">/fusion/sources</code> 가 자동 갱신.
@@ -307,6 +321,19 @@
             <td style="color:var(--muted);font-size:12px;">${r.korea_specific}</td>
           </tr>`).join('');
       } catch(e) { $('positioningIntro').textContent = '/positioning 응답 실패'; }
+
+      // ── 위험 교차로 히트맵
+      try {
+        const hm = await fetch(API_BASE + '/heatmap/taas').then(r => r.json());
+        if (hm && hm.points && hm.points.length > 0 && typeof L !== 'undefined') {
+          const map = L.map('taasMap', { zoomControl: true, attributionControl: false }).setView([37.5511, 127.0010], 11);
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 18, subdomains: 'abcd',
+          }).addTo(map);
+          L.heatLayer(hm.points, { radius: 22, blur: 16, maxZoom: 12, max: hm.max_weight || 1.0,
+            gradient: {0.2:'#00c8ff', 0.5:'#ffb020', 0.8:'#ff3b3b', 1.0:'#7c3aed'} }).addTo(map);
+        }
+      } catch(e) {}
 
       // ── 데이터 freshness 카드
       try {

@@ -115,7 +115,7 @@ def _draw_hud(frame: np.ndarray, risk: float, t_s: float, peak_t: Optional[float
         overlay2 = frame.copy()
         cv2.rectangle(overlay2, (0, int(h * 0.82)), (w, h), (0, 0, 80), -1)
         frame = cv2.addWeighted(overlay2, 0.45, frame, 0.55, 0)
-        cv2.putText(frame, "! COLLISION RISK — BRAKE !",
+        cv2.putText(frame, "! COLLISION RISK -- BRAKE !",
                     (int(w * 0.08), int(h * 0.92)),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.1 * s, (0, 60, 255), max(3, int(3 * s)))
     return frame
@@ -568,22 +568,18 @@ def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
         t = i / OUTPUT_FPS
         img = _draw_scene_base(w, h)
 
-        # 횡단보도 stripes (트럭 앞쪽 도로 위, 원근감) — 사다리꼴 stripe
-        for k in range(6):
-            prog_x = (k - 2.5) / 6.0
-            far_x = int(w * 0.5 + prog_x * w * 0.18)
-            near_x = int(w * 0.5 + prog_x * w * 0.45)
-            stripe_far_y = int(h * 0.62)
-            stripe_near_y = int(h * 0.72)
-            stripe_w_far = int(w * 0.045)
-            stripe_w_near = int(w * 0.075)
-            pts = np.array([
-                [far_x - stripe_w_far // 2, stripe_far_y],
-                [far_x + stripe_w_far // 2, stripe_far_y],
-                [near_x + stripe_w_near // 2, stripe_near_y],
-                [near_x - stripe_w_near // 2, stripe_near_y],
-            ], dtype=np.int32)
-            cv2.fillPoly(img, [pts], (200, 200, 200))
+        # 횡단보도 — 도로에 가로 줄무늬 (원근감, 간격 충분히)
+        # near (가까이) 와 far (멀리) 사이 5 줄. 위쪽으로 갈수록 좁아짐.
+        for k in range(5):
+            prog = k / 4.0  # 0 (near) ~ 1 (far)
+            y_center = int(h * (0.74 - prog * 0.10))
+            # 가까이는 두껍고 좌우 길게, 멀리는 얇고 짧게
+            stripe_w = int(w * (0.42 - prog * 0.20))   # 좌우 폭 (원근)
+            stripe_thick = max(2, int(h * (0.030 - prog * 0.018)))
+            x_left = int(w * 0.5 - stripe_w // 2)
+            x_right = int(w * 0.5 + stripe_w // 2)
+            cv2.rectangle(img, (x_left, y_center), (x_right, y_center + stripe_thick),
+                          (220, 220, 220), -1)
 
         # 좌측 차로의 다른 차 (씬 밀도)
         side_scale = 0.4 + 0.005 * i

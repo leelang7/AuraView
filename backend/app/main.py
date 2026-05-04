@@ -2176,6 +2176,22 @@ def prototype_ui():
             });
           })();
 
+          // 진입 시 자동 데모 — TAB③ Fusion (6종 결합), TAB④ Fleet, TAB⑦ K-MaaS, TAB⑧ Reports
+          function _autoOnFirstTabClick(tabName, fn) {
+            const tab = document.querySelector('[data-tab="' + tabName + '"]');
+            if (!tab) return;
+            let loaded = false;
+            tab.addEventListener('click', async () => {
+              if (loaded) return;
+              loaded = true;
+              try { await fn(); } catch(e) { /* keep placeholder */ }
+            });
+          }
+          _autoOnFirstTabClick('tab3', () => typeof runFusion === 'function' ? runFusion() : null);
+          _autoOnFirstTabClick('tab4', () => typeof loadFleetStats === 'function' ? loadFleetStats() : null);
+          _autoOnFirstTabClick('tab7', () => typeof loadKmaasOperator === 'function' ? loadKmaasOperator() : null);
+          _autoOnFirstTabClick('tab8', () => typeof loadReportList === 'function' ? loadReportList() : null);
+
           async function runOccupancy() {
             const fileInput = document.getElementById('occ_file');
             if (!fileInput.files.length) {

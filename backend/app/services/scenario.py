@@ -348,48 +348,181 @@ def reenact_from_video(video_path: str, out_name: str) -> ReenactmentResult:
 # ──────────────────────────────────────────────────────────────────────
 
 def _draw_scene_base(w: int, h: int) -> np.ndarray:
-    """시네마틱 도로 베이스 — 그라디언트 하늘 + 원근 도로 + 대기 원근감 + 차선."""
+    """CARLA-풍 도시 도로 베이스 — 그라디언트 하늘+태양 + 빌딩 실루엣 + 다중차로 + 대기 원근."""
     s = w / 960.0
     img = np.zeros((h, w, 3), dtype=np.uint8)
-
-    # ── 1) 하늘 — 일출/저녁 무드 그라디언트 (지평선에 따뜻한 톤)
     sky_h = int(h * 0.55)
+
+    # ── 1) 하늘 — 도시 황혼 그라디언트 + 태양
     for y in range(sky_h):
         t = y / max(1, sky_h)
-        # 위쪽: 진한 네이비 → 지평선: 옅은 청록·핑크
-        b = int(38 + 100 * t)        # blue
-        g = int(28 + 90 * t)         # green
-        r = int(22 + 130 * t)        # red (지평선에서 따뜻하게)
+        # 위쪽: 진한 네이비 → 지평선: 따뜻한 핑크/오렌지
+        b = int(38 + 95 * t)
+        g = int(28 + 85 * t)
+        r = int(22 + 140 * t)
         img[y, :] = (b, g, r)
 
-    # ── 2) 도로 — 어두운 아스팔트 + 약한 노이즈 (디테일감)
-    cv2.rectangle(img, (0, sky_h), (w, h), (16, 16, 22), -1)
-    # 도로에 미세 노이즈 (10% 강도)
+    # 태양 — 우상단에서 빛나는 원
+    sun_x = int(w * 0.78)
+    sun_y = int(sky_h * 0.55)
+    sun_r = max(20, int(40 * s))
+    # 헤일로
+    halo = np.zeros_like(img)
+    cv2.circle(halo, (sun_x, sun_y), sun_r * 4, (160, 200, 240), -1)
+    halo = cv2.GaussianBlur(halo, (0, 0), sigmaX=40 * s, sigmaY=40 * s)
+    img = cv2.addWeighted(img, 1.0, halo, 0.30, 0)
+    cv2.circle(img, (sun_x, sun_y), sun_r, (200, 220, 250), -1)
+
+    # ── 2) 빌딩 실루엣 (지평선) — 가짜 도시 스카이라인
+    rng = np.random.RandomState(42)  # 같은 빌딩 패턴 재현
+    bx = 0
+    while bx < w:
+        bw = rng.randint(int(40 * s), int(120 * s))
+        bh = rng.randint(int(40 * s), int(110 * s))
+        b_top = sky_h - bh
+        # 실루엣 어두운 색 (대기원근으로 회보랏빛)
+        cv2.rectangle(img, (bx, b_top), (bx + bw, sky_h), (50, 45, 60), -1)
+        # 창문 점등 (몇 개만)
+        for _ in range(rng.randint(2, 6)):
+            wx = bx + rng.randint(4, max(5, bw - 8))
+            wy = b_top + rng.randint(8, max(9, bh - 8))
+            ww = rng.randint(2, max(3, int(6 * s)))
+            wh = rng.randint(2, max(3, int(6 * s)))
+            light = (rng.randint(120, 220), rng.randint(170, 240), rng.randint(220, 255))
+            cv2.rectangle(img, (wx, wy), (wx + ww, wy + wh), light, -1)
+        bx += bw + rng.randint(2, 8)
+
+    # ── 3) 도로 — 어두운 아스팔트 + 노이즈
+    cv2.rectangle(img, (0, sky_h), (w, h), (18, 18, 24), -1)
     noise = (np.random.rand(h - sky_h, w, 3) * 14).astype(np.int16)
     img[sky_h:, :] = np.clip(img[sky_h:, :].astype(np.int16) + noise, 0, 255).astype(np.uint8)
 
-    # ── 3) 도로 가장자리 (원근 라인) — 그라디언트 두께
-    edge_color = (130, 130, 145)
-    cv2.line(img, (int(w*0.5), sky_h), (int(w*0.10), h), edge_color, max(2, int(3*s)))
-    cv2.line(img, (int(w*0.5), sky_h), (int(w*0.90), h), edge_color, max(2, int(3*s)))
+    # ── 4) 다중 차로 — 4 차선 (중앙선 노란색 + 차선 흰색 점선)
+    # 4 차로: 외측 -0.35 / -0.12 / 0.12 / 0.35 (vanishing point=0.5)
+    lane_offsets = [-0.35, -0.12, 0.12, 0.35]
+    for off in lane_offsets:
+        far_x = int(w * (0.5 + off * 0.35))
+        near_x = int(w * (0.5 + off))
+        cv2.line(img, (far_x, sky_h), (near_x, h), (90, 90, 100), max(1, int(1.5 * s)))
 
-    # ── 4) 중앙 점선 — 원근에 따라 굵어짐
-    for i in range(7):
-        prog = i / 6.0
+    # 점선 차선 (중앙 2개 차로 사이) — 원근감 두께 변화
+    for i in range(8):
+        prog = i / 7.0
         y1 = int(sky_h + prog * (h - sky_h) * 0.95)
-        y2 = y1 + int(h * (0.018 + prog * 0.025))
+        y2 = y1 + int(h * (0.012 + prog * 0.030))
+        # 좌측 점선
+        x1 = int(w * (0.5 + (-0.12) * (0.35 + prog * 0.65)))
         thick = max(2, int((1 + prog * 4) * s))
-        cv2.line(img, (int(w * 0.5), y1), (int(w * 0.5), y2),
-                 (215, 215, 110), thick)
+        cv2.line(img, (x1, y1), (x1, y2), (215, 215, 110), thick)
+        # 우측 점선
+        x2 = int(w * (0.5 + 0.12 * (0.35 + prog * 0.65)))
+        cv2.line(img, (x2, y1), (x2, y2), (215, 215, 110), thick)
+        # 중앙선 (이중황색)
+        cx = int(w * 0.5)
+        cv2.line(img, (cx, y1), (cx, y2), (180, 200, 110), max(2, int((1 + prog * 3) * s)))
 
-    # ── 5) 대기 원근감 (지평선 부근 옅은 안개 layer)
+    # ── 5) 대기 원근 (지평선 안개)
     haze = np.zeros_like(img)
-    haze_h = int(h * 0.18)
+    haze_h = int(h * 0.20)
     for y in range(sky_h - haze_h // 2, sky_h + haze_h // 2):
         if y < 0 or y >= h: continue
         alpha = 1.0 - abs(y - sky_h) / (haze_h / 2)
-        haze[y, :] = (int(120 * alpha), int(110 * alpha), int(105 * alpha))
-    img = cv2.addWeighted(img, 1.0, haze, 0.45, 0)
+        haze[y, :] = (int(130 * alpha), int(120 * alpha), int(115 * alpha))
+    img = cv2.addWeighted(img, 1.0, haze, 0.50, 0)
+
+    return img
+
+
+def _draw_vehicle(img: np.ndarray, cx: int, cy: int, scale: float,
+                  body_color: Tuple[int, int, int] = (60, 70, 90),
+                  vehicle_type: str = "car",
+                  brake: bool = False) -> np.ndarray:
+    """3D-풍 차량 후방 뷰 — 사다리꼴 body + 창 + 후미등 + 바퀴 + 그림자."""
+    s = scale
+    h, w = img.shape[:2]
+
+    # 크기 (rear view: 트럭은 더 큼)
+    if vehicle_type == "truck":
+        body_w = int(160 * s); body_h = int(140 * s); cabin_h = int(40 * s)
+        type_label = "TRUCK"
+    elif vehicle_type == "bus":
+        body_w = int(180 * s); body_h = int(150 * s); cabin_h = int(50 * s)
+        type_label = "BUS"
+    else:
+        body_w = int(110 * s); body_h = int(80 * s); cabin_h = int(28 * s)
+        type_label = ""
+
+    bw = body_w; bh = body_h
+    # 사다리꼴 body — 위쪽 약간 좁게 (3D 원근)
+    top_w = int(bw * 0.92)
+    top_y = cy - bh // 2
+    bot_y = cy + bh // 2
+    pts = np.array([
+        [cx - top_w // 2, top_y],
+        [cx + top_w // 2, top_y],
+        [cx + bw // 2, bot_y],
+        [cx - bw // 2, bot_y],
+    ], dtype=np.int32)
+
+    # 그림자 (블러)
+    shadow_pts = pts.copy()
+    shadow_pts[:, 1] += int(8 * s)
+    shadow = np.zeros_like(img)
+    cv2.fillPoly(shadow, [shadow_pts], (0, 0, 0))
+    shadow = cv2.GaussianBlur(shadow, (0, 0), sigmaX=8 * s, sigmaY=4 * s)
+    img = cv2.addWeighted(img, 1.0, shadow, 0.55, 0)
+
+    # body
+    cv2.fillPoly(img, [pts], body_color)
+    # 위쪽 하이라이트 (광택)
+    high_pts = np.array([
+        [cx - top_w // 2 + int(4 * s), top_y + int(2 * s)],
+        [cx + top_w // 2 - int(4 * s), top_y + int(2 * s)],
+        [cx + top_w // 2 - int(4 * s), top_y + int(8 * s)],
+        [cx - top_w // 2 + int(4 * s), top_y + int(8 * s)],
+    ], dtype=np.int32)
+    high_color = tuple(min(255, int(c * 1.4)) for c in body_color)
+    cv2.fillPoly(img, [high_pts], high_color)
+
+    # 창 (rear window) — 차량 상단 1/3
+    win_top = top_y + int(8 * s)
+    win_bot = top_y + cabin_h
+    win_pts = np.array([
+        [cx - top_w // 2 + int(8 * s), win_top],
+        [cx + top_w // 2 - int(8 * s), win_top],
+        [cx + top_w // 2 - int(12 * s), win_bot],
+        [cx - top_w // 2 + int(12 * s), win_bot],
+    ], dtype=np.int32)
+    cv2.fillPoly(img, [win_pts], (10, 12, 20))
+
+    # 후미등 (좌우) — 빨강, 브레이크면 더 밝게
+    tail_y = bot_y - int(18 * s)
+    tail_w = int(18 * s)
+    tail_h = int(8 * s)
+    tail_color = (40, 60, 240) if brake else (40, 50, 180)
+    cv2.rectangle(img, (cx - bw // 2 + int(6 * s), tail_y),
+                  (cx - bw // 2 + int(6 * s) + tail_w, tail_y + tail_h), tail_color, -1)
+    cv2.rectangle(img, (cx + bw // 2 - int(6 * s) - tail_w, tail_y),
+                  (cx + bw // 2 - int(6 * s), tail_y + tail_h), tail_color, -1)
+    if brake:
+        # 브레이크 글로우
+        glow = np.zeros_like(img)
+        cv2.rectangle(glow, (cx - bw // 2, tail_y - int(4 * s)),
+                      (cx + bw // 2, tail_y + tail_h + int(4 * s)), (40, 60, 240), -1)
+        glow = cv2.GaussianBlur(glow, (0, 0), sigmaX=6 * s, sigmaY=3 * s)
+        img = cv2.addWeighted(img, 1.0, glow, 0.45, 0)
+
+    # 바퀴 (좌우) — 어두운 타원
+    wheel_r = max(3, int(10 * s))
+    cv2.ellipse(img, (cx - bw // 2 + int(8 * s), bot_y - int(4 * s)),
+                (wheel_r, max(2, int(6 * s))), 0, 0, 360, (12, 12, 16), -1)
+    cv2.ellipse(img, (cx + bw // 2 - int(8 * s), bot_y - int(4 * s)),
+                (wheel_r, max(2, int(6 * s))), 0, 0, 360, (12, 12, 16), -1)
+
+    # 라벨 (TRUCK/BUS — 원근에 따라 표시)
+    if type_label and bw > 80:
+        cv2.putText(img, type_label, (cx - int(28 * s), top_y + int(20 * s)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55 * s, (190, 200, 220), max(1, int(s)))
 
     return img
 
@@ -427,50 +560,76 @@ def _synthesize_crosswalk_truck(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
     """대형차가 전방 횡단보도를 가리고 있다가, 보행자가 T=7초에 등장하는 장면."""
     out_frames = []
     risks = []
+    s_global = w / 960.0
+    sky_h = int(h * 0.55)
     for i in range(frames):
-        t = i / OUTPUT_FPS     # 초 단위
+        t = i / OUTPUT_FPS
         img = _draw_scene_base(w, h)
 
-        # 횡단보도 stripes (차 뒤쪽에 있는 것처럼)
+        # 횡단보도 stripes (트럭 앞쪽 도로 위, 원근감) — 사다리꼴 stripe
         for k in range(6):
-            x1 = int(w * 0.20 + k * w * 0.11)
-            x2 = x1 + int(w * 0.08)
-            y1 = int(h * 0.66)
-            y2 = y1 + int(h * 0.03)
-            cv2.rectangle(img, (x1, y1), (x2, y2), (220, 220, 220), -1)
+            prog_x = (k - 2.5) / 6.0
+            far_x = int(w * 0.5 + prog_x * w * 0.18)
+            near_x = int(w * 0.5 + prog_x * w * 0.45)
+            stripe_far_y = int(h * 0.62)
+            stripe_near_y = int(h * 0.72)
+            stripe_w_far = int(w * 0.045)
+            stripe_w_near = int(w * 0.075)
+            pts = np.array([
+                [far_x - stripe_w_far // 2, stripe_far_y],
+                [far_x + stripe_w_far // 2, stripe_far_y],
+                [near_x + stripe_w_near // 2, stripe_near_y],
+                [near_x - stripe_w_near // 2, stripe_near_y],
+            ], dtype=np.int32)
+            cv2.fillPoly(img, [pts], (200, 200, 200))
 
-        # 전방 트럭: 중앙에서 점점 가까워지며 횡단보도를 가림
-        truck_scale = 0.3 + 0.02 * i
-        truck_w = int(w * min(0.7, truck_scale))
-        truck_h = int(h * min(0.5, truck_scale * 0.85))
-        tx = (w - truck_w) // 2
-        ty = int(h * 0.58) - int(truck_h * 0.15)
-        cv2.rectangle(img, (tx, ty), (tx + truck_w, ty + truck_h), (40, 40, 55), -1)
-        cv2.rectangle(img, (tx, ty), (tx + truck_w, ty + truck_h), (180, 80, 80), 2)
-        cv2.putText(img, "TRUCK", (tx + 10, ty + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 230), 2)
+        # 좌측 차로의 다른 차 (씬 밀도)
+        side_scale = 0.4 + 0.005 * i
+        img = _draw_vehicle(img, int(w * 0.18), int(h * (0.62 + 0.005 * i)),
+                            scale=min(0.7, side_scale * s_global), body_color=(180, 80, 60))
 
-        # 보행자: T=7초부터 오른쪽에서 횡단 시작 (트럭 뒤에서 나타남)
-        ped_visible = t >= 7.0
+        # 전방 트럭 — 중앙, 점점 접근
+        truck_scale = 0.55 + 0.018 * i
+        truck_cx = int(w * 0.5)
+        truck_cy = int(h * (0.55 + 0.015 * i))
+        img = _draw_vehicle(img, truck_cx, truck_cy,
+                            scale=min(1.4, truck_scale * s_global),
+                            body_color=(35, 38, 50), vehicle_type="truck")
+
+        # 보행자: T=5초부터 오른쪽에서 횡단 시작 (트럭 뒤에서)
+        ped_visible = t >= 5.0
         if ped_visible:
-            prog = min(1.0, (t - 7.0) / 2.0)
-            px = int(w * (0.82 - 0.45 * prog))
-            py = int(h * 0.70)
-            cv2.circle(img, (px, py - 22), 10, (240, 220, 200), -1)
-            cv2.rectangle(img, (px - 8, py - 12), (px + 8, py + 18), (220, 60, 60), -1)
+            prog = min(1.0, (t - 5.0) / 3.0)
+            px = int(w * (0.82 - 0.40 * prog))
+            py = int(h * 0.74)
+            ped_s = max(1.0, s_global * 1.2)
+            # 그림자
+            cv2.ellipse(img, (px, py + int(20 * ped_s)),
+                        (int(14 * ped_s), int(5 * ped_s)), 0, 0, 360, (0, 0, 0), -1)
+            # 머리
+            cv2.circle(img, (px, py - int(24 * ped_s)), int(10 * ped_s), (170, 180, 200), -1)
+            # 몸통 (재킷)
+            cv2.rectangle(img, (px - int(9 * ped_s), py - int(14 * ped_s)),
+                          (px + int(9 * ped_s), py + int(18 * ped_s)),
+                          (60, 80, 220), -1)
+            # 다리
+            cv2.line(img, (px - int(4 * ped_s), py + int(18 * ped_s)),
+                     (px - int(4 * ped_s), py + int(28 * ped_s)),
+                     (40, 40, 60), max(2, int(3 * ped_s)))
+            cv2.line(img, (px + int(4 * ped_s), py + int(18 * ped_s)),
+                     (px + int(4 * ped_s), py + int(28 * ped_s)),
+                     (40, 40, 60), max(2, int(3 * ped_s)))
 
-        # 합성 risk: 트럭 occlusion 기반으로 증가, 보행자 등장 시 급등
-        occlusion = min(1.0, truck_w / (w * 0.7))
+        # risk
+        occlusion = min(1.0, truck_scale / 1.4)
         base_risk = occlusion * 0.45
         if ped_visible:
-            base_risk = min(0.97, base_risk + 0.35 + 0.3 * ((t - 7.0) / 2.0))
+            base_risk = min(0.97, base_risk + 0.35 + 0.3 * ((t - 5.0) / 2.0))
         else:
-            # AuraView는 occluded shadow로 미리 서서히 증가
-            if t >= 4.0:
-                base_risk = min(0.7, base_risk + 0.15 * (t - 4.0))
+            if t >= 2.5:
+                base_risk = min(0.7, base_risk + 0.15 * (t - 2.5))
         base_risk += random.uniform(-0.015, 0.015)
-        base_risk = float(max(0.0, min(0.98, base_risk)))
-        risks.append(base_risk)
-
+        risks.append(float(max(0.0, min(0.98, base_risk))))
         out_frames.append(_apply_cinematic_post(img))
     return out_frames, risks
 
@@ -479,30 +638,50 @@ def _synthesize_motorcycle_blindspot(w: int = SYNTH_W, h: int = SYNTH_H, frames:
     """측면 사각지대에서 이륜차가 추월 접근."""
     out_frames = []
     risks = []
+    s_global = w / 960.0
     for i in range(frames):
         t = i / OUTPUT_FPS
         img = _draw_scene_base(w, h)
 
-        # 앞 차량 (우측 차로)
-        car_x = int(w * 0.58)
-        car_y = int(h * 0.62)
-        cv2.rectangle(img, (car_x, car_y), (car_x + int(w*0.18), car_y + int(h*0.16)), (60, 60, 80), -1)
+        # 앞 차량 (우측 차로) — 중간 거리
+        img = _draw_vehicle(img, int(w * 0.62), int(h * 0.62),
+                            scale=0.7 * s_global, body_color=(55, 65, 85))
+        # 추가 차량 (반대편 차로)
+        img = _draw_vehicle(img, int(w * 0.30), int(h * 0.58),
+                            scale=0.45 * s_global, body_color=(180, 80, 70))
 
         # 이륜차: T=3초부터 좌측 사각지대에서 서서히 접근
-        moto_visible = t >= 3.0
+        moto_visible = t >= 2.5
         if moto_visible:
-            prog = min(1.0, (t - 3.0) / 5.0)
-            mx = int(w * (0.02 + 0.25 * prog))
-            my = int(h * (0.65 + 0.12 * prog))
-            ms = int(8 + 20 * prog)
-            cv2.circle(img, (mx + ms, my), ms, (220, 220, 40), -1)
-            cv2.circle(img, (mx + ms, my + int(ms*1.6)), ms, (220, 220, 40), -1)
-            cv2.line(img, (mx + ms, my), (mx + ms, my + int(ms*1.6)), (220, 220, 40), 3)
+            prog = min(1.0, (t - 2.5) / 2.5)
+            mx = int(w * (0.05 + 0.35 * prog))
+            my = int(h * (0.66 + 0.10 * prog))
+            ms = max(2, int((8 + 22 * prog) * s_global))
+            # 그림자
+            cv2.ellipse(img, (mx + ms, my + int(ms * 2.2)),
+                        (int(ms * 1.4), int(ms * 0.4)), 0, 0, 360, (0, 0, 0), -1)
+            # 후륜
+            cv2.circle(img, (mx + ms, my + int(ms * 1.7)), ms, (20, 20, 25), -1)
+            cv2.circle(img, (mx + ms, my + int(ms * 1.7)), int(ms * 0.5), (60, 60, 70), -1)
+            # 전륜
+            cv2.circle(img, (mx + ms, my), ms, (20, 20, 25), -1)
+            cv2.circle(img, (mx + ms, my), int(ms * 0.5), (60, 60, 70), -1)
+            # 차체 (시트 + 라이더)
+            cv2.line(img, (mx + ms, my + int(ms * 0.2)),
+                     (mx + ms, my + int(ms * 1.6)), (200, 50, 50), max(2, int(ms * 0.5)))
+            # 라이더 머리
+            cv2.circle(img, (mx + ms, my - int(ms * 0.6)), int(ms * 0.6), (40, 30, 30), -1)
+            # 헤드라이트 글로우 (위협감)
+            if prog > 0.3:
+                glow = np.zeros_like(img)
+                cv2.circle(glow, (mx + ms, my), int(ms * 1.2), (80, 220, 240), -1)
+                glow = cv2.GaussianBlur(glow, (0, 0), sigmaX=4, sigmaY=4)
+                img = cv2.addWeighted(img, 1.0, glow, 0.45, 0)
 
-        # risk: occluded 측면에서 서서히 증가 → 가까워지며 급등
-        base_risk = 0.12 + 0.04 * t
+        # risk
+        base_risk = 0.10 + 0.025 * t
         if moto_visible:
-            base_risk = min(0.96, 0.32 + 0.16 * (t - 3.0))
+            base_risk = min(0.96, 0.30 + 0.15 * (t - 2.5))
         base_risk += random.uniform(-0.01, 0.01)
         risks.append(float(max(0.0, min(0.98, base_risk))))
         out_frames.append(_apply_cinematic_post(img))
@@ -513,27 +692,31 @@ def _synthesize_signal_occluded(w: int = SYNTH_W, h: int = SYNTH_H, frames: int 
     """신호등이 전방 버스에 가려져 있다가, 앞차가 급감속하는 장면."""
     out_frames = []
     risks = []
+    s_global = w / 960.0
     for i in range(frames):
         t = i / OUTPUT_FPS
         img = _draw_scene_base(w, h)
 
-        # 버스
-        bus_w = int(w * 0.55)
-        bus_h = int(h * 0.38)
-        bx = (w - bus_w) // 2
-        by = int(h * 0.40)
-        cv2.rectangle(img, (bx, by), (bx + bus_w, by + bus_h), (55, 60, 90), -1)
-        cv2.rectangle(img, (bx, by), (bx + bus_w, by + bus_h), (180, 180, 240), 2)
-        cv2.putText(img, "BUS", (bx + 16, by + 34), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 230), 2)
-        # 버스 브레이크등 점멸 (T>5)
-        if t >= 5.0 and (i // 4) % 2 == 0:
-            cv2.rectangle(img, (bx + 20, by + bus_h - 14), (bx + 60, by + bus_h - 4), (0, 0, 255), -1)
-            cv2.rectangle(img, (bx + bus_w - 60, by + bus_h - 14), (bx + bus_w - 20, by + bus_h - 4), (0, 0, 255), -1)
+        # 신호등 (좌상단 polleta)— 버스 뒤에 가려질 위치
+        sig_x = int(w * 0.42)
+        sig_y = int(h * 0.30)
+        cv2.line(img, (sig_x, int(h * 0.56)), (sig_x, sig_y), (40, 40, 50), max(2, int(3 * s_global)))
+        cv2.rectangle(img, (sig_x - int(14 * s_global), sig_y - int(34 * s_global)),
+                      (sig_x + int(14 * s_global), sig_y + int(8 * s_global)), (25, 25, 30), -1)
+        # 빨간불 (가려져야 의미 있음)
+        cv2.circle(img, (sig_x, sig_y - int(20 * s_global)), int(7 * s_global), (60, 60, 240), -1)
+
+        # 전방 버스 — 점점 접근, 신호 가림
+        bus_scale = 0.85 + 0.012 * i
+        img = _draw_vehicle(img, int(w * 0.5), int(h * (0.50 + 0.012 * i)),
+                            scale=min(1.6, bus_scale * s_global),
+                            body_color=(60, 80, 130), vehicle_type="bus",
+                            brake=(t >= 4.5))
 
         # risk: 신호 가림 + 버스 감속 임박
-        base_risk = 0.18 + 0.03 * t
-        if t >= 5.0:
-            base_risk = min(0.95, 0.42 + 0.14 * (t - 5.0))
+        base_risk = 0.18 + 0.025 * t
+        if t >= 4.5:
+            base_risk = min(0.95, 0.45 + 0.14 * (t - 4.5))
         base_risk += random.uniform(-0.015, 0.015)
         risks.append(float(max(0.0, min(0.98, base_risk))))
         out_frames.append(_apply_cinematic_post(img))

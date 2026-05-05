@@ -1355,9 +1355,11 @@ class _BevPanelState extends State<_BevPanel>
         },
         onScaleUpdate: (d) {
           setState(() {
-            _zoom = (_baseZoom * d.scale).clamp(0.5, 2.5);
-            // 단일 손가락 드래그 → yaw 회전
-            if (d.scale == 1.0) {
+            if (d.pointerCount >= 2) {
+              // 핀치 (2 손가락) → 줌만
+              _zoom = (_baseZoom * d.scale).clamp(0.5, 2.5);
+            } else {
+              // 단일 손가락 드래그 → yaw 회전만
               final dx = d.focalPoint.dx - _baseFocal.dx;
               _yawDeg = (_baseYaw + dx * 0.25).clamp(-60.0, 60.0);
             }
@@ -2011,49 +2013,64 @@ class _Bev3DVoxelPainter extends CustomPainter {
     final hasClass = hasShape && classFlat is List && classFlat.length == (shape[0] as num) * (shape[1] as num);
 
     if (hasShape && !hasClass) {
-      // ── LIVE 모드 (class 없음): 카메라 voxel 그대로 — 활성 셀만 발광 dot 으로 표시
-      // 큐브 더미 X — Tesla식 점유 확률 발광 cells
+      // ── LIVE 모드: 카메라 frame voxel — TOP-K 만 표시 (도로 가시성 우선)
       final rows = (shape[0] as num).toInt();
       final cols = (shape[1] as num).toInt();
       final cellM = 40.0 / cols;
-      var liveCount = 0;
+      // 1차 필터: 임계값 ≥ 0.45 (높음) + 차로 영역 우선 (col 12~28)
+      final cells = <List<num>>[];
       for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
           final p = ((flat[r * cols + c] ?? 0) as num).toDouble();
-          if (p < 0.20) continue;
-          liveCount++;
-          final xM = ((c - cols / 2) + 0.5) * cellM;
-          final zM = (r + 0.5) * cellM;
-          final base = _project(xM, 0, zM, cx, cz, size);
-          // 점유 확률 → 색상 (시안 → 주황 → 빨강) + 크기
-          final col = p < 0.4
-              ? Color.lerp(const Color(0xFF005580), const Color(0xFFFFB020), p / 0.4)!
-              : Color.lerp(const Color(0xFFFFB020), const Color(0xFFFF3B3B), (p - 0.4) / 0.6)!;
-          final radius = (1.5 + p * 3.5);
-          // 발광 (blur) + core
-          canvas.drawCircle(base, radius * 1.6, Paint()
-            ..color = col.withValues(alpha: 0.45)
-            ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * 0.6));
-          canvas.drawCircle(base, radius, Paint()..color = col);
+          if (p < 0.45) continue;
+          // 차로 영역 가중치 (가운데 col 14~26)
+          final laneWeight = (c >= 12 && c <= 28) ? 1.5 : 0.6;
+          cells.add([r, c, p, p * laneWeight]);
         }
       }
-      // LIVE 카운터 — 우상단에 작게
-      if (liveCount > 0) {
-        final tp = TextPainter(
-          text: TextSpan(text: 'LIVE · $liveCount cells active',
-            style: const TextStyle(color: Color(0xFF00E09A), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp.paint(canvas, Offset(size.width - tp.width - 8, 6));
-      } else {
-        // voxel 활성 셀 0 — '대기 중' 안내
-        final tp = TextPainter(
-          text: TextSpan(text: '주행 시작 시 카메라 voxel 활성',
-            style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w700)),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp.paint(canvas, Offset((size.width - tp.width) / 2, size.height - 24));
+      // 점수 (p × laneWeight) 내림차순 → TOP 50 만
+      cells.sort((a, b) => (b[3] as num).compareTo(a[3] as num));
+      final topCells = cells.take(50).toList();
+      var liveCount = 0;
+      for (final cell in topCells) {
+        final r = (cell[0] as num).toInt();
+        final c = (cell[1] as num).toInt();
+        final p = (cell[2] as num).toDouble();
+        liveCount++;
+        final xM = ((c - cols / 2) + 0.5) * cellM;
+        final zM = (r + 0.5) * cellM;
+        final base = _project(xM, 0, zM, cx, cz, size);
+        // 점유 → 색상 (시안 → 주황 → 빨강) + 작은 dot
+        final col = p < 0.55
+            ? Color.lerp(const Color(0xFF00B8E0), const Color(0xFFFFB020), (p - 0.45) / 0.10)!
+            : Color.lerp(const Color(0xFFFFB020), const Color(0xFFFF3B3B), (p - 0.55) / 0.45)!;
+        final radius = (1.8 + (p - 0.45) * 5.0).clamp(1.5, 4.5);
+        canvas.drawCircle(base, radius * 1.4, Paint()
+          ..color = col.withValues(alpha: 0.40)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * 0.5));
+        canvas.drawCircle(base, radius, Paint()..color = col);
       }
+      // 카운터 — 우상단
+      final activeText = liveCount > 0
+          ? 'LIVE · $liveCount voxel · 임계 0.45'
+          : 'LIVE · 카메라 voxel 대기';
+      final tp = TextPainter(
+        text: TextSpan(text: activeText,
+          style: TextStyle(
+            color: liveCount > 0 ? const Color(0xFF00E09A) : _muted,
+            fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(size.width - tp.width - 8, 6));
+      // 처리 파이프라인 표시 (좌상단)
+      final pipeText = '📷 → 64×64 grayscale → vEdge×3 + hEdge×1.2 + motion×2.5 → 40×40 voxel';
+      final tp2 = TextPainter(
+        text: TextSpan(text: pipeText,
+          style: TextStyle(color: _muted.withValues(alpha: 0.7), fontSize: 7.5, fontWeight: FontWeight.w600)),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout(maxWidth: size.width - 16);
+      tp2.paint(canvas, const Offset(8, 6));
     } else if (hasClass) {
       final rows = (shape[0] as num).toInt();
       final cols = (shape[1] as num).toInt();

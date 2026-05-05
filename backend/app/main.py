@@ -2761,6 +2761,10 @@ def prototype_ui():
             renderer.setPixelRatio(window.devicePixelRatio);
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x04080e);
+            // ★ 카메라가 -Z(south)에서 +Z(north)를 바라보면 Three.js cross-product 규약상
+            //   world +X(우/east)가 화면 LEFT 로 매핑된다. 우회전이 시각적으로 좌회전처럼 보이는 원인.
+            //   scene 전체 X 미러로 world +X → 화면 RIGHT 가 되도록 보정.
+            scene.scale.x = -1;
 
             // 전방 → Z+, 좌우 → X, 높이 → Y
             // ★ 카메라: ego 뒤(남쪽) 위 — Tesla dashboard 시점

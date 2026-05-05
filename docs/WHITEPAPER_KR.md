@@ -10,8 +10,10 @@
 
 - 🌐 **대시보드:** https://auraview.allthatai.kr/ui
 - 📱 **Fleet Mobile PWA:** https://auraview.allthatai.kr/pwa/
+- 📦 **Native APK (공개 다운로드):** https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk
 - 📖 **Swagger API:** https://auraview.allthatai.kr/docs
-- 🔧 **Source:** https://github.com/leelang7/AuraView (branch: `feat/k-perception`)
+- 📊 **One-page Summary:** https://auraview.allthatai.kr/submission/
+- 🔧 **Source:** https://github.com/leelang7/AuraView
 
 ## 1. 요약 (Executive Summary)
 

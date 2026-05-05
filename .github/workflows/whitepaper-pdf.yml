@@ -53,3 +53,33 @@ jobs:
             docs/PRESS_KIT.html
           if-no-files-found: warn
           retention-days: 90
+
+      # 공개 다운로드 — "latest" 릴리즈에 PDF 첨부 (인증 없이 다운로드 가능)
+      - name: stage release assets
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p release_assets
+          cp docs/WHITEPAPER_KR.pdf release_assets/AuraView_Whitepaper.pdf 2>/dev/null || true
+          cp docs/PRESS_KIT.pdf     release_assets/AuraView_PressKit.pdf  2>/dev/null || true
+          ls -lh release_assets/ || true
+
+      - name: publish to "latest" release (PDF)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: AuraView Fleet · Latest Build
+          body: |
+            가장 최신 빌드 — Native APK + Whitepaper / Press Kit PDF.
+
+            **공개 다운로드 (인증 불요)**:
+            - APK: <https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk>
+            - Whitepaper: <https://github.com/leelang7/AuraView/releases/latest/download/AuraView_Whitepaper.pdf>
+            - Press Kit: <https://github.com/leelang7/AuraView/releases/latest/download/AuraView_PressKit.pdf>
+          files: |
+            release_assets/AuraView_Whitepaper.pdf
+            release_assets/AuraView_PressKit.pdf
+          make_latest: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

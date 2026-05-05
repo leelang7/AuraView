@@ -467,22 +467,30 @@ class _FleetHomeState extends State<FleetHome>
       final imgH = src.height.toDouble();
 
       final classGrid = List<int>.filled(rows * cols, 0);
+      final imgArea = imgW * imgH;
+      var accepted = 0;
       for (final obj in objects) {
         final box = obj.boundingBox;
         final cxImg = (box.left + box.right) / 2;
         final cyImg = (box.top + box.bottom) / 2;
         final w = (box.right - box.left).abs();
         final h = (box.bottom - box.top).abs();
-        if (w < 8 || h < 8) continue;  // 너무 작은 검출 skip
+        // ★ 엄격한 크기 필터 — false positive 차단
+        // bbox 면적 ≥ 4% image (작은 edge 노이즈 차단)
+        final pixelArea = w * h;
+        final areaRatio = pixelArea / imgArea;
+        if (areaRatio < 0.04) continue;        // 4% 미만 skip
+        if (areaRatio > 0.65) continue;        // 65% 초과 skip (전체 화면 = 카메라 흔들림)
+        // 극단 비율 (벽/바닥 같은 긴 띠) 차단
         final aspect = h / w;
-        // 분류 (단순 휴리스틱)
-        final cls = aspect > 1.5 ? 4 : 1;  // 4=person 1=vehicle
+        if (aspect < 0.25 || aspect > 4.0) continue;  // 너무 가늘면 skip
+        if (w < 30 || h < 30) continue;              // 절대 크기 너무 작으면 skip
+        // 분류
+        final cls = aspect > 1.4 ? 4 : 1;  // 4=person (세로 긴), 1=vehicle (가로/정사각)
         // BEV 셀 매핑
         final bevC = (cxImg / imgW * cols).round().clamp(0, cols - 1);
         final bevR = ((1 - cyImg / imgH) * rows).round().clamp(0, rows - 1);
-        // 박스 사이즈 → BEV cell radius (1~3)
-        final pixelArea = w * h / (imgW * imgH);
-        final radius = (math.sqrt(pixelArea) * 14).clamp(1.0, 4.0).toInt();
+        final radius = (math.sqrt(areaRatio) * 12).clamp(1.0, 3.0).toInt();
         for (int dr = -radius; dr <= radius; dr++) {
           for (int dc = -radius; dc <= radius; dc++) {
             final r = bevR + dr;
@@ -491,7 +499,9 @@ class _FleetHomeState extends State<FleetHome>
             classGrid[r * cols + c] = cls;
           }
         }
+        accepted++;
       }
+      if (accepted == 0) return null;
       return classGrid;
     } catch (_) {
       return null;

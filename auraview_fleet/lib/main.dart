@@ -1512,19 +1512,21 @@ class _Bev3DVoxelPainter extends CustomPainter {
   final double t;
   _Bev3DVoxelPainter({this.bev, required this.t});
 
-  // 3D 점 → 2D 화면 (1-point perspective)
+  // 3D 점 → 2D 화면 (1-point perspective, Tesla-style 위에서 약간 비스듬히 내려다 봄)
+  // 카메라는 ego 위 약간 뒤에 고정 — Tesla 모니터식 안정적 시점
   Offset _project(double x, double y, double z, double cx, double cz, Size size) {
-    // 카메라 좌표계로 변환: 카메라가 (cx, 12, cz) 에서 (0, 0, 18) 보고 있다고 가정
-    // 단순화: 회전 행렬 없이 isometric-perspective 혼합
     final w = size.width, h = size.height;
+    // 카메라 위치 = (0, 12, -3) 가정 → ego 뒤 3m, 위 12m
+    // cx, cz 인자는 미세 진동용 (대부분 0 가까이)
     final dx = x - cx;
     final dz = z - cz;
-    // 거리에 따른 perspective 축소
     final dist = math.sqrt(dx * dx + dz * dz) + 0.001;
-    final scale = 6.0 / (dist * 0.45 + 4);
-    // 화면 중심 + 투영
-    final screenX = w / 2 + dx * scale * 6;
-    final screenY = h * 0.62 - y * scale * 4 - dz * scale * 1.3;
+    // 더 큰 화면 활용을 위해 scale 강화
+    final scale = 18.0 / (dist * 0.5 + 5);
+    // 화면 중앙 기준
+    final screenX = w / 2 + dx * scale * 4.0;
+    // ego 는 화면 하단 0.85, 멀리 객체일수록 위로
+    final screenY = h * 0.88 - y * scale * 5.0 - dz * scale * 2.0;
     return Offset(screenX, screenY);
   }
 
@@ -1585,6 +1587,147 @@ class _Bev3DVoxelPainter extends CustomPainter {
       ..strokeWidth = 0.5);
   }
 
+  /// 차량 — 차체 (steel blue) + 캐빈 + outline (cluster bounding box 기반 1개 객체)
+  void _drawVehicle(Canvas canvas, Size size, double cxM, double czM,
+                    double lengthM, double widthM, double cameraX, double cameraZ) {
+    final color = const Color(0xFF3A8FFF);
+    final w = widthM, l = lengthM;
+    final isLargeVehicle = w > 2.4 || l > 6.0;  // 트럭/버스
+    final bodyH = isLargeVehicle ? 2.4 : 1.4;
+
+    // 차체 박스 (4 vertex bottom + 4 vertex top)
+    final p000 = _project(cxM - w/2, 0,    czM - l/2, cameraX, cameraZ, size);
+    final p100 = _project(cxM + w/2, 0,    czM - l/2, cameraX, cameraZ, size);
+    final p110 = _project(cxM + w/2, 0,    czM + l/2, cameraX, cameraZ, size);
+    final p010 = _project(cxM - w/2, 0,    czM + l/2, cameraX, cameraZ, size);
+    final p001 = _project(cxM - w/2, bodyH, czM - l/2, cameraX, cameraZ, size);
+    final p101 = _project(cxM + w/2, bodyH, czM - l/2, cameraX, cameraZ, size);
+    final p111 = _project(cxM + w/2, bodyH, czM + l/2, cameraX, cameraZ, size);
+    final p011 = _project(cxM - w/2, bodyH, czM + l/2, cameraX, cameraZ, size);
+
+    // 옆면 (어둡게)
+    final lightCol = Color.fromRGBO((color.red * 1.25).clamp(0,255).round(),
+                                     (color.green * 1.25).clamp(0,255).round(),
+                                     (color.blue * 1.25).clamp(0,255).round(), 0.92);
+    final darkCol = Color.fromRGBO((color.red * 0.55).round(),
+                                    (color.green * 0.55).round(),
+                                    (color.blue * 0.55).round(), 0.85);
+
+    // 후면 (z 큰 쪽 = 화면 위)
+    canvas.drawPath(Path()
+      ..moveTo(p010.dx, p010.dy)..lineTo(p110.dx, p110.dy)
+      ..lineTo(p111.dx, p111.dy)..lineTo(p011.dx, p011.dy)..close(),
+      Paint()..color = darkCol);
+    // 우측면
+    canvas.drawPath(Path()
+      ..moveTo(p100.dx, p100.dy)..lineTo(p110.dx, p110.dy)
+      ..lineTo(p111.dx, p111.dy)..lineTo(p101.dx, p101.dy)..close(),
+      Paint()..color = darkCol);
+    // 전면 (z 작은 쪽)
+    canvas.drawPath(Path()
+      ..moveTo(p000.dx, p000.dy)..lineTo(p100.dx, p100.dy)
+      ..lineTo(p101.dx, p101.dy)..lineTo(p001.dx, p001.dy)..close(),
+      Paint()..color = Color.fromRGBO(color.red, color.green, color.blue, 0.92));
+    // 윗면
+    canvas.drawPath(Path()
+      ..moveTo(p001.dx, p001.dy)..lineTo(p101.dx, p101.dy)
+      ..lineTo(p111.dx, p111.dy)..lineTo(p011.dx, p011.dy)..close(),
+      Paint()..color = lightCol);
+
+    // 캐빈 (작은 박스 위, 큰 트럭 아닌 경우만)
+    if (!isLargeVehicle) {
+      final cabH = bodyH * 0.55;
+      final cw = w * 0.85, cl = l * 0.55;
+      final cab000 = _project(cxM - cw/2, bodyH,        czM - cl*0.45 - 0.05, cameraX, cameraZ, size);
+      final cab100 = _project(cxM + cw/2, bodyH,        czM - cl*0.45 - 0.05, cameraX, cameraZ, size);
+      final cab110 = _project(cxM + cw/2, bodyH,        czM + cl*0.55 - 0.05, cameraX, cameraZ, size);
+      final cab010 = _project(cxM - cw/2, bodyH,        czM + cl*0.55 - 0.05, cameraX, cameraZ, size);
+      final cab001 = _project(cxM - cw/2, bodyH + cabH, czM - cl*0.45 - 0.05, cameraX, cameraZ, size);
+      final cab101 = _project(cxM + cw/2, bodyH + cabH, czM - cl*0.45 - 0.05, cameraX, cameraZ, size);
+      final cab111 = _project(cxM + cw/2, bodyH + cabH, czM + cl*0.55 - 0.05, cameraX, cameraZ, size);
+      final cab011 = _project(cxM - cw/2, bodyH + cabH, czM + cl*0.55 - 0.05, cameraX, cameraZ, size);
+      canvas.drawPath(Path()..moveTo(cab001.dx, cab001.dy)..lineTo(cab101.dx, cab101.dy)..lineTo(cab111.dx, cab111.dy)..lineTo(cab011.dx, cab011.dy)..close(),
+        Paint()..color = const Color(0xCC0D1520));
+      // 캐빈 옆면 (어둡게)
+      canvas.drawPath(Path()..moveTo(cab100.dx, cab100.dy)..lineTo(cab110.dx, cab110.dy)..lineTo(cab111.dx, cab111.dy)..lineTo(cab101.dx, cab101.dy)..close(),
+        Paint()..color = const Color(0x99081420));
+    }
+
+    // 시그니처 wireframe (시안 발광 outline)
+    final wirePaint = Paint()
+      ..color = const Color.fromRGBO(170, 230, 255, 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    final outline = Path()
+      ..moveTo(p001.dx, p001.dy)..lineTo(p101.dx, p101.dy)
+      ..lineTo(p111.dx, p111.dy)..lineTo(p011.dx, p011.dy)..close();
+    canvas.drawPath(outline, wirePaint);
+    // 수직 모서리
+    for (final pair in [[p000, p001], [p100, p101], [p110, p111], [p010, p011]]) {
+      canvas.drawLine(pair[0], pair[1], wirePaint);
+    }
+  }
+
+  /// 오토바이 — 작은 차체 + 라이더 + 주황 펄스 링
+  void _drawMotoBike(Canvas canvas, Size size, double cxM, double czM,
+                     double lengthM, double widthM, double cameraX, double cameraZ) {
+    final color = const Color(0xFFFF8C00);
+    final l = lengthM, w = widthM;
+
+    // 바닥 펄스 링 (사각지대 alert)
+    final ringR = math.max(l * 0.5, 0.8);
+    final ringCenter = _project(cxM, 0, czM, cameraX, cameraZ, size);
+    final ringEdge = _project(cxM + ringR, 0, czM, cameraX, cameraZ, size);
+    canvas.drawCircle(ringCenter, (ringEdge.dx - ringCenter.dx).abs(), Paint()
+      ..color = color.withValues(alpha: 0.30)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0);
+
+    // 차체 (좁은 박스 0.5×0.7×lengthM)
+    final h = 0.7;
+    final p000 = _project(cxM - w*0.3, 0, czM - l/2, cameraX, cameraZ, size);
+    final p100 = _project(cxM + w*0.3, 0, czM - l/2, cameraX, cameraZ, size);
+    final p110 = _project(cxM + w*0.3, 0, czM + l/2, cameraX, cameraZ, size);
+    final p010 = _project(cxM - w*0.3, 0, czM + l/2, cameraX, cameraZ, size);
+    final p001 = _project(cxM - w*0.3, h, czM - l/2, cameraX, cameraZ, size);
+    final p101 = _project(cxM + w*0.3, h, czM - l/2, cameraX, cameraZ, size);
+    final p111 = _project(cxM + w*0.3, h, czM + l/2, cameraX, cameraZ, size);
+    final p011 = _project(cxM - w*0.3, h, czM + l/2, cameraX, cameraZ, size);
+    canvas.drawPath(Path()..moveTo(p001.dx, p001.dy)..lineTo(p101.dx, p101.dy)..lineTo(p111.dx, p111.dy)..lineTo(p011.dx, p011.dy)..close(),
+      Paint()..color = color.withValues(alpha: 0.92));
+    canvas.drawPath(Path()..moveTo(p000.dx, p000.dy)..lineTo(p100.dx, p100.dy)..lineTo(p101.dx, p101.dy)..lineTo(p001.dx, p001.dy)..close(),
+      Paint()..color = color.withValues(alpha: 0.75));
+    canvas.drawPath(Path()..moveTo(p100.dx, p100.dy)..lineTo(p110.dx, p110.dy)..lineTo(p111.dx, p111.dy)..lineTo(p101.dx, p101.dy)..close(),
+      Paint()..color = Color.fromRGBO(120, 60, 0, 0.85));
+
+    // 라이더 (타원/구체) 위
+    final riderTop = _project(cxM, h + 0.85, czM, cameraX, cameraZ, size);
+    canvas.drawCircle(riderTop, 4.0, Paint()..color = const Color(0xFFFFD54A));
+    // 헬멧 (빨강)
+    final helmTop = _project(cxM, h + 1.4, czM, cameraX, cameraZ, size);
+    canvas.drawCircle(helmTop, 3.5, Paint()
+      ..color = const Color(0xFFFF5A5A)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2));
+    canvas.drawCircle(helmTop, 2.8, Paint()..color = const Color(0xFFFF5A5A));
+  }
+
+  /// 가려진/사각지대 영역 — 바닥에 보라 안개
+  void _drawOcclusion(Canvas canvas, Size size, double x1, double z1, double x2, double z2,
+                      double cameraX, double cameraZ) {
+    final p1 = _project(x1, 0, z1, cameraX, cameraZ, size);
+    final p2 = _project(x2, 0, z1, cameraX, cameraZ, size);
+    final p3 = _project(x2, 0, z2, cameraX, cameraZ, size);
+    final p4 = _project(x1, 0, z2, cameraX, cameraZ, size);
+    canvas.drawPath(Path()..moveTo(p1.dx, p1.dy)..lineTo(p2.dx, p2.dy)..lineTo(p3.dx, p3.dy)..lineTo(p4.dx, p4.dy)..close(),
+      Paint()..color = const Color.fromRGBO(124, 58, 237, 0.30));
+    // 윤곽선 (보라)
+    canvas.drawPath(Path()..moveTo(p1.dx, p1.dy)..lineTo(p2.dx, p2.dy)..lineTo(p3.dx, p3.dy)..lineTo(p4.dx, p4.dy)..close(),
+      Paint()
+        ..color = const Color(0xFFA995FF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2);
+  }
+
   /// 보행자 — 시안 원기둥 (몸통) + 작은 구 (머리) + 바닥 펄스 링
   void _drawPedestrianMarker(Canvas canvas, Size size, double x, double z, double cx, double cz) {
     const color = Color(0xFF00D8FF);
@@ -1637,10 +1780,10 @@ class _Bev3DVoxelPainter extends CustomPainter {
     // 배경
     canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF0A1018));
 
-    // 자동 회전 카메라 (느린 회전 — Tesla 식)
-    final theta = t * 0.25;
-    final cx = math.cos(theta) * 14;
-    final cz = math.sin(theta) * 14 + 6;
+    // 카메라 고정 — Tesla 모니터식 위에서 약간 뒤로 (ego 안정적 시점)
+    // 미세 호흡 효과 (1.5px 좌우)만 살짝
+    final cx = math.sin(t * 0.4) * 0.8;
+    const cz = -3.0;
 
     // ─────── 도심 4지 교차로 (Korean urban intersection) ───────
     // ego 진행 +z. 자차 도로 폭 12m (-6~+6), 정지선 z=24m, 교차로 본체 z=24~32m
@@ -1798,86 +1941,89 @@ class _Bev3DVoxelPainter extends CustomPainter {
     // ── EGO 차량 (시안 발광 박스 + 캐빈, 원점)
     _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
 
-    // ── voxel grid — 클래스 인식 (class_grid_flat) 우선, 없으면 heatmap 폴백
+    // ── 클래스 클러스터 → 객체별 형상 (web 와 동일 기법)
     final flat = bev?['grid_flat'];
     final shape = bev?['grid_shape_flat'];
     final classFlat = bev?['class_grid_flat'];
-    if (flat is List && shape is List && shape.length == 2) {
+    if (flat is List && shape is List && shape.length == 2 &&
+        classFlat is List && classFlat.length == (shape[0] as num) * (shape[1] as num)) {
       final rows = (shape[0] as num).toInt();
       final cols = (shape[1] as num).toInt();
-      final hasClass = classFlat is List && classFlat.length == rows * cols;
+      final cellM = 40.0 / cols;
 
-      // Tesla-style 객체별 색상 (web 와 동일)
-      const classColors = <int, Color>{
-        1: Color(0xFF3A8FFF),  // vehicle/truck/bus
-        2: Color(0xFFFF8C00),  // motorcycle
-        3: Color(0xFF7C3AED),  // occlusion
-        4: Color(0xFF00D8FF),  // pedestrian
-        5: Color(0xFFFF5A5A),  // signal
-      };
-      const classHeights = <int, double>{1: 1.6, 2: 1.0, 3: 0.4, 4: 1.5, 5: 4.2};
+      // BFS flood-fill — 동일 class 인접 셀 클러스터링
+      final visited = List<bool>.filled(rows * cols, false);
+      final dirs = const [[-1, 0], [1, 0], [0, -1], [0, 1]];
+      final clusters = <Map<String, dynamic>>[];
 
-      // 화면 가까운 voxel 부터 그리도록 z 큰 것 먼저 (back to front)
-      final cells = <List<num>>[];  // [r, c, p, cls]
       for (int r = 0; r < rows; r++) {
-        for (int cc = 0; cc < cols; cc++) {
-          final p = ((flat[r * cols + cc] ?? 0) as num).toDouble();
-          if (p < 0.15) continue;
-          final cls = hasClass ? ((classFlat[r * cols + cc] as num?)?.toInt() ?? 0) : 0;
-          if (hasClass && cls == 0) continue;  // class 모드: free space 스킵
-          cells.add([r, cc, p, cls]);
-        }
-      }
-      cells.sort((a, b) => (b[0] as num).compareTo(a[0] as num));  // 멀리 → 가까이
-
-      for (final cell in cells) {
-        final r = (cell[0] as num).toInt();
-        final cc = (cell[1] as num).toInt();
-        final p = (cell[2] as num).toDouble();
-        final cls = (cell[3] as num).toInt();
-        final x = (cc - cols / 2 + 0.5) * (40.0 / cols);
-        final z = r * (40.0 / rows);
-
-        Color col;
-        double height;
-        if (hasClass && cls > 0) {
-          col = classColors[cls] ?? const Color(0xFF888888);
-          height = classHeights[cls] ?? 1.0;
-          if (cls == 4) {
-            // 보행자: voxel 대신 작은 시안 원기둥 (구 + 라인) — 사람 모양 강조
-            _drawPedestrianMarker(canvas, size, x, z, cx, cz);
-            continue;
+        for (int c = 0; c < cols; c++) {
+          final idx = r * cols + c;
+          if (visited[idx]) continue;
+          final cls = ((classFlat[idx] as num?) ?? 0).toInt();
+          if (cls == 0) { visited[idx] = true; continue; }
+          // BFS
+          final queue = <List<int>>[[r, c]];
+          visited[idx] = true;
+          int minR = r, maxR = r, minC = c, maxC = c, count = 0;
+          while (queue.isNotEmpty) {
+            final p = queue.removeLast();
+            final cr = p[0], cc = p[1];
+            count++;
+            if (cr < minR) minR = cr; if (cr > maxR) maxR = cr;
+            if (cc < minC) minC = cc; if (cc > maxC) maxC = cc;
+            for (final d in dirs) {
+              final nr = cr + d[0], nc = cc + d[1];
+              if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+              final ni = nr * cols + nc;
+              if (visited[ni]) continue;
+              final ncls = ((classFlat[ni] as num?) ?? 0).toInt();
+              if (ncls != cls) continue;
+              visited[ni] = true;
+              queue.add([nr, nc]);
+            }
           }
-          if (cls == 5) {
-            // 신호등: 가는 폴 + 빨간 라이트
-            _drawSignalMarker(canvas, size, x, z, cx, cz);
-            continue;
-          }
-        } else {
-          height = (p * 5.0).clamp(0.3, 5.0);
-          if (p < 0.4) {
-            col = Color.lerp(const Color(0xFF005580), const Color(0xFFFFB020), p / 0.4)!;
-          } else {
-            col = Color.lerp(const Color(0xFFFFB020), const Color(0xFFFF3B3B), (p - 0.4) / 0.6)!;
+          if (count >= 2 || cls == 4 || cls == 5) {
+            clusters.add({
+              'cls': cls, 'minR': minR, 'maxR': maxR, 'minC': minC, 'maxC': maxC, 'count': count,
+            });
           }
         }
-        _drawVoxel(canvas, size, x, z, height, col, cx, cz);
       }
 
-      // 시나리오 라벨 — 좌측 상단 작은 칩
-      final scn = bev?['scenario'];
-      if (scn is Map && scn['title'] is String) {
-        final tp = TextPainter(
-          text: TextSpan(text: scn['title'] as String,
-              style: const TextStyle(color: Color(0xFFE2EAF5), fontSize: 8.5, fontWeight: FontWeight.w800)),
-          textDirection: TextDirection.ltr,
-        )..layout(maxWidth: size.width - 16);
-        final bgRect = Rect.fromLTWH(6, 6, tp.width + 10, tp.height + 6);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(bgRect, const Radius.circular(6)),
-          Paint()..color = const Color(0xCC0D1520),
-        );
-        tp.paint(canvas, const Offset(11, 9));
+      // 클러스터 — 멀리 (큰 row) 부터 그려서 가까운게 위로
+      clusters.sort((a, b) => ((b['maxR'] as int) - (a['maxR'] as int)));
+
+      for (final cl in clusters) {
+        final cls = cl['cls'] as int;
+        final minR = (cl['minR'] as int).toDouble();
+        final maxR = (cl['maxR'] as int).toDouble();
+        final minC = (cl['minC'] as int).toDouble();
+        final maxC = (cl['maxC'] as int).toDouble();
+        final wM = (maxC - minC + 1) * cellM;
+        final lM = (maxR - minR + 1) * cellM;
+        final cxM = (((minC + maxC) / 2 + 0.5) - cols / 2) * cellM;
+        final czM = ((minR + maxR) / 2 + 0.5) * cellM;
+
+        if (cls == 1) {
+          _drawVehicle(canvas, size, cxM, czM, lM, wM, cx, cz);
+        } else if (cls == 2) {
+          _drawMotoBike(canvas, size, cxM, czM, lM, wM, cx, cz);
+        } else if (cls == 3) {
+          _drawOcclusion(canvas, size, cxM - wM/2, czM - lM/2, cxM + wM/2, czM + lM/2, cx, cz);
+        } else if (cls == 4) {
+          // 보행자 zone — 클러스터 면적 비례 N명 (2~4명)
+          final n = (cl['count'] as int).clamp(0, 999);
+          final peopleN = (n / 4).clamp(2, 4).toInt();
+          for (int i = 0; i < peopleN; i++) {
+            final ang = (i / peopleN) * 2 * math.pi + minR * 0.3;
+            final px = cxM + math.cos(ang) * math.min(wM, lM) * 0.3;
+            final pz = czM + math.sin(ang) * math.min(wM, lM) * 0.3;
+            _drawPedestrianMarker(canvas, size, px, pz, cx, cz);
+          }
+        } else if (cls == 5) {
+          _drawSignalMarker(canvas, size, cxM, czM, cx, cz);
+        }
       }
     }
 

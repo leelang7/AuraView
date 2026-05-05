@@ -1332,6 +1332,19 @@ def prototype_ui():
                 </div>
               </div>
             </div>
+
+            <!-- Fleet 업로드 갤러리 — 관리자 검수 / 삭제 -->
+            <div class="card" style="margin-top:14px;">
+              <div class="card-tag">UPLOADED HARD SAMPLES · ADMIN REVIEW</div>
+              <div class="section-label">// PII 마스킹된 업로드 이미지 — 이상 데이터는 즉시 삭제</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;">
+                <div id="fleetGalleryStats" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">로딩 중…</div>
+                <button class="btn-secondary" onclick="loadFleetGallery()">갤러리 새로고침</button>
+              </div>
+              <div id="fleetGallery" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;max-height:560px;overflow:auto;padding:4px;">
+                <div class="placeholder" style="grid-column:1/-1;">갤러리 로딩 중…</div>
+              </div>
+            </div>
           </div>
 
           <!-- TAB 6 : Accident Reenactment -->
@@ -2556,6 +2569,76 @@ def prototype_ui():
               const fa = document.getElementById('flowAuc');
               if (fa && auc) fa.textContent = auc.toFixed(4);
             } catch(e) {}
+            // 갤러리도 함께 갱신
+            loadFleetGallery();
+          }
+
+          /* ── FLEET GALLERY (관리자 검수 / 삭제) ── */
+          async function loadFleetGallery() {
+            const wrap = document.getElementById('fleetGallery');
+            const stats = document.getElementById('fleetGalleryStats');
+            if (!wrap) return;
+            try {
+              const res = await fetch(window.location.origin + '/fleet/list?limit=200');
+              const data = await res.json();
+              if (!Array.isArray(data) || data.length === 0) {
+                wrap.innerHTML = '<div class="placeholder" style="grid-column:1/-1;">아직 업로드된 이미지가 없습니다.</div>';
+                if (stats) stats.textContent = '0 건';
+                return;
+              }
+              if (stats) stats.textContent = data.length + ' 건 · ' + new Set(data.map(d => d.pseudo_device)).size + ' 단말';
+              wrap.innerHTML = '';
+              data.forEach(item => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;';
+                const exists = item.exists !== false;
+                const reasonColor = item.reason === 'crosswalk_blocked' ? 'var(--danger)' :
+                                    item.reason === 'high_entropy' ? 'var(--warn)' : 'var(--accent)';
+                const ts = (item.ts || '').replace('T', ' ').slice(0, 19);
+                card.innerHTML = `
+                  <div style="aspect-ratio:1;background:#000;display:flex;align-items:center;justify-content:center;position:relative;">
+                    ${exists
+                      ? `<img src="/fleet/image/${item.path}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"
+                              onerror="this.parentElement.innerHTML='<div style=&quot;color:var(--muted);font-size:10px;&quot;>로드 실패</div>';"/>`
+                      : '<div style="color:var(--muted);font-size:10px;">파일 없음</div>'}
+                    <div style="position:absolute;top:4px;left:4px;background:${reasonColor};color:#000;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;font-family:JetBrains Mono,monospace;">
+                      ${item.reason || '?'}
+                    </div>
+                    <div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 5px;border-radius:4px;font-size:9px;font-family:JetBrains Mono,monospace;">
+                      ε ${(item.entropy ?? 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div style="padding:6px 8px;font-size:10px;font-family:JetBrains Mono,monospace;color:var(--muted);">
+                    <div style="color:var(--text);font-weight:700;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.pseudo_device || '-'}</div>
+                    <div style="margin-top:2px;">${ts}</div>
+                    <div>${item.intersection_id ? '🚦 ' + item.intersection_id : '📍 ' + (item.lat ?? '-') + ',' + (item.lon ?? '-')}</div>
+                    <div style="margin-top:4px;display:flex;gap:4px;">
+                      <button onclick="window.open('/fleet/image/${item.path}','_blank')" style="flex:1;background:rgba(0,200,255,0.15);border:1px solid var(--accent);color:var(--accent);padding:3px;border-radius:4px;font-size:9px;cursor:pointer;font-family:inherit;">원본</button>
+                      <button onclick="deleteFleetImage('${item.path}')" style="flex:1;background:rgba(255,90,90,0.12);border:1px solid var(--danger);color:var(--danger);padding:3px;border-radius:4px;font-size:9px;cursor:pointer;font-family:inherit;">삭제</button>
+                    </div>
+                  </div>
+                `;
+                wrap.appendChild(card);
+              });
+            } catch (e) {
+              wrap.innerHTML = '<div class="placeholder" style="grid-column:1/-1;color:var(--danger);">갤러리 로드 실패: ' + e.message + '</div>';
+            }
+          }
+
+          async function deleteFleetImage(filename) {
+            if (!confirm('이 이미지를 삭제하시겠습니까?\n\n' + filename)) return;
+            try {
+              const res = await fetch(window.location.origin + '/fleet/image/' + encodeURIComponent(filename), {method:'DELETE'});
+              const j = await res.json();
+              if (j.status === 'ok') {
+                loadFleetGallery();
+                loadFleetStats();
+              } else {
+                alert('삭제 실패: ' + JSON.stringify(j));
+              }
+            } catch(e) {
+              alert('삭제 실패: ' + e.message);
+            }
           }
 
           /* ── SCENARIO REENACTMENT ── */

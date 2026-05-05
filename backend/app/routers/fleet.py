@@ -18,7 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from ..services import pii
 
@@ -112,3 +113,75 @@ def stats():
         "unique_devices": len({r.get("pseudo_device") for r in rows}),
         "recent": rows[-10:],
     }
+
+
+@router.get("/list")
+def list_uploads(limit: int = 100):
+    """전체 업로드 목록 (최신 순) — 관리자 검수용."""
+    if not MANIFEST.exists():
+        return []
+    rows = []
+    with MANIFEST.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except Exception:
+                continue
+    # 최신 순 + 파일 존재 확인
+    rows.reverse()
+    out = []
+    for r in rows[:limit]:
+        p = FLEET_DIR / "hard_samples" / r.get("path", "")
+        r["exists"] = p.exists()
+        r["size_kb"] = round(p.stat().st_size / 1024, 1) if p.exists() else 0
+        out.append(r)
+    return out
+
+
+@router.get("/image/{filename}")
+def get_image(filename: str):
+    """업로드된 이미지 단일 조회 (PII 마스킹 적용된 버전)."""
+    # path traversal 방지
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="invalid filename")
+    p = FLEET_DIR / "hard_samples" / filename
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="not found")
+    return FileResponse(p, media_type="image/jpeg")
+
+
+@router.delete("/image/{filename}")
+def delete_image(filename: str):
+    """이상하거나 잘못 올라간 이미지 삭제 (manifest 에서도 제거)."""
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="invalid filename")
+    p = FLEET_DIR / "hard_samples" / filename
+    if p.exists():
+        try:
+            p.unlink()
+        except Exception as exc:
+            log.warning("delete failed: %s", exc)
+            raise HTTPException(status_code=500, detail=str(exc))
+
+    # manifest 에서 해당 entry 제거
+    if MANIFEST.exists():
+        kept = []
+        with MANIFEST.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                    if row.get("path") != filename:
+                        kept.append(line)
+                except Exception:
+                    kept.append(line)
+        with MANIFEST.open("w", encoding="utf-8") as f:
+            for line in kept:
+                f.write(line + "\n")
+
+    return {"status": "ok", "deleted": filename}

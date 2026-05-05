@@ -88,6 +88,63 @@ if _SCENARIO_OK:
 if _SHOWREEL_OK:
     app.include_router(showreel.router, prefix="/showreel", tags=["showreel"])
 
+
+# 데모 데이터 자동 시드 — 재배포 후 빈 DB 인 경우만 (idempotent)
+@app.on_event("startup")
+def _autoseed_demo():
+    """재배포 시 events / fleet / v2v 가 비어있으면 자동 시드.
+
+    실 데이터가 충분히 있으면 (events ≥ 5 unique intersection) skip.
+    """
+    import logging as _log
+    log = _log.getLogger("auraview.autoseed")
+    try:
+        # events seed (8 Seoul intersections)
+        from .database import SessionLocal
+        from .models import BlindSignalEvent
+        from .routers.events import DEMO_INTERSECTIONS  # type: ignore
+        db = SessionLocal()
+        try:
+            existing = {row[0] for row in db.query(BlindSignalEvent.intersection_id).distinct().all()}
+            if len(existing) < 5:
+                for iid, name, lat, lon, count, dur, sig, obs in DEMO_INTERSECTIONS:
+                    if iid in existing:
+                        continue
+                    for k in range(count):
+                        jitter = 0.7 + (k % 5) * 0.15
+                        ev = BlindSignalEvent(
+                            intersection_id=iid, user_lat=lat, user_lon=lon,
+                            event_duration=round(dur * jitter, 2),
+                            obstacle_type=obs, signal_state=sig,
+                            signal_remain_time=None, image_path=None,
+                        )
+                        db.add(ev)
+                db.commit()
+                log.info("[autoseed] events seeded for %d intersections", len(DEMO_INTERSECTIONS))
+        finally:
+            db.close()
+    except Exception as exc:
+        log.warning("[autoseed] events seed failed: %s", exc)
+
+    # fleet seed
+    try:
+        from .routers.fleet import seed_demo_fleet  # type: ignore
+        r = seed_demo_fleet(force=False)
+        log.info("[autoseed] fleet: %s", r.get("status"))
+    except Exception as exc:
+        log.warning("[autoseed] fleet seed failed: %s", exc)
+
+    # v2v seed (4 intersections)
+    try:
+        from .routers.collab import v2v_seed_demo  # type: ignore
+        for iid, lat, lon in [("1007", 37.5547, 127.1295), ("2024", 37.4979, 127.0276),
+                               ("4011", 37.5133, 127.1000), ("3015", 37.5723, 126.9769)]:
+            v2v_seed_demo(intersection_id=iid, lat=lat, lon=lon)
+        log.info("[autoseed] v2v seeded for 4 intersections")
+    except Exception as exc:
+        log.warning("[autoseed] v2v seed failed: %s", exc)
+
+
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

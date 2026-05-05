@@ -1845,11 +1845,47 @@ class _Bev3DVoxelPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF0A1018));
 
     // 카메라 고정 — Tesla 모니터식 위에서 약간 뒤로 (ego 안정적 시점)
-    // 미세 호흡 효과 (1.5px 좌우)만 살짝
     final cx = math.sin(t * 0.4) * 0.8;
     const cz = -3.0;
 
-    // ─────── 도심 4지 교차로 (Korean urban intersection) ───────
+    // ★ DEMO 모드 판단 — class_grid_flat 있으면 시나리오 (도로 인프라 표시)
+    //   LIVE 모드 (class 없음) → 도로 인프라 X · 카메라 voxel 만 raw 표시
+    final flatPre = bev?['grid_flat'];
+    final shapePre = bev?['grid_shape_flat'];
+    final classPre = bev?['class_grid_flat'];
+    final hasShapePre = flatPre is List && shapePre is List && shapePre.length == 2;
+    final isDemoScene = hasShapePre && classPre is List && classPre.length == (shapePre[0] as num) * (shapePre[1] as num);
+
+    if (!isDemoScene) {
+      // ─────── LIVE 모드: 도로 인프라 X · 단순 reference grid 만 ───────
+      // 사용자가 실제 환경에서 카메라로 보는 raw voxel 활성화
+      final w = size.width, h = size.height;
+      // 옅은 reference grid (10m 단위)
+      final refPaint = Paint()
+        ..color = const Color.fromRGBO(0, 60, 120, 0.20)
+        ..strokeWidth = 0.6;
+      for (int dz = 0; dz <= 50; dz += 10) {
+        canvas.drawLine(_project(-15, 0, dz.toDouble(), cx, cz, size),
+                        _project(15,  0, dz.toDouble(), cx, cz, size), refPaint);
+      }
+      for (int dx = -15; dx <= 15; dx += 5) {
+        canvas.drawLine(_project(dx.toDouble(), 0, 0,  cx, cz, size),
+                        _project(dx.toDouble(), 0, 50, cx, cz, size), refPaint);
+      }
+      // 거리 라벨 (10/20/30m)
+      for (final d in [10, 20, 30, 40]) {
+        final p = _project(-15, 0, d.toDouble(), cx, cz, size);
+        final tp = TextPainter(
+          text: TextSpan(text: '${d}m',
+            style: TextStyle(color: _muted.withValues(alpha: 0.5), fontSize: 8, fontWeight: FontWeight.w700)),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(p.dx + 4, p.dy - 6));
+      }
+      // ego 차량만 그리고 끝 — 도로 X
+      _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
+    } else {
+      // ─────── DEMO 모드: 도심 4지 교차로 (시나리오 시각화) ───────
     // ego 진행 +z. 자차 도로 폭 12m (-6~+6), 정지선 z=24m, 교차로 본체 z=24~32m
     // 가로 도로 폭 8m (z=24~32), x= -25~25
     final asphaltPaint = Paint()..color = const Color(0xFF1F242E);  // 밝은 아스팔트
@@ -2002,15 +2038,16 @@ class _Bev3DVoxelPainter extends CustomPainter {
       );
     }
 
-    // ── EGO 차량 (시안 발광 박스 + 캐빈, 원점)
-    _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
+      // ── EGO 차량 (DEMO 시나리오 — 도로 인프라 끝나는 위치)
+      _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
+    }  // end DEMO 도로 인프라 분기
 
-    // ── voxel 렌더링: LIVE (class 없음 → heatmap voxel) / DEMO (class 있음 → 객체 형상)
-    final flat = bev?['grid_flat'];
-    final shape = bev?['grid_shape_flat'];
-    final classFlat = bev?['class_grid_flat'];
-    final hasShape = flat is List && shape is List && shape.length == 2;
-    final hasClass = hasShape && classFlat is List && classFlat.length == (shape[0] as num) * (shape[1] as num);
+    // ── voxel 렌더링: LIVE (class 없음 → 점유 dot) / DEMO (class 있음 → 객체 형상)
+    final flat = flatPre;
+    final shape = shapePre;
+    final classFlat = classPre;
+    final hasShape = hasShapePre;
+    final hasClass = isDemoScene;
 
     if (hasShape && !hasClass) {
       // ── LIVE 모드: 카메라 frame voxel — TOP-K 만 표시 (도로 가시성 우선)

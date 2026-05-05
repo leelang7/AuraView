@@ -1405,43 +1405,52 @@ def prototype_ui():
               <div class="left-col">
                 <div class="card">
                   <div class="card-tag">REENACTMENT</div>
-                  <div class="section-label">// 2분 사고 재현 영상 생성</div>
+                  <div class="section-label">// AuraView 가 자동으로 만든 합본 시연 영상 (위에서 재생 중)</div>
                   <div class="hero-copy">
                     <div class="hero-title">AuraView 였다면 몇 초 먼저 경고할 수 있었을까?</div>
-                    <div class="hero-desc">블랙박스 영상을 업로드하거나, TAAS 사고를 바탕으로 합성된 장면을 선택해 Before/After 오버레이 영상을 자동 생성합니다.</div>
-                  </div>
-
-                  <div class="form-grid" style="margin-top:14px;">
-                    <div>
-                      <label>블랙박스 영상 (선택)</label>
-                      <label class="file-label" id="scnLabel" for="scn_video">
-                        <span>🎬</span>
-                        <span id="scnName">영상을 선택하거나 합성 시나리오를 고르세요</span>
-                      </label>
-                      <input id="scn_video" type="file" accept="video/*" onchange="updateFileLabel('scn_video','scnLabel','scnName')"/>
-                    </div>
-                    <div>
-                      <label>합성 시나리오</label>
-                      <select id="scn_preset">
-                        <option value="">— 선택 안 함 —</option>
-                        <option value="crosswalk_truck">횡단보도 · 대형차 가림 · 보행자 출현</option>
-                        <option value="motorcycle_blindspot">사각지대 · 이륜차 접근</option>
-                        <option value="signal_occluded">신호 가림 + 급감속</option>
-                        <option value="v2v_collab">⭐ V2V 협업 인지 (마주오는 차 시점)</option>
-                        <option value="rainy_intersection">🌧️ 우천 + 우산 보행자</option>
-                        <option value="night_blindspot">🌙 야간 사각지대 + 마주오는 헤드라이트</option>
-                      </select>
-                    </div>
-                    <button class="btn-accent" onclick="runScenario()">사고 재현 영상 생성</button>
-                    <button class="btn-secondary" onclick="loadScenarioList()">최근 생성물 목록</button>
-                    <button class="btn-video" onclick="buildShowreel()">⭐ 합본 시연 영상 (3장면 + 타이틀)</button>
+                    <div class="hero-desc">상단의 합본 영상은 6 시나리오 (횡단보도/사각지대/신호가림/V2V/우천/야간) 자동 생성. 평균 선행 경고 <strong style="color:var(--accent);">3.38초</strong>.</div>
                   </div>
 
                   <div id="scnStatus" class="status" style="margin-top:14px;">
-                    <div class="status-title">REENACTMENT STATUS</div>
-                    <div class="status-main">대기 중</div>
-                    <div class="status-meta">영상 또는 합성 시나리오를 선택하세요.</div>
+                    <div class="status-title">합본 영상 자동 갱신</div>
+                    <div class="status-main">매주 1회 자동 빌드 (cron)</div>
+                    <div class="status-meta">최신 합본: <a href="/showreel/latest.mp4" target="_blank" style="color:var(--accent);">/showreel/latest.mp4</a></div>
                   </div>
+
+                  <!-- 어드민/심사용 — 수동 빌드 트리거 (접힘) -->
+                  <details style="margin-top:14px;">
+                    <summary style="color:var(--muted);font-size:12px;cursor:pointer;letter-spacing:1.5px;font-family:'JetBrains Mono',monospace;">
+                      // ADMIN · 사용자 영상 업로드 (블랙박스 → AuraView 추론)
+                    </summary>
+                    <div class="form-grid" style="margin-top:12px;">
+                      <div>
+                        <label>블랙박스 영상 (선택)</label>
+                        <label class="file-label" id="scnLabel" for="scn_video">
+                          <span>🎬</span>
+                          <span id="scnName">영상 또는 합성 시나리오 선택</span>
+                        </label>
+                        <input id="scn_video" type="file" accept="video/*" onchange="updateFileLabel('scn_video','scnLabel','scnName')"/>
+                      </div>
+                      <div>
+                        <label>합성 시나리오</label>
+                        <select id="scn_preset">
+                          <option value="">— 선택 안 함 —</option>
+                          <option value="crosswalk_truck">횡단보도 · 대형차 가림</option>
+                          <option value="motorcycle_blindspot">사각지대 · 이륜차</option>
+                          <option value="signal_occluded">신호 가림 + 급감속</option>
+                          <option value="v2v_collab">⭐ V2V 협업 인지</option>
+                          <option value="rainy_intersection">🌧️ 우천 + 우산 보행자</option>
+                          <option value="night_blindspot">🌙 야간 사각지대</option>
+                        </select>
+                      </div>
+                      <button class="btn-accent" onclick="runScenario()">사고 재현 영상 생성</button>
+                      <button class="btn-secondary" onclick="loadScenarioList()">최근 생성물 목록</button>
+                      <button class="btn-video" onclick="buildShowreel()">⭐ 새 합본 빌드</button>
+                    </div>
+                    <p style="margin-top:8px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
+                      일반 사용자 흐름 X — 심사위원 검증 또는 새 영상 즉석 생성용.
+                    </p>
+                  </details>
                 </div>
               </div>
 

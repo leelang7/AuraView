@@ -136,6 +136,46 @@ def admin_auth(token: str = Body(..., embed=True)):
     return {"status": "ok"}
 
 
+@router.post("/seed-demo")
+def seed_demo_fleet(force: bool = False):
+    """데모 시연용 Fleet 업로드 시드 — manifest 에 가상 PII 마스킹 entry 8건.
+
+    실 device 업로드가 0건일 때만 (또는 force=true) 시드.
+    """
+    if MANIFEST.exists() and not force:
+        existing = sum(1 for _ in MANIFEST.open(encoding="utf-8"))
+        if existing >= 5:
+            return {"status": "skipped", "existing": existing, "reason": "이미 5건 이상"}
+
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    seeds = [
+        ("b71fc6d30546ff05", "1007", 37.583, 127.048, "high_entropy", 0.91),
+        ("b71fc6d30546ff05", "1007", 37.583, 127.048, "high_entropy", 0.89),
+        ("b71fc6d30546ff05", "1007", 37.583, 127.048, "crosswalk_blocked", 0.85),
+        ("b71fc6d30546ff05", "2024", 37.498, 127.028, "signal_occluded", 0.88),
+        ("b71fc6d30546ff05", "2024", 37.498, 127.028, "high_entropy", 0.84),
+        ("c9dc6c9861a41aa9", "4011", 37.513, 127.100, "low_confidence", 0.62),
+        ("c9dc6c9861a41aa9", "4011", 37.513, 127.100, "blind_spot_left", 0.78),
+        ("c9dc6c9861a41aa9", "3015", 37.572, 126.977, "high_entropy", 0.87),
+    ]
+    with MANIFEST.open("a", encoding="utf-8") as f:
+        for i, (dev, iid, lat, lon, reason, ent) in enumerate(seeds):
+            ts = (now - timedelta(minutes=10 * (len(seeds) - i))).isoformat()
+            entry = {
+                "ts": ts,
+                "pseudo_device": dev,
+                "intersection_id": iid,
+                "entropy": ent,
+                "reason": reason,
+                "lat": lat,
+                "lon": lon,
+                "path": f"demo_{i}_{dev[:8]}.jpg",  # 실제 파일은 없음 — 메타만
+            }
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return {"status": "ok", "seeded": len(seeds)}
+
+
 @router.get("/list", dependencies=[Depends(require_admin)])
 def list_uploads(limit: int = 100):
     """전체 업로드 목록 (최신 순) — 관리자 검수용."""

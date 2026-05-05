@@ -285,30 +285,46 @@ def _build_scene(name: str, phase: float):
             {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "신호등"},
         ]
     elif name == "right_turn_pedestrian":
-        # ego 우회전 핵심 로직 — 단순화
-        # 좌표계: ego at row=0 col=39, ego road col 32~46, 교차로 본체 row 48~64
-        # 가로 도로 row 48~64, x=±25 (col 0~80)
-        # 우측(동쪽) 횡단보도: col 50~58, row 48~64 (가로 도로 동쪽 끝, ego 회전 진입로)
+        # ego 우회전 시나리오 — 4가지 요소
+        # 1) 우측 횡단보도 보행자 (ego 회전 경로)
+        # 2) 가로 도로 동→서 마주오는 차량 (반대편 흐름)
+        # 3) 가로 도로 서→동 옆으로 지나가는 차량
+        # 4) ego A필러 사각지대
 
-        # A. ego 우측 A필러 사각지대 — ego 시점 우측 forward 영역 (보행자 못 보는 영역)
-        # 자차 우측 전방 cone: row 16~48 (8~24m 전방), col 50~58 (3~8m 우측)
-        # ego가 우회전하면서 들어가는 영역의 사각
+        # A. ego 우측 A필러 사각지대
         grid[16:48, 50:58] = 0.30; cls[16:48, 50:58] = 3
 
-        # B. 횡단 보행자 — 우측 (동쪽) 횡단보도 위에서 N/S 방향으로 횡단
-        # ego 우회전 진입 경로(가로 도로)와 정확히 충돌하는 횡단보도 위
-        # 횡단보도 위치: col 52~56 (동쪽 횡단), row 50~64 phase 따라
-        ped_progress = (np.sin(phase * 0.5) + 1) * 0.5  # 0~1
-        ped_row = int(50 + ped_progress * 12)  # row 50~62, 횡단보도 N→S 이동
-        ped_col = 52  # 동쪽 횡단보도 안쪽 (가까운 차로)
-        grid[ped_row:ped_row + 3, ped_col:ped_col + 2] = 0.92
-        cls[ped_row:ped_row + 3, ped_col:ped_col + 2] = 4
+        # B. 우측 횡단보도 보행자 (북→남 횡단)
+        ped_progress = (np.sin(phase * 0.5) + 1) * 0.5
+        ped_row = int(50 + ped_progress * 12)
+        grid[ped_row:ped_row + 3, 52:54] = 0.92
+        cls[ped_row:ped_row + 3, 52:54] = 4
+
+        # C. 가로 도로 차량 (반대편 흐름) — 동→서 (오른쪽에서 왼쪽)
+        # 가로 도로 북쪽 차로 (row 56~60), phase 따라 col 70→10 이동
+        west_progress = (phase / (2 * 3.14159)) % 1
+        west_col = int(70 - west_progress * 60)
+        if 0 <= west_col <= 71:
+            grid[56:60, west_col:west_col + 9] = 0.88
+            cls[56:60, west_col:west_col + 9] = 1
+
+        # D. 가로 도로 차량 (옆 흐름) — 서→동 (왼쪽에서 오른쪽)
+        # 가로 도로 남쪽 차로 (row 50~54), phase offset 사용
+        east_progress = ((phase + 3.14159) / (2 * 3.14159)) % 1
+        east_col = int(east_progress * 70)
+        if 0 <= east_col <= 71:
+            grid[50:54, east_col:east_col + 9] = 0.85
+            cls[50:54, east_col:east_col + 9] = 1
 
         hotspots = [
             {"class": "blindspot_zone", "row": 32, "col": 54, "kind": "blindspot", "distance_m": 16.0,
              "label": "⚠️ 우측 A필러 사각지대"},
-            {"class": "pedestrian_zone", "row": ped_row + 1, "col": ped_col + 1, "kind": "intent_prior",
-             "distance_m": (ped_row + 1) * 0.5, "label": "🚸 우측 횡단보도 보행자 — 정지 필요"},
+            {"class": "pedestrian_zone", "row": ped_row + 1, "col": 53, "kind": "intent_prior",
+             "distance_m": (ped_row + 1) * 0.5, "label": "🚸 우측 횡단보도 보행자 (회전 경로)"},
+            {"class": "vehicle", "row": 58, "col": west_col + 4, "kind": "object", "distance_m": 29.0,
+             "label": "🚗 반대편 차량 (동→서)"},
+            {"class": "vehicle", "row": 52, "col": east_col + 4, "kind": "object", "distance_m": 26.0,
+             "label": "🚗 가로 차량 (서→동)"},
         ]
 
     else:

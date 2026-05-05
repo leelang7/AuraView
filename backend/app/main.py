@@ -2878,19 +2878,21 @@ def prototype_ui():
             const stopLineR = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 8), new THREE.MeshBasicMaterial({color:0xffffff}));
             stopLineR.rotation.x = -Math.PI / 2; stopLineR.position.set(6, 0.026, 28); scene.add(stopLineR);
 
-            // 9) 횡단보도 zebra — 4방향 (모든 코너에 신호등 + 횡단보도)
+            // 9) 횡단보도 zebra — 가로 도로(cross road) 양쪽
+            //   ★ 우회전 시나리오: ego 가 진입할 가로 도로의 횡단보도가 핵심
+            //   보행자(world x≈+7)가 이 횡단보도 위를 건너는 것이 보여야 한다
             const zebraMat = new THREE.MeshBasicMaterial({color:0xeef0f4});
-            // ego 진입 직전 (z=24~26m)
-            for (let i = 0; i < 7; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 2.0), zebraMat);
+            // 좌측 가로 도로 횡단 (x=-7m, z 24.5~31.5)
+            for (let i = 0; i < 5; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), zebraMat);
               stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(-5.0 + i * 1.5, 0.028, 25); scene.add(stripe);
+              stripe.position.set(-7, 0.028, 24.8 + i * 1.6); scene.add(stripe);
             }
-            // 교차로 너머 (z=30~32m)
-            for (let i = 0; i < 7; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 2.0), zebraMat);
+            // 우측 가로 도로 횡단 (x=+7m) — ★ 우회전 보행자 시나리오 핵심
+            for (let i = 0; i < 5; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), zebraMat);
               stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(-5.0 + i * 1.5, 0.028, 31); scene.add(stripe);
+              stripe.position.set(7, 0.028, 24.8 + i * 1.6); scene.add(stripe);
             }
 
             // 9.5) ★ 신호등 폴 — 교차로 4 코너 (횡단보도 위치와 일치)
@@ -3019,27 +3021,28 @@ def prototype_ui():
                 const cycle = (threeCtx.t % 10.0) / 10.0;
                 let egoX, egoZ, egoYawRad;
                 let egoVisible = true;
+                // ★ Korean RHT — ego 는 우측 차로(world x=+1.5) 중앙 주행 (중앙선 위 X)
+                const LANE_X = 1.5;
                 if (cycle < 0.16) {
                   const p = cycle / 0.16;
-                  egoX = 0; egoZ = p * 22; egoYawRad = 0;
+                  egoX = LANE_X; egoZ = p * 22; egoYawRad = 0;
                 } else if (cycle < 0.44) {
-                  egoX = 0; egoZ = 22; egoYawRad = 0;
+                  egoX = LANE_X; egoZ = 22; egoYawRad = 0;
                 } else if (cycle < 0.68) {
                   // ★ 우회전: rotation.y POSITIVE 가 +Z→+X (북→동) = 우회전
-                  // 이전 -π/2 는 좌회전 (+Z→-X) 이라 차가 후진 좌회전 보였음
                   const p = (cycle - 0.44) / 0.24;
-                  egoX = 18 * p * p;
+                  egoX = LANE_X + (18 - LANE_X) * p * p;  // 1.5 → 18 smooth
                   egoZ = 22 + 10 * p;
-                  egoYawRad = (Math.PI / 2) * p;  // ★ POSITIVE = 우회전
+                  egoYawRad = (Math.PI / 2) * p;
                 } else if (cycle < 0.88) {
                   const p = (cycle - 0.68) / 0.20;
                   egoX = 18 + p * 32;
                   egoZ = 32;
-                  egoYawRad = Math.PI / 2;  // ★ POSITIVE
+                  egoYawRad = Math.PI / 2;
                   if (p > 0.7) egoVisible = false;
                 } else {
                   egoVisible = false;
-                  egoX = 0; egoZ = 0; egoYawRad = 0;
+                  egoX = LANE_X; egoZ = 0; egoYawRad = 0;
                 }
                 egoGroup.position.set(egoX, 0, egoZ);
                 egoGroup.rotation.y = egoYawRad;

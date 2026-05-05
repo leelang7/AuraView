@@ -2328,19 +2328,20 @@ class _Bev3DVoxelPainter extends CustomPainter {
     canvas.drawLine(_project(-6, 0, 24, cx, cz, size), _project(-6, 0, 32, cx, cz, size), stopPaint);
     canvas.drawLine(_project(6, 0, 24, cx, cz, size), _project(6, 0, 32, cx, cz, size), stopPaint);
 
-    // 8) 횡단보도 zebra — 4방향 (모든 코너 신호등과 일치)
+    // 8) 횡단보도 zebra — 가로 도로 양쪽 (우회전 보행자 시나리오 핵심)
+    //   ★ ego 가 우회전 후 진입할 가로 도로의 횡단보도 — 보행자가 여기를 건넘
     final zebraPaint = Paint()..color = const Color(0xFFEEF0F4);
     Path zebra(double x1, double z1, double x2, double z2) =>
         rectPath(x1, z1, x2, z2);
-    // ego 진입 직전 (z=24~26m, x=-5~5)
-    for (int i = 0; i < 7; i++) {
-      final lx = -5.0 + i * 1.5;
-      canvas.drawPath(zebra(lx - 0.3, 24.5, lx + 0.3, 25.5), zebraPaint);
+    // 좌측 가로 도로 횡단 (x=-7m, z 24.5~32)
+    for (int i = 0; i < 5; i++) {
+      final lz = 24.8 + i * 1.6;
+      canvas.drawPath(zebra(-7.7, lz - 0.3, -6.3, lz + 0.3), zebraPaint);
     }
-    // 교차로 너머 (z=30~32m)
-    for (int i = 0; i < 7; i++) {
-      final lx = -5.0 + i * 1.5;
-      canvas.drawPath(zebra(lx - 0.3, 30.5, lx + 0.3, 31.5), zebraPaint);
+    // 우측 가로 도로 횡단 (x=+7m) — ★ 우회전 시 보행자 마주치는 핵심 횡단보도
+    for (int i = 0; i < 5; i++) {
+      final lz = 24.8 + i * 1.6;
+      canvas.drawPath(zebra(6.3, lz - 0.3, 7.7, lz + 0.3), zebraPaint);
     }
 
     // 8.5) ★ 신호등 폴 — 교차로 4 코너 (횡단보도와 일치)
@@ -2405,35 +2406,36 @@ class _Bev3DVoxelPainter extends CustomPainter {
         double egoX, egoZ, egoYawDeg;
         bool isStopped = false;
         bool egoVisible = true;
+        // ★ Korean RHT — ego 우측 차로(world x=+1.5) 중앙 주행 (중앙선 위 X)
+        const laneX = 1.5;
         if (cycle < 0.16) {
           // 정지선 접근 (z=0→22m)
           final p = cycle / 0.16;
-          egoX = 0;
+          egoX = laneX;
           egoZ = p * 22;
           egoYawDeg = 0;
         } else if (cycle < 0.44) {
           // ★ 정지선 직전 정지 — 보행자 횡단 대기 (2.8초)
-          egoX = 0;
+          egoX = laneX;
           egoZ = 22;
           egoYawDeg = 0;
           isStopped = true;
         } else if (cycle < 0.68) {
-          // 보행자 통과 → 우회전 곡선
+          // 보행자 통과 → 우회전 곡선 (우측 차로 1.5 → 가로 도로 동쪽 18)
           final p = (cycle - 0.44) / 0.24;
-          egoX = 18 * p * p;
+          egoX = laneX + (18 - laneX) * p * p;
           egoZ = 22 + 10 * p;
           egoYawDeg = 90 * p;
         } else if (cycle < 0.88) {
           // 가로 도로 동쪽 가속 진행 → 화면 밖 (x 18→50)
           final p = (cycle - 0.68) / 0.20;
-          egoX = 18 + p * 32;  // 18→50 (화면 밖)
+          egoX = 18 + p * 32;
           egoZ = 32;
           egoYawDeg = 90;
-          if (p > 0.7) egoVisible = false;  // 거의 화면 밖이면 숨김
+          if (p > 0.7) egoVisible = false;
         } else {
-          // ★ 사라진 상태 — 다음 cycle 시작 대기 (텔레포트 안 보임)
           egoVisible = false;
-          egoX = 0; egoZ = 0; egoYawDeg = 0;
+          egoX = laneX; egoZ = 0; egoYawDeg = 0;
         }
         if (egoVisible) {
           _drawEgoAtAngle(canvas, size, egoX, egoZ, egoYawDeg, cx, cz, brakeOn: isStopped);

@@ -299,22 +299,26 @@ def _build_scene(name: str, phase: float):
         grid[ped_row:ped_row + 3, 52:54] = 0.92
         cls[ped_row:ped_row + 3, 52:54] = 4
 
-        # C. 마주오는 차량 (반대편 차로) — 북에서 남으로 (멀리→가까이)
-        # ego 도로 반대편 차로 (col 33~37, ego 좌측 = oncoming 의 우측 차로)
-        # phase 따라 row 75 → row 5 (4초 cycle, 멀리에서 가까이 진행)
+        # C. 마주오는 차량 (반대편 차로) — 북에서 남으로
+        # ego 도로 반대편 차로 (col 34~38, ego 옆 차로)
+        # phase 따라 row 70 → row 0 (4초 cycle)
+        # 차량 크기: 12 rows × 5 cols = 6m × 2.5m (시각적 명확)
         oncoming_progress = (phase / (2 * 3.14159)) % 1
-        oncoming_row = int(75 - oncoming_progress * 70)
-        if 0 <= oncoming_row <= 75:
-            grid[oncoming_row:oncoming_row + 9, 33:37] = 0.92
-            cls[oncoming_row:oncoming_row + 9, 33:37] = 1
+        oncoming_row = int(70 - oncoming_progress * 70)
+        # 0~70 범위 안에서만 그림
+        if 0 <= oncoming_row <= 68:
+            r1 = max(0, oncoming_row)
+            r2 = min(80, oncoming_row + 12)
+            grid[r1:r2, 34:39] = 0.92
+            cls[r1:r2, 34:39] = 1
 
         hotspots = [
             {"class": "blindspot_zone", "row": 32, "col": 54, "kind": "blindspot", "distance_m": 16.0,
              "label": "⚠️ 우측 A필러 사각지대"},
             {"class": "pedestrian_zone", "row": ped_row + 1, "col": 53, "kind": "intent_prior",
              "distance_m": (ped_row + 1) * 0.5, "label": "🚸 우측 횡단보도 보행자 (회전 경로)"},
-            {"class": "vehicle", "row": oncoming_row + 4, "col": 35, "kind": "object",
-             "distance_m": (oncoming_row + 4) * 0.5, "label": "🚗 마주오는 차량 (북→남)"},
+            {"class": "vehicle", "row": oncoming_row + 6, "col": 36, "kind": "object",
+             "distance_m": max(0, (oncoming_row + 6) * 0.5), "label": "🚗 마주오는 차량 (북→남)"},
         ]
 
     else:

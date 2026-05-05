@@ -1807,13 +1807,12 @@ class _Bev3DVoxelPainter extends CustomPainter {
     // 카메라 tilt 18° 가정 — 위에서 내려다 보되 약간 forward
     const tiltCos = 0.951;  // cos(18°)
     const tiltSin = 0.309;  // sin(18°)
-    // 거리에 따른 perspective shrink (far → smaller)
-    final perspective = 1.0 / (1.0 + rz * 0.012);
     // 캔버스 fit — 가로 36m (-18~18), 세로 60m forward · 사용자 zoom 적용
     final scaleX = (w - 24) / 36.0 * zoom;
     final scaleZ = (h - 70) / 60.0 * zoom;
-    // 화면 X: 가로 perspective shrink + rx
-    final screenX = w / 2 + rx * scaleX * perspective;
+    // ★ X-axis 원근감 제거 — 순수 orthographic (좌로 슬라이딩 효과 방지)
+    // 멀리 있는 차량이 ego 쪽으로 다가올 때 옆으로 흐르지 않고 정직하게 forward 이동
+    final screenX = w / 2 + rx * scaleX;
     // 화면 Y: 멀리 객체 위로 (tiltCos), 높이 객체 위로 (tiltSin)
     final screenY = h - 32 - rz * scaleZ * tiltCos - y * scaleX * tiltSin * 4.0;
     return Offset(screenX, screenY);

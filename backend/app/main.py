@@ -2767,101 +2767,154 @@ def prototype_ui():
             dir.position.set(30, 50, 10);
             scene.add(dir);
 
-            // ─────── 도로 인프라 (Tesla BEV 스타일) ───────
-            // 아스팔트 바닥 (어두운 회색)
-            const road = new THREE.Mesh(
-              new THREE.PlaneGeometry(40, 60),
-              new THREE.MeshStandardMaterial({color:0x14181f, metalness:0.05, roughness:0.95})
-            );
-            road.rotation.x = -Math.PI / 2;
-            road.position.set(0, 0, 18);
-            scene.add(road);
+            // ─────── 도심 4지 교차로 (Korean urban intersection) ───────
+            // 좌표: ego 진행 방향 +Z, 좌우 X. 자차 차로 ego→교차로 (z=24m 정지선)
+            // 교차로 본체: z=24~32m, 가로 도로는 x=-12~12, 세로(ego) 도로는 폭 12m
 
-            // 경계 보도 (양쪽 lighter strip — 도로 가장자리)
-            const sidewalkMat = new THREE.MeshStandardMaterial({color:0x2a3140, roughness:0.8});
-            const sidewalkL = new THREE.Mesh(new THREE.BoxGeometry(2, 0.15, 60), sidewalkMat);
-            sidewalkL.position.set(-11, 0.075, 18); scene.add(sidewalkL);
-            const sidewalkR = new THREE.Mesh(new THREE.BoxGeometry(2, 0.15, 60), sidewalkMat);
-            sidewalkR.position.set(11, 0.075, 18); scene.add(sidewalkR);
+            const asphaltMat = new THREE.MeshStandardMaterial({color:0x14181f, metalness:0.05, roughness:0.95});
 
-            // 중앙 분리선 (노란 더블라인) — z 따라 길게
-            const centerMat = new THREE.MeshBasicMaterial({color:0xfacc15});
-            for (let dz = -10; dz < 50; dz += 0.5) {
-              const dl = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.4), centerMat);
-              dl.rotation.x = -Math.PI / 2;
-              dl.position.set(-0.20, 0.02, dz); scene.add(dl);
-              const dr = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.4), centerMat);
-              dr.rotation.x = -Math.PI / 2;
-              dr.position.set(0.20, 0.02, dz); scene.add(dr);
+            // 1) ego 도로 (정지선 직전까지) — 폭 12m × 길이 34m
+            const egoRoad = new THREE.Mesh(new THREE.PlaneGeometry(12, 34), asphaltMat);
+            egoRoad.rotation.x = -Math.PI / 2;
+            egoRoad.position.set(0, 0, 7); scene.add(egoRoad);
+
+            // 2) 교차로 본체 (사거리 중심) — 12×8m 사각형
+            const ixCore = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), asphaltMat);
+            ixCore.rotation.x = -Math.PI / 2;
+            ixCore.position.set(0, 0.001, 28); scene.add(ixCore);
+
+            // 3) 가로 도로 (교차로 동/서) — 폭 8m × 길이 50m
+            const crossRoad = new THREE.Mesh(new THREE.PlaneGeometry(50, 8), asphaltMat);
+            crossRoad.rotation.x = -Math.PI / 2;
+            crossRoad.position.set(0, 0.001, 28); scene.add(crossRoad);
+
+            // 4) ego 도로 너머 (교차로 통과 후) — 폭 12m × 길이 14m
+            const farRoad = new THREE.Mesh(new THREE.PlaneGeometry(12, 14), asphaltMat);
+            farRoad.rotation.x = -Math.PI / 2;
+            farRoad.position.set(0, 0, 39); scene.add(farRoad);
+
+            // 5) 4개 모서리 보도 (인도 + 횡단보도 사이 코너)
+            const sidewalkMat = new THREE.MeshStandardMaterial({color:0x2a3140, roughness:0.85});
+            // 좌하 / 우하 / 좌상 / 우상 (ego 시점 기준)
+            for (const corner of [
+              {x: -15, z: 12, w: 6, l: 24},   // 좌측 ego 도로 인도 (남쪽)
+              {x: 15, z: 12, w: 6, l: 24},    // 우측 ego 도로 인도
+              {x: -15, z: 41, w: 6, l: 14},   // 좌측 ego 도로 너머 (북쪽)
+              {x: 15, z: 41, w: 6, l: 14},
+              {x: -19, z: 28, w: 8, l: 8},    // 좌측 교차로 너머 인도
+              {x: 19, z: 28, w: 8, l: 8},     // 우측 교차로 너머 인도
+            ]) {
+              const sw = new THREE.Mesh(new THREE.BoxGeometry(corner.w, 0.18, corner.l), sidewalkMat);
+              sw.position.set(corner.x, 0.09, corner.z); scene.add(sw);
             }
 
-            // 차선 dashed 흰선 — 4차선 (양방향 각 2차선) at x = ±3.5 ±7
+            // 6) ego 도로 중앙 노란 점선 (정지선까지만, z=-10 ~ 24)
+            const centerMat = new THREE.MeshBasicMaterial({color:0xfacc15});
+            for (let dz = -10; dz < 24; dz += 1.0) {
+              const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.45), centerMat);
+              dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.025, dz); scene.add(dash);
+            }
+            // ego 도로 너머 중앙 노란 점선 (교차로 통과 후, z=32 ~ 46)
+            for (let dz = 32; dz < 46; dz += 1.0) {
+              const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.45), centerMat);
+              dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.025, dz); scene.add(dash);
+            }
+            // 가로 도로 중앙 노란 점선 (x = -25 ~ 25, z=28)
+            for (let dx = -24; dx < 24; dx += 1.0) {
+              const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.18), centerMat);
+              dash.rotation.x = -Math.PI / 2; dash.position.set(dx, 0.025, 28); scene.add(dash);
+            }
+
+            // 7) 차선 흰 점선 — ego 방향 (정지선 전, 양방향 2차선씩이라면 ±3, 가운데 0)
+            // 좁은 차로 (3m 폭) → 차선 ±3, 가운데는 노란선
             const laneMat = new THREE.MeshBasicMaterial({color:0xeef0f4});
-            for (const lx of [-7, -3.5, 3.5, 7]) {
-              for (let dz = -10; dz < 50; dz += 3.5) {
+            for (const lx of [-3, 3]) {
+              for (let dz = -10; dz < 24; dz += 3.5) {
                 const seg = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 1.8), laneMat);
                 seg.rotation.x = -Math.PI / 2;
-                seg.position.set(lx, 0.015, dz); scene.add(seg);
+                seg.position.set(lx, 0.018, dz); scene.add(seg);
+              }
+              // 교차로 너머
+              for (let dz = 32; dz < 46; dz += 3.5) {
+                const seg = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 1.8), laneMat);
+                seg.rotation.x = -Math.PI / 2;
+                seg.position.set(lx, 0.018, dz); scene.add(seg);
+              }
+            }
+            // 가로 도로 차선 (z = ±2)
+            for (const lz of [26, 30]) {
+              for (let dx = -24; dx < 24; dx += 3.5) {
+                const seg = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.16), laneMat);
+                seg.rotation.x = -Math.PI / 2;
+                seg.position.set(dx, 0.018, lz); scene.add(seg);
               }
             }
 
-            // 정지선 (전방 24m) — 흰 굵은 선
+            // 8) 정지선 (ego 진행, z=24m, 폭 12m)
             const stopLine = new THREE.Mesh(
-              new THREE.PlaneGeometry(20, 0.5),
+              new THREE.PlaneGeometry(12, 0.5),
               new THREE.MeshBasicMaterial({color:0xffffff})
             );
             stopLine.rotation.x = -Math.PI / 2;
-            stopLine.position.set(0, 0.025, 24); scene.add(stopLine);
+            stopLine.position.set(0, 0.026, 23.5); scene.add(stopLine);
+            // 반대편 정지선 (z=32)
+            const stopLine2 = new THREE.Mesh(new THREE.PlaneGeometry(12, 0.5), new THREE.MeshBasicMaterial({color:0xffffff}));
+            stopLine2.rotation.x = -Math.PI / 2; stopLine2.position.set(0, 0.026, 32.5); scene.add(stopLine2);
+            // 가로 도로 정지선 (좌/우)
+            const stopLineL = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 8), new THREE.MeshBasicMaterial({color:0xffffff}));
+            stopLineL.rotation.x = -Math.PI / 2; stopLineL.position.set(-6, 0.026, 28); scene.add(stopLineL);
+            const stopLineR = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 8), new THREE.MeshBasicMaterial({color:0xffffff}));
+            stopLineR.rotation.x = -Math.PI / 2; stopLineR.position.set(6, 0.026, 28); scene.add(stopLineR);
 
-            // 횡단보도 (zebra) 26~30m 전방 — 밝은 흰 줄무늬
+            // 9) 횡단보도 zebra — 4방향 (ego 진입 직전 + 교차로 통과 후 + 좌/우 가로)
             const zebraMat = new THREE.MeshBasicMaterial({color:0xeef0f4});
-            for (let i = 0; i < 12; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 4.0), zebraMat);
+            // ego 진입 직전 (z=24~26m, 정지선 너머 바로)
+            for (let i = 0; i < 8; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 2.0), zebraMat);
               stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(-9 + i * 1.6, 0.03, 28); scene.add(stripe);
+              stripe.position.set(-5.5 + i * 1.6, 0.028, 25); scene.add(stripe);
+            }
+            // 교차로 너머 (z=30~32m)
+            for (let i = 0; i < 8; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 2.0), zebraMat);
+              stripe.rotation.x = -Math.PI / 2;
+              stripe.position.set(-5.5 + i * 1.6, 0.028, 31); scene.add(stripe);
+            }
+            // 좌측 가로 도로 횡단 (x=-7~-5, z 방향)
+            for (let i = 0; i < 6; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.7), zebraMat);
+              stripe.rotation.x = -Math.PI / 2;
+              stripe.position.set(-6, 0.028, 24.5 + i * 1.4); scene.add(stripe);
+            }
+            // 우측 가로 도로 횡단
+            for (let i = 0; i < 6; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.7), zebraMat);
+              stripe.rotation.x = -Math.PI / 2;
+              stripe.position.set(6, 0.028, 24.5 + i * 1.4); scene.add(stripe);
             }
 
-            // 교차로 (전방 32m) — 가로 방향 도로 (40m wide)
-            const crossRoad = new THREE.Mesh(
-              new THREE.PlaneGeometry(40, 12),
-              new THREE.MeshStandardMaterial({color:0x14181f, metalness:0.05, roughness:0.95})
-            );
-            crossRoad.rotation.x = -Math.PI / 2;
-            crossRoad.position.set(0, 0.001, 36); scene.add(crossRoad);
-
-            // 교차로 가로 차선 (옆길)
-            for (const lz of [33.5, 36, 38.5]) {
-              for (let dx = -18; dx < 18; dx += 3.5) {
-                const seg = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.16), laneMat);
-                seg.rotation.x = -Math.PI / 2;
-                seg.position.set(dx, 0.015, lz); scene.add(seg);
-              }
-            }
-
-            // 자차 차로 가이드 (시안 발광 strip) — ego 가 어느 차로 있는지
+            // 10) 자차 차로 가이드 (시안 strip) — 정지선까지만
             const egoLaneL = new THREE.Mesh(
-              new THREE.PlaneGeometry(0.05, 24),
+              new THREE.PlaneGeometry(0.06, 22),
               new THREE.MeshBasicMaterial({color:0x00c8ff, transparent:true, opacity:0.7})
             );
             egoLaneL.rotation.x = -Math.PI / 2;
-            egoLaneL.position.set(-1.8, 0.04, 12); scene.add(egoLaneL);
+            egoLaneL.position.set(-1.5, 0.04, 11); scene.add(egoLaneL);
             const egoLaneR = new THREE.Mesh(
-              new THREE.PlaneGeometry(0.05, 24),
+              new THREE.PlaneGeometry(0.06, 22),
               new THREE.MeshBasicMaterial({color:0x00c8ff, transparent:true, opacity:0.7})
             );
             egoLaneR.rotation.x = -Math.PI / 2;
-            egoLaneR.position.set(1.8, 0.04, 12); scene.add(egoLaneR);
+            egoLaneR.position.set(1.5, 0.04, 11); scene.add(egoLaneR);
 
-            // 진행 방향 화살표 (ego 차로 중앙, 전방 8/16m)
+            // 11) 진행 화살표 (ego 차로 중앙, 정지선까지)
             const arrowMat = new THREE.MeshBasicMaterial({color:0xeef0f4, transparent:true, opacity:0.55});
-            for (const az of [8, 16]) {
-              // 화살표 stem
+            for (const az of [8, 18]) {
               const stem = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 1.6), arrowMat);
-              stem.rotation.x = -Math.PI / 2; stem.position.set(0, 0.02, az); scene.add(stem);
-              // 화살표 head
+              stem.rotation.x = -Math.PI / 2; stem.position.set(0, 0.022, az); scene.add(stem);
               const headGeom = new THREE.ConeGeometry(0.6, 0.9, 3);
               const head = new THREE.Mesh(headGeom, arrowMat);
-              head.rotation.x = Math.PI / 2; head.position.set(0, 0.025, az + 1.0); scene.add(head);
+              head.rotation.x = Math.PI / 2; head.position.set(0, 0.026, az + 1.0); scene.add(head);
             }
 
             // Ego car (시안 발광 박스 + headlight 빔)

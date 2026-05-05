@@ -1348,29 +1348,6 @@ def prototype_ui():
             <div class="dashboard-grid">
               <div class="left-col">
                 <div class="card">
-                  <div class="section-label">// BEV Tesla-style · 객체별 색상 클러스터 · <span id="occModeLabel">3D Voxel</span></div>
-                  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-                    <button class="btn-secondary" style="width:auto;padding:7px 12px;font-size:11px;" onclick="setOccMode('2d')">2D Heatmap</button>
-                    <button class="btn-accent" style="width:auto;padding:7px 12px;font-size:11px;" onclick="setOccMode('3d')">3D Voxel</button>
-                    <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);align-self:center;">자동 갱신 1초</span>
-                  </div>
-                  <div class="preview-wrap" id="occCanvasWrap" style="height:520px;display:flex;align-items:center;justify-content:center;">
-                    <div class="placeholder"><div class="placeholder-icon">🗺️</div>BEV 추정 결과 로딩 중…</div>
-                  </div>
-                  <canvas id="occThreeCanvas" style="display:none;width:100%;height:520px;border-radius:12px;background:#04080e;"></canvas>
-                  <!-- 색상 범례 -->
-                  <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;">
-                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#3a8fff;border-radius:2px;"></span><span style="color:var(--muted);">Vehicle</span></div>
-                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#ff8c00;border-radius:2px;"></span><span style="color:var(--muted);">Motorcycle</span></div>
-                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#7c3aed;border-radius:2px;opacity:0.6;"></span><span style="color:var(--muted);">Occlusion</span></div>
-                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#00d8ff;border-radius:2px;"></span><span style="color:var(--muted);">Pedestrian</span></div>
-                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#ff5a5a;border-radius:2px;"></span><span style="color:var(--muted);">Signal</span></div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="right-col">
-                <div class="card">
                   <div class="section-label">// 검출된 객체 · 거리 / 종류 / 라벨</div>
                   <div id="hotspotList" style="margin-top:8px;display:grid;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;">
                     <div class="placeholder">시나리오 로딩 중…</div>
@@ -1404,6 +1381,29 @@ def prototype_ui():
                     <div id="occAttention" class="rank-body" style="margin-top:10px;font-size:11px;"></div>
                     <div id="occResultBox" class="status" style="margin-top:10px;"><div class="status-meta">결과가 여기 표시됩니다.</div></div>
                   </details>
+                </div>
+              </div>
+
+              <div class="right-col">
+                <div class="card">
+                  <div class="section-label">// BEV Tesla-style · 객체별 색상 클러스터 · <span id="occModeLabel">3D Voxel</span></div>
+                  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                    <button class="btn-secondary" style="width:auto;padding:7px 12px;font-size:11px;" onclick="setOccMode('2d')">2D Heatmap</button>
+                    <button class="btn-accent" style="width:auto;padding:7px 12px;font-size:11px;" onclick="setOccMode('3d')">3D Voxel</button>
+                    <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);align-self:center;">자동 갱신 1초</span>
+                  </div>
+                  <div class="preview-wrap" id="occCanvasWrap" style="height:640px;display:flex;align-items:center;justify-content:center;">
+                    <div class="placeholder"><div class="placeholder-icon">🗺️</div>BEV 추정 결과 로딩 중…</div>
+                  </div>
+                  <canvas id="occThreeCanvas" style="display:none;width:100%;height:640px;border-radius:12px;background:#04080e;"></canvas>
+                  <!-- 색상 범례 -->
+                  <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;">
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#3a8fff;border-radius:2px;"></span><span style="color:var(--muted);">Vehicle</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#ff8c00;border-radius:2px;"></span><span style="color:var(--muted);">Motorcycle</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#7c3aed;border-radius:2px;opacity:0.6;"></span><span style="color:var(--muted);">Occlusion</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#00d8ff;border-radius:2px;"></span><span style="color:var(--muted);">Pedestrian</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#ff5a5a;border-radius:2px;"></span><span style="color:var(--muted);">Signal</span></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2804,7 +2804,7 @@ def prototype_ui():
             }
             function resize() {
               const w = canvas.clientWidth || 800;
-              const h = 560;
+              const h = 640;
               renderer.setSize(w, h, false);
               camera.aspect = w / h;
               camera.updateProjectionMatrix();

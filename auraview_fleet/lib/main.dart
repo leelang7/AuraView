@@ -130,13 +130,19 @@ class _FleetHomeState extends State<FleetHome>
 
   // BEV 오버레이 — 도시정보(신호/VDS/TAAS) 결합 (기본 ON)
   bool _bevOpen = true;
-  Map<String, dynamic>? _bev;
+  Map<String, dynamic>? _bev;          // 로컬 voxelize 결과
+  Map<String, dynamic>? _serverBev;    // /occupancy/demo class_grid_flat (Tesla-style 객체 형상)
   Map<String, dynamic>? _fusion;
   Map<String, dynamic>? _altSignal;       // /signals/{iid}/alternate 응답
   String? _autoIntersectionId;            // GPS 기반 자동 감지 교차로
   String? _autoIntersectionName;
   Timer? _bevTimer;
+  Timer? _scnRotateTimer;
   List<double>? _prevFrameGray;  // motion diff 용 이전 프레임
+
+  // BEV 시나리오 자동 순환 (3초 주기) — 4 시나리오
+  static const _scnList = ['truck_occlusion', 'motorcycle_blindspot', 'signal_occlusion', 'rainy_intersection'];
+  int _scnIdx = 0;
 
   // 데모 시드와 동일 — GPS 근접 교차로 매칭용
   static const _knownIntersections = <Map<String, dynamic>>[
@@ -197,6 +203,7 @@ class _FleetHomeState extends State<FleetHome>
     WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     _bevTimer?.cancel();
+    _scnRotateTimer?.cancel();
     _posSub?.cancel();
     _cam?.dispose();
     _pulseAnim.dispose();
@@ -260,6 +267,17 @@ class _FleetHomeState extends State<FleetHome>
         }
       } catch (_) {}
     }
+
+    // Tesla-style 객체 형상 BEV — /occupancy/demo class_grid_flat 받기
+    try {
+      final scn = _scnList[_scnIdx % _scnList.length];
+      final r = await http.get(Uri.parse('$kApiBase/occupancy/demo?scenario=$scn'))
+          .timeout(const Duration(seconds: 6));
+      if (r.statusCode == 200) {
+        final body = jsonDecode(r.body) as Map<String, dynamic>;
+        if (mounted) setState(() => _serverBev = body);
+      }
+    } catch (_) {}
   }
 
   /// voxel grid 의 신호등 영역 (멀리·중앙) 점유율을 0~1 occlusion_score 로 변환.
@@ -476,6 +494,12 @@ class _FleetHomeState extends State<FleetHome>
     // BEV 자동 시작 (5초 주기)
     _fetchBev();
     _bevTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchBev());
+
+    // 시나리오 자동 순환 (8초 주기) — 4종 BEV demo 회전
+    _scnRotateTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      _scnIdx = (_scnIdx + 1) % _scnList.length;
+      _fetchBev();
+    });
 
     if (mounted) setState(() => _initing = false);
   }
@@ -929,9 +953,10 @@ class _FleetHomeState extends State<FleetHome>
             ),
 
             // BEV — 우하단 (Tesla 식 mini voxel · 항상 ON)
+            // 서버 /occupancy/demo (class_grid_flat) 우선 사용 — 객체 형상 클러스터 표시
             Positioned(
               right: 12, bottom: 110,
-              child: _BevPanel(bev: _bev, fusion: _fusion),
+              child: _BevPanel(bev: _serverBev ?? _bev, fusion: _fusion),
             ),
 
             // ★ HUD: 가려진 신호등 자동 안내 — alt_signal 응답 있을 때 표시
@@ -1407,6 +1432,53 @@ class _Bev3DVoxelPainter extends CustomPainter {
       ..strokeWidth = 0.5);
   }
 
+  /// 보행자 — 시안 원기둥 (몸통) + 작은 구 (머리) + 바닥 펄스 링
+  void _drawPedestrianMarker(Canvas canvas, Size size, double x, double z, double cx, double cz) {
+    const color = Color(0xFF00D8FF);
+    final base = _project(x, 0, z, cx, cz, size);
+    final mid = _project(x, 0.9, z, cx, cz, size);
+    final top = _project(x, 1.5, z, cx, cz, size);
+
+    // 바닥 펄스 링
+    canvas.drawCircle(base, 4.5, Paint()
+      ..color = color.withValues(alpha: 0.30)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+    canvas.drawCircle(base, 3.0, Paint()
+      ..color = color.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0);
+    // 몸통 (선)
+    canvas.drawLine(base, mid, Paint()
+      ..color = color
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round);
+    // 머리 (구)
+    canvas.drawCircle(top, 2.6, Paint()
+      ..color = color
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2));
+    canvas.drawCircle(top, 1.8, Paint()..color = color);
+  }
+
+  /// 신호등 — 회색 폴 + 적색 라이트 (높이 4.2m)
+  void _drawSignalMarker(Canvas canvas, Size size, double x, double z, double cx, double cz) {
+    final base = _project(x, 0, z, cx, cz, size);
+    final lightBase = _project(x, 3.5, z, cx, cz, size);
+    final lightTop = _project(x, 4.2, z, cx, cz, size);
+    // 폴 (회색)
+    canvas.drawLine(base, lightBase, Paint()
+      ..color = const Color(0xFF4A5566)
+      ..strokeWidth = 2.0);
+    // 라이트 박스 (검정)
+    final boxRect = Rect.fromPoints(lightBase, lightTop).inflate(2.5);
+    canvas.drawRect(boxRect, Paint()..color = const Color(0xFF1A2030));
+    // 적색 발광
+    final lightCenter = Offset((lightBase.dx + lightTop.dx) / 2, (lightBase.dy + lightTop.dy) / 2);
+    canvas.drawCircle(lightCenter, 3.5, Paint()
+      ..color = const Color(0xFFFF3030)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+    canvas.drawCircle(lightCenter, 2.2, Paint()..color = const Color(0xFFFF5050));
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     // 배경
@@ -1435,38 +1507,86 @@ class _Bev3DVoxelPainter extends CustomPainter {
     // ── EGO 차량 (시안 박스, 원점)
     _drawVoxel(canvas, size, 0, 0, 1.6, const Color(0xFF00C8FF), cx, cz);
 
-    // ── voxel grid (점유 → height 비례)
+    // ── voxel grid — 클래스 인식 (class_grid_flat) 우선, 없으면 heatmap 폴백
     final flat = bev?['grid_flat'];
     final shape = bev?['grid_shape_flat'];
+    final classFlat = bev?['class_grid_flat'];
     if (flat is List && shape is List && shape.length == 2) {
       final rows = (shape[0] as num).toInt();
       final cols = (shape[1] as num).toInt();
+      final hasClass = classFlat is List && classFlat.length == rows * cols;
+
+      // Tesla-style 객체별 색상 (web 와 동일)
+      const classColors = <int, Color>{
+        1: Color(0xFF3A8FFF),  // vehicle/truck/bus
+        2: Color(0xFFFF8C00),  // motorcycle
+        3: Color(0xFF7C3AED),  // occlusion
+        4: Color(0xFF00D8FF),  // pedestrian
+        5: Color(0xFFFF5A5A),  // signal
+      };
+      const classHeights = <int, double>{1: 1.6, 2: 1.0, 3: 0.4, 4: 1.5, 5: 4.2};
+
       // 화면 가까운 voxel 부터 그리도록 z 큰 것 먼저 (back to front)
-      final cells = <List<num>>[];  // [r, c, p]
+      final cells = <List<num>>[];  // [r, c, p, cls]
       for (int r = 0; r < rows; r++) {
         for (int cc = 0; cc < cols; cc++) {
           final p = ((flat[r * cols + cc] ?? 0) as num).toDouble();
           if (p < 0.15) continue;
-          cells.add([r, cc, p]);
+          final cls = hasClass ? ((classFlat[r * cols + cc] as num?)?.toInt() ?? 0) : 0;
+          if (hasClass && cls == 0) continue;  // class 모드: free space 스킵
+          cells.add([r, cc, p, cls]);
         }
       }
       cells.sort((a, b) => (b[0] as num).compareTo(a[0] as num));  // 멀리 → 가까이
+
       for (final cell in cells) {
         final r = (cell[0] as num).toInt();
         final cc = (cell[1] as num).toInt();
         final p = (cell[2] as num).toDouble();
-        // 좌표: row 0 = ego, row max = 40m 전방. col 중앙 39
+        final cls = (cell[3] as num).toInt();
         final x = (cc - cols / 2 + 0.5) * (40.0 / cols);
         final z = r * (40.0 / rows);
-        final height = (p * 5.0).clamp(0.3, 5.0);
-        // 색: 점유 확률 → 시안 → 주황 → 빨강
+
         Color col;
-        if (p < 0.4) {
-          col = Color.lerp(const Color(0xFF005580), const Color(0xFFFFB020), p / 0.4)!;
+        double height;
+        if (hasClass && cls > 0) {
+          col = classColors[cls] ?? const Color(0xFF888888);
+          height = classHeights[cls] ?? 1.0;
+          if (cls == 4) {
+            // 보행자: voxel 대신 작은 시안 원기둥 (구 + 라인) — 사람 모양 강조
+            _drawPedestrianMarker(canvas, size, x, z, cx, cz);
+            continue;
+          }
+          if (cls == 5) {
+            // 신호등: 가는 폴 + 빨간 라이트
+            _drawSignalMarker(canvas, size, x, z, cx, cz);
+            continue;
+          }
         } else {
-          col = Color.lerp(const Color(0xFFFFB020), const Color(0xFFFF3B3B), (p - 0.4) / 0.6)!;
+          height = (p * 5.0).clamp(0.3, 5.0);
+          if (p < 0.4) {
+            col = Color.lerp(const Color(0xFF005580), const Color(0xFFFFB020), p / 0.4)!;
+          } else {
+            col = Color.lerp(const Color(0xFFFFB020), const Color(0xFFFF3B3B), (p - 0.4) / 0.6)!;
+          }
         }
         _drawVoxel(canvas, size, x, z, height, col, cx, cz);
+      }
+
+      // 시나리오 라벨 — 좌측 상단 작은 칩
+      final scn = bev?['scenario'];
+      if (scn is Map && scn['title'] is String) {
+        final tp = TextPainter(
+          text: TextSpan(text: scn['title'] as String,
+              style: const TextStyle(color: Color(0xFFE2EAF5), fontSize: 8.5, fontWeight: FontWeight.w800)),
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: size.width - 16);
+        final bgRect = Rect.fromLTWH(6, 6, tp.width + 10, tp.height + 6);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(bgRect, const Radius.circular(6)),
+          Paint()..color = const Color(0xCC0D1520),
+        );
+        tp.paint(canvas, const Offset(11, 9));
       }
     }
 

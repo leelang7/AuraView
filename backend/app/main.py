@@ -2763,11 +2763,11 @@ def prototype_ui():
             scene.background = new THREE.Color(0x04080e);
 
             // 전방 → Z+, 좌우 → X, 높이 → Y
-            // ★ 카메라: 교차로 북쪽 위 — world +X 가 screen RIGHT 로 표시되도록
-            //   (이전: south side → cross product 으로 X 축이 flip 되어 우회전이 좌회전 처럼 보임)
+            // ★ 카메라: ego 뒤(남쪽) 위 — Tesla dashboard 시점
+            //   ego 화면 하단에서 출발 → 북쪽 forward (위로)
             const camera = new THREE.PerspectiveCamera(50, 16/9, 0.1, 500);
-            camera.position.set(0, 32, 56);
-            camera.lookAt(0, 0, 16);
+            camera.position.set(0, 28, -22);
+            camera.lookAt(0, 0, 20);
 
             // Lighting
             scene.add(new THREE.AmbientLight(0x88aacc, 0.6));
@@ -2887,18 +2887,6 @@ def prototype_ui():
               const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 2.0), zebraMat);
               stripe.rotation.x = -Math.PI / 2;
               stripe.position.set(-5.0 + i * 1.5, 0.028, 31); scene.add(stripe);
-            }
-            // 좌측 가로 도로 횡단 (x=-7m, z 방향 26~30)
-            for (let i = 0; i < 4; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), zebraMat);
-              stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(-7, 0.028, 25.5 + i * 1.5); scene.add(stripe);
-            }
-            // 우측 가로 도로 횡단
-            for (let i = 0; i < 4; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), zebraMat);
-              stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(7, 0.028, 25.5 + i * 1.5); scene.add(stripe);
             }
 
             // 9.5) ★ 신호등 폴 — 교차로 4 코너 (횡단보도 위치와 일치)

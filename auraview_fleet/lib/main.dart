@@ -2342,16 +2342,6 @@ class _Bev3DVoxelPainter extends CustomPainter {
       final lx = -5.0 + i * 1.5;
       canvas.drawPath(zebra(lx - 0.3, 30.5, lx + 0.3, 31.5), zebraPaint);
     }
-    // 좌측 가로 횡단 (x=-7m)
-    for (int i = 0; i < 4; i++) {
-      final lz = 25.5 + i * 1.5;
-      canvas.drawPath(zebra(-7.7, lz - 0.3, -6.3, lz + 0.3), zebraPaint);
-    }
-    // 우측 가로 횡단
-    for (int i = 0; i < 4; i++) {
-      final lz = 25.5 + i * 1.5;
-      canvas.drawPath(zebra(6.3, lz - 0.3, 7.7, lz + 0.3), zebraPaint);
-    }
 
     // 8.5) ★ 신호등 폴 — 교차로 4 코너 (횡단보도와 일치)
     final polePaint = Paint()

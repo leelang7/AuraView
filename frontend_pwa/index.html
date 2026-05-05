@@ -61,11 +61,19 @@
         <div class="hud-top">
           <span class="chip" id="chip-entropy">entropy —</span>
           <span class="chip" id="chip-reason">awaiting</span>
+          <span class="chip ok" id="bevToggle" style="cursor:pointer;pointer-events:auto;user-select:none;">▣ BEV</span>
         </div>
         <div class="hud-bottom">
           <span class="chip" id="chip-fps">fps —</span>
           <span class="chip" id="chip-geo">geo —</span>
         </div>
+      </div>
+      <!-- BEV 오버레이 패널 (토글 ON 시 표시) -->
+      <div id="bevPanel" style="display:none;position:absolute;top:42px;right:8px;width:200px;background:rgba(8,12,20,0.92);border:1px solid rgba(0,200,255,0.45);border-radius:10px;padding:6px;z-index:20;box-shadow:0 8px 24px rgba(0,200,255,0.2);">
+        <div style="font:bold 9px ui-monospace,monospace;color:var(--accent);letter-spacing:2px;margin-bottom:4px;">BEV · CITY-AUGMENTED</div>
+        <canvas id="bevCanvas" width="380" height="380" style="display:block;width:100%;aspect-ratio:1;border-radius:6px;background:#050a10;"></canvas>
+        <div id="bevStat" style="font:bold 11px ui-monospace,monospace;color:var(--text);margin-top:5px;line-height:1.4;">로딩 중…</div>
+        <div id="bevCity" style="font:10px ui-monospace,monospace;color:var(--muted);margin-top:2px;line-height:1.4;"></div>
       </div>
     </div>
 

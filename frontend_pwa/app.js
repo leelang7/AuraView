@@ -200,6 +200,140 @@ async function refreshStats() {
   }
 }
 
+/* ── BEV 오버레이 (단안 카메라 + 도시정보 결합) ───────────────────── */
+let bevOpen = false;
+let bevTimer = null;
+let bevData = null;
+let fusionData = null;
+
+async function fetchBev() {
+  try {
+    const r = await fetch(API_BASE + '/occupancy/demo');
+    if (r.ok) bevData = await r.json();
+  } catch(e) {}
+  const iid = ($('intersectionId').value || '').trim();
+  if (iid) {
+    try {
+      const r = await fetch(API_BASE + '/fusion/intersection/' + iid);
+      if (r.ok) fusionData = await r.json();
+    } catch(e) {}
+  } else {
+    fusionData = null;
+  }
+  renderBev();
+}
+
+function renderBev() {
+  const c = $('bevCanvas');
+  if (!c || !bevData) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.fillStyle = '#050A10'; ctx.fillRect(0, 0, W, H);
+
+  // 차로 가이드 점선
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = 1; ctx.setLineDash([4, 6]);
+  for (const cx of [W*0.30, W*0.50, W*0.70]) {
+    ctx.beginPath(); ctx.moveTo(cx, 4); ctx.lineTo(cx, H-4); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // 그리드 (40x40 다운샘플)
+  const flat = bevData.grid_flat;
+  const shape = bevData.grid_shape_flat;
+  if (Array.isArray(flat) && Array.isArray(shape) && shape.length === 2) {
+    const rows = shape[0], cols = shape[1];
+    const cw = W / cols, ch = H / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let cc = 0; cc < cols; cc++) {
+        const p = flat[r * cols + cc] || 0;
+        if (p < 0.08) continue;
+        const t = Math.min(1, Math.max(0, p));
+        const yTop = H - (r + 1) * ch;
+        const xLeft = cc * cw;
+        ctx.fillStyle = `rgba(${Math.round(255*t)},${Math.round(180-140*t)},${Math.round(255*(1-t))},${0.5+0.4*t})`;
+        ctx.fillRect(xLeft, yTop, cw + 0.5, ch + 0.5);
+      }
+    }
+  }
+
+  // EGO (하단 중앙)
+  ctx.fillStyle = '#00C8FF';
+  ctx.beginPath(); ctx.arc(W*0.5, H-12, 6, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#FFF'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Hotspot 박스 + 거리
+  const colorOf = k => ({object:'#FF3B3B', occluded_shadow:'#FFB020', intent_prior:'#00E09A', signal_shadow:'#7C3AED'})[k] || '#00C8FF';
+  ctx.font = 'bold 10px ui-monospace, monospace';
+  const fineRows = (bevData.shape || [80,80])[0];
+  const fineCols = (bevData.shape || [80,80])[1];
+  for (const h of (bevData.hotspots || [])) {
+    const px = (h.col / (fineCols - 1)) * W;
+    const py = H - (h.row / (fineRows - 1)) * H;
+    const col = colorOf(h.kind);
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.strokeRect(px - 14, py - 11, 28, 22);
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = col;
+    ctx.fillText(`${(h.distance_m).toFixed(0)}m`, px + 16, py - 2);
+  }
+
+  // "도시정보 결합" 배지
+  if (fusionData) {
+    ctx.fillStyle = 'rgba(0,224,154,0.18)';
+    ctx.fillRect(6, 6, 90, 18);
+    ctx.fillStyle = '#00E09A'; ctx.font = 'bold 10px ui-monospace, monospace';
+    ctx.fillText('+CITY DATA', 11, 19);
+  }
+
+  // 우상단 risk_summary
+  const rs = bevData.risk_summary;
+  if (rs) {
+    ctx.font = 'bold 10px ui-monospace, monospace';
+    ctx.fillStyle = '#FF6B6B';
+    ctx.fillText(`${(rs.p_collision*100).toFixed(0)}% COL`, W-78, 18);
+    ctx.fillStyle = '#00E09A';
+    ctx.fillText(`${rs.lead_time_s}s LEAD`, W-78, 32);
+  }
+
+  // 텍스트 라인
+  if (rs) {
+    $('bevStat').innerHTML = `<span style="color:#FF6B6B;">${(rs.p_collision*100).toFixed(0)}% 충돌</span> · <span style="color:#00E09A;">${rs.lead_time_s}s 선행</span>`;
+  }
+  if (fusionData) {
+    let sigState = '?', vdsKmh = '?', taas = '?';
+    try {
+      const sig = fusionData.sources?.signal?.body?.items?.item?.stPdsgSttsNm;
+      if (sig) sigState = sig.includes('Stop') ? '정지' : '진행';
+      const vds = fusionData.sources?.vds?.list;
+      if (Array.isArray(vds) && vds.length) vdsKmh = `${vds[0].speed}km/h`;
+      const acc = fusionData.sources?.accidents_history;
+      if (Array.isArray(acc)) taas = acc.length;
+    } catch(e) {}
+    $('bevCity').textContent = `🚦 ${sigState} · ⚡ ${vdsKmh} · ⚠ TAAS ${taas}`;
+  } else {
+    $('bevCity').textContent = '교차로 ID 입력 시 도시정보 결합';
+  }
+}
+
+function toggleBev() {
+  bevOpen = !bevOpen;
+  $('bevPanel').style.display = bevOpen ? 'block' : 'none';
+  const tog = $('bevToggle');
+  if (bevOpen) {
+    tog.style.borderColor = 'var(--accent)';
+    tog.style.color = 'var(--accent)';
+    fetchBev();
+    bevTimer = setInterval(fetchBev, 5000);
+  } else {
+    tog.style.borderColor = '';
+    tog.style.color = '';
+    if (bevTimer) clearInterval(bevTimer);
+    bevTimer = null;
+  }
+}
+
 /* ── init ── */
 window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
@@ -208,6 +342,7 @@ window.addEventListener('load', () => {
   $('startBtn').onclick = startShadow;
   $('capBtn').onclick = manualContribute;
   $('statsBtn').onclick = refreshStats;
+  $('bevToggle').onclick = toggleBev;
   startCamera();
   startGeo();
   refreshStats();

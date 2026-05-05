@@ -130,8 +130,8 @@ class _FleetHomeState extends State<FleetHome>
 
   // BEV 오버레이 — 도시정보(신호/VDS/TAAS) 결합 (기본 ON)
   bool _bevOpen = true;
-  Map<String, dynamic>? _bev;          // 로컬 voxelize 결과
-  Map<String, dynamic>? _serverBev;    // /occupancy/demo class_grid_flat (Tesla-style 객체 형상)
+  Map<String, dynamic>? _bev;          // ★ LIVE: 카메라 프레임 → 클라이언트 voxelize 결과 (실시간)
+  Map<String, dynamic>? _serverBev;    // ★ DEMO: /occupancy/demo class_grid_flat (시나리오 데모)
   Map<String, dynamic>? _fusion;
   Map<String, dynamic>? _altSignal;       // /signals/{iid}/alternate 응답
   String? _autoIntersectionId;            // GPS 기반 자동 감지 교차로
@@ -140,8 +140,17 @@ class _FleetHomeState extends State<FleetHome>
   Timer? _scnRotateTimer;
   List<double>? _prevFrameGray;  // motion diff 용 이전 프레임
 
-  // BEV 시나리오 자동 순환 (3초 주기) — 4 시나리오
+  // ★ DEMO 시나리오 모드 — 사용자가 명시적으로 켤 때만 활성 (기본 OFF)
+  // OFF: LIVE 모드 — 카메라 frame → 클라이언트 voxel (실제 환경)
+  // ON:  DEMO 모드 — 서버 4 시나리오 자동 순환 (실내 시연용)
+  bool _demoScenarioOn = false;
   static const _scnList = ['truck_occlusion', 'motorcycle_blindspot', 'signal_occlusion', 'rainy_intersection'];
+  static const _scnLabels = {
+    'truck_occlusion': '🚛 트럭 가림',
+    'motorcycle_blindspot': '◀ 사각지대 이륜',
+    'signal_occlusion': '🚦 버스 뒤 신호',
+    'rainy_intersection': '🌧️ 우천',
+  };
   int _scnIdx = 0;
 
   // 데모 시드와 동일 — GPS 근접 교차로 매칭용
@@ -223,6 +232,25 @@ class _FleetHomeState extends State<FleetHome>
     }
   }
 
+  /// DEMO 시나리오 모드 토글 — 사용자가 명시적으로 ON 할 때만 서버 시나리오 사용
+  /// 야외 실주행 시 OFF 유지 → 카메라 voxel 만으로 BEV 표시
+  void _toggleDemoScenario() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _demoScenarioOn = !_demoScenarioOn;
+      if (!_demoScenarioOn) _serverBev = null;
+    });
+    _scnRotateTimer?.cancel();
+    if (_demoScenarioOn) {
+      _scnIdx = 0;
+      _fetchBev();
+      _scnRotateTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+        _scnIdx = (_scnIdx + 1) % _scnList.length;
+        _fetchBev();
+      });
+    }
+  }
+
   /// 카메라 프레임 → 클라이언트(엣지) voxel 직접 생성. 서버 호출 X.
   /// 도시정보 결합만 가벼운 GET /fusion (옵션).
   Future<void> _fetchBev() async {
@@ -268,16 +296,22 @@ class _FleetHomeState extends State<FleetHome>
       } catch (_) {}
     }
 
-    // Tesla-style 객체 형상 BEV — /occupancy/demo class_grid_flat 받기
-    try {
-      final scn = _scnList[_scnIdx % _scnList.length];
-      final r = await http.get(Uri.parse('$kApiBase/occupancy/demo?scenario=$scn'))
-          .timeout(const Duration(seconds: 6));
-      if (r.statusCode == 200) {
-        final body = jsonDecode(r.body) as Map<String, dynamic>;
-        if (mounted) setState(() => _serverBev = body);
-      }
-    } catch (_) {}
+    // ★ DEMO 모드일 때만 — /occupancy/demo class_grid_flat (실내 시연용)
+    // LIVE 모드 (기본): 카메라 → 클라이언트 voxel 만 사용 (서버 미호출)
+    if (_demoScenarioOn) {
+      try {
+        final scn = _scnList[_scnIdx % _scnList.length];
+        final r = await http.get(Uri.parse('$kApiBase/occupancy/demo?scenario=$scn'))
+            .timeout(const Duration(seconds: 6));
+        if (r.statusCode == 200) {
+          final body = jsonDecode(r.body) as Map<String, dynamic>;
+          if (mounted) setState(() => _serverBev = body);
+        }
+      } catch (_) {}
+    } else if (_serverBev != null) {
+      // 데모 OFF 즉시 서버 BEV 비우기
+      if (mounted) setState(() => _serverBev = null);
+    }
   }
 
   /// voxel grid 의 신호등 영역 (멀리·중앙) 점유율을 0~1 occlusion_score 로 변환.
@@ -491,15 +525,10 @@ class _FleetHomeState extends State<FleetHome>
     _pollServer();
     Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
 
-    // BEV 자동 시작 (5초 주기)
+    // BEV 자동 시작 (5초 주기) — LIVE: 카메라 voxelize 만, DEMO: + 서버 시나리오
     _fetchBev();
     _bevTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchBev());
-
-    // 시나리오 자동 순환 (8초 주기) — 4종 BEV demo 회전
-    _scnRotateTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      _scnIdx = (_scnIdx + 1) % _scnList.length;
-      _fetchBev();
-    });
+    // 시나리오 회전 타이머는 demoScenario 토글 시에만 시작 (_toggleDemoScenario)
 
     if (mounted) setState(() => _initing = false);
   }
@@ -953,10 +982,19 @@ class _FleetHomeState extends State<FleetHome>
             ),
 
             // BEV — 우하단 (Tesla 식 mini voxel · 항상 ON)
-            // 서버 /occupancy/demo (class_grid_flat) 우선 사용 — 객체 형상 클러스터 표시
+            // LIVE 모드 (기본): 카메라 frame → 클라이언트 voxel
+            // DEMO 모드 (토글 ON): 서버 /occupancy/demo class_grid_flat (시나리오 4종)
             Positioned(
               right: 12, bottom: 110,
-              child: _BevPanel(bev: _serverBev ?? _bev, fusion: _fusion),
+              child: _BevPanel(
+                bev: _demoScenarioOn ? (_serverBev ?? _bev) : _bev,
+                fusion: _fusion,
+                demoMode: _demoScenarioOn,
+                scenarioLabel: _demoScenarioOn
+                    ? (_scnLabels[_scnList[_scnIdx % _scnList.length]] ?? '')
+                    : null,
+                onToggleDemo: _toggleDemoScenario,
+              ),
             ),
 
             // ★ HUD: 가려진 신호등 자동 안내 — alt_signal 응답 있을 때 표시
@@ -1210,7 +1248,10 @@ class _BevToggleChip extends StatelessWidget {
 class _BevPanel extends StatefulWidget {
   final Map<String, dynamic>? bev;
   final Map<String, dynamic>? fusion;
-  const _BevPanel({this.bev, this.fusion});
+  final bool demoMode;            // ★ true 면 DEMO 시나리오 표시
+  final String? scenarioLabel;    // 활성 시나리오 명 (DEMO 모드일 때만)
+  final VoidCallback? onToggleDemo;
+  const _BevPanel({this.bev, this.fusion, this.demoMode = false, this.scenarioLabel, this.onToggleDemo});
 
   @override
   State<_BevPanel> createState() => _BevPanelState();
@@ -1239,14 +1280,18 @@ class _BevPanelState extends State<_BevPanel>
   Widget build(BuildContext context) {
     // 코너 오버레이 — 카메라 가리지 않도록 200x200 정사각형
     const panelW = 200.0;
+    final isDemo = widget.demoMode;
+    final modeColor = isDemo ? _warn : _safe;
+    final modeLabel = isDemo ? 'DEMO 시나리오' : 'LIVE · 카메라 voxel';
+
     return Container(
       width: panelW,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: _bg.withValues(alpha: 0.88),
-        border: Border.all(color: _accent.withValues(alpha: 0.55), width: 1.5),
+        border: Border.all(color: modeColor.withValues(alpha: 0.55), width: 1.5),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.30), blurRadius: 14)],
+        boxShadow: [BoxShadow(color: modeColor.withValues(alpha: 0.30), blurRadius: 14)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1259,14 +1304,38 @@ class _BevPanelState extends State<_BevPanel>
                  style: TextStyle(color: _accent, fontSize: 9,
                                   fontWeight: FontWeight.w800, letterSpacing: 1.5)),
             const Spacer(),
-            Container(
-              width: 6, height: 6,
-              decoration: BoxDecoration(
-                color: _safe, shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
+            // 모드 토글 (탭 한번에 LIVE↔DEMO)
+            GestureDetector(
+              onTap: widget.onToggleDemo,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: modeColor.withValues(alpha: 0.18),
+                  border: Border.all(color: modeColor, width: 0.8),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 5, height: 5,
+                    decoration: BoxDecoration(
+                      color: modeColor, shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: modeColor, blurRadius: 4)],
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Text(modeLabel,
+                       style: TextStyle(color: modeColor, fontSize: 7.5,
+                                        fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                ]),
               ),
             ),
           ]),
+          if (isDemo && widget.scenarioLabel != null && widget.scenarioLabel!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(widget.scenarioLabel!,
+                   style: const TextStyle(color: _warn, fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            ),
           const SizedBox(height: 4),
           AspectRatio(
             aspectRatio: 1.0,
@@ -1489,23 +1558,129 @@ class _Bev3DVoxelPainter extends CustomPainter {
     final cx = math.cos(theta) * 14;
     final cz = math.sin(theta) * 14 + 8;
 
-    // ── 도로 그리드 (40m × 40m, 1m cell) — 짙은 시안 라인
+    // ─────── 도로 인프라 (Tesla BEV 스타일) ───────
+    // 1) 아스팔트 바닥 (길이 60m, 폭 22m)
+    final roadPath = Path()
+      ..moveTo(_project(-11, 0, -10, cx, cz, size).dx, _project(-11, 0, -10, cx, cz, size).dy)
+      ..lineTo(_project(11,  0, -10, cx, cz, size).dx, _project(11,  0, -10, cx, cz, size).dy)
+      ..lineTo(_project(11,  0, 50,  cx, cz, size).dx, _project(11,  0, 50,  cx, cz, size).dy)
+      ..lineTo(_project(-11, 0, 50,  cx, cz, size).dx, _project(-11, 0, 50,  cx, cz, size).dy)
+      ..close();
+    canvas.drawPath(roadPath, Paint()..color = const Color(0xFF14181F));
+
+    // 2) 보도 (양쪽 약간 밝게)
+    final swMat = Paint()..color = const Color(0xFF2A3140);
+    for (final lx in [-12.0, 12.0]) {
+      final swPath = Path()
+        ..moveTo(_project(lx - 1, 0, -10, cx, cz, size).dx, _project(lx - 1, 0, -10, cx, cz, size).dy)
+        ..lineTo(_project(lx + 1, 0, -10, cx, cz, size).dx, _project(lx + 1, 0, -10, cx, cz, size).dy)
+        ..lineTo(_project(lx + 1, 0, 50,  cx, cz, size).dx, _project(lx + 1, 0, 50,  cx, cz, size).dy)
+        ..lineTo(_project(lx - 1, 0, 50,  cx, cz, size).dx, _project(lx - 1, 0, 50,  cx, cz, size).dy)
+        ..close();
+      canvas.drawPath(swPath, swMat);
+    }
+
+    // 3) 교차로 (전방 z=30~42m, 가로 도로)
+    final ixPath = Path()
+      ..moveTo(_project(-18, 0, 30, cx, cz, size).dx, _project(-18, 0, 30, cx, cz, size).dy)
+      ..lineTo(_project(18,  0, 30, cx, cz, size).dx, _project(18,  0, 30, cx, cz, size).dy)
+      ..lineTo(_project(18,  0, 42, cx, cz, size).dx, _project(18,  0, 42, cx, cz, size).dy)
+      ..lineTo(_project(-18, 0, 42, cx, cz, size).dx, _project(-18, 0, 42, cx, cz, size).dy)
+      ..close();
+    canvas.drawPath(ixPath, Paint()..color = const Color(0xFF14181F));
+
+    // 4) 중앙 노란선 (더블)
+    final centerPaint = Paint()
+      ..color = const Color(0xFFFACC15)
+      ..strokeWidth = 1.2;
+    for (double dz = -10; dz < 50; dz += 0.6) {
+      // 노란 점선 자체 — 0.4m 길이
+      if ((dz * 10).floor() % 6 < 4) {
+        final p1 = _project(-0.20, 0, dz, cx, cz, size);
+        final p2 = _project(-0.20, 0, dz + 0.35, cx, cz, size);
+        canvas.drawLine(p1, p2, centerPaint);
+        final p3 = _project(0.20, 0, dz, cx, cz, size);
+        final p4 = _project(0.20, 0, dz + 0.35, cx, cz, size);
+        canvas.drawLine(p3, p4, centerPaint);
+      }
+    }
+
+    // 5) 차선 흰색 점선 (4차선) at x = ±3.5, ±7
+    final lanePaint = Paint()
+      ..color = const Color(0xFFEEF0F4)
+      ..strokeWidth = 1.0;
+    for (final lx in [-7.0, -3.5, 3.5, 7.0]) {
+      for (double dz = -10; dz < 50; dz += 3.5) {
+        final p1 = _project(lx, 0, dz, cx, cz, size);
+        final p2 = _project(lx, 0, dz + 1.8, cx, cz, size);
+        canvas.drawLine(p1, p2, lanePaint);
+      }
+    }
+
+    // 6) 정지선 (z=24m 흰 굵은 선)
+    final stopP1 = _project(-9.5, 0, 24, cx, cz, size);
+    final stopP2 = _project(9.5,  0, 24, cx, cz, size);
+    canvas.drawLine(stopP1, stopP2, Paint()
+      ..color = const Color(0xFFEEF0F4)
+      ..strokeWidth = 2.5);
+
+    // 7) 횡단보도 zebra 26~30m
+    final zebraPaint = Paint()..color = const Color(0xFFEEF0F4);
+    for (int i = 0; i < 12; i++) {
+      final lx = -9 + i * 1.6;
+      final z1 = 26.0, z2 = 30.0;
+      final stripePath = Path()
+        ..moveTo(_project(lx,         0, z1, cx, cz, size).dx, _project(lx, 0, z1, cx, cz, size).dy)
+        ..lineTo(_project(lx + 1.0,   0, z1, cx, cz, size).dx, _project(lx + 1.0, 0, z1, cx, cz, size).dy)
+        ..lineTo(_project(lx + 1.0,   0, z2, cx, cz, size).dx, _project(lx + 1.0, 0, z2, cx, cz, size).dy)
+        ..lineTo(_project(lx,         0, z2, cx, cz, size).dx, _project(lx, 0, z2, cx, cz, size).dy)
+        ..close();
+      canvas.drawPath(stripePath, zebraPaint);
+    }
+
+    // 8) 진행 화살표 (ego 차로 중앙 z=8, 16)
+    final arrowPaint = Paint()..color = const Color.fromRGBO(238, 240, 244, 0.55);
+    for (final az in [8.0, 16.0]) {
+      final stem1 = _project(-0.25, 0, az, cx, cz, size);
+      final stem2 = _project(0.25,  0, az + 1.6, cx, cz, size);
+      canvas.drawRect(Rect.fromPoints(stem1, stem2), arrowPaint);
+      // 화살촉
+      final tip = _project(0, 0, az + 2.4, cx, cz, size);
+      final left = _project(-0.6, 0, az + 1.6, cx, cz, size);
+      final right = _project(0.6, 0, az + 1.6, cx, cz, size);
+      final headP = Path()..moveTo(tip.dx, tip.dy)..lineTo(left.dx, left.dy)..lineTo(right.dx, right.dy)..close();
+      canvas.drawPath(headP, arrowPaint);
+    }
+
+    // 9) 자차 차로 시안 발광 strip
+    final egoLanePaint = Paint()
+      ..color = const Color.fromRGBO(0, 200, 255, 0.55)
+      ..strokeWidth = 1.5;
+    for (final lx in [-1.8, 1.8]) {
+      canvas.drawLine(
+        _project(lx, 0, 0, cx, cz, size),
+        _project(lx, 0, 24, cx, cz, size),
+        egoLanePaint,
+      );
+    }
+
+    // 10) 옵션: 미세 격자 (매우 옅게 — 점유 grid 가이드)
     final gridPaint = Paint()
-      ..color = const Color.fromRGBO(0, 60, 120, 0.5)
+      ..color = const Color.fromRGBO(0, 60, 120, 0.18)
       ..strokeWidth = 0.5;
-    for (int g = -20; g <= 20; g += 2) {
+    for (int g = -10; g <= 10; g += 4) {
       final p1 = _project(g.toDouble(), 0, 0, cx, cz, size);
       final p2 = _project(g.toDouble(), 0, 40, cx, cz, size);
       canvas.drawLine(p1, p2, gridPaint);
     }
-    for (int g = 0; g <= 40; g += 2) {
-      final p1 = _project(-20, 0, g.toDouble(), cx, cz, size);
-      final p2 = _project(20,  0, g.toDouble(), cx, cz, size);
+    for (int g = 0; g <= 40; g += 4) {
+      final p1 = _project(-10, 0, g.toDouble(), cx, cz, size);
+      final p2 = _project(10,  0, g.toDouble(), cx, cz, size);
       canvas.drawLine(p1, p2, gridPaint);
     }
 
-    // ── EGO 차량 (시안 박스, 원점)
-    _drawVoxel(canvas, size, 0, 0, 1.6, const Color(0xFF00C8FF), cx, cz);
+    // ── EGO 차량 (시안 발광 박스 + 캐빈, 원점)
+    _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
 
     // ── voxel grid — 클래스 인식 (class_grid_flat) 우선, 없으면 heatmap 폴백
     final flat = bev?['grid_flat'];

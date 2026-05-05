@@ -603,13 +603,13 @@ class _FleetHomeState extends State<FleetHome>
               ),
             ),
 
-            // BEV 오버레이 패널 — 도시정보 결합 (Tesla-style + signal/VDS/TAAS)
+            // BEV 오버레이 패널 — 화면 상단 절반 (안 보일 수가 없게)
             if (_bevOpen)
               SafeArea(
                 child: Align(
-                  alignment: Alignment.topRight,
+                  alignment: Alignment.topCenter,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 70, 14, 0),
+                    padding: const EdgeInsets.fromLTRB(14, 64, 14, 0),
                     child: _BevPanel(bev: _bev, fusion: _fusion),
                   ),
                 ),
@@ -737,11 +737,11 @@ class _BevPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final w = size.width.clamp(280.0, 400.0).toDouble();
-    final panelW = (w * 0.85).clamp(240.0, 340.0);
+    // 화면 거의 가득 차게 (사용자가 안 보일 수가 없게)
+    final panelW = size.width - 28;
     return Container(
       width: panelW,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: _bg.withValues(alpha: 0.85),
         border: Border.all(color: _accent.withValues(alpha: 0.45)),

@@ -2328,29 +2328,55 @@ class _Bev3DVoxelPainter extends CustomPainter {
     canvas.drawLine(_project(-6, 0, 24, cx, cz, size), _project(-6, 0, 32, cx, cz, size), stopPaint);
     canvas.drawLine(_project(6, 0, 24, cx, cz, size), _project(6, 0, 32, cx, cz, size), stopPaint);
 
-    // 8) 횡단보도 zebra — 4방향
+    // 8) 횡단보도 zebra — 4방향 (모든 코너 신호등과 일치)
     final zebraPaint = Paint()..color = const Color(0xFFEEF0F4);
     Path zebra(double x1, double z1, double x2, double z2) =>
         rectPath(x1, z1, x2, z2);
-    // ego 진입 직전 (z=24~26m)
-    for (int i = 0; i < 8; i++) {
-      final lx = -5.5 + i * 1.4;
-      canvas.drawPath(zebra(lx, 24.5, lx + 0.7, 25.7), zebraPaint);
+    // ego 진입 직전 (z=24~26m, x=-5~5)
+    for (int i = 0; i < 7; i++) {
+      final lx = -5.0 + i * 1.5;
+      canvas.drawPath(zebra(lx - 0.3, 24.5, lx + 0.3, 25.5), zebraPaint);
     }
     // 교차로 너머 (z=30~32m)
-    for (int i = 0; i < 8; i++) {
-      final lx = -5.5 + i * 1.4;
-      canvas.drawPath(zebra(lx, 30.3, lx + 0.7, 31.5), zebraPaint);
+    for (int i = 0; i < 7; i++) {
+      final lx = -5.0 + i * 1.5;
+      canvas.drawPath(zebra(lx - 0.3, 30.5, lx + 0.3, 31.5), zebraPaint);
     }
-    // 좌측 가로 횡단 (x=-7~-5.5)
-    for (int i = 0; i < 5; i++) {
-      final lz = 24.5 + i * 1.4;
-      canvas.drawPath(zebra(-7.2, lz, -6.0, lz + 0.7), zebraPaint);
+    // 좌측 가로 횡단 (x=-7m)
+    for (int i = 0; i < 4; i++) {
+      final lz = 25.5 + i * 1.5;
+      canvas.drawPath(zebra(-7.7, lz - 0.3, -6.3, lz + 0.3), zebraPaint);
     }
     // 우측 가로 횡단
-    for (int i = 0; i < 5; i++) {
-      final lz = 24.5 + i * 1.4;
-      canvas.drawPath(zebra(6.0, lz, 7.2, lz + 0.7), zebraPaint);
+    for (int i = 0; i < 4; i++) {
+      final lz = 25.5 + i * 1.5;
+      canvas.drawPath(zebra(6.3, lz - 0.3, 7.7, lz + 0.3), zebraPaint);
+    }
+
+    // 8.5) ★ 신호등 폴 — 교차로 4 코너 (횡단보도와 일치)
+    final polePaint = Paint()
+      ..color = const Color(0xFF4A5566)
+      ..strokeWidth = 2.5;
+    final lightBoxPaint = Paint()..color = const Color(0xFF1A2030);
+    final redLightPaint = Paint()..color = const Color(0xFFFF3030);
+    for (final corner in [
+      [-7.0, 23.0], [7.0, 23.0],   // 남쪽 코너
+      [-7.0, 33.0], [7.0, 33.0],   // 북쪽 코너
+    ]) {
+      final poleX = corner[0], poleZ = corner[1];
+      // 폴 (수직선) — 0~5m 높이
+      canvas.drawLine(
+        _project(poleX, 0, poleZ, cx, cz, size),
+        _project(poleX, 5, poleZ, cx, cz, size),
+        polePaint,
+      );
+      // 라이트 박스 + 적색 라이트
+      final lightBoxCenter = _project(poleX, 5.2, poleZ, cx, cz, size);
+      canvas.drawRect(Rect.fromCenter(center: lightBoxCenter, width: 8, height: 14), lightBoxPaint);
+      canvas.drawCircle(lightBoxCenter.translate(0, -2), 3.5, Paint()
+        ..color = const Color(0xFFFF3030)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+      canvas.drawCircle(lightBoxCenter.translate(0, -2), 2.2, redLightPaint);
     }
 
     // 9) 진행 화살표 (ego 차로 중앙 z=8, 18)

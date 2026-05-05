@@ -2763,10 +2763,11 @@ def prototype_ui():
             scene.background = new THREE.Color(0x04080e);
 
             // 전방 → Z+, 좌우 → X, 높이 → Y
-            // 카메라: ego 뒤쪽 위에서 정면 forward 보는 각도 (Tesla dashboard 시점)
+            // ★ 카메라: 교차로 북쪽 위 — world +X 가 screen RIGHT 로 표시되도록
+            //   (이전: south side → cross product 으로 X 축이 flip 되어 우회전이 좌회전 처럼 보임)
             const camera = new THREE.PerspectiveCamera(50, 16/9, 0.1, 500);
-            camera.position.set(0, 28, -22);
-            camera.lookAt(0, 0, 20);
+            camera.position.set(0, 32, 56);
+            camera.lookAt(0, 0, 16);
 
             // Lighting
             scene.add(new THREE.AmbientLight(0x88aacc, 0.6));
@@ -2873,31 +2874,54 @@ def prototype_ui():
             const stopLineR = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 8), new THREE.MeshBasicMaterial({color:0xffffff}));
             stopLineR.rotation.x = -Math.PI / 2; stopLineR.position.set(6, 0.026, 28); scene.add(stopLineR);
 
-            // 9) 횡단보도 zebra — 4방향 (ego 진입 직전 + 교차로 통과 후 + 좌/우 가로)
+            // 9) 횡단보도 zebra — 4방향 (모든 코너에 신호등 + 횡단보도)
             const zebraMat = new THREE.MeshBasicMaterial({color:0xeef0f4});
-            // ego 진입 직전 (z=24~26m, 정지선 너머 바로)
-            for (let i = 0; i < 8; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 2.0), zebraMat);
+            // ego 진입 직전 (z=24~26m)
+            for (let i = 0; i < 7; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 2.0), zebraMat);
               stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(-5.5 + i * 1.6, 0.028, 25); scene.add(stripe);
+              stripe.position.set(-5.0 + i * 1.5, 0.028, 25); scene.add(stripe);
             }
             // 교차로 너머 (z=30~32m)
-            for (let i = 0; i < 8; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 2.0), zebraMat);
+            for (let i = 0; i < 7; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 2.0), zebraMat);
               stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(-5.5 + i * 1.6, 0.028, 31); scene.add(stripe);
+              stripe.position.set(-5.0 + i * 1.5, 0.028, 31); scene.add(stripe);
             }
-            // 좌측 가로 도로 횡단 (x=-7~-5, z 방향)
-            for (let i = 0; i < 6; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.7), zebraMat);
+            // 좌측 가로 도로 횡단 (x=-7m, z 방향 26~30)
+            for (let i = 0; i < 4; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), zebraMat);
               stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(-6, 0.028, 24.5 + i * 1.4); scene.add(stripe);
+              stripe.position.set(-7, 0.028, 25.5 + i * 1.5); scene.add(stripe);
             }
             // 우측 가로 도로 횡단
-            for (let i = 0; i < 6; i++) {
-              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.7), zebraMat);
+            for (let i = 0; i < 4; i++) {
+              const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), zebraMat);
               stripe.rotation.x = -Math.PI / 2;
-              stripe.position.set(6, 0.028, 24.5 + i * 1.4); scene.add(stripe);
+              stripe.position.set(7, 0.028, 25.5 + i * 1.5); scene.add(stripe);
+            }
+
+            // 9.5) ★ 신호등 폴 — 교차로 4 코너 (횡단보도 위치와 일치)
+            // 각 코너: 어두운 회색 폴 (높이 5m) + 적색 라이트
+            const poleMat = new THREE.MeshStandardMaterial({color:0x4a5566, metalness:0.4, roughness:0.5});
+            const lightBoxMat = new THREE.MeshStandardMaterial({color:0x1a2030, metalness:0.5, roughness:0.4});
+            const redLightMat = new THREE.MeshBasicMaterial({color:0xff3030});
+            const corners = [
+              {x: -7,  z: 23},  // SW (남서) 코너
+              {x:  7,  z: 23},  // SE (남동)
+              {x: -7,  z: 33},  // NW (북서)
+              {x:  7,  z: 33},  // NE (북동)
+            ];
+            for (const c of corners) {
+              // 폴
+              const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 5.0, 8), poleMat);
+              pole.position.set(c.x, 2.5, c.z); scene.add(pole);
+              // 신호 라이트 박스
+              const lightBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.4), lightBoxMat);
+              lightBox.position.set(c.x, 5.2, c.z); scene.add(lightBox);
+              // 적색 라이트
+              const redLight = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), redLightMat);
+              redLight.position.set(c.x, 5.5, c.z + 0.22); scene.add(redLight);
             }
 
             // 10) 자차 차로 가이드 (시안 strip) — 정지선까지만

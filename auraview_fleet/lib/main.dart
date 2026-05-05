@@ -13,8 +13,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show File;
 import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
+import 'package:flutter/scheduler.dart';
+import 'dart:ui' show FontFeature;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -130,6 +133,7 @@ class _FleetHomeState extends State<FleetHome>
   Map<String, dynamic>? _bev;
   Map<String, dynamic>? _fusion;
   Timer? _bevTimer;
+  List<double>? _prevFrameGray;  // motion diff 용 이전 프레임
 
   @override
   void initState() {
@@ -165,15 +169,23 @@ class _FleetHomeState extends State<FleetHome>
     }
   }
 
+  /// 카메라 프레임 → 클라이언트(엣지) voxel 직접 생성. 서버 호출 X.
+  /// 도시정보 결합만 가벼운 GET /fusion (옵션).
   Future<void> _fetchBev() async {
-    try {
-      final r = await http.get(Uri.parse('$kApiBase/occupancy/demo'))
-          .timeout(const Duration(seconds: 6));
-      if (r.statusCode == 200) {
-        final body = jsonDecode(r.body) as Map<String, dynamic>;
-        if (mounted) setState(() => _bev = body);
-      }
-    } catch (_) {}
+    if (_cam != null && _cam!.value.isInitialized && !_cam!.value.isTakingPicture) {
+      try {
+        final shot = await _cam!.takePicture();
+        final bytes = await shot.readAsBytes();
+        if (!kIsWeb) {
+          try { final f = File(shot.path); if (await f.exists()) await f.delete(); } catch (_) {}
+        }
+        final voxel = _voxelizeOnDevice(bytes);
+        if (voxel != null && mounted) {
+          setState(() => _bev = voxel);
+        }
+      } catch (_) {}
+    }
+    // 도시정보 결합 (signal/VDS/TAAS) — voxel 위에 라이브 라인 표시용
     final iid = _intersectionId;
     if (iid != null && iid.isNotEmpty) {
       try {
@@ -184,6 +196,142 @@ class _FleetHomeState extends State<FleetHome>
           if (mounted) setState(() => _fusion = body);
         }
       } catch (_) {}
+    }
+  }
+
+  /// 엣지 voxel 생성 — 카메라 프레임을 40×40 grayscale 로 다운샘플 후
+  /// (수직 에지) + (이전 프레임 대비 motion diff) 로 점유 확률 계산.
+  /// → 카메라 흔들림/물체 이동에 voxel 이 반응.
+  Map<String, dynamic>? _voxelizeOnDevice(Uint8List jpeg) {
+    try {
+      final src = img.decodeJpg(jpeg);
+      if (src == null) return null;
+      final w = src.width, h = src.height;
+      const ROWS = 40, COLS = 40;
+      // 1) 다운샘플 grayscale (44×40 — 위쪽 4 row 는 에지 계산 padding)
+      final grays = List<double>.filled(ROWS * COLS, 0.0);
+      final yStart = (h * 0.05).toInt();
+      final yEnd = (h * 0.95).toInt();
+      final cellH = (yEnd - yStart) / ROWS;
+      final cellW = w / COLS;
+      // 각 cell 의 평균 밝기 (3×3 샘플)
+      for (int r = 0; r < ROWS; r++) {
+        // r=0 화면 아래(ego), r=39 화면 위(멀리)
+        final yMid = (yEnd - (r + 0.5) * cellH).toInt();
+        if (yMid < 2 || yMid >= h - 2) continue;
+        for (int c = 0; c < COLS; c++) {
+          final xMid = ((c + 0.5) * cellW).toInt();
+          if (xMid < 2 || xMid >= w - 2) continue;
+          double sum = 0; int cnt = 0;
+          for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+              final p = src.getPixel(xMid + dx, yMid + dy);
+              sum += 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+              cnt++;
+            }
+          }
+          grays[r * COLS + c] = sum / cnt / 255.0;
+        }
+      }
+
+      // 2) 수직 에지 — 위 cell vs 현재 cell 차이 (객체 윤곽 위쪽 검출)
+      // + 좌우 에지 — 옆 cell 과 차이 (객체 측면)
+      // + motion diff — 이전 프레임과 차이 (움직임)
+      final flat = List<double>.filled(ROWS * COLS, 0.0);
+      for (int r = 0; r < ROWS; r++) {
+        for (int c = 0; c < COLS; c++) {
+          final cur = grays[r * COLS + c];
+          if (cur < 0.05) continue;
+          final up = (r < ROWS - 1) ? grays[(r + 1) * COLS + c] : cur;
+          final left = (c > 0) ? grays[r * COLS + (c - 1)] : cur;
+          final right = (c < COLS - 1) ? grays[r * COLS + (c + 1)] : cur;
+          final vEdge = (cur - up).abs();
+          final hEdge = ((cur - left).abs() + (cur - right).abs()) * 0.5;
+          double motion = 0;
+          if (_prevFrameGray != null && _prevFrameGray!.length == ROWS * COLS) {
+            motion = (cur - _prevFrameGray![r * COLS + c]).abs();
+          }
+          // 결합 — 수직 에지 가중치 가장 크게 (도로 위 객체)
+          final occ = (vEdge * 3.0 + hEdge * 1.2 + motion * 2.5).clamp(0.0, 1.0);
+          flat[r * COLS + c] = occ;
+        }
+      }
+      // 3) 이전 프레임 저장 (motion diff 용)
+      _prevFrameGray = List<double>.from(grays);
+
+      // 8-근방 합산으로 hotspot Top-4 추출
+      final cells = <List<num>>[];
+      for (int r = 1; r < ROWS - 1; r++) {
+        for (int c = 1; c < COLS - 1; c++) {
+          if (flat[r * COLS + c] < 0.45) continue;
+          double sum = 0;
+          for (int dr = -1; dr <= 1; dr++) {
+            for (int dc = -1; dc <= 1; dc++) {
+              sum += flat[(r + dr) * COLS + (c + dc)];
+            }
+          }
+          cells.add([r, c, sum]);
+        }
+      }
+      cells.sort((a, b) => (b[2] as num).compareTo(a[2] as num));
+      final hotspots = <Map<String, dynamic>>[];
+      for (int i = 0; i < cells.length && hotspots.length < 4; i++) {
+        final r = cells[i][0] as int;
+        final c = cells[i][1] as int;
+        // 중복 제거 (가까운 이웃)
+        bool tooClose = false;
+        for (final h in hotspots) {
+          if (((h['_r'] as int) - r).abs() < 4 && ((h['_c'] as int) - c).abs() < 4) {
+            tooClose = true; break;
+          }
+        }
+        if (tooClose) continue;
+        final dist = r * 1.0;
+        String kind, label;
+        if (c < 12) {
+          kind = 'object'; label = '좌측 객체';
+        } else if (c > 28) {
+          kind = 'object'; label = '우측 객체';
+        } else if (r > 22) {
+          kind = 'occluded_shadow'; label = '전방 가림';
+        } else {
+          kind = 'object'; label = '전방 객체';
+        }
+        hotspots.add({
+          '_r': r, '_c': c,
+          'row': r * 2, 'col': c * 2,
+          'kind': kind, 'label': label,
+          'distance_m': dist.round(),
+        });
+      }
+
+      // 위험도 — 가까운 12m × 차로 중앙 14~26
+      double risk = 0;
+      for (int r = 0; r < 12; r++) {
+        for (int c = 14; c < 26; c++) {
+          risk += flat[r * COLS + c];
+        }
+      }
+      final pColl = (risk / 60.0).clamp(0.0, 0.95);
+
+      return {
+        'shape': [80, 80],
+        'grid_flat': flat,
+        'grid_shape_flat': [ROWS, COLS],
+        'grid_cell_m_flat': 1.0,
+        'forward_m': 40.0,
+        'lateral_m': 20.0,
+        'hotspots': hotspots,
+        'occluded_mass': flat.fold<double>(0.0, (a, b) => a + b),
+        'risk_summary': {
+          'p_collision': pColl,
+          'lead_time_s': 0.0,
+          'recommended_action': pColl > 0.5 ? '감속' : '정상',
+        },
+        '_source': 'edge',
+      };
+    } catch (_) {
+      return null;
     }
   }
 
@@ -585,60 +733,41 @@ class _FleetHomeState extends State<FleetHome>
               },
             ),
 
-            // 상단 HUD
+            // 상단 단일 status 배지 — 모든 정보 통합
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: Row(
-                  children: [
-                    _BrandLogo(),
-                    const Spacer(),
-                    _BevToggleChip(active: _bevOpen, onTap: _toggleBev),
-                    const SizedBox(width: 8),
-                    _CounterChip(uploads: _uploads, serverTotal: _serverTotal),
-                    const SizedBox(width: 8),
-                    _StatusOrb(online: _serverError.isEmpty, shadowOn: _shadowOn),
-                  ],
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                child: _UnifiedStatusBar(
+                  shadowOn: _shadowOn,
+                  uploads: _uploads,
+                  online: _serverError.isEmpty,
+                  pos: _pos,
                 ),
               ),
             ),
 
-            // BEV 오버레이 패널 — 화면 상단 절반 (안 보일 수가 없게)
-            if (_bevOpen)
-              SafeArea(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 64, 14, 0),
-                    child: _BevPanel(bev: _bev, fusion: _fusion),
-                  ),
-                ),
-              ),
+            // BEV — 우하단 (Tesla 식 mini voxel · 항상 ON)
+            Positioned(
+              right: 12, bottom: 110,
+              child: _BevPanel(bev: _bev, fusion: _fusion),
+            ),
 
-            // Shadow 가동 중일 때 하단 라이브 인디케이터
-            if (_shadowOn)
+            // 자동 캡처 펄스 (캡처 직후 잠깐 노출)
+            if (_shadowOn && _lastReason != 'ok' && _lastReason != 'idle')
               Positioned(
-                top: 80, left: 0, right: 0,
-                child: Center(child: _LiveBadge(reason: _lastReason)),
+                top: 70, left: 0, right: 0,
+                child: Center(child: _LiveBadge(reason: '자동 기록: $_lastReason')),
               ),
 
-            // 하단 메인 액션
+            // 하단 단일 큰 버튼 — 주행 시작 / 중지
             SafeArea(
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 28),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _PrimaryActionPill(
-                        shadowOn: _shadowOn,
-                        onTap: _toggleShadow,
-                        onLongPress: _manualContribute,
-                      ),
-                      const SizedBox(height: 12),
-                      _OpenSheetHandle(onTap: _openDetailSheet),
-                    ],
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: _DriveButton(
+                    on: _shadowOn,
+                    onTap: _toggleShadow,
                   ),
                 ),
               ),
@@ -677,6 +806,108 @@ class _FullCameraPreview extends StatelessWidget {
             height: size.width / (1 / ratio),
             child: CameraPreview(controller),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 통합 상태 배지 + 큰 주행 버튼 (개편: 모든 chip 합침)
+// ─────────────────────────────────────────────────────────────────
+
+class _UnifiedStatusBar extends StatelessWidget {
+  final bool shadowOn;
+  final int uploads;
+  final bool online;
+  final Position? pos;
+  const _UnifiedStatusBar({
+    required this.shadowOn,
+    required this.uploads,
+    required this.online,
+    required this.pos,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasGps = pos != null;
+    final speed = hasGps ? (pos!.speed * 3.6).toStringAsFixed(0) : '—';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: _bg.withValues(alpha: 0.78),
+        border: Border.all(color: _border()),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(children: [
+        // pulse dot
+        Container(width: 10, height: 10, decoration: BoxDecoration(
+          color: shadowOn ? _safe : _muted,
+          shape: BoxShape.circle,
+          boxShadow: shadowOn ? [BoxShadow(color: _safe, blurRadius: 8)] : null,
+        )),
+        const SizedBox(width: 10),
+        Text('Aura', style: TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
+        Text('View', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w800)),
+        const Spacer(),
+        // 속도
+        if (hasGps) ...[
+          Text(speed, style: TextStyle(color: _text, fontSize: 14, fontWeight: FontWeight.w800,
+                                       fontFeatures: const [FontFeature.tabularFigures()])),
+          Text('km/h', style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w700,
+                                        letterSpacing: 1)),
+          const SizedBox(width: 14),
+        ],
+        // 기록 카운터
+        Icon(Icons.bookmark_added_rounded, size: 14, color: _safe),
+        const SizedBox(width: 4),
+        Text('$uploads', style: TextStyle(color: _safe, fontSize: 13, fontWeight: FontWeight.w800)),
+        const SizedBox(width: 14),
+        // 서버
+        Icon(online ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+             size: 14, color: online ? _safe : _danger),
+      ]),
+    );
+  }
+  static Color _border() => const Color(0x4400C8FF);
+}
+
+class _DriveButton extends StatelessWidget {
+  final bool on;
+  final VoidCallback onTap;
+  const _DriveButton({required this.on, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        width: 240, height: 64,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: on
+                ? [const Color(0xFF005580), const Color(0xFF003344)]
+                : [const Color(0xFF00C8FF), const Color(0xFF0078A8)],
+          ),
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: (on ? _accent : _safe).withValues(alpha: 0.45),
+              blurRadius: 24, spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(on ? Icons.stop_rounded : Icons.directions_car_filled_rounded,
+                 size: 26, color: Colors.white),
+            const SizedBox(width: 10),
+            Text(on ? '주행 중지' : '주행 시작',
+                 style: const TextStyle(color: Colors.white, fontSize: 18,
+                                        fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          ],
         ),
       ),
     );
@@ -729,55 +960,83 @@ class _BevToggleChip extends StatelessWidget {
   }
 }
 
-class _BevPanel extends StatelessWidget {
+class _BevPanel extends StatefulWidget {
   final Map<String, dynamic>? bev;
   final Map<String, dynamic>? fusion;
   const _BevPanel({this.bev, this.fusion});
 
   @override
+  State<_BevPanel> createState() => _BevPanelState();
+}
+
+class _BevPanelState extends State<_BevPanel>
+    with SingleTickerProviderStateMixin {
+  late Ticker _ticker;
+  double _t = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Ticker((d) {
+      setState(() { _t = d.inMilliseconds / 1000.0; });
+    })..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    // 화면 거의 가득 차게 (사용자가 안 보일 수가 없게)
-    final panelW = size.width - 28;
+    // 코너 오버레이 — 카메라 가리지 않도록 200x200 정사각형
+    const panelW = 200.0;
     return Container(
       width: panelW,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: _bg.withValues(alpha: 0.85),
-        border: Border.all(color: _accent.withValues(alpha: 0.45)),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 16)],
+        color: _bg.withValues(alpha: 0.88),
+        border: Border.all(color: _accent.withValues(alpha: 0.55), width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.30), blurRadius: 14)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(children: [
-            Icon(Icons.flash_on, size: 13, color: _accent),
+            Icon(Icons.view_in_ar, size: 12, color: _accent),
             const SizedBox(width: 4),
-            Text('BEV · CITY-AUGMENTED',
-                 style: TextStyle(color: _accent, fontSize: 10,
-                                  fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+            Text('BEV · 3D VOXEL',
+                 style: TextStyle(color: _accent, fontSize: 9,
+                                  fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+            const Spacer(),
+            Container(
+              width: 6, height: 6,
+              decoration: BoxDecoration(
+                color: _safe, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
+              ),
+            ),
           ]),
           const SizedBox(height: 4),
           AspectRatio(
             aspectRatio: 1.0,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: CustomPaint(
-                size: Size.square(panelW - 16),
-                painter: _BevPainter(bev: bev, fusion: fusion),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                color: const Color(0xFF04080E),
+                child: CustomPaint(
+                  size: const Size.square(panelW - 12),
+                  painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 6),
-          if (bev != null) _BevStatLine(bev: bev!),
-          if (fusion != null) _CityInfoLine(fusion: fusion!),
-          const SizedBox(height: 2),
-          Text(
-            bev == null ? '로딩 중…' : '단안 카메라 + 도시정보 결합',
-            style: const TextStyle(color: _muted, fontSize: 9, letterSpacing: 1.2),
-          ),
+          const SizedBox(height: 4),
+          if (widget.bev != null) _BevStatLine(bev: widget.bev!),
+          if (widget.fusion != null) _CityInfoLine(fusion: widget.fusion!),
         ],
       ),
     );
@@ -846,6 +1105,187 @@ class _CityInfoLine extends StatelessWidget {
     );
   }
 }
+
+/// Tesla-style 3D voxel — 자동 회전 카메라 + perspective 투영.
+class _Bev3DVoxelPainter extends CustomPainter {
+  final Map<String, dynamic>? bev;
+  final double t;
+  _Bev3DVoxelPainter({this.bev, required this.t});
+
+  // 3D 점 → 2D 화면 (1-point perspective)
+  Offset _project(double x, double y, double z, double cx, double cz, Size size) {
+    // 카메라 좌표계로 변환: 카메라가 (cx, 12, cz) 에서 (0, 0, 18) 보고 있다고 가정
+    // 단순화: 회전 행렬 없이 isometric-perspective 혼합
+    final w = size.width, h = size.height;
+    final dx = x - cx;
+    final dz = z - cz;
+    // 거리에 따른 perspective 축소
+    final dist = math.sqrt(dx * dx + dz * dz) + 0.001;
+    final scale = 6.0 / (dist * 0.45 + 4);
+    // 화면 중심 + 투영
+    final screenX = w / 2 + dx * scale * 6;
+    final screenY = h * 0.62 - y * scale * 4 - dz * scale * 1.3;
+    return Offset(screenX, screenY);
+  }
+
+  void _drawVoxel(Canvas canvas, Size size, double x, double z, double height, Color color, double cx, double cz) {
+    // voxel 6면체 — 4 개 면 (top, front, right, back) 그림 (밑면 안 보임)
+    final p000 = _project(x - 0.5, 0,      z - 0.5, cx, cz, size);
+    final p100 = _project(x + 0.5, 0,      z - 0.5, cx, cz, size);
+    final p110 = _project(x + 0.5, 0,      z + 0.5, cx, cz, size);
+    final p010 = _project(x - 0.5, 0,      z + 0.5, cx, cz, size);
+    final p001 = _project(x - 0.5, height, z - 0.5, cx, cz, size);
+    final p101 = _project(x + 0.5, height, z - 0.5, cx, cz, size);
+    final p111 = _project(x + 0.5, height, z + 0.5, cx, cz, size);
+    final p011 = _project(x - 0.5, height, z + 0.5, cx, cz, size);
+
+    // top (밝게)
+    final topP = Path()
+      ..moveTo(p001.dx, p001.dy)
+      ..lineTo(p101.dx, p101.dy)
+      ..lineTo(p111.dx, p111.dy)
+      ..lineTo(p011.dx, p011.dy)
+      ..close();
+    canvas.drawPath(topP, Paint()
+      ..color = Color.fromRGBO(
+        (color.red * 1.3).clamp(0, 255).round(),
+        (color.green * 1.3).clamp(0, 255).round(),
+        (color.blue * 1.3).clamp(0, 255).round(),
+        0.95,
+      ));
+
+    // front (보통)
+    final frontP = Path()
+      ..moveTo(p000.dx, p000.dy)
+      ..lineTo(p100.dx, p100.dy)
+      ..lineTo(p101.dx, p101.dy)
+      ..lineTo(p001.dx, p001.dy)
+      ..close();
+    canvas.drawPath(frontP, Paint()..color = color.withValues(alpha: 0.85));
+
+    // right (어둡게)
+    final rightP = Path()
+      ..moveTo(p100.dx, p100.dy)
+      ..lineTo(p110.dx, p110.dy)
+      ..lineTo(p111.dx, p111.dy)
+      ..lineTo(p101.dx, p101.dy)
+      ..close();
+    canvas.drawPath(rightP, Paint()
+      ..color = Color.fromRGBO(
+        (color.red * 0.65).round(),
+        (color.green * 0.65).round(),
+        (color.blue * 0.65).round(),
+        0.85,
+      ));
+
+    // outline (시안)
+    canvas.drawPath(topP, Paint()
+      ..color = const Color.fromRGBO(255, 255, 255, 0.20)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 배경
+    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF04080E));
+
+    // 자동 회전 카메라 (15초 주기)
+    final theta = t * 0.4;
+    final cx = math.cos(theta) * 14;
+    final cz = math.sin(theta) * 14 + 8;
+
+    // ── 도로 그리드 (40m × 40m, 1m cell) — 짙은 시안 라인
+    final gridPaint = Paint()
+      ..color = const Color.fromRGBO(0, 60, 120, 0.5)
+      ..strokeWidth = 0.5;
+    for (int g = -20; g <= 20; g += 2) {
+      final p1 = _project(g.toDouble(), 0, 0, cx, cz, size);
+      final p2 = _project(g.toDouble(), 0, 40, cx, cz, size);
+      canvas.drawLine(p1, p2, gridPaint);
+    }
+    for (int g = 0; g <= 40; g += 2) {
+      final p1 = _project(-20, 0, g.toDouble(), cx, cz, size);
+      final p2 = _project(20,  0, g.toDouble(), cx, cz, size);
+      canvas.drawLine(p1, p2, gridPaint);
+    }
+
+    // ── EGO 차량 (시안 박스, 원점)
+    _drawVoxel(canvas, size, 0, 0, 1.6, const Color(0xFF00C8FF), cx, cz);
+
+    // ── voxel grid (점유 → height 비례)
+    final flat = bev?['grid_flat'];
+    final shape = bev?['grid_shape_flat'];
+    if (flat is List && shape is List && shape.length == 2) {
+      final rows = (shape[0] as num).toInt();
+      final cols = (shape[1] as num).toInt();
+      // 화면 가까운 voxel 부터 그리도록 z 큰 것 먼저 (back to front)
+      final cells = <List<num>>[];  // [r, c, p]
+      for (int r = 0; r < rows; r++) {
+        for (int cc = 0; cc < cols; cc++) {
+          final p = ((flat[r * cols + cc] ?? 0) as num).toDouble();
+          if (p < 0.15) continue;
+          cells.add([r, cc, p]);
+        }
+      }
+      cells.sort((a, b) => (b[0] as num).compareTo(a[0] as num));  // 멀리 → 가까이
+      for (final cell in cells) {
+        final r = (cell[0] as num).toInt();
+        final cc = (cell[1] as num).toInt();
+        final p = (cell[2] as num).toDouble();
+        // 좌표: row 0 = ego, row max = 40m 전방. col 중앙 39
+        final x = (cc - cols / 2 + 0.5) * (40.0 / cols);
+        final z = r * (40.0 / rows);
+        final height = (p * 5.0).clamp(0.3, 5.0);
+        // 색: 점유 확률 → 시안 → 주황 → 빨강
+        Color col;
+        if (p < 0.4) {
+          col = Color.lerp(const Color(0xFF005580), const Color(0xFFFFB020), p / 0.4)!;
+        } else {
+          col = Color.lerp(const Color(0xFFFFB020), const Color(0xFFFF3B3B), (p - 0.4) / 0.6)!;
+        }
+        _drawVoxel(canvas, size, x, z, height, col, cx, cz);
+      }
+    }
+
+    // ── hotspot 마커 (구체 + 빔)
+    final hs = bev?['hotspots'];
+    if (hs is List) {
+      final fineRows = (bev?['shape']?[0] ?? 80) as num;
+      final fineCols = (bev?['shape']?[1] ?? 80) as num;
+      for (final h in hs) {
+        if (h is! Map) continue;
+        final row = (h['row'] as num?)?.toDouble() ?? 0;
+        final col = (h['col'] as num?)?.toDouble() ?? 0;
+        final kind = h['kind'] as String? ?? 'object';
+        final x = (col - fineCols / 2 + 0.5) * (40.0 / fineCols);
+        final z = row * (40.0 / fineRows);
+        final color = ({
+          'object':           const Color(0xFFFF3B3B),
+          'occluded_shadow':  const Color(0xFFFFB020),
+          'intent_prior':     const Color(0xFF00E09A),
+          'signal_shadow':    const Color(0xFF7C3AED),
+        }[kind]) ?? _accent;
+        // beam (바닥 → 위)
+        final bot = _project(x, 0, z, cx, cz, size);
+        final top = _project(x, 6.0, z, cx, cz, size);
+        canvas.drawLine(bot, top, Paint()
+          ..color = color.withValues(alpha: 0.6)
+          ..strokeWidth = 1.5);
+        // sphere (위)
+        canvas.drawCircle(top, 5, Paint()
+          ..color = color
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+        canvas.drawCircle(top, 3.5, Paint()..color = color);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _Bev3DVoxelPainter old) =>
+      old.bev != bev || old.t != t;
+}
+
 
 class _BevPainter extends CustomPainter {
   final Map<String, dynamic>? bev;

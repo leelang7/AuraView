@@ -55,22 +55,24 @@
   </header>
 
   <main>
-    <div class="video-wrap">
+    <div class="video-wrap" style="aspect-ratio:9/16;max-height:60vh;">
       <video id="cam" autoplay playsinline muted></video>
-      <canvas id="snap"></canvas>
+      <canvas id="snap" style="display:none;"></canvas>
+      <!-- 숨겨진 호환용 chip (app.js 가 이 ID 참조) -->
+      <span id="chip-entropy" style="display:none;"></span>
+      <span id="chip-fps" style="display:none;"></span>
       <div class="hud">
         <div class="hud-top">
-          <span class="chip" id="chip-entropy">entropy —</span>
-          <span class="chip" id="chip-reason">awaiting</span>
-          <span class="chip ok" id="bevToggle" style="cursor:pointer;pointer-events:auto;user-select:none;">▣ BEV</span>
+          <span class="chip" id="chip-reason" style="font-size:10px;letter-spacing:1px;">대기</span>
         </div>
         <div class="hud-bottom">
-          <span class="chip" id="chip-fps">fps —</span>
-          <span class="chip" id="chip-geo">geo —</span>
+          <span class="chip" id="chip-geo" style="font-size:10px;">geo —</span>
         </div>
       </div>
-      <!-- BEV 오버레이 패널 (토글 ON 시 표시, Tesla-style 3D voxel) -->
-      <div id="bevPanel" style="position:absolute;top:42px;right:8px;width:240px;background:rgba(8,12,20,0.92);border:1px solid rgba(0,200,255,0.45);border-radius:10px;padding:6px;z-index:20;box-shadow:0 8px 24px rgba(0,200,255,0.2);">
+      <!-- 숨겨진 토글 (호환용) -->
+      <span id="bevToggle" style="display:none;"></span>
+      <!-- BEV 우상단 mini (항상 ON, 작게) -->
+      <div id="bevPanel" style="position:absolute;top:8px;right:8px;width:160px;background:rgba(8,12,20,0.88);border:1px solid rgba(0,200,255,0.5);border-radius:10px;padding:5px;z-index:20;box-shadow:0 6px 18px rgba(0,200,255,0.25);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font:bold 9px ui-monospace,monospace;color:var(--accent);letter-spacing:2px;">BEV · 3D VOXEL</div>
           <div id="bevLiveDot" style="display:flex;align-items:center;gap:4px;">
@@ -94,28 +96,34 @@
       @keyframes pulse { 50% { opacity: .3; } }
     </style>
 
-    <div class="card">
-      <div class="row">
-        <div>
-          <label>device id</label>
-          <input id="deviceId" placeholder="차량번호/장치 별칭"/>
-        </div>
-        <div>
-          <label>교차로(선택)</label>
-          <input id="intersectionId" placeholder="1007"/>
-        </div>
-      </div>
-      <div style="margin-top:10px;display:grid;gap:10px;">
-        <button class="btn btn-primary" id="startBtn">Shadow Mode 시작</button>
-        <button class="btn btn-danger" id="capBtn" disabled>수동 기여 (1장)</button>
-        <button class="btn btn-ghost" id="statsBtn">서버 통계 보기</button>
-      </div>
+    <!-- 단일 큰 주행 버튼 -->
+    <button class="btn btn-primary" id="startBtn"
+            style="height:64px;font-size:18px;font-weight:900;letter-spacing:2px;border-radius:32px;
+                   background:linear-gradient(135deg,#00C8FF,#0078A8);box-shadow:0 6px 24px rgba(0,200,255,0.45);">
+      🚗 주행 시작
+    </button>
+
+    <!-- 자동 캡처 + 서버 상태 한 줄 -->
+    <div class="status" id="serverStatus" style="text-align:center;font-size:11px;line-height:1.6;">
+      주행 시작 누르면 — 카메라가 자동으로 위험 순간만 기록 (PII 자동 마스킹).
     </div>
 
-    <div class="card">
-      <div class="muted" style="margin-bottom:6px;">SERVER STATUS</div>
-      <div class="status" id="serverStatus">대기 중…</div>
-    </div>
+    <!-- 교차로 ID — 입력 시 도시정보 결합 (옵션, 작게) -->
+    <details style="margin-top:6px;">
+      <summary style="color:var(--muted);font-size:11px;cursor:pointer;letter-spacing:1px;">고급 설정</summary>
+      <div class="row" style="margin-top:8px;">
+        <div>
+          <label>device id</label>
+          <input id="deviceId" placeholder="자동 생성"/>
+        </div>
+        <div>
+          <label>교차로 ID</label>
+          <input id="intersectionId" placeholder="1007 (선택)"/>
+        </div>
+      </div>
+      <button class="btn btn-ghost" id="statsBtn" style="margin-top:8px;font-size:13px;">서버 통계</button>
+      <button class="btn btn-danger" id="capBtn" disabled style="margin-top:6px;font-size:13px;">수동 1장 기여</button>
+    </details>
   </main>
 
   <footer>© AuraView Fleet · PII 자동 마스킹 후 업로드 · 원본 즉시 폐기</footer>

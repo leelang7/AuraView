@@ -2923,26 +2923,27 @@ def prototype_ui():
               head.rotation.x = Math.PI / 2; head.position.set(0, 0.026, az + 1.0); scene.add(head);
             }
 
-            // Ego car (시안 발광 박스 + headlight 빔)
+            // Ego car group (애니메이션을 위해 그룹) — 시나리오에 따라 회전/이동
+            const egoGroup = new THREE.Group();
             const ego = new THREE.Mesh(
               new THREE.BoxGeometry(1.8, 1.4, 4),
               new THREE.MeshStandardMaterial({color:0x00c8ff, emissive:0x004b75, metalness:0.7, roughness:0.25})
             );
             ego.position.set(0, 0.75, 0);
-            scene.add(ego);
-            // ego 캐빈 (윗부분)
+            egoGroup.add(ego);
             const egoCabin = new THREE.Mesh(
               new THREE.BoxGeometry(1.6, 0.8, 2.2),
               new THREE.MeshStandardMaterial({color:0x0a1a2e, metalness:0.3, roughness:0.4, transparent:true, opacity:0.85})
             );
             egoCabin.position.set(0, 1.65, -0.2);
-            scene.add(egoCabin);
-            // headlight 빔 (전방 cone)
+            egoGroup.add(egoCabin);
+            // headlight 빔 (그룹 내부 — ego 와 같이 회전)
             const beamMat = new THREE.MeshBasicMaterial({color:0xfff7c0, transparent:true, opacity:0.18});
             const beamL = new THREE.Mesh(new THREE.ConeGeometry(2.5, 12, 8, 1, true), beamMat);
-            beamL.rotation.x = -Math.PI / 2; beamL.position.set(-0.6, 0.6, 7); scene.add(beamL);
+            beamL.rotation.x = -Math.PI / 2; beamL.position.set(-0.6, 0.6, 7); egoGroup.add(beamL);
             const beamR = new THREE.Mesh(new THREE.ConeGeometry(2.5, 12, 8, 1, true), beamMat);
-            beamR.rotation.x = -Math.PI / 2; beamR.position.set(0.6, 0.6, 7); scene.add(beamR);
+            beamR.rotation.x = -Math.PI / 2; beamR.position.set(0.6, 0.6, 7); egoGroup.add(beamR);
+            scene.add(egoGroup);
 
             // 거리 라벨 (10m / 20m / 30m) — 도로 옆에 floating
             for (const dz of [10, 20, 30]) {
@@ -2982,18 +2983,46 @@ def prototype_ui():
               console.warn('OrbitControls 로드 실패 — 자동 회전 폴백', e);
             }
 
-            threeCtx = {renderer, scene, camera, voxelGroup, t: 0, controls};
+            threeCtx = {renderer, scene, camera, voxelGroup, egoGroup, t: 0, controls, scenarioId: null};
 
             function animate() {
-              threeCtx.t += 0.005;
+              threeCtx.t += 0.016;  // ~60fps step
               if (controls) {
                 controls.update();
               } else {
-                // 폴백: 자동 회전
                 camera.position.x = Math.cos(threeCtx.t * 0.25) * 30;
                 camera.position.z = Math.sin(threeCtx.t * 0.25) * 30 + 10;
                 camera.lookAt(0, 2, 18);
               }
+
+              // ★ 우회전 시나리오 시 ego 애니메이션 (4초 cycle)
+              if (threeCtx.scenarioId === 'right_turn_pedestrian') {
+                const cycle = (threeCtx.t % 4.0) / 4.0;
+                let egoX, egoZ, egoYawRad;
+                if (cycle < 0.4) {
+                  const p = cycle / 0.4;
+                  egoX = 0;
+                  egoZ = p * 24;
+                  egoYawRad = 0;
+                } else if (cycle < 0.85) {
+                  const p = (cycle - 0.4) / 0.45;
+                  egoX = 18 * p * p;
+                  egoZ = 24 + 8 * p;
+                  egoYawRad = -(Math.PI / 2) * p;  // 시계방향 우회전 (Three.js Y axis)
+                } else {
+                  const p = (cycle - 0.85) / 0.15;
+                  egoX = 18 + p * 4;
+                  egoZ = 32;
+                  egoYawRad = -Math.PI / 2;
+                }
+                egoGroup.position.set(egoX, 0, egoZ);
+                egoGroup.rotation.y = egoYawRad;
+              } else {
+                // 정지 (원점)
+                egoGroup.position.set(0, 0, 0);
+                egoGroup.rotation.y = 0;
+              }
+
               renderer.render(scene, camera);
               requestAnimationFrame(animate);
             }
@@ -3012,6 +3041,8 @@ def prototype_ui():
 
           function renderOcc3D(data) {
             const ctx = ensureThree();
+            // ★ 시나리오 ID 저장 — animate() 가 ego 애니메이션 결정
+            ctx.scenarioId = data.scenario_id || null;
             // Clear previous voxels
             while (ctx.voxelGroup.children.length) {
               const m = ctx.voxelGroup.children.pop();

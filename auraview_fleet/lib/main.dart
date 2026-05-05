@@ -1512,21 +1512,19 @@ class _Bev3DVoxelPainter extends CustomPainter {
   final double t;
   _Bev3DVoxelPainter({this.bev, required this.t});
 
-  // 3D 점 → 2D 화면 (1-point perspective, Tesla-style 위에서 약간 비스듬히 내려다 봄)
-  // 카메라는 ego 위 약간 뒤에 고정 — Tesla 모니터식 안정적 시점
+  // 3D 점 → 2D 화면 (Tesla-style 위에서 내려다 보는 axonometric)
+  // 캔버스 가득 채움 — x ∈ [-15, 15], z ∈ [-5, 55] 가 화면 영역
   Offset _project(double x, double y, double z, double cx, double cz, Size size) {
     final w = size.width, h = size.height;
-    // 카메라 위치 = (0, 12, -3) 가정 → ego 뒤 3m, 위 12m
-    // cx, cz 인자는 미세 진동용 (대부분 0 가까이)
+    // 미세 흔들림 (호흡 효과)
     final dx = x - cx;
-    final dz = z - cz;
-    final dist = math.sqrt(dx * dx + dz * dz) + 0.001;
-    // 더 큰 화면 활용을 위해 scale 강화
-    final scale = 18.0 / (dist * 0.5 + 5);
-    // 화면 중앙 기준
-    final screenX = w / 2 + dx * scale * 4.0;
-    // ego 는 화면 하단 0.85, 멀리 객체일수록 위로
-    final screenY = h * 0.88 - y * scale * 5.0 - dz * scale * 2.0;
+    final dz = z;
+    // 캔버스 fit — 가로 30m, 세로 60m (적당한 margin)
+    final scaleX = (w - 24) / 30.0;       // 1m horizontal = (w-24)/30 px
+    final scaleZ = (h - 70) / 60.0;       // 1m forward = (h-70)/60 px
+    // ego 는 화면 하단 (z=0), 멀리 z 양수가 위쪽으로
+    final screenX = w / 2 + dx * scaleX;
+    final screenY = h - 30 - dz * scaleZ - y * scaleZ * 1.5;  // y 는 높이 visual offset
     return Offset(screenX, screenY);
   }
 

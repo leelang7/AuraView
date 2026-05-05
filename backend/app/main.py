@@ -1333,16 +1333,43 @@ def prototype_ui():
               </div>
             </div>
 
-            <!-- Fleet 업로드 갤러리 — 관리자 검수 / 삭제 -->
+            <!-- Fleet 업로드 갤러리 — 관리자 검수 / 삭제 (인증 필요) -->
             <div class="card" style="margin-top:14px;">
-              <div class="card-tag">UPLOADED HARD SAMPLES · ADMIN REVIEW</div>
-              <div class="section-label">// PII 마스킹된 업로드 이미지 — 이상 데이터는 즉시 삭제</div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;">
-                <div id="fleetGalleryStats" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">로딩 중…</div>
-                <button class="btn-secondary" onclick="loadFleetGallery()">갤러리 새로고침</button>
+              <div class="card-tag">🔒 UPLOADED HARD SAMPLES · ADMIN ONLY</div>
+              <div class="section-label">// PII 마스킹된 업로드 이미지 — 관리자 토큰 인증 필수</div>
+
+              <!-- 잠금 상태 (토큰 없을 때) -->
+              <div id="fleetLocked" style="margin-top:14px;padding:24px;background:var(--surface2);border:1px dashed var(--border);border-radius:12px;text-align:center;">
+                <div style="font-size:36px;margin-bottom:10px;">🔒</div>
+                <div style="font-weight:700;color:var(--text);">관리자 인증 필요</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:6px;">업로드된 이미지·삭제 기능은 관리자만 접근할 수 있습니다.</div>
+                <button class="btn-secondary" onclick="adminLogin()" style="margin-top:14px;">관리자 로그인</button>
               </div>
-              <div id="fleetGallery" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;max-height:560px;overflow:auto;padding:4px;">
-                <div class="placeholder" style="grid-column:1/-1;">갤러리 로딩 중…</div>
+
+              <!-- 갤러리 본문 (인증 후 표시) -->
+              <div id="fleetGalleryWrap" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;">
+                  <div id="fleetGalleryStats" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">로딩 중…</div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn-secondary" onclick="loadFleetGallery()" style="font-size:11px;padding:6px 10px;">새로고침</button>
+                    <button class="btn-secondary" onclick="adminLogout()" style="font-size:11px;padding:6px 10px;">로그아웃</button>
+                  </div>
+                </div>
+                <!-- 일괄 선택 툴바 -->
+                <div style="margin-top:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;font-family:'JetBrains Mono',monospace;">
+                    <button onclick="selectAll()" style="background:rgba(0,200,255,0.12);border:1px solid var(--accent);color:var(--accent);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;">전체 선택</button>
+                    <button onclick="selectNone()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;">선택 해제</button>
+                    <button onclick="invertSelection()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;">반전</button>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span id="selCount" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">0건 선택</span>
+                    <button id="bulkDelBtn" onclick="bulkDelete()" disabled style="background:rgba(255,90,90,0.15);border:1px solid var(--danger);color:var(--danger);padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;opacity:0.5;">선택 삭제</button>
+                  </div>
+                </div>
+                <div id="fleetGallery" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;max-height:560px;overflow:auto;padding:4px;">
+                  <div class="placeholder" style="grid-column:1/-1;">갤러리 로딩 중…</div>
+                </div>
               </div>
             </div>
           </div>
@@ -2569,18 +2596,69 @@ def prototype_ui():
               const fa = document.getElementById('flowAuc');
               if (fa && auc) fa.textContent = auc.toFixed(4);
             } catch(e) {}
-            // 갤러리도 함께 갱신
-            loadFleetGallery();
+            // 갤러리는 인증된 경우에만 함께 갱신
+            if (getAdminToken()) loadFleetGallery();
           }
 
-          /* ── FLEET GALLERY (관리자 검수 / 삭제) ── */
+          /* ── FLEET GALLERY · ADMIN AUTH + 다중선택 + 일괄삭제 ── */
+          let _selectedFleet = new Set();
+
+          function getAdminToken() { return localStorage.getItem('av_admin_token') || ''; }
+          function setAdminToken(t) { localStorage.setItem('av_admin_token', t); }
+          function clearAdminToken() { localStorage.removeItem('av_admin_token'); }
+
+          async function adminLogin() {
+            const t = prompt('관리자 토큰을 입력하세요:');
+            if (!t) return;
+            try {
+              const res = await fetch(window.location.origin + '/fleet/auth', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({token: t.trim()}),
+              });
+              if (!res.ok) {
+                alert('인증 실패: 토큰이 올바르지 않습니다.');
+                return;
+              }
+              setAdminToken(t.trim());
+              applyAdminUI();
+              loadFleetGallery();
+            } catch(e) {
+              alert('인증 실패: ' + e.message);
+            }
+          }
+
+          function adminLogout() {
+            clearAdminToken();
+            _selectedFleet.clear();
+            applyAdminUI();
+          }
+
+          function applyAdminUI() {
+            const locked = document.getElementById('fleetLocked');
+            const galWrap = document.getElementById('fleetGalleryWrap');
+            const has = !!getAdminToken();
+            if (locked) locked.style.display = has ? 'none' : 'block';
+            if (galWrap) galWrap.style.display = has ? 'block' : 'none';
+          }
+
+          function authHeaders() {
+            const t = getAdminToken();
+            return t ? {'X-Admin-Token': t} : {};
+          }
+
           async function loadFleetGallery() {
             const wrap = document.getElementById('fleetGallery');
             const stats = document.getElementById('fleetGalleryStats');
             if (!wrap) return;
+            const tk = getAdminToken();
+            if (!tk) { applyAdminUI(); return; }
             try {
-              const res = await fetch(window.location.origin + '/fleet/list?limit=200');
+              const res = await fetch(window.location.origin + '/fleet/list?limit=500', {headers: authHeaders()});
+              if (res.status === 401) { clearAdminToken(); applyAdminUI(); alert('세션 만료. 다시 로그인하세요.'); return; }
               const data = await res.json();
+              _selectedFleet.clear();
+              updateSelCount();
               if (!Array.isArray(data) || data.length === 0) {
                 wrap.innerHTML = '<div class="placeholder" style="grid-column:1/-1;">아직 업로드된 이미지가 없습니다.</div>';
                 if (stats) stats.textContent = '0 건';
@@ -2590,15 +2668,18 @@ def prototype_ui():
               wrap.innerHTML = '';
               data.forEach(item => {
                 const card = document.createElement('div');
-                card.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;';
+                card.className = 'fleet-card';
+                card.dataset.path = item.path;
+                card.style.cssText = 'background:var(--surface2);border:2px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border-color 0.15s,box-shadow 0.15s;';
                 const exists = item.exists !== false;
                 const reasonColor = item.reason === 'crosswalk_blocked' ? 'var(--danger)' :
                                     item.reason === 'high_entropy' ? 'var(--warn)' : 'var(--accent)';
                 const ts = (item.ts || '').replace('T', ' ').slice(0, 19);
+                const imgSrc = `/fleet/image/${item.path}?token=${encodeURIComponent(tk)}`;
                 card.innerHTML = `
                   <div style="aspect-ratio:1;background:#000;display:flex;align-items:center;justify-content:center;position:relative;">
                     ${exists
-                      ? `<img src="/fleet/image/${item.path}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"
+                      ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"
                               onerror="this.parentElement.innerHTML='<div style=&quot;color:var(--muted);font-size:10px;&quot;>로드 실패</div>';"/>`
                       : '<div style="color:var(--muted);font-size:10px;">파일 없음</div>'}
                     <div style="position:absolute;top:4px;left:4px;background:${reasonColor};color:#000;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;font-family:JetBrains Mono,monospace;">
@@ -2607,17 +2688,19 @@ def prototype_ui():
                     <div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 5px;border-radius:4px;font-size:9px;font-family:JetBrains Mono,monospace;">
                       ε ${(item.entropy ?? 0).toFixed(2)}
                     </div>
+                    <div class="sel-mark" style="position:absolute;bottom:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.6);border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px;opacity:0.7;">○</div>
                   </div>
                   <div style="padding:6px 8px;font-size:10px;font-family:JetBrains Mono,monospace;color:var(--muted);">
                     <div style="color:var(--text);font-weight:700;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.pseudo_device || '-'}</div>
                     <div style="margin-top:2px;">${ts}</div>
                     <div>${item.intersection_id ? '🚦 ' + item.intersection_id : '📍 ' + (item.lat ?? '-') + ',' + (item.lon ?? '-')}</div>
-                    <div style="margin-top:4px;display:flex;gap:4px;">
-                      <button onclick="window.open('/fleet/image/${item.path}','_blank')" style="flex:1;background:rgba(0,200,255,0.15);border:1px solid var(--accent);color:var(--accent);padding:3px;border-radius:4px;font-size:9px;cursor:pointer;font-family:inherit;">원본</button>
+                    <div style="margin-top:4px;display:flex;gap:4px;" onclick="event.stopPropagation();">
+                      <button onclick="window.open('${imgSrc}','_blank')" style="flex:1;background:rgba(0,200,255,0.15);border:1px solid var(--accent);color:var(--accent);padding:3px;border-radius:4px;font-size:9px;cursor:pointer;font-family:inherit;">원본</button>
                       <button onclick="deleteFleetImage('${item.path}')" style="flex:1;background:rgba(255,90,90,0.12);border:1px solid var(--danger);color:var(--danger);padding:3px;border-radius:4px;font-size:9px;cursor:pointer;font-family:inherit;">삭제</button>
                     </div>
                   </div>
                 `;
+                card.onclick = () => toggleSelect(item.path, card);
                 wrap.appendChild(card);
               });
             } catch (e) {
@@ -2625,10 +2708,75 @@ def prototype_ui():
             }
           }
 
+          function toggleSelect(path, card) {
+            if (_selectedFleet.has(path)) { _selectedFleet.delete(path); }
+            else { _selectedFleet.add(path); }
+            paintSelection();
+            updateSelCount();
+          }
+
+          function paintSelection() {
+            document.querySelectorAll('.fleet-card').forEach(card => {
+              const selected = _selectedFleet.has(card.dataset.path);
+              card.style.borderColor = selected ? 'var(--accent)' : 'var(--border)';
+              card.style.boxShadow = selected ? '0 0 16px rgba(0,200,255,0.45)' : 'none';
+              const mark = card.querySelector('.sel-mark');
+              if (mark) {
+                mark.textContent = selected ? '✓' : '○';
+                mark.style.background = selected ? 'var(--accent)' : 'rgba(0,0,0,0.6)';
+                mark.style.color = selected ? '#000' : '#fff';
+                mark.style.opacity = selected ? '1' : '0.7';
+              }
+            });
+          }
+
+          function updateSelCount() {
+            const c = document.getElementById('selCount');
+            const btn = document.getElementById('bulkDelBtn');
+            if (c) c.textContent = _selectedFleet.size + '건 선택';
+            if (btn) {
+              btn.disabled = _selectedFleet.size === 0;
+              btn.style.opacity = _selectedFleet.size === 0 ? '0.5' : '1';
+            }
+          }
+
+          function selectAll() {
+            document.querySelectorAll('.fleet-card').forEach(card => _selectedFleet.add(card.dataset.path));
+            paintSelection(); updateSelCount();
+          }
+          function selectNone() { _selectedFleet.clear(); paintSelection(); updateSelCount(); }
+          function invertSelection() {
+            document.querySelectorAll('.fleet-card').forEach(card => {
+              const p = card.dataset.path;
+              if (_selectedFleet.has(p)) _selectedFleet.delete(p); else _selectedFleet.add(p);
+            });
+            paintSelection(); updateSelCount();
+          }
+
+          async function bulkDelete() {
+            if (_selectedFleet.size === 0) return;
+            if (!confirm(_selectedFleet.size + '건의 이미지를 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
+            try {
+              const res = await fetch(window.location.origin + '/fleet/delete-batch', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', ...authHeaders()},
+                body: JSON.stringify({filenames: Array.from(_selectedFleet)}),
+              });
+              if (res.status === 401) { clearAdminToken(); applyAdminUI(); alert('세션 만료. 다시 로그인하세요.'); return; }
+              const j = await res.json();
+              alert(j.total + '건 삭제 완료' + (j.missing && j.missing.length ? ' · ' + j.missing.length + '건 실패' : ''));
+              loadFleetGallery();
+              loadFleetStats();
+            } catch(e) {
+              alert('삭제 실패: ' + e.message);
+            }
+          }
+
           async function deleteFleetImage(filename) {
             if (!confirm('이 이미지를 삭제하시겠습니까?\\n\\n' + filename)) return;
             try {
-              const res = await fetch(window.location.origin + '/fleet/image/' + encodeURIComponent(filename), {method:'DELETE'});
+              const res = await fetch(window.location.origin + '/fleet/image/' + encodeURIComponent(filename), {method:'DELETE', headers: authHeaders()});
+              if (res.status === 401) { clearAdminToken(); applyAdminUI(); alert('세션 만료. 다시 로그인하세요.'); return; }
               const j = await res.json();
               if (j.status === 'ok') {
                 loadFleetGallery();
@@ -2640,6 +2788,9 @@ def prototype_ui():
               alert('삭제 실패: ' + e.message);
             }
           }
+
+          // 페이지 진입 시 인증 상태에 따라 잠금 / 본문 토글
+          document.addEventListener('DOMContentLoaded', applyAdminUI);
 
           /* ── SCENARIO REENACTMENT ── */
           function drawRiskCurve(series) {

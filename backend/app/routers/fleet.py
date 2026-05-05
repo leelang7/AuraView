@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
 from ..services import pii
@@ -30,6 +30,19 @@ FLEET_DIR = Path(os.getenv("FLEET_DIR", "fleet"))
 FLEET_DIR.mkdir(parents=True, exist_ok=True)
 (FLEET_DIR / "hard_samples").mkdir(parents=True, exist_ok=True)
 MANIFEST = FLEET_DIR / "manifest.jsonl"
+
+# 관리자 인증: X-Admin-Token 헤더 또는 ?token= 쿼리. 기본값 환경변수 미설정 시 데모 토큰.
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "auraview-admin-2026")
+
+
+def require_admin(
+    x_admin_token: Optional[str] = Header(default=None),
+    token: Optional[str] = Query(default=None),
+) -> None:
+    """관리자 토큰 검사 — 헤더 또는 쿼리 둘 중 하나만 일치하면 통과."""
+    provided = x_admin_token or token
+    if provided != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="admin only")
 
 
 @router.post("/contribute")
@@ -115,7 +128,15 @@ def stats():
     }
 
 
-@router.get("/list")
+@router.post("/auth")
+def admin_auth(token: str = Body(..., embed=True)):
+    """토큰 검증 — 프론트가 localStorage 저장 전에 한번 호출."""
+    if token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="invalid token")
+    return {"status": "ok"}
+
+
+@router.get("/list", dependencies=[Depends(require_admin)])
 def list_uploads(limit: int = 100):
     """전체 업로드 목록 (최신 순) — 관리자 검수용."""
     if not MANIFEST.exists():
@@ -141,7 +162,7 @@ def list_uploads(limit: int = 100):
     return out
 
 
-@router.get("/image/{filename}")
+@router.get("/image/{filename}", dependencies=[Depends(require_admin)])
 def get_image(filename: str):
     """업로드된 이미지 단일 조회 (PII 마스킹 적용된 버전)."""
     # path traversal 방지
@@ -153,7 +174,7 @@ def get_image(filename: str):
     return FileResponse(p, media_type="image/jpeg")
 
 
-@router.delete("/image/{filename}")
+@router.delete("/image/{filename}", dependencies=[Depends(require_admin)])
 def delete_image(filename: str):
     """이상하거나 잘못 올라간 이미지 삭제 (manifest 에서도 제거)."""
     if "/" in filename or "\\" in filename or ".." in filename:
@@ -185,3 +206,48 @@ def delete_image(filename: str):
                 f.write(line + "\n")
 
     return {"status": "ok", "deleted": filename}
+
+
+@router.post("/delete-batch", dependencies=[Depends(require_admin)])
+def delete_batch(filenames: list[str] = Body(..., embed=True)):
+    """선택된 다수 이미지 일괄 삭제 — 갤러리 일괄 삭제용."""
+    if not filenames:
+        return {"status": "ok", "deleted": [], "missing": []}
+
+    deleted: list[str] = []
+    missing: list[str] = []
+    target = set()
+    for fn in filenames:
+        if "/" in fn or "\\" in fn or ".." in fn:
+            continue
+        target.add(fn)
+        p = FLEET_DIR / "hard_samples" / fn
+        if p.exists():
+            try:
+                p.unlink()
+                deleted.append(fn)
+            except Exception as exc:
+                log.warning("batch delete failed %s: %s", fn, exc)
+                missing.append(fn)
+        else:
+            missing.append(fn)
+
+    # manifest 일괄 정리 — target 에 들어간 항목 모두 제거
+    if MANIFEST.exists():
+        kept = []
+        with MANIFEST.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                    if row.get("path") not in target:
+                        kept.append(line)
+                except Exception:
+                    kept.append(line)
+        with MANIFEST.open("w", encoding="utf-8") as f:
+            for line in kept:
+                f.write(line + "\n")
+
+    return {"status": "ok", "deleted": deleted, "missing": missing, "total": len(deleted)}

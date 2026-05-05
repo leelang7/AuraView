@@ -1689,6 +1689,27 @@ def prototype_ui():
               <div id="freshGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px;">로딩 중…</div>
             </div>
 
+            <!-- ⚡ 실시간 추론 벤치마크 — 모델 latency p99 -->
+            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(0,200,255,0.04));border:1px solid rgba(124,58,237,0.30);">
+              <div class="card-tag" style="background:linear-gradient(135deg,#7c3aed,var(--accent));">⚡ INFERENCE LATENCY · LIVE BENCHMARK</div>
+              <div class="section-label">// 차량 단위 실시간 추론 — CPU 단일 코어 100회 측정</div>
+              <div id="benchGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px;">
+                <div class="placeholder" style="grid-column:1/-1;">로딩 중…</div>
+              </div>
+              <div style="margin-top:10px;padding:10px;background:var(--surface2);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">
+                <span style="color:var(--safe);font-weight:700;">⚡ 1ms 이하 추론</span> = 차량당 1초 1000회 가능 → 카메라 30fps 단위 매 프레임 분석에 충분
+              </div>
+            </div>
+
+            <!-- 🇰🇷 Tesla vs AuraView — 한국 특화 5가지 -->
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--accent2),var(--danger));">🇰🇷 TESLA 도 못 하는 한국 특화 · 5종</div>
+              <div class="section-label">// 마주오는 차 시점 + 정류장 prior + VDS 결합 + 공공 신호 API + 정책 환원</div>
+              <div id="teslaCompare" style="margin-top:10px;display:grid;gap:8px;">
+                <div class="placeholder">로딩 중…</div>
+              </div>
+            </div>
+
             <!-- ★ KPI vs 목표 시각화 — 공모전 평가지표 -->
             <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,224,154,0.05),rgba(0,200,255,0.03));">
               <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">📊 KPI vs TARGET · 공모전 평가지표</div>
@@ -3518,7 +3539,7 @@ def prototype_ui():
                   '<div class="placeholder" style="grid-column:1/-1;min-height:60px;">/healthz/details 응답 실패</div>';
               }
 
-              // KPI vs 목표 + Early Detection + Scenario chart
+              // KPI vs 목표 + Early Detection + Scenario chart + 벤치마크 + Tesla 비교
               try {
                 const sm = await fetch(window.location.origin + '/summary.json').then(r=>r.json());
                 renderKpiTargets(sm);
@@ -3526,7 +3547,56 @@ def prototype_ui():
               } catch(e) {
                 console.error('summary.json fetch failed', e);
               }
+              try {
+                const bm = await fetch(window.location.origin + '/benchmark/all').then(r=>r.json());
+                renderBenchmark(bm);
+              } catch(e) {}
+              try {
+                const tv = await fetch(window.location.origin + '/positioning/tesla-vs-auraview').then(r=>r.json());
+                renderTeslaCompare(tv);
+              } catch(e) {}
             });
+
+            function renderBenchmark(bm) {
+              const grid = document.getElementById('benchGrid');
+              if (!grid) return;
+              const rt = bm.risk_transformer || {};
+              const v2v = bm.v2v_merge || {};
+              const tile = (label, val, sub, color) => `
+                <div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;text-align:center;">
+                  <div style="color:var(--muted);font-size:9.5px;letter-spacing:1.8px;font-family:'JetBrains Mono',monospace;">${label}</div>
+                  <div style="margin-top:6px;font-size:20px;font-weight:900;color:${color||'var(--text)'};font-family:'Black Han Sans',sans-serif;">${val}</div>
+                  <div style="margin-top:2px;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">${sub||''}</div>
+                </div>`;
+              grid.innerHTML = [
+                tile('⚡ Risk Tx p99', rt.p99_ms != null ? rt.p99_ms.toFixed(2) + 'ms' : '—', 'mean ' + (rt.mean_ms != null ? rt.mean_ms.toFixed(2) + 'ms' : '—'), 'var(--accent2)'),
+                tile('⚡ Risk Tx mean', rt.mean_ms != null ? rt.mean_ms.toFixed(2) + 'ms' : '—', 'n=' + (rt.n||100), 'var(--safe)'),
+                tile('⚡ V2V merge p99', v2v.p99_ms != null ? v2v.p99_ms.toFixed(2) + 'ms' : '—', 'mean ' + (v2v.mean_ms != null ? v2v.mean_ms.toFixed(2) + 'ms' : '—'), 'var(--accent)'),
+                tile('샘플 p_collision', rt.sample_p_collision != null ? rt.sample_p_collision.toFixed(3) : '—', 'backend ' + (rt.backend||'-'), 'var(--warn)'),
+              ].join('');
+            }
+
+            function renderTeslaCompare(tv) {
+              const wrap = document.getElementById('teslaCompare');
+              if (!wrap || !tv.rows) return;
+              wrap.innerHTML = tv.rows.map((r, i) => `
+                <div style="display:grid;grid-template-columns:140px 1fr 1fr;gap:10px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;">
+                  <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);">#${i+1}</div>
+                    <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--accent);margin-top:2px;line-height:1.2;">${r.category}</div>
+                  </div>
+                  <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);">TESLA</div>
+                    <div style="margin-top:2px;font-size:11.5px;color:var(--text);line-height:1.4;">${r.tesla}</div>
+                  </div>
+                  <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--safe);">AURAVIEW</div>
+                    <div style="margin-top:2px;font-size:11.5px;color:var(--text);line-height:1.4;">${r.auraview}</div>
+                    <div style="margin-top:4px;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">→ ${r.endpoint}</div>
+                  </div>
+                </div>
+              `).join('');
+            }
 
             // KPI vs 목표 시각화
             function renderKpiTargets(sm) {

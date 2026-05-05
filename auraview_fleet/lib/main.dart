@@ -2017,6 +2017,53 @@ class _Bev3DVoxelPainter extends CustomPainter {
         ..strokeWidth = 1.2);
   }
 
+  /// EGO 차량을 임의 위치/회전각으로 그리기 (우회전 애니메이션용)
+  void _drawEgoAtAngle(Canvas canvas, Size size, double xM, double zM, double yawDeg,
+                        double cameraX, double cameraZ) {
+    const w = 1.8;  // 차폭
+    const l = 4.0;  // 차장
+    const h = 1.4;  // 차높이
+    final rad = yawDeg * math.pi / 180.0;
+    final cosY = math.cos(rad), sinY = math.sin(rad);
+    // 차체 4 모서리 (ego 진행방향 기준 회전)
+    Offset corner(double dx, double dz, double y) {
+      // local → world (rotate around y-axis)
+      final wx = xM + dx * cosY + dz * sinY;
+      final wz = zM + dx * -sinY + dz * cosY;
+      return _project(wx, y, wz, cameraX, cameraZ, size);
+    }
+    final p000 = corner(-w/2, -l/2, 0);
+    final p100 = corner( w/2, -l/2, 0);
+    final p110 = corner( w/2,  l/2, 0);
+    final p010 = corner(-w/2,  l/2, 0);
+    final p001 = corner(-w/2, -l/2, h);
+    final p101 = corner( w/2, -l/2, h);
+    final p111 = corner( w/2,  l/2, h);
+    final p011 = corner(-w/2,  l/2, h);
+    const color = Color(0xFF00C8FF);
+    // 차체 (윗면 가장 밝게)
+    canvas.drawPath(Path()..moveTo(p001.dx, p001.dy)..lineTo(p101.dx, p101.dy)..lineTo(p111.dx, p111.dy)..lineTo(p011.dx, p011.dy)..close(),
+      Paint()..color = color);
+    // 옆면 (전방)
+    canvas.drawPath(Path()..moveTo(p010.dx, p010.dy)..lineTo(p110.dx, p110.dy)..lineTo(p111.dx, p111.dy)..lineTo(p011.dx, p011.dy)..close(),
+      Paint()..color = const Color(0xFF0080A0));
+    // 옆면 (우)
+    canvas.drawPath(Path()..moveTo(p100.dx, p100.dy)..lineTo(p110.dx, p110.dy)..lineTo(p111.dx, p111.dy)..lineTo(p101.dx, p101.dy)..close(),
+      Paint()..color = const Color(0xFF005570));
+    // 옆면 (후방)
+    canvas.drawPath(Path()..moveTo(p000.dx, p000.dy)..lineTo(p100.dx, p100.dy)..lineTo(p101.dx, p101.dy)..lineTo(p001.dx, p001.dy)..close(),
+      Paint()..color = const Color(0xFF003c50));
+    // 윤곽선 (시안 발광)
+    final outline = Paint()
+      ..color = const Color(0xFF80EEFF)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawPath(Path()..moveTo(p001.dx, p001.dy)..lineTo(p101.dx, p101.dy)..lineTo(p111.dx, p111.dy)..lineTo(p011.dx, p011.dy)..close(), outline);
+    // 진행방향 forward 화살표 (차 앞에 작은 표시)
+    final headlight = corner(0, l/2 + 0.3, h * 0.6);
+    canvas.drawCircle(headlight, 3.5, Paint()..color = const Color(0xFFFFF7C0));
+  }
+
   /// 우회전 시나리오 — 핵심 로직만:
   ///   ego 우회전 시 우측 사각지대에 보행자 → 검출되면 정지 권고
   void _drawRightTurnAids(Canvas canvas, Size size, double cameraX, double cameraZ) {
@@ -2318,8 +2365,39 @@ class _Bev3DVoxelPainter extends CustomPainter {
       );
     }
 
-      // ── EGO 차량 (DEMO 시나리오 — 도로 인프라 끝나는 위치)
-      _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
+      // ── EGO 차량 (DEMO 시나리오)
+      // 우회전 시나리오: ego가 회전 경로 따라 움직임
+      // 다른 시나리오: 원점 정지
+      final scnIdForEgo = bev?['scenario_id'] as String?;
+      if (scnIdForEgo == 'right_turn_pedestrian') {
+        // 4초 cycle: 정지선 진입 → 우회전 → 가로 도로 진입 → 리셋
+        final cycle = (t % 4.0) / 4.0;
+        double egoX, egoZ, egoYawDeg;
+        if (cycle < 0.4) {
+          // 직진 진입 (정지선 z=0~24m)
+          final p = cycle / 0.4;
+          egoX = 0;
+          egoZ = p * 24;
+          egoYawDeg = 0;
+        } else if (cycle < 0.85) {
+          // 우회전 곡선 (정지선 → 가로 도로 진입)
+          final p = (cycle - 0.4) / 0.45;
+          // bezier 비스듬히
+          egoX = 18 * p * p;          // 0 → 18m
+          egoZ = 24 + 8 * p;          // 24 → 32m
+          egoYawDeg = 90 * p;         // 0 → 90도 (시계방향 우회전)
+        } else {
+          // 가로 도로 동쪽으로 직진 (잠깐, 다시 처음으로)
+          final p = (cycle - 0.85) / 0.15;
+          egoX = 18 + p * 4;          // 18 → 22m (잠깐 동쪽으로)
+          egoZ = 32;
+          egoYawDeg = 90;
+        }
+        _drawEgoAtAngle(canvas, size, egoX, egoZ, egoYawDeg, cx, cz);
+      } else {
+        // 정지 (원점)
+        _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
+      }
     }  // end DEMO 도로 인프라 분기
 
     // ── voxel 렌더링: LIVE (class 없음 → 점유 dot) / DEMO (class 있음 → 객체 형상)

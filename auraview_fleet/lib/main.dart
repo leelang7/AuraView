@@ -280,17 +280,10 @@ class _FleetHomeState extends State<FleetHome>
         final bytes = await shot.readAsBytes();
         // 1) voxel grid (edge + motion) 먼저 생성
         final voxel = _voxelizeOnDevice(bytes);
-        // 2) ML Kit 객체 검출 시도 (LIVE 객체 형상 표시용)
-        List<int>? classGrid;
-        if (voxel != null && _objDetector != null && !_mlkitBusy) {
-          _mlkitBusy = true;
-          try {
-            classGrid = await _detectObjectsToClassGrid(shot.path, bytes, 40, 40);
-            if (classGrid != null) voxel['class_grid_flat'] = classGrid;
-          } catch (_) {} finally {
-            _mlkitBusy = false;
-          }
-        }
+        // 2) ML Kit 비활성화 — aspect ratio 휴리스틱 분류 신뢰성 낮음 (오인식 빈발)
+        //    실 환경: voxel dots (edge + motion) 만 사용
+        //    추후 정확한 사람 검출 필요 시 google_mlkit_pose_detection 으로 교체
+        // List<int>? classGrid = ...
         // 3) 임시 파일 정리
         if (!kIsWeb) {
           try { final f = File(shot.path); if (await f.exists()) await f.delete(); } catch (_) {}
@@ -1047,6 +1040,7 @@ class _FleetHomeState extends State<FleetHome>
                           shadowOn: _shadowOn,
                           intersectionId: _autoIntersectionId ?? _intersectionId,
                           intersectionName: _autoIntersectionName,
+                          onSettingsTap: _openDetailSheet,
                         ),
                   ),
                   const SizedBox(height: 10),
@@ -2362,35 +2356,11 @@ class _Bev3DVoxelPainter extends CustomPainter {
         _drawRightTurnAids(canvas, size, cx, cz);
       }
 
-      // LIVE 모드에서 ML Kit 검출 결과 표시 (DEMO 시나리오 아닐 때만)
-      if (scnId == null) {
-        // LIVE + ML Kit
-        var personCount = 0, vehicleCount = 0;
-        for (int i = 0; i < classFlat.length; i++) {
-          final v = (classFlat[i] as num).toInt();
-          if (v == 4) personCount++;
-          if (v == 1) vehicleCount++;
-        }
-        final tp = TextPainter(
-          text: TextSpan(text: 'LIVE · ML Kit · 사람 ${personCount > 0 ? "✓" : "·"}  차량 ${vehicleCount > 0 ? "✓" : "·"}',
-            style: const TextStyle(color: Color(0xFF00E09A), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp.paint(canvas, Offset(size.width - tp.width - 8, 6));
-        // 좌상단 — 처리 파이프라인
-        const pipeText = '📷 → ML Kit Object Detection → BEV class grid';
-        final tp2 = TextPainter(
-          text: const TextSpan(text: pipeText,
-            style: TextStyle(color: Color(0xAA5A7A9A), fontSize: 8, fontWeight: FontWeight.w600)),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp2.paint(canvas, const Offset(8, 6));
-      }
     }
 
-    // ── hotspot 마커 (구체 + 빔)
+    // ── hotspot 마커 (구체 + 빔) — DEMO 시나리오에서만 (LIVE 모드 막대기 제거)
     final hs = bev?['hotspots'];
-    if (hs is List) {
+    if (hs is List && isDemoScene) {
       final fineRows = (bev?['shape']?[0] ?? 80) as num;
       final fineCols = (bev?['shape']?[1] ?? 80) as num;
       for (final h in hs) {
@@ -2663,18 +2633,22 @@ class _IdleStatusCard extends StatelessWidget {
   final bool shadowOn;
   final String? intersectionId;
   final String? intersectionName;
+  final VoidCallback? onSettingsTap;
   const _IdleStatusCard({
     required this.uploads,
     required this.captures,
     required this.shadowOn,
     this.intersectionId,
     this.intersectionName,
+    this.onSettingsTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasInter = intersectionId != null && intersectionId!.isNotEmpty;
-    return Container(
+    return GestureDetector(
+      onTap: onSettingsTap,  // 카드 어디든 탭하면 설정 열림
+      child: Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 11),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -2750,7 +2724,23 @@ class _IdleStatusCard extends StatelessWidget {
             ]),
           ],
         ),
+        const SizedBox(width: 12),
+        // 설정 버튼 (눈에 띄게)
+        GestureDetector(
+          onTap: onSettingsTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color: _accent.withValues(alpha: 0.15),
+              border: Border.all(color: _accent.withValues(alpha: 0.50), width: 1.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.tune, color: _accent, size: 20),
+          ),
+        ),
       ]),
+    ),
     );
   }
 }

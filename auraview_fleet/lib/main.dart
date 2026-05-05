@@ -717,9 +717,62 @@ class _FleetHomeState extends State<FleetHome>
   @override
   Widget build(BuildContext context) {
     if (_initing) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: _bg,
-        body: Center(child: CircularProgressIndicator(color: _accent)),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(0, -0.1), radius: 1.2,
+              colors: [Color(0xFF003E5C), _bg],
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // 큰 AuraView 브랜드 로고
+              Container(
+                width: 140, height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const RadialGradient(
+                    colors: [Color(0xFFE8F8FF), _accent, _accent2],
+                    stops: [0.0, 0.5, 1.0],
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: _accent.withValues(alpha: 0.55), blurRadius: 50, spreadRadius: 4),
+                    BoxShadow(color: _accent2.withValues(alpha: 0.30), blurRadius: 80, spreadRadius: 8),
+                  ],
+                ),
+                child: const Center(
+                  child: Text('A',
+                    style: TextStyle(
+                      fontSize: 64, fontWeight: FontWeight.w900,
+                      color: _bg, letterSpacing: -2,
+                      shadows: [Shadow(color: Color(0x66FFFFFF), blurRadius: 6)],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              const Text('Aura',
+                style: TextStyle(color: _muted, fontSize: 32, fontWeight: FontWeight.w300, letterSpacing: 4),
+              ),
+              Text('VIEW',
+                style: TextStyle(color: _accent, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 8,
+                                 shadows: [Shadow(color: _accent.withValues(alpha:0.5), blurRadius: 16)]),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: 24, height: 24,
+                child: CircularProgressIndicator(color: _accent, strokeWidth: 2),
+              ),
+              const SizedBox(height: 14),
+              Text('K-Perception 시작 중…',
+                style: TextStyle(color: _muted, fontSize: 11, letterSpacing: 2,
+                                 fontFamily: 'monospace')),
+            ],
+          ),
+        ),
       );
     }
 
@@ -908,6 +961,22 @@ class _UnifiedStatusBar extends StatelessWidget {
         const SizedBox(width: 10),
         Text('Aura', style: TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
         Text('View', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w800)),
+        const SizedBox(width: 6),
+        // 가시 설정 버튼 (스와이프 외에)
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              final state = context.findAncestorStateOfType<_FleetHomeState>();
+              state?._openDetailSheet();
+            },
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.tune_rounded, size: 18, color: _muted),
+            ),
+          ),
+        ),
         const Spacer(),
         // 속도
         if (hasGps) ...[

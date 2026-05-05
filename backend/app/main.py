@@ -110,6 +110,7 @@ def _mount_static(app, paths_relative_to_repo, mount_url):
 _mount_static(app, ["static", "slides"], "/slides")
 _mount_static(app, ["static", "kiosk"], "/kiosk")
 _mount_static(app, ["static", "summary"], "/submission")
+_mount_static(app, ["static"], "/static")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)
 _PWA_DIR_CANDIDATES = [
@@ -1730,6 +1731,63 @@ def prototype_ui():
               <div class="card-tag">DATA FRESHNESS · LIVE POLLING</div>
               <div class="section-label">// 6종 공공데이터 마지막 호출 시각 + 응답 모드</div>
               <div id="freshGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px;">로딩 중…</div>
+            </div>
+
+            <!-- 🏗️ 시스템 아키텍처 다이어그램 -->
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-tag">SYSTEM ARCHITECTURE · 데이터 흐름</div>
+              <div class="section-label">// 엣지 → 서버 → 융합 → 추론 → 정책 환원 (E2E)</div>
+              <div style="margin-top:12px;background:#fff;border-radius:12px;padding:10px;overflow:auto;">
+                <img src="/static/architecture.svg" alt="AuraView Architecture" style="width:100%;max-width:1200px;display:block;margin:0 auto;"/>
+              </div>
+            </div>
+
+            <!-- 🔒 데이터 안심구역 + Privacy 흐름 -->
+            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(124,58,237,0.06),rgba(0,200,255,0.03));border:1px solid rgba(124,58,237,0.30);">
+              <div class="card-tag" style="background:linear-gradient(135deg,#7c3aed,var(--accent2,#a995ff));">🔒 DATA SAFE ZONE · 안심구역 + 가명결합</div>
+              <div class="section-label">// 한국 공공 데이터 안심구역(DSZ) 표준 절차 + Edge PII 보호</div>
+              <div style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+                <div style="padding:14px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--accent);">
+                  <div style="font-size:24px;text-align:center;">📱</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:1.5px;text-align:center;margin-top:4px;">EDGE INFER</div>
+                  <div style="margin-top:6px;font-size:11px;color:var(--text);font-weight:700;text-align:center;">엣지 추론</div>
+                  <div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.35;">Flutter 폰이 직접 voxel 생성 · PII 절대 미전송</div>
+                </div>
+                <div style="padding:14px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--warn);">
+                  <div style="font-size:24px;text-align:center;">🎭</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--warn);letter-spacing:1.5px;text-align:center;margin-top:4px;">PII MASK</div>
+                  <div style="margin-top:6px;font-size:11px;color:var(--text);font-weight:700;text-align:center;">자동 마스킹</div>
+                  <div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.35;">얼굴 / 번호판 OpenCV 블러 · 원본 즉시 삭제</div>
+                </div>
+                <div style="padding:14px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--accent2,#7c3aed);">
+                  <div style="font-size:24px;text-align:center;">🔐</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent2,#a995ff);letter-spacing:1.5px;text-align:center;margin-top:4px;">HMAC PSEUDO</div>
+                  <div style="margin-top:6px;font-size:11px;color:var(--text);font-weight:700;text-align:center;">가명화</div>
+                  <div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.35;">device_id → HMAC-SHA256 · 추적 불가</div>
+                </div>
+                <div style="padding:14px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--safe);">
+                  <div style="font-size:24px;text-align:center;">📍</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--safe);letter-spacing:1.5px;text-align:center;margin-top:4px;">K-ANON 100m</div>
+                  <div style="margin-top:6px;font-size:11px;color:var(--text);font-weight:700;text-align:center;">k-익명성</div>
+                  <div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.35;">위치 ~100m 그리드 라운딩 · k≥5 보장</div>
+                </div>
+                <div style="padding:14px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--danger);">
+                  <div style="font-size:24px;text-align:center;">🏛️</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--danger);letter-spacing:1.5px;text-align:center;margin-top:4px;">DSZ JOIN</div>
+                  <div style="margin-top:6px;font-size:11px;color:var(--text);font-weight:700;text-align:center;">안심구역 결합</div>
+                  <div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.35;">dsz.ex.co.kr 반입 · TAAS×VDS 결합 · 해시 검증 반출</div>
+                </div>
+                <div style="padding:14px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--accent);">
+                  <div style="font-size:24px;text-align:center;">📊</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:1.5px;text-align:center;margin-top:4px;">AGGREGATE</div>
+                  <div style="margin-top:6px;font-size:11px;color:var(--text);font-weight:700;text-align:center;">집계만 반환</div>
+                  <div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.35;">개별 PII 미공개 · 통계 / 분포만 정책 환원</div>
+                </div>
+              </div>
+              <div style="margin-top:12px;padding:10px;background:rgba(0,224,154,0.05);border-left:3px solid var(--safe);border-radius:6px;font-size:11px;color:var(--text);line-height:1.5;">
+                <strong style="color:var(--safe);">정보통신망법 / 개인정보보호법 / 데이터안심구역 표준 절차 100% 준수</strong> ·
+                Edge → PII Mask → HMAC → K-anon → DSZ → 집계만 — 6단계 Privacy-by-Design.
+              </div>
             </div>
 
             <!-- ⚡ 실시간 추론 벤치마크 — 모델 latency p99 -->

@@ -176,16 +176,17 @@ def _build_scene(name: str, phase: float):
         ]
 
     elif name == "motorcycle_blindspot":
-        # ego 좌후방 사각지대 이륜차 — 좌측 가까이 (row ~10, col 10~14) 빠르게 접근
+        # 1) 자차 좌측 사각지대 영역 (배경, 먼저 깔기)
+        grid[10:25, 5:14] = 0.30; cls[10:25, 5:14] = 3
+        # 2) 우측 차로 차량
+        grid[20:28, 60:72] = 0.85; cls[20:28, 60:72] = 1
+        # 3) 전방 신호등
+        grid[40:46, 38:42] = 0.60; cls[40:46, 38:42] = 5
+        # 4) ego 좌후방 사각지대 이륜차 — 좌측 가까이 (row ~10, col 10~14) 빠르게 접근
+        # ★ 마지막에 그려서 occlusion 영역 위에 표시
         moto_progress = (phase / (2 * 3.14159))
         moto_row = int(8 + moto_progress * 6)
-        grid[moto_row:moto_row + 5, 8:14] = 0.88; cls[moto_row:moto_row + 5, 8:14] = 2
-        # 자차 좌측 사각지대 영역 시각화
-        grid[10:25, 5:14] = 0.30; cls[10:25, 5:14] = 3
-        # 우측 차로 차량
-        grid[20:28, 60:72] = 0.85; cls[20:28, 60:72] = 1
-        # 전방 신호등
-        grid[40:46, 38:42] = 0.60; cls[40:46, 38:42] = 5
+        grid[moto_row:moto_row + 5, 8:14] = 0.92; cls[moto_row:moto_row + 5, 8:14] = 2
         hotspots = [
             {"class": "motorcycle", "row": moto_row + 2, "col": 11, "kind": "object", "distance_m": 5.0, "label": "⚠️ 좌측 사각지대 이륜차 (5m)"},
             {"class": "blindspot_zone", "row": 16, "col": 9, "kind": "blindspot", "distance_m": 4.0, "label": "백미러 사각지대 영역"},

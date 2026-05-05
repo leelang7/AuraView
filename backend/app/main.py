@@ -2995,21 +2995,26 @@ def prototype_ui():
                 camera.lookAt(0, 2, 18);
               }
 
-              // ★ 우회전 시나리오 시 ego 애니메이션 (4초 cycle)
+              // ★ 우회전 시나리오 — 보행자 안전 동작:
+              //   접근 → 정지 (보행자 대기) → 회전 → 진입 (8초 cycle)
               if (threeCtx.scenarioId === 'right_turn_pedestrian') {
-                const cycle = (threeCtx.t % 4.0) / 4.0;
+                const cycle = (threeCtx.t % 8.0) / 8.0;
                 let egoX, egoZ, egoYawRad;
-                if (cycle < 0.4) {
-                  const p = cycle / 0.4;
-                  egoX = 0;
-                  egoZ = p * 24;
-                  egoYawRad = 0;
+                if (cycle < 0.20) {
+                  // 정지선 접근
+                  const p = cycle / 0.20;
+                  egoX = 0; egoZ = p * 22; egoYawRad = 0;
+                } else if (cycle < 0.55) {
+                  // ★ 정지선 직전 정지 — 보행자 통과 대기
+                  egoX = 0; egoZ = 22; egoYawRad = 0;
                 } else if (cycle < 0.85) {
-                  const p = (cycle - 0.4) / 0.45;
+                  // 보행자 통과 → 우회전 곡선
+                  const p = (cycle - 0.55) / 0.30;
                   egoX = 18 * p * p;
-                  egoZ = 24 + 8 * p;
-                  egoYawRad = -(Math.PI / 2) * p;  // 시계방향 우회전 (Three.js Y axis)
+                  egoZ = 22 + 10 * p;
+                  egoYawRad = -(Math.PI / 2) * p;
                 } else {
+                  // 가로 도로 동쪽 진입
                   const p = (cycle - 0.85) / 0.15;
                   egoX = 18 + p * 4;
                   egoZ = 32;

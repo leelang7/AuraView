@@ -285,11 +285,10 @@ def _build_scene(name: str, phase: float):
             {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "신호등"},
         ]
     elif name == "right_turn_pedestrian":
-        # ego 우회전 시나리오 — 4가지 요소
-        # 1) 우측 횡단보도 보행자 (ego 회전 경로)
-        # 2) 가로 도로 동→서 마주오는 차량 (반대편 흐름)
-        # 3) 가로 도로 서→동 옆으로 지나가는 차량
-        # 4) ego A필러 사각지대
+        # ego 우회전 시나리오 — 핵심 3가지
+        # 1) ego 우측 A필러 사각지대 (운전자 못 보는 영역)
+        # 2) 우측 횡단보도 보행자 (회전 경로 위 — 정지 필요)
+        # 3) 마주오는 차량 (북→남, ego 도로 반대편 차로) — 회전 시 양보 또는 충돌 위험
 
         # A. ego 우측 A필러 사각지대
         grid[16:48, 50:58] = 0.30; cls[16:48, 50:58] = 3
@@ -300,31 +299,22 @@ def _build_scene(name: str, phase: float):
         grid[ped_row:ped_row + 3, 52:54] = 0.92
         cls[ped_row:ped_row + 3, 52:54] = 4
 
-        # C. 가로 도로 차량 (반대편 흐름) — 동→서 (오른쪽에서 왼쪽)
-        # 가로 도로 북쪽 차로 (row 56~60), phase 따라 col 70→10 이동
-        west_progress = (phase / (2 * 3.14159)) % 1
-        west_col = int(70 - west_progress * 60)
-        if 0 <= west_col <= 71:
-            grid[56:60, west_col:west_col + 9] = 0.88
-            cls[56:60, west_col:west_col + 9] = 1
-
-        # D. 가로 도로 차량 (옆 흐름) — 서→동 (왼쪽에서 오른쪽)
-        # 가로 도로 남쪽 차로 (row 50~54), phase offset 사용
-        east_progress = ((phase + 3.14159) / (2 * 3.14159)) % 1
-        east_col = int(east_progress * 70)
-        if 0 <= east_col <= 71:
-            grid[50:54, east_col:east_col + 9] = 0.85
-            cls[50:54, east_col:east_col + 9] = 1
+        # C. 마주오는 차량 (반대편 차로) — 북에서 남으로 (멀리→가까이)
+        # ego 도로 반대편 차로 (col 33~37, ego 좌측 = oncoming 의 우측 차로)
+        # phase 따라 row 75 → row 5 (4초 cycle, 멀리에서 가까이 진행)
+        oncoming_progress = (phase / (2 * 3.14159)) % 1
+        oncoming_row = int(75 - oncoming_progress * 70)
+        if 0 <= oncoming_row <= 75:
+            grid[oncoming_row:oncoming_row + 9, 33:37] = 0.92
+            cls[oncoming_row:oncoming_row + 9, 33:37] = 1
 
         hotspots = [
             {"class": "blindspot_zone", "row": 32, "col": 54, "kind": "blindspot", "distance_m": 16.0,
              "label": "⚠️ 우측 A필러 사각지대"},
             {"class": "pedestrian_zone", "row": ped_row + 1, "col": 53, "kind": "intent_prior",
              "distance_m": (ped_row + 1) * 0.5, "label": "🚸 우측 횡단보도 보행자 (회전 경로)"},
-            {"class": "vehicle", "row": 58, "col": west_col + 4, "kind": "object", "distance_m": 29.0,
-             "label": "🚗 반대편 차량 (동→서)"},
-            {"class": "vehicle", "row": 52, "col": east_col + 4, "kind": "object", "distance_m": 26.0,
-             "label": "🚗 가로 차량 (서→동)"},
+            {"class": "vehicle", "row": oncoming_row + 4, "col": 35, "kind": "object",
+             "distance_m": (oncoming_row + 4) * 0.5, "label": "🚗 마주오는 차량 (북→남)"},
         ]
 
     else:

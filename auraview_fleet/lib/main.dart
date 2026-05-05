@@ -2018,8 +2018,9 @@ class _Bev3DVoxelPainter extends CustomPainter {
   }
 
   /// EGO 차량을 임의 위치/회전각으로 그리기 (우회전 애니메이션용)
+  /// brakeOn: 브레이크 등 빨갛게 (정지 표시)
   void _drawEgoAtAngle(Canvas canvas, Size size, double xM, double zM, double yawDeg,
-                        double cameraX, double cameraZ) {
+                        double cameraX, double cameraZ, {bool brakeOn = false}) {
     const w = 1.8;  // 차폭
     const l = 4.0;  // 차장
     const h = 1.4;  // 차높이
@@ -2059,9 +2060,22 @@ class _Bev3DVoxelPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawPath(Path()..moveTo(p001.dx, p001.dy)..lineTo(p101.dx, p101.dy)..lineTo(p111.dx, p111.dy)..lineTo(p011.dx, p011.dy)..close(), outline);
-    // 진행방향 forward 화살표 (차 앞에 작은 표시)
+    // 진행방향 forward 화살표 (차 앞 헤드라이트)
     final headlight = corner(0, l/2 + 0.3, h * 0.6);
     canvas.drawCircle(headlight, 3.5, Paint()..color = const Color(0xFFFFF7C0));
+    // 정지 시 후미등 (빨강) 표시
+    if (brakeOn) {
+      final brakeL = corner(-w*0.4, -l/2 - 0.1, h * 0.6);
+      final brakeR = corner( w*0.4, -l/2 - 0.1, h * 0.6);
+      final pulse = (math.sin(this.t * 4) + 1) * 0.5;
+      final brakePaint = Paint()
+        ..color = const Color(0xFFFF3030).withValues(alpha: 0.6 + pulse * 0.4)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      canvas.drawCircle(brakeL, 5, brakePaint);
+      canvas.drawCircle(brakeR, 5, brakePaint);
+      canvas.drawCircle(brakeL, 3, Paint()..color = const Color(0xFFFF5050));
+      canvas.drawCircle(brakeR, 3, Paint()..color = const Color(0xFFFF5050));
+    }
   }
 
   /// 우회전 시나리오 — 핵심 로직만:
@@ -2370,30 +2384,37 @@ class _Bev3DVoxelPainter extends CustomPainter {
       // 다른 시나리오: 원점 정지
       final scnIdForEgo = bev?['scenario_id'] as String?;
       if (scnIdForEgo == 'right_turn_pedestrian') {
-        // 4초 cycle: 정지선 진입 → 우회전 → 가로 도로 진입 → 리셋
-        final cycle = (t % 4.0) / 4.0;
+        // 8초 cycle: 접근 → 정지(보행자 대기) → 회전 → 진입 → 리셋
+        // 보행자 안전 우선 동작 시연
+        final cycle = (t % 8.0) / 8.0;
         double egoX, egoZ, egoYawDeg;
-        if (cycle < 0.4) {
-          // 직진 진입 (정지선 z=0~24m)
-          final p = cycle / 0.4;
+        bool isStopped = false;
+        if (cycle < 0.20) {
+          // 정지선 접근 (z=0→22m)
+          final p = cycle / 0.20;
           egoX = 0;
-          egoZ = p * 24;
+          egoZ = p * 22;
           egoYawDeg = 0;
+        } else if (cycle < 0.55) {
+          // ★ 정지선 직전 정지 — 보행자 횡단 대기
+          egoX = 0;
+          egoZ = 22;
+          egoYawDeg = 0;
+          isStopped = true;
         } else if (cycle < 0.85) {
-          // 우회전 곡선 (정지선 → 가로 도로 진입)
-          final p = (cycle - 0.4) / 0.45;
-          // bezier 비스듬히
-          egoX = 18 * p * p;          // 0 → 18m
-          egoZ = 24 + 8 * p;          // 24 → 32m
-          egoYawDeg = 90 * p;         // 0 → 90도 (시계방향 우회전)
+          // 보행자 통과 → 우회전 곡선
+          final p = (cycle - 0.55) / 0.30;
+          egoX = 18 * p * p;
+          egoZ = 22 + 10 * p;
+          egoYawDeg = 90 * p;
         } else {
-          // 가로 도로 동쪽으로 직진 (잠깐, 다시 처음으로)
+          // 가로 도로 동쪽 진입
           final p = (cycle - 0.85) / 0.15;
-          egoX = 18 + p * 4;          // 18 → 22m (잠깐 동쪽으로)
+          egoX = 18 + p * 4;
           egoZ = 32;
           egoYawDeg = 90;
         }
-        _drawEgoAtAngle(canvas, size, egoX, egoZ, egoYawDeg, cx, cz);
+        _drawEgoAtAngle(canvas, size, egoX, egoZ, egoYawDeg, cx, cz, brakeOn: isStopped);
       } else {
         // 정지 (원점)
         _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);

@@ -584,9 +584,57 @@ class _FleetHomeState extends State<FleetHome>
     }
   }
 
+  String _reasonKo(String r) => const {
+    'signal_occluded':    '🚦 신호등 가림 기록',
+    'crosswalk_blocked':  '🚛 횡단보도 가림 기록',
+    'blind_spot_left':    '◀ 좌측 사각지대 기록',
+    'blind_spot_right':   '▶ 우측 사각지대 기록',
+    'high_uncertainty':   '⚠ 시야 불확실 기록',
+    'low_confidence':     '· 시야 흐림 기록',
+  }[r] ?? '· 자동 기록 ($r)';
+
+  /// AuraView 컨셉 trigger — 신호 가림 / 횡단보도 가림 / 사각지대 감지.
+  /// voxel grid (_bev) 가 있으면 occlusion 패턴 우선,
+  /// 없으면 entropy/motion 폴백.
   String? _classifyReason(_FrameFeat feat) {
-    if (feat.entropy >= 0.75) return 'high_entropy';
-    if (feat.motion >= 0.7) return 'motion_spike';
+    final flat = _bev?['grid_flat'];
+    if (flat is List && flat.length == 1600) {
+      // 화면 영역 분석 (40×40 그리드, row 0=ego 가까이, row 39=멀리)
+      const ROWS = 40, COLS = 40;
+      double upperCenter = 0;   // 신호등이 있을 위치 (멀리·중앙)
+      double leftEdge = 0;      // 좌측 사각지대
+      double rightEdge = 0;     // 우측 사각지대
+      double bigBlobCenter = 0; // 트럭/버스 같은 큰 객체
+      for (int r = 25; r < 38; r++) {           // 멀리 (10~15m)
+        for (int c = 14; c < 26; c++) {         // 중앙 차로
+          upperCenter += (flat[r * COLS + c] as num).toDouble();
+        }
+      }
+      for (int r = 5; r < 25; r++) {            // 가까이~중간
+        for (int c = 0; c < 8; c++) {           // 좌측
+          leftEdge += (flat[r * COLS + c] as num).toDouble();
+        }
+        for (int c = 32; c < 40; c++) {         // 우측
+          rightEdge += (flat[r * COLS + c] as num).toDouble();
+        }
+      }
+      for (int r = 8; r < 22; r++) {            // 가까이~중간 차로 중앙
+        for (int c = 12; c < 28; c++) {
+          bigBlobCenter += (flat[r * COLS + c] as num).toDouble();
+        }
+      }
+
+      // 임계값 — 대략 cell ≥ 0.4 일 때 채워진 걸로 본다
+      // 신호 가림: 전방 멀리 중앙 점유 누적 ≥ 30
+      if (upperCenter >= 30) return 'signal_occluded';
+      // 횡단보도 가림 (큰 객체 중앙 점유): bigBlob ≥ 60
+      if (bigBlobCenter >= 60) return 'crosswalk_blocked';
+      // 사각지대: 좌/우 측면 누적 ≥ 25
+      if (leftEdge >= 25)  return 'blind_spot_left';
+      if (rightEdge >= 25) return 'blind_spot_right';
+    }
+    // 폴백 (voxel 정보 없을 때) — 일반 entropy/motion
+    if (feat.entropy >= 0.75 || feat.motion >= 0.7) return 'high_uncertainty';
     if (feat.entropy >= kEntropyThreshold) return 'low_confidence';
     return null;
   }
@@ -752,11 +800,11 @@ class _FleetHomeState extends State<FleetHome>
               child: _BevPanel(bev: _bev, fusion: _fusion),
             ),
 
-            // 자동 캡처 펄스 (캡처 직후 잠깐 노출)
+            // 자동 캡처 펄스 (캡처 직후 잠깐 노출) — 컨셉 한글 라벨
             if (_shadowOn && _lastReason != 'ok' && _lastReason != 'idle')
               Positioned(
                 top: 70, left: 0, right: 0,
-                child: Center(child: _LiveBadge(reason: '자동 기록: $_lastReason')),
+                child: Center(child: _LiveBadge(reason: _reasonKo(_lastReason))),
               ),
 
             // 하단 단일 큰 버튼 — 주행 시작 / 중지
@@ -833,19 +881,30 @@ class _UnifiedStatusBar extends StatelessWidget {
     final hasGps = pos != null;
     final speed = hasGps ? (pos!.speed * 3.6).toStringAsFixed(0) : '—';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: _bg.withValues(alpha: 0.78),
         border: Border.all(color: _border()),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(children: [
-        // pulse dot
-        Container(width: 10, height: 10, decoration: BoxDecoration(
-          color: shadowOn ? _safe : _muted,
-          shape: BoxShape.circle,
-          boxShadow: shadowOn ? [BoxShadow(color: _safe, blurRadius: 8)] : null,
-        )),
+        // 브랜드 마크 — radial gradient circle + 펄스 (shadow ON 시 글로우)
+        Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: [Color(0xFFD8FAFF), _accent, _accent2],
+              stops: [0.0, 0.45, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (shadowOn ? _safe : _accent).withValues(alpha: 0.55),
+                blurRadius: 14, spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
         const SizedBox(width: 10),
         Text('Aura', style: TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
         Text('View', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w800)),

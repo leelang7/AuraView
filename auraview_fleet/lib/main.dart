@@ -132,8 +132,55 @@ class _FleetHomeState extends State<FleetHome>
   bool _bevOpen = true;
   Map<String, dynamic>? _bev;
   Map<String, dynamic>? _fusion;
+  Map<String, dynamic>? _altSignal;       // /signals/{iid}/alternate 응답
+  String? _autoIntersectionId;            // GPS 기반 자동 감지 교차로
+  String? _autoIntersectionName;
   Timer? _bevTimer;
   List<double>? _prevFrameGray;  // motion diff 용 이전 프레임
+
+  // 데모 시드와 동일 — GPS 근접 교차로 매칭용
+  static const _knownIntersections = <Map<String, dynamic>>[
+    {'id': '1007', 'name': '한양대역 교차로', 'lat': 37.5547, 'lon': 127.1295},
+    {'id': '2024', 'name': '강남역 사거리',   'lat': 37.4979, 'lon': 127.0276},
+    {'id': '3015', 'name': '광화문 사거리',   'lat': 37.5723, 'lon': 126.9769},
+    {'id': '4011', 'name': '잠실역 환승센터', 'lat': 37.5133, 'lon': 127.1000},
+    {'id': '5006', 'name': '신촌 로터리',     'lat': 37.5556, 'lon': 126.9367},
+    {'id': '6022', 'name': '사당역 사거리',   'lat': 37.4766, 'lon': 126.9816},
+    {'id': '7045', 'name': '왕십리역 광장',   'lat': 37.5611, 'lon': 127.0376},
+    {'id': '8033', 'name': '건대입구 로데오', 'lat': 37.5403, 'lon': 127.0700},
+  ];
+
+  /// GPS 좌표 기준 가장 가까운 교차로 (반경 800m 이내) 자동 감지.
+  /// 사용자가 settings 에서 intersection_id 를 안 넣어도 HUD 가 동작하도록.
+  void _autoDetectIntersection() {
+    final p = _pos;
+    if (p == null) return;
+    String? bestId;
+    String? bestName;
+    double bestDist = 0.8;  // 0.8km 이내만 매칭
+    for (final it in _knownIntersections) {
+      final dKm = _haversineKm(p.latitude, p.longitude,
+          (it['lat'] as num).toDouble(), (it['lon'] as num).toDouble());
+      if (dKm < bestDist) {
+        bestDist = dKm;
+        bestId = it['id'] as String;
+        bestName = it['name'] as String;
+      }
+    }
+    if (bestId != _autoIntersectionId && mounted) {
+      setState(() {
+        _autoIntersectionId = bestId;
+        _autoIntersectionName = bestName;
+      });
+    }
+  }
+
+  // 도심 짧은 거리 — 평면 근사로 충분 (1° lat≈111km, 1° lon@37°≈89km)
+  static double _haversineKm(double lat1, double lon1, double lat2, double lon2) {
+    final dx = (lat2 - lat1) * 111.0;
+    final dy = (lon2 - lon1) * 89.0;
+    return math.sqrt(dx * dx + dy * dy);
+  }
 
   @override
   void initState() {
@@ -186,7 +233,11 @@ class _FleetHomeState extends State<FleetHome>
       } catch (_) {}
     }
     // 도시정보 결합 (signal/VDS/TAAS) — voxel 위에 라이브 라인 표시용
-    final iid = _intersectionId;
+    // intersection_id 우선순위: 사용자 설정값 → GPS 자동 감지값
+    _autoDetectIntersection();
+    final iid = (_intersectionId != null && _intersectionId!.isNotEmpty)
+        ? _intersectionId!
+        : _autoIntersectionId;
     if (iid != null && iid.isNotEmpty) {
       try {
         final r = await http.get(Uri.parse('$kApiBase/fusion/intersection/$iid'))
@@ -196,7 +247,36 @@ class _FleetHomeState extends State<FleetHome>
           if (mounted) setState(() => _fusion = body);
         }
       } catch (_) {}
+
+      // 가려진 신호등 대체 안내 — voxel 분석으로 occlusion_score 추정
+      try {
+        final occ = _estimateOcclusionScore();
+        final r = await http.get(Uri.parse(
+              '$kApiBase/signals/$iid/alternate?occlusion_score=${occ.toStringAsFixed(2)}'))
+            .timeout(const Duration(seconds: 6));
+        if (r.statusCode == 200) {
+          final body = jsonDecode(r.body) as Map<String, dynamic>;
+          if (mounted) setState(() => _altSignal = body);
+        }
+      } catch (_) {}
     }
+  }
+
+  /// voxel grid 의 신호등 영역 (멀리·중앙) 점유율을 0~1 occlusion_score 로 변환.
+  double _estimateOcclusionScore() {
+    final flat = _bev?['grid_flat'];
+    if (flat is! List || flat.length != 1600) return 0.30;
+    const ROWS = 40, COLS = 40;
+    double upperCenter = 0;
+    int cells = 0;
+    for (int r = 25; r < 38; r++) {
+      for (int c = 14; c < 26; c++) {
+        upperCenter += (flat[r * COLS + c] as num).toDouble();
+        cells++;
+      }
+    }
+    final ratio = upperCenter / cells;
+    return (ratio * 1.6).clamp(0.10, 0.95);
   }
 
   /// 엣지 voxel 생성 — 카메라 프레임을 40×40 grayscale 로 다운샘플 후
@@ -854,10 +934,22 @@ class _FleetHomeState extends State<FleetHome>
               child: _BevPanel(bev: _bev, fusion: _fusion),
             ),
 
+            // ★ HUD: 가려진 신호등 자동 안내 — alt_signal 응답 있을 때 표시
+            if (_altSignal != null)
+              Positioned(
+                top: 78, left: 12, right: 12,
+                child: _SignalHud(
+                  altSignal: _altSignal!,
+                  intersectionName: _autoIntersectionName ??
+                      (_intersectionId != null ? '교차로 $_intersectionId' : ''),
+                  pulse: _lastReason == 'signal_occluded',
+                ),
+              ),
+
             // 자동 캡처 펄스 (캡처 직후 잠깐 노출) — 컨셉 한글 라벨
             if (_shadowOn && _lastReason != 'ok' && _lastReason != 'idle')
               Positioned(
-                top: 70, left: 0, right: 0,
+                top: 144, left: 0, right: 0,
                 child: Center(child: _LiveBadge(reason: _reasonKo(_lastReason))),
               ),
 
@@ -1640,6 +1732,144 @@ class _StatusOrb extends StatelessWidget {
         ),
       ),
       onEnd: () {},
+    );
+  }
+}
+
+/// 가려진 신호등 자동 안내 HUD — 카메라 위 상단 표시.
+/// alt_signal 응답이 있고 alt_guide 가 있으면 항상 표시.
+class _SignalHud extends StatefulWidget {
+  final Map<String, dynamic> altSignal;
+  final String intersectionName;
+  final bool pulse;
+  const _SignalHud({
+    required this.altSignal,
+    required this.intersectionName,
+    required this.pulse,
+  });
+  @override
+  State<_SignalHud> createState() => _SignalHudState();
+}
+
+class _SignalHudState extends State<_SignalHud>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.altSignal;
+    final guide = (s['alt_guide'] ?? '') as String;
+    final action = (s['alt_action'] ?? '') as String;
+    final state = (s['signal_state'] ?? '') as String;
+    final remain = s['remain_time_s'];
+    final risk = s['risk_score'] ?? 0;
+    final isStop = state.toLowerCase().contains('stop') || state.toLowerCase().contains('red');
+
+    final mainColor = isStop ? const Color(0xFFFF5A5A) : const Color(0xFF00E09A);
+    final iconBg = isStop ? const Color(0xFFFF5A5A) : const Color(0xFF00E09A);
+    final iconLabel = isStop ? '⛔' : '🟢';
+
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        final t = widget.pulse ? _ctrl.value : 0.0;
+        return Container(
+          padding: const EdgeInsets.fromLTRB(14, 11, 14, 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [
+                const Color(0xEE0D1520),
+                isStop ? const Color(0xFF2A0F12) : const Color(0xFF0F2520),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: mainColor.withValues(alpha: 0.55 + 0.40 * t),
+              width: 1.6 + 0.7 * t,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: mainColor.withValues(alpha: 0.30 + 0.35 * t),
+                blurRadius: 16 + 14 * t,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  // 신호 아이콘 (정지/주행)
+                  Container(
+                    width: 38, height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: iconBg.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: iconBg.withValues(alpha: 0.60)),
+                    ),
+                    child: Text(iconLabel, style: const TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 10),
+                  // 교차로명 + 상태
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.intersectionName.isEmpty ? '근접 교차로 자동 감지 대기' : widget.intersectionName,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFFE2EAF5), fontSize: 13.5, fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$state' +
+                          (remain != null ? ' · 남은 ${remain}초' : '') +
+                          ' · risk $risk',
+                          style: TextStyle(color: mainColor, fontSize: 10.5, fontFamily: 'monospace', fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (guide.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.32),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(left: BorderSide(color: mainColor, width: 3)),
+                  ),
+                  child: Text(
+                    guide,
+                    style: const TextStyle(color: Color(0xFFE2EAF5), fontSize: 12.5, height: 1.35, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+              if (action.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '권고 · $action',
+                  style: TextStyle(color: mainColor.withValues(alpha: 0.85), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

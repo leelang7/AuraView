@@ -1034,40 +1034,83 @@ def prototype_ui():
           <!-- TAB 1 -->
           <div class="tab-panel active" id="tab1">
 
-            <!-- 🚦 가려진 신호등 대체 안내 카드 (기획서 핵심 시나리오) -->
-            <div style="margin-bottom:14px;padding:18px 20px;background:linear-gradient(135deg,rgba(255,59,59,0.08),rgba(255,176,32,0.04));border:1px solid rgba(255,176,32,0.30);border-radius:14px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;">
-              <div style="flex:1 1 240px;min-width:0;">
-                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--warn);">
-                  // 가려진 신호등 대체 안내 활성화
+            <!-- 🚦 가려진 신호등 자동 안내 (실 데이터 자동 순환 · 5초 주기) -->
+            <div style="margin-bottom:14px;padding:18px 20px;background:linear-gradient(135deg,rgba(255,59,59,0.08),rgba(255,176,32,0.04));border:1px solid rgba(255,176,32,0.30);border-radius:14px;position:relative;overflow:hidden;">
+              <div style="position:absolute;top:0;left:0;height:100%;width:4px;background:linear-gradient(180deg,var(--warn),var(--danger));"></div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--warn);display:flex;align-items:center;gap:8px;">
+                    <span>// 가려진 신호등 자동 안내 · LIVE</span>
+                    <span id="altCycleDot" style="width:7px;height:7px;border-radius:50%;background:var(--safe);box-shadow:0 0 6px var(--safe);"></span>
+                  </div>
+                  <div id="altSignalGuide" style="margin-top:6px;font-family:'Black Han Sans',sans-serif;font-size:18px;line-height:1.3;color:var(--warn);">
+                    실시간 위험 교차로 데이터 로딩 중…
+                  </div>
+                  <div id="altSignalSub" style="margin-top:4px;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;"></div>
                 </div>
-                <div id="altSignalGuide" style="margin-top:6px;font-family:'Black Han Sans',sans-serif;font-size:18px;line-height:1.3;color:var(--warn);">
-                  교차로 ID + occlusion_score 입력 시 활성화
+                <div id="altRotInfo" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:right;">
+                  <div id="altCycleIdx">- / -</div>
+                  <div style="margin-top:2px;">5초 주기 자동 순환</div>
                 </div>
-                <div id="altSignalSub" style="margin-top:4px;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;"></div>
-              </div>
-              <div style="display:flex;gap:6px;align-items:center;">
-                <input id="altIid" type="text" value="1007" style="width:80px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;"/>
-                <input id="altOcc" type="number" min="0" max="1" step="0.1" value="0.6" style="width:60px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;"/>
-                <button onclick="loadAltSignal()" style="padding:6px 14px;background:rgba(255,176,32,0.20);color:var(--warn);border:1px solid var(--warn);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">조회</button>
               </div>
             </div>
             <script>
-              async function loadAltSignal() {
-                const iid = document.getElementById('altIid').value;
-                const occ = document.getElementById('altOcc').value;
+              // 자동 순환: TOP-N 위험 교차로를 5초마다 alt_guide 표시
+              let _altRotI = 0;
+              let _altRotData = [];
+
+              async function refreshAltRotData() {
                 try {
-                  const r = await fetch(window.location.origin + '/signals/' + iid + '/alternate?occlusion_score=' + occ).then(r => r.json());
-                  document.getElementById('altSignalGuide').textContent = r.alt_guide || '';
+                  const r = await fetch(window.location.origin + '/events/map-data');
+                  const all = await r.json();
+                  _altRotData = all.slice().sort((a,b) => (b.risk_score||0) - (a.risk_score||0)).slice(0, 5);
+                } catch(e) {}
+              }
+
+              async function tickAltSignal() {
+                if (_altRotData.length === 0) {
+                  document.getElementById('altSignalGuide').textContent = '실 위험 교차로 데이터 없음';
+                  return;
+                }
+                _altRotI = (_altRotI) % _altRotData.length;
+                const item = _altRotData[_altRotI];
+                // occlusion_score 는 risk_score 기반 추정 (risk 18 → 0.85, risk 9 → 0.50 등)
+                const occ = Math.min(0.95, Math.max(0.30, ((item.risk_score || 0) / 20)));
+                try {
+                  const r = await fetch(window.location.origin + '/signals/' + item.intersection_id + '/alternate?occlusion_score=' + occ.toFixed(2)).then(r => r.json());
+                  // 한글 교차로명 우선
+                  const iname = (window._intNames && window._intNames[item.intersection_id]) || ('교차로 ' + item.intersection_id);
+                  document.getElementById('altSignalGuide').textContent = r.alt_guide || '대체 안내 없음';
                   document.getElementById('altSignalSub').innerHTML =
-                    'intersection ' + r.intersection_id + ' · ' + r.signal_state +
-                    (r.remain_time_s !== null ? ' · 남은 ' + r.remain_time_s + '초' : '') +
+                    '<span style="color:var(--text);font-weight:700;">' + iname + '</span>' +
+                    ' · ' + r.signal_state +
+                    (r.remain_time_s !== null && r.remain_time_s !== undefined ? ' · 남은 ' + r.remain_time_s + '초' : '') +
                     ' · risk ' + r.risk_score +
                     ' · <span style="color:var(--accent);">' + (r.alt_action || '') + '</span>';
+                  document.getElementById('altCycleIdx').textContent = '#' + (_altRotI+1) + ' / ' + _altRotData.length;
+                  // 점등 효과 — 짧게 시안 → 안전(녹색)
+                  const dot = document.getElementById('altCycleDot');
+                  if (dot) {
+                    dot.style.background = 'var(--accent)';
+                    dot.style.boxShadow = '0 0 10px var(--accent)';
+                    setTimeout(() => {
+                      dot.style.background = 'var(--safe)';
+                      dot.style.boxShadow = '0 0 6px var(--safe)';
+                    }, 600);
+                  }
                 } catch(e) {
-                  document.getElementById('altSignalSub').textContent = '/signals API 응답 실패';
+                  document.getElementById('altSignalSub').textContent = '/signals API 응답 실패: ' + e.message;
                 }
+                _altRotI = (_altRotI + 1) % _altRotData.length;
               }
-              setTimeout(loadAltSignal, 800);
+
+              // 첫 로드: 데이터 받아오고 즉시 1회 + 5초 주기 + 30초마다 데이터 재갱신
+              setTimeout(async () => {
+                await refreshAltRotData();
+                tickAltSignal();
+                setInterval(tickAltSignal, 5000);
+                setInterval(refreshAltRotData, 30000);
+              }, 800);
             </script>
 
             <!-- ⭐ IMPACT BANNER — 첫 화면 시각 헤드라인 -->
@@ -2012,16 +2055,16 @@ def prototype_ui():
 
           /* ── MAP + RANKING 통합 (같은 데이터 · 양방향 매칭) ── */
           let _markerById = {};   // intersection_id → marker
-          let _intNames = {};     // intersection_id → 한글 이름
+          window._intNames = {};  // 전역 — alt_signal 카드에서도 접근
 
           // 교차로명 1회 로드
           (async () => {
             try {
-              _intNames = await fetch(window.location.origin + '/events/intersection-names').then(r => r.json());
+              window._intNames = await fetch(window.location.origin + '/events/intersection-names').then(r => r.json());
             } catch(e) {}
           })();
 
-          function intName(iid) { return _intNames[iid] || ('#' + iid); }
+          function intName(iid) { return window._intNames[iid] || ('#' + iid); }
 
           // 우선순위 1순위 자동 권고 — risk_score → 액션
           function priorityAction(item) {

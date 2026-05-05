@@ -2835,7 +2835,7 @@ def prototype_ui():
             const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
             const lerp = (a, b, t) => a + (b - a) * t;
 
-            // Tesla-style 객체별 색상: class_grid_flat (0:free 1:vehicle 2:moto 3:occ 4:ped 5:signal)
+            // Tesla-style 객체별 색상 + 실제 형상 (큐브 X, 차/보행자/신호 모양)
             const classColors = {
               0: null,
               1: new THREE.Color(0x3a8fff),  // vehicle/truck/bus — steel blue
@@ -2844,35 +2844,208 @@ def prototype_ui():
               4: new THREE.Color(0x00d8ff),  // pedestrian — cyan
               5: new THREE.Color(0xff5a5a),  // signal — red
             };
-            const classOpacity = {1:0.95, 2:0.92, 3:0.45, 4:0.85, 5:0.95};
-            const classHeightScale = {1:1.4, 2:1.0, 3:0.4, 4:1.5, 5:2.2};
             const useClass = Array.isArray(data.class_grid_flat) && data.class_grid_flat.length === rows * cols;
 
-            for (let r = 0; r < rows; r++) {
-              for (let c = 0; c < cols; c++) {
-                const p = data.grid_flat[r * cols + c] || 0;
-                if (p < 0.08) continue;
-                const x = -lateral + c * cell + cell / 2;
-                const z = r * cell + cell / 2;
-                let color, opacity, height;
-                if (useClass) {
-                  const cls = data.class_grid_flat[r * cols + c] || 0;
-                  if (cls === 0) continue;  // free space skip
-                  color = classColors[cls];
-                  opacity = classOpacity[cls] || 0.85;
-                  height = clamp(p * 6 * (classHeightScale[cls] || 1), 0.3, 8);
-                } else {
-                  // 폴백: heatmap (cyan→orange→red)
+            if (!useClass) {
+              // 폴백: 단순 heatmap voxel (확률 기반 큐브 — class 데이터 없을 때만)
+              for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                  const p = data.grid_flat[r * cols + c] || 0;
+                  if (p < 0.08) continue;
+                  const x = -lateral + c * cell + cell / 2;
+                  const z = r * cell + cell / 2;
                   const t = clamp(p, 0, 1);
-                  color = new THREE.Color(lerp(0.0, 1.0, t), lerp(0.8, 0.2, t), lerp(1.0, 0.1, t));
-                  opacity = 0.85;
-                  height = clamp(p * 6, 0.2, 6);
+                  const color = new THREE.Color(lerp(0.0, 1.0, t), lerp(0.8, 0.2, t), lerp(1.0, 0.1, t));
+                  const mat = new THREE.MeshStandardMaterial({color, emissive: color.clone().multiplyScalar(0.30), transparent:true, opacity:0.85});
+                  const box = new THREE.Mesh(geom, mat);
+                  const height = clamp(p * 6, 0.2, 6);
+                  box.position.set(x, height / 2, z);
+                  box.scale.y = height;
+                  ctx.voxelGroup.add(box);
                 }
-                const mat = new THREE.MeshStandardMaterial({color, emissive: color.clone().multiplyScalar(0.30), transparent:true, opacity});
-                const box = new THREE.Mesh(geom, mat);
-                box.position.set(x, height / 2, z);
-                box.scale.y = height;
-                ctx.voxelGroup.add(box);
+              }
+            } else {
+              // 클래스 라벨 클러스터링 → 객체별 형상 렌더
+              const visited = new Uint8Array(rows * cols);
+              const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+              const clusters = [];
+              for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                  const idx = r * cols + c;
+                  if (visited[idx]) continue;
+                  const cls = data.class_grid_flat[idx] || 0;
+                  if (cls === 0) { visited[idx] = 1; continue; }
+                  // BFS flood-fill 동일 class 연결 영역
+                  const queue = [[r, c]];
+                  visited[idx] = 1;
+                  let minR = r, minC = c, maxR = r, maxC = c, count = 0, sumP = 0;
+                  while (queue.length) {
+                    const [cr, cc] = queue.shift();
+                    count++;
+                    sumP += data.grid_flat[cr * cols + cc] || 0;
+                    if (cr < minR) minR = cr; if (cr > maxR) maxR = cr;
+                    if (cc < minC) minC = cc; if (cc > maxC) maxC = cc;
+                    for (const d of dirs) {
+                      const nr = cr + d[0], nc = cc + d[1];
+                      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+                      const ni = nr * cols + nc;
+                      if (visited[ni]) continue;
+                      if ((data.class_grid_flat[ni] || 0) !== cls) continue;
+                      visited[ni] = 1;
+                      queue.push([nr, nc]);
+                    }
+                  }
+                  clusters.push({cls, minR, minC, maxR, maxC, count, avgP: sumP / count});
+                }
+              }
+
+              // 객체별 형상 그리기
+              const drawVehicle = (cx, cz, lenM, widthM, color) => {
+                // 차체 (steel blue, glossy) — Tesla 스타일
+                const bodyW = Math.max(widthM, 1.6);
+                const bodyL = Math.max(lenM, 3.5);
+                const bodyH = bodyW > 2.0 ? 2.5 : 1.4;  // 트럭/버스는 더 높게
+                const bodyMat = new THREE.MeshStandardMaterial({
+                  color, emissive: color.clone().multiplyScalar(0.20),
+                  metalness: 0.7, roughness: 0.25, transparent: true, opacity: 0.92,
+                });
+                const body = new THREE.Mesh(new THREE.BoxGeometry(bodyW, bodyH, bodyL), bodyMat);
+                body.position.set(cx, bodyH / 2, cz);
+                ctx.voxelGroup.add(body);
+                // 캐빈 (작은 박스 위에)
+                if (bodyH < 2.0) {
+                  const cabH = bodyH * 0.55;
+                  const cab = new THREE.Mesh(
+                    new THREE.BoxGeometry(bodyW * 0.85, cabH, bodyL * 0.55),
+                    new THREE.MeshStandardMaterial({color: color.clone().multiplyScalar(1.2), emissive: color, metalness:0.5, roughness:0.3, transparent:true, opacity:0.75})
+                  );
+                  cab.position.set(cx, bodyH + cabH / 2 - 0.05, cz - bodyL * 0.05);
+                  ctx.voxelGroup.add(cab);
+                }
+                // 윤곽 wireframe — Tesla 시그니처 라인
+                const edges = new THREE.LineSegments(
+                  new THREE.EdgesGeometry(new THREE.BoxGeometry(bodyW, bodyH, bodyL)),
+                  new THREE.LineBasicMaterial({color: 0xaaeeff, transparent:true, opacity:0.5})
+                );
+                edges.position.copy(body.position);
+                ctx.voxelGroup.add(edges);
+              };
+
+              const drawMotorcycle = (cx, cz, lenM, widthM, color) => {
+                // 좁고 길쭉한 차체 + 라이더
+                const bodyL = Math.max(lenM, 1.8);
+                const body = new THREE.Mesh(
+                  new THREE.BoxGeometry(0.5, 0.7, bodyL),
+                  new THREE.MeshStandardMaterial({color, emissive: color.clone().multiplyScalar(0.30), metalness:0.6, roughness:0.3, transparent:true, opacity:0.9})
+                );
+                body.position.set(cx, 0.35, cz);
+                ctx.voxelGroup.add(body);
+                // 라이더
+                const rider = new THREE.Mesh(
+                  new THREE.CylinderGeometry(0.22, 0.22, 0.9, 8),
+                  new THREE.MeshStandardMaterial({color: 0xffd54a, emissive: 0x884400, transparent:true, opacity:0.85})
+                );
+                rider.position.set(cx, 0.7 + 0.45, cz - 0.1);
+                ctx.voxelGroup.add(rider);
+              };
+
+              const drawPedestrian = (cx, cz) => {
+                // 몸통 cylinder + 머리 sphere — 보행자 아이콘
+                const bodyMat = new THREE.MeshStandardMaterial({
+                  color: 0x00d8ff, emissive: 0x004477, metalness:0.1, roughness:0.6, transparent:true, opacity:0.95,
+                });
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 1.4, 10), bodyMat);
+                body.position.set(cx, 0.7, cz);
+                ctx.voxelGroup.add(body);
+                const head = new THREE.Mesh(
+                  new THREE.SphereGeometry(0.24, 12, 10),
+                  new THREE.MeshStandardMaterial({color: 0x00d8ff, emissive: 0x006699, metalness:0.2, roughness:0.4, transparent:true, opacity:0.95})
+                );
+                head.position.set(cx, 1.55, cz);
+                ctx.voxelGroup.add(head);
+                // 펄스 링 (보행자 prior 강조)
+                const ring = new THREE.Mesh(
+                  new THREE.RingGeometry(0.5, 0.6, 16),
+                  new THREE.MeshBasicMaterial({color: 0x00d8ff, transparent:true, opacity:0.45, side: THREE.DoubleSide})
+                );
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.set(cx, 0.05, cz);
+                ctx.voxelGroup.add(ring);
+              };
+
+              const drawSignal = (cx, cz) => {
+                // 신호등 폴 + 라이트 클러스터 (적색)
+                const pole = new THREE.Mesh(
+                  new THREE.BoxGeometry(0.2, 4.2, 0.2),
+                  new THREE.MeshStandardMaterial({color: 0x4a5566, metalness:0.4, roughness:0.5, transparent:true, opacity:0.9})
+                );
+                pole.position.set(cx, 2.1, cz);
+                ctx.voxelGroup.add(pole);
+                const lightBox = new THREE.Mesh(
+                  new THREE.BoxGeometry(0.5, 1.4, 0.4),
+                  new THREE.MeshStandardMaterial({color: 0x1a2030, transparent:true, opacity:0.95})
+                );
+                lightBox.position.set(cx, 4.2, cz);
+                ctx.voxelGroup.add(lightBox);
+                // 적색 발광 라이트
+                const redLight = new THREE.Mesh(
+                  new THREE.SphereGeometry(0.18, 12, 10),
+                  new THREE.MeshBasicMaterial({color: 0xff3030, transparent:true, opacity:0.95})
+                );
+                redLight.position.set(cx, 4.7, cz);
+                ctx.voxelGroup.add(redLight);
+              };
+
+              const drawOcclusion = (cluster) => {
+                // 가려진 영역 — 바닥에 깔린 보라 안개
+                const w = (cluster.maxC - cluster.minC + 1) * cell;
+                const l = (cluster.maxR - cluster.minR + 1) * cell;
+                const cx = -lateral + (cluster.minC + (cluster.maxC - cluster.minC + 1) / 2) * cell;
+                const cz = (cluster.minR + (cluster.maxR - cluster.minR + 1) / 2) * cell;
+                const haze = new THREE.Mesh(
+                  new THREE.BoxGeometry(w * 0.95, 0.4, l * 0.95),
+                  new THREE.MeshStandardMaterial({color: 0x7c3aed, emissive: 0x4a1d8f, transparent:true, opacity:0.45})
+                );
+                haze.position.set(cx, 0.2, cz);
+                ctx.voxelGroup.add(haze);
+                // 격자 표시 — "unknown" 영역임을 강조
+                const wire = new THREE.LineSegments(
+                  new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 1.5, l)),
+                  new THREE.LineBasicMaterial({color: 0xa995ff, transparent:true, opacity:0.55})
+                );
+                wire.position.set(cx, 0.75, cz);
+                ctx.voxelGroup.add(wire);
+              };
+
+              for (const cl of clusters) {
+                if (cl.count < 2 && cl.cls !== 4 && cl.cls !== 5) continue;  // 너무 작은 노이즈 skip (단 보행자/신호는 단일 셀도 OK)
+                const widthCells = cl.maxC - cl.minC + 1;
+                const lenCells = cl.maxR - cl.minR + 1;
+                const widthM = widthCells * cell;
+                const lenM = lenCells * cell;
+                const cx = -lateral + (cl.minC + widthCells / 2) * cell;
+                const cz = (cl.minR + lenCells / 2) * cell;
+                const color = classColors[cl.cls];
+                if (!color) continue;
+
+                if (cl.cls === 1) {
+                  drawVehicle(cx, cz, lenM, widthM, color);
+                } else if (cl.cls === 2) {
+                  drawMotorcycle(cx, cz, lenM, widthM, color);
+                } else if (cl.cls === 3) {
+                  drawOcclusion(cl);
+                } else if (cl.cls === 4) {
+                  // 보행자 zone — 클러스터 면적 비례로 N명 그리기 (3~5명)
+                  const peopleN = Math.min(5, Math.max(2, Math.floor(cl.count / 4)));
+                  for (let p = 0; p < peopleN; p++) {
+                    const angle = (p / peopleN) * Math.PI * 2 + cl.minR * 0.3;
+                    const px = cx + Math.cos(angle) * Math.min(widthM, lenM) * 0.3;
+                    const pz = cz + Math.sin(angle) * Math.min(widthM, lenM) * 0.3;
+                    drawPedestrian(px, pz);
+                  }
+                } else if (cl.cls === 5) {
+                  drawSignal(cx, cz);
+                }
               }
             }
 

@@ -285,28 +285,30 @@ def _build_scene(name: str, phase: float):
             {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "신호등"},
         ]
     elif name == "right_turn_pedestrian":
-        # ego 우회전 핵심 로직 — 단순화 (3가지만)
-        # 1) ego 우측 A필러 사각지대 (운전자가 못 보는 영역)
-        # 2) 사각지대 안에 횡단 중 보행자 (위험)
-        # 3) AuraView 가 보행자 검출 → 정지 권고
+        # ego 우회전 핵심 로직 — 단순화
+        # 좌표계: ego at row=0 col=39, ego road col 32~46, 교차로 본체 row 48~64
+        # 가로 도로 row 48~64, x=±25 (col 0~80)
+        # 우측(동쪽) 횡단보도: col 50~58, row 48~64 (가로 도로 동쪽 끝, ego 회전 진입로)
 
-        # A. 우측 A필러 사각지대 — ego 우측 전방 cone 영역
-        # ego 시점에서 우측 30도 방향, 거리 5~15m → BEV col 44~52, row 8~30
-        grid[8:30, 44:52] = 0.30; cls[8:30, 44:52] = 3
+        # A. ego 우측 A필러 사각지대 — ego 시점 우측 forward 영역 (보행자 못 보는 영역)
+        # 자차 우측 전방 cone: row 16~48 (8~24m 전방), col 50~58 (3~8m 우측)
+        # ego가 우회전하면서 들어가는 영역의 사각
+        grid[16:48, 50:58] = 0.30; cls[16:48, 50:58] = 3
 
-        # B. 횡단 중 보행자 — 사각지대 안 + 횡단보도 위
-        # 보행자가 좌→우로 이동 (col 47→52, row 22~26 부근)
-        ped_progress = (np.sin(phase * 0.6) + 1) * 0.5  # 0~1
-        ped_col = int(47 + ped_progress * 5)
-        ped_row = 24
-        grid[ped_row:ped_row + 4, ped_col:ped_col + 3] = 0.92
-        cls[ped_row:ped_row + 4, ped_col:ped_col + 3] = 4
+        # B. 횡단 보행자 — 우측 (동쪽) 횡단보도 위에서 N/S 방향으로 횡단
+        # ego 우회전 진입 경로(가로 도로)와 정확히 충돌하는 횡단보도 위
+        # 횡단보도 위치: col 52~56 (동쪽 횡단), row 50~64 phase 따라
+        ped_progress = (np.sin(phase * 0.5) + 1) * 0.5  # 0~1
+        ped_row = int(50 + ped_progress * 12)  # row 50~62, 횡단보도 N→S 이동
+        ped_col = 52  # 동쪽 횡단보도 안쪽 (가까운 차로)
+        grid[ped_row:ped_row + 3, ped_col:ped_col + 2] = 0.92
+        cls[ped_row:ped_row + 3, ped_col:ped_col + 2] = 4
 
         hotspots = [
-            {"class": "blindspot_zone", "row": 18, "col": 48, "kind": "blindspot", "distance_m": 9.0,
+            {"class": "blindspot_zone", "row": 32, "col": 54, "kind": "blindspot", "distance_m": 16.0,
              "label": "⚠️ 우측 A필러 사각지대"},
-            {"class": "pedestrian_zone", "row": ped_row + 2, "col": ped_col + 1, "kind": "intent_prior",
-             "distance_m": 12.0, "label": "🚸 사각지대 보행자 — 우회전 정지 필요"},
+            {"class": "pedestrian_zone", "row": ped_row + 1, "col": ped_col + 1, "kind": "intent_prior",
+             "distance_m": (ped_row + 1) * 0.5, "label": "🚸 우측 횡단보도 보행자 — 정지 필요"},
         ]
 
     else:

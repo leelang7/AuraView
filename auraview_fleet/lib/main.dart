@@ -278,10 +278,22 @@ class _FleetHomeState extends State<FleetHome>
       try {
         final shot = await _cam!.takePicture();
         final bytes = await shot.readAsBytes();
-        // 1) voxel grid (edge + motion) — 100% on-device (서버 X)
+        // 1) voxel grid (edge + motion) 생성 — 100% on-device
         final voxel = _voxelizeOnDevice(bytes);
 
-        // 2) 임시 파일 정리
+        // 2) ★ ML Kit on-device 객체 검출 (Google ML Kit, 외부 서버 X)
+        //    bbox 크기 필터로 false positive 방지 (≥4% image area)
+        if (voxel != null && _objDetector != null && !_mlkitBusy) {
+          _mlkitBusy = true;
+          try {
+            final cg = await _detectObjectsToClassGrid(shot.path, bytes, 40, 40);
+            if (cg != null) voxel['class_grid_flat'] = cg;
+          } catch (_) {} finally {
+            _mlkitBusy = false;
+          }
+        }
+
+        // 3) 임시 파일 정리
         if (!kIsWeb) {
           try { final f = File(shot.path); if (await f.exists()) await f.delete(); } catch (_) {}
         }

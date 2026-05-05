@@ -139,6 +139,63 @@ def map_data(db: Session = Depends(get_db)):
     result.sort(key=lambda x: x["risk_score"], reverse=True)
     return result
 
+
+# ─────────────────────────────────────────────────────────────
+# DEMO SEED — 데모 시연용 서울 교차로 다양화 데이터 일괄 시드
+# ─────────────────────────────────────────────────────────────
+DEMO_INTERSECTIONS = [
+    # (id, name, lat, lon, count, avg_dur, signal_state, obstacle)
+    ("1007", "한양대역 교차로",       37.5547, 127.1295, 19, 3.5, "stop-And-Remain", "truck"),
+    ("2024", "강남역 사거리",         37.4979, 127.0276, 14, 4.2, "stop-And-Remain", "bus"),
+    ("3015", "광화문 사거리",         37.5723, 126.9769, 11, 2.9, "stop-And-Remain", "truck"),
+    ("4011", "잠실역 환승센터",       37.5133, 127.1000,  9, 3.8, "stop-And-Remain", "bus"),
+    ("5006", "신촌 로터리",           37.5556, 126.9367,  7, 2.5, "stop-And-Remain", "truck"),
+    ("6022", "사당역 사거리",         37.4766, 126.9816,  6, 3.1, "stop-And-Remain", "truck"),
+    ("7045", "왕십리역 광장",         37.5611, 127.0376,  5, 2.8, "stop-And-Remain", "bus"),
+    ("8033", "건대입구 로데오",       37.5403, 127.0700,  4, 3.3, "stop-And-Remain", "truck"),
+]
+
+
+@router.post("/seed-demo")
+def seed_demo(db: Session = Depends(get_db), force: bool = False):
+    """데모 시연용 서울 교차로 8개 이벤트 일괄 시드.
+
+    이미 실데이터가 5건 이상 있으면 skip (force=true 로 강제).
+    """
+    existing = db.query(BlindSignalEvent).count()
+    if existing >= 5 and not force:
+        return {"status": "skipped", "existing": existing, "reason": "이미 5건 이상 존재"}
+
+    created = []
+    for iid, name, lat, lon, count, dur, sig, obs in DEMO_INTERSECTIONS:
+        # 동일 intersection_id 가 이미 있으면 skip
+        if db.query(BlindSignalEvent).filter(BlindSignalEvent.intersection_id == iid).first():
+            continue
+        # count 회 만큼 이벤트 시드 (각각 약간씩 duration 변동)
+        for k in range(count):
+            jitter = 0.7 + (k % 5) * 0.15
+            ev = BlindSignalEvent(
+                intersection_id=iid,
+                user_lat=lat,
+                user_lon=lon,
+                event_duration=round(dur * jitter, 2),
+                obstacle_type=obs,
+                signal_state=sig,
+                signal_remain_time=None,
+                image_path=None,
+            )
+            db.add(ev)
+        created.append({"id": iid, "name": name, "events": count})
+    db.commit()
+    return {"status": "ok", "created": created, "intersections": len(created), "now_total": db.query(BlindSignalEvent).count()}
+
+
+# 교차로명 매핑 — 프론트가 표시용으로 가져감
+@router.get("/intersection-names")
+def intersection_names():
+    return {iid: name for (iid, name, *_rest) in DEMO_INTERSECTIONS}
+
+
 @router.post("/auto-detect")
 def auto_detect_event(data: dict, db: Session = Depends(get_db)):
     """

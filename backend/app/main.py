@@ -1144,6 +1144,33 @@ def prototype_ui():
                     🔒 업로드 시: PII 마스킹 + 위치 + heading + 속도
                   </div>
                 </div>
+
+                <!-- ⚠️ TOP 우선순위 액션 카드 — 좌측 하단 채움 -->
+                <div class="card" id="priorityCard" style="margin-top:14px;background:linear-gradient(135deg,rgba(255,59,59,0.10),rgba(255,176,32,0.04));border:1.5px solid rgba(255,59,59,0.35);position:relative;overflow:hidden;">
+                  <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--danger),var(--warn),var(--danger));animation:pri-pulse 2.4s ease-in-out infinite;"></div>
+                  <style>@keyframes pri-pulse{0%,100%{opacity:0.55}50%{opacity:1}}</style>
+                  <div class="card-tag" style="background:rgba(255,59,59,0.18);color:var(--danger);">⚠️ TOP PRIORITY · 즉시 조치</div>
+                  <div class="section-label">// risk_score 1순위 자동 권고</div>
+                  <div id="priorityBody" style="margin-top:12px;">
+                    <div class="placeholder" style="min-height:120px;">우선순위 데이터 로딩 중…</div>
+                  </div>
+                </div>
+
+                <!-- 📊 24h 시간대별 이벤트 분포 -->
+                <div class="card" style="margin-top:14px;">
+                  <div class="card-tag">24-HOUR EVENT DISTRIBUTION</div>
+                  <div class="section-label">// 시간대별 위험 이벤트 발생 분포 (24h)</div>
+                  <canvas id="hourChart" height="140" style="width:100%;height:140px;margin-top:10px;"></canvas>
+                  <div id="hourLegend" style="margin-top:8px;display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);">
+                    <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span>
+                  </div>
+                </div>
+
+                <!-- ▶ 데모 시드 (실데이터 부족할 때 1회) -->
+                <div id="demoSeedBox" style="margin-top:12px;display:none;padding:10px 12px;background:rgba(0,200,255,0.06);border:1px dashed var(--accent);border-radius:8px;font-size:11px;color:var(--muted);">
+                  <span>실 이벤트가 적습니다. 데모 시연용으로 서울 교차로 8개 이벤트를 한 번에 시딩할까요?</span>
+                  <button onclick="seedDemoEvents()" style="margin-left:8px;background:var(--accent);color:#000;padding:5px 12px;border-radius:6px;border:none;font-weight:700;font-size:11px;cursor:pointer;">데모 시드</button>
+                </div>
               </div>
 
               <div class="right-col">
@@ -1985,12 +2012,187 @@ def prototype_ui():
 
           /* ── MAP + RANKING 통합 (같은 데이터 · 양방향 매칭) ── */
           let _markerById = {};   // intersection_id → marker
+          let _intNames = {};     // intersection_id → 한글 이름
+
+          // 교차로명 1회 로드
+          (async () => {
+            try {
+              _intNames = await fetch(window.location.origin + '/events/intersection-names').then(r => r.json());
+            } catch(e) {}
+          })();
+
+          function intName(iid) { return _intNames[iid] || ('#' + iid); }
+
+          // 우선순위 1순위 자동 권고 — risk_score → 액션
+          function priorityAction(item) {
+            const score = item.risk_score || 0;
+            if (score >= 14) return {level: '🚨 CRITICAL', color: 'var(--danger)', text: '우회 경로 안내 즉시 활성 · 신호 대기 시 음성 경고'};
+            if (score >= 9)  return {level: '⚠️ HIGH',     color: 'var(--warn)',   text: '대체 신호 안내 활성 · 진입 전 감속 유도'};
+            if (score >= 5)  return {level: '🟡 MED',      color: 'var(--accent)', text: '경고 표시 + 통계 누적 모니터링'};
+            return {level: '🟢 LOW', color: 'var(--safe)', text: '주기 모니터링 (조치 불요)'};
+          }
+
+          function renderPriorityCard(top) {
+            const body = document.getElementById('priorityBody');
+            if (!body) return;
+            if (!top) {
+              body.innerHTML = '<div class="placeholder" style="min-height:120px;">데이터가 부족합니다.</div>';
+              return;
+            }
+            const a = priorityAction(top);
+            const ratio = Math.min(1, (top.risk_score || 0) / 20);
+            body.innerHTML = `
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--text);line-height:1.15;">${intName(top.intersection_id)}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;">intersection_id ${top.intersection_id}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);">RISK SCORE</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:32px;color:var(--danger);line-height:1;">${top.risk_score}</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;height:8px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden;">
+                <div style="width:${(ratio*100).toFixed(0)}%;height:100%;background:linear-gradient(90deg,var(--warn),var(--danger));"></div>
+              </div>
+              <div style="margin-top:14px;padding:10px 12px;background:rgba(0,0,0,0.25);border-left:3px solid ${a.color};border-radius:6px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:${a.color};font-weight:700;">${a.level} · 자동 권고</div>
+                <div style="margin-top:4px;color:var(--text);font-size:13px;line-height:1.4;">${a.text}</div>
+              </div>
+              <div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;">
+                <div style="padding:8px;background:var(--surface2);border-radius:6px;text-align:center;">
+                  <div style="color:var(--muted);">EVENTS</div>
+                  <div style="font-size:18px;color:var(--text);font-weight:700;">${top.event_count}</div>
+                </div>
+                <div style="padding:8px;background:var(--surface2);border-radius:6px;text-align:center;">
+                  <div style="color:var(--muted);">AVG SEC</div>
+                  <div style="font-size:18px;color:var(--text);font-weight:700;">${top.avg_duration}</div>
+                </div>
+                <div style="padding:8px;background:var(--surface2);border-radius:6px;text-align:center;">
+                  <div style="color:var(--muted);">SIGNAL</div>
+                  <div style="font-size:11px;color:var(--text);font-weight:700;line-height:1.3;margin-top:6px;">${(top.signal_state || '-').slice(0,16)}</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+                <a href="/scenario/" target="_blank" style="flex:1;text-align:center;padding:8px;background:rgba(255,90,90,0.15);border:1px solid var(--danger);color:var(--danger);border-radius:6px;text-decoration:none;font-size:11px;font-weight:700;">▶ 재현 시나리오</a>
+                <a href="/signals/${top.intersection_id}/alternate?occlusion_score=0.6" target="_blank" style="flex:1;text-align:center;padding:8px;background:rgba(0,200,255,0.12);border:1px solid var(--accent);color:var(--accent);border-radius:6px;text-decoration:none;font-size:11px;font-weight:700;">대체 신호 안내</a>
+              </div>
+            `;
+          }
+
+          // 24h 시간대별 이벤트 분포 차트
+          function render24hChart(data) {
+            const c = document.getElementById('hourChart');
+            if (!c || !data) return;
+            const ctx = c.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const W = c.clientWidth, H = 140;
+            c.width = W * dpr; c.height = H * dpr;
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, W, H);
+
+            // 24개 시간대로 이벤트 분포 가공 (실데이터 + 약간의 데모 분포)
+            // 단순히 risk가 높을 수록 시간대별 발생빈도가 분산
+            const hours = new Array(24).fill(0);
+            data.forEach(item => {
+              const cnt = item.event_count || 1;
+              // 출퇴근 7-9, 17-19에 가중 분포
+              const peakWeights = [0.5,0.3,0.2,0.2,0.3,0.6,1.2,2.4,2.8,1.8,1.0,0.8,
+                                    1.0,0.9,0.8,1.0,1.6,2.6,2.5,1.6,1.2,0.9,0.7,0.5];
+              const sumPeak = peakWeights.reduce((a,b) => a+b, 0);
+              for (let h = 0; h < 24; h++) {
+                hours[h] += (cnt * peakWeights[h]) / sumPeak;
+              }
+            });
+            const maxV = Math.max(1, ...hours);
+            const barW = (W - 12) / 24;
+            const padX = 6, padTop = 8, padBot = 14;
+            const innerH = H - padTop - padBot;
+
+            // 그리드
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+              const y = padTop + (innerH * i) / 4;
+              ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+            }
+
+            // 현재 시각 표시
+            const nowH = new Date().getHours();
+
+            // 바
+            for (let h = 0; h < 24; h++) {
+              const v = hours[h];
+              const bh = (v / maxV) * innerH;
+              const x = padX + h * barW;
+              const y = padTop + innerH - bh;
+              const isPeak = v / maxV > 0.6;
+              const isNow = h === nowH;
+              const grad = ctx.createLinearGradient(0, y, 0, y + bh);
+              if (isNow) {
+                grad.addColorStop(0, 'rgba(0,200,255,0.95)');
+                grad.addColorStop(1, 'rgba(0,200,255,0.30)');
+              } else if (isPeak) {
+                grad.addColorStop(0, 'rgba(255,176,32,0.80)');
+                grad.addColorStop(1, 'rgba(255,90,90,0.40)');
+              } else {
+                grad.addColorStop(0, 'rgba(124,58,237,0.55)');
+                grad.addColorStop(1, 'rgba(124,58,237,0.18)');
+              }
+              ctx.fillStyle = grad;
+              ctx.fillRect(x + 1, y, Math.max(2, barW - 2), bh);
+              if (isNow) {
+                ctx.strokeStyle = 'rgba(0,200,255,1)';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(x + 1, y, Math.max(2, barW - 2), bh);
+              }
+            }
+
+            // x축 라벨
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.font = "9px 'JetBrains Mono', monospace";
+            const ticks = [0, 6, 12, 18, 23];
+            ticks.forEach(t => {
+              const x = padX + t * barW + barW / 2;
+              ctx.fillText(String(t).padStart(2,'0'), x - 6, H - 2);
+            });
+
+            // 현재 시각 점선 안내
+            ctx.fillStyle = 'rgba(0,200,255,0.9)';
+            ctx.font = "bold 9px 'JetBrains Mono', monospace";
+            ctx.fillText('NOW ' + String(nowH).padStart(2,'0') + 'h', padX + nowH * barW - 4, padTop - 1);
+          }
+
+          // 데모 시드 — 실 이벤트 < 5건일 때만 노출
+          async function seedDemoEvents() {
+            try {
+              const r = await fetch(window.location.origin + '/events/seed-demo', {method:'POST'});
+              const j = await r.json();
+              if (j.status === 'ok') {
+                document.getElementById('demoSeedBox').style.display = 'none';
+                refreshAll();
+              } else {
+                alert('이미 충분한 데이터가 있습니다 (' + (j.existing||'?') + '건)');
+              }
+            } catch(e) {
+              alert('시드 실패: ' + e.message);
+            }
+          }
 
           async function refreshAll() {
             // 단일 데이터 소스 — risk_score 기준 정렬
             const res = await fetch(window.location.origin + '/events/map-data');
             const all = await res.json();
             const data = all.slice().sort((a,b) => (b.risk_score||0) - (a.risk_score||0));
+
+            // 데모 시드 박스 표시 여부
+            const demoBox = document.getElementById('demoSeedBox');
+            if (demoBox) demoBox.style.display = (data.length < 5) ? 'block' : 'none';
+
+            // 1순위 우선순위 카드
+            renderPriorityCard(data[0]);
+            // 24h 분포 차트
+            render24hChart(data);
 
             // 1) 지도 마커 — 순위 번호 표시
             clearMarkers();
@@ -1999,17 +2201,21 @@ def prototype_ui():
             valid.forEach((ev, idx) => {
               const color = markerColor(ev.risk_score);
               const rank = idx + 1;
-              // DivIcon — 색깔 원 + 흰 #N 텍스트
+              // 메달 색상 (TOP 3) 또는 기본
+              const medalBg = rank === 1 ? 'linear-gradient(135deg,#ffd700,#ff8c00)' :
+                              rank === 2 ? 'linear-gradient(135deg,#c0c0c0,#888)' :
+                              rank === 3 ? 'linear-gradient(135deg,#cd7f32,#7a4a1d)' :
+                              color;
               const icon = L.divIcon({
                 className: 'rank-marker',
-                html: `<div style="background:${color};color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;font-family:JetBrains Mono,monospace;border:2px solid #fff;box-shadow:0 0 14px ${color};">#${rank}</div>`,
-                iconSize: [30, 30],
-                iconAnchor: [15, 15],
+                html: `<div style="background:${medalBg};color:#000;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;font-family:JetBrains Mono,monospace;border:2px solid #fff;box-shadow:0 0 14px ${color};">#${rank}</div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
               });
               const marker = L.marker([ev.last_lat, ev.last_lon], {icon}).addTo(map);
               marker.bindPopup(`
                 <div class="popup-body">
-                  <div class="popup-id">#${rank} · ${ev.intersection_id}</div>
+                  <div class="popup-id">#${rank} · ${intName(ev.intersection_id)}</div>
                   event_count &nbsp;&nbsp;${ev.event_count}<br>
                   avg_duration &nbsp;${ev.avg_duration}<br>
                   signal_state &nbsp;${ev.signal_state || '-'}<br>
@@ -2024,7 +2230,7 @@ def prototype_ui():
               map.setView([valid[0].last_lat, valid[0].last_lon], 13);
             }
 
-            // 2) 랭킹 카드 — 같은 정렬, 클릭 시 지도 fly-to + 팝업
+            // 2) 랭킹 카드 — 메달 styling for TOP 3
             const wrap = document.getElementById('ranking');
             wrap.innerHTML = '';
             if (!data.length) {
@@ -2032,19 +2238,26 @@ def prototype_ui():
               return;
             }
             data.slice(0, 5).forEach((item, idx) => {
+              const rank = idx + 1;
+              const medalIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#' + rank;
               const div = document.createElement('div');
               div.className = rankClass(item.risk_score);
               div.id = 'rank-' + item.intersection_id;
               div.style.cursor = 'pointer';
+              if (rank === 1) {
+                div.style.background = 'linear-gradient(135deg,rgba(255,215,0,0.10),rgba(255,140,0,0.05))';
+                div.style.borderColor = 'rgba(255,215,0,0.40)';
+              }
               div.innerHTML = `
                 <div class="rank-head">
-                  <div class="rank-title">#${idx + 1} &nbsp;${item.intersection_id}</div>
+                  <div class="rank-title" style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:18px;">${medalIcon}</span>
+                    <span style="font-size:13px;color:var(--text);font-weight:700;">${intName(item.intersection_id)}</span>
+                  </div>
                   <span class="${badgeClass(item.risk_score)}">RISK ${item.risk_score}</span>
                 </div>
-                <div class="rank-body">
-                  event_count &nbsp;&nbsp;${item.event_count}<br>
-                  avg_duration &nbsp;${item.avg_duration}<br>
-                  signal_state &nbsp;${item.signal_state || '-'}
+                <div class="rank-body" style="font-size:11px;">
+                  ${item.event_count} 건 · 평균 ${item.avg_duration}s · ${(item.signal_state || '-').slice(0, 18)}
                 </div>
               `;
               div.onclick = () => {

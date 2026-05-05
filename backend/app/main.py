@@ -2626,7 +2626,7 @@ def prototype_ui():
           }
 
           async function deleteFleetImage(filename) {
-            if (!confirm('이 이미지를 삭제하시겠습니까?\n\n' + filename)) return;
+            if (!confirm('이 이미지를 삭제하시겠습니까?\\n\\n' + filename)) return;
             try {
               const res = await fetch(window.location.origin + '/fleet/image/' + encodeURIComponent(filename), {method:'DELETE'});
               const j = await res.json();

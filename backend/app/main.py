@@ -2763,9 +2763,10 @@ def prototype_ui():
             scene.background = new THREE.Color(0x04080e);
 
             // 전방 → Z+, 좌우 → X, 높이 → Y
-            const camera = new THREE.PerspectiveCamera(55, 16/9, 0.1, 500);
-            camera.position.set(-22, 20, -22);
-            camera.lookAt(0, 2, 20);
+            // 카메라: ego 뒤쪽 위에서 정면 forward 보는 각도 (Tesla dashboard 시점)
+            const camera = new THREE.PerspectiveCamera(50, 16/9, 0.1, 500);
+            camera.position.set(0, 28, -22);
+            camera.lookAt(0, 0, 20);
 
             // Lighting
             scene.add(new THREE.AmbientLight(0x88aacc, 0.6));
@@ -2971,13 +2972,13 @@ def prototype_ui():
             let controls = null;
             try {
               controls = new THREE.OrbitControls(camera, canvas);
-              controls.target.set(0, 2, 18);  // ego 약간 앞 + 교차로
+              controls.target.set(0, 0, 20);   // 교차로 중심 정면 (ego 도로 forward)
               controls.enableDamping = true;
               controls.dampingFactor = 0.08;
-              controls.minDistance = 8;
+              controls.minDistance = 12;
               controls.maxDistance = 80;
-              controls.maxPolarAngle = Math.PI * 0.48;  // 거의 수평까지 (지면 아래로 가지 않게)
-              controls.minPolarAngle = Math.PI * 0.10;  // 너무 위에서만 보지도 않게
+              controls.maxPolarAngle = Math.PI * 0.45;  // 거의 수평까지
+              controls.minPolarAngle = Math.PI * 0.05;  // 거의 top-down 까지
               controls.update();
             } catch (e) {
               console.warn('OrbitControls 로드 실패 — 자동 회전 폴백', e);

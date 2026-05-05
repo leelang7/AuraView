@@ -1943,69 +1943,59 @@ def prototype_ui():
             }
           }
 
-          /* ── MAP REFRESH ── */
-          async function refreshMap() {
+          /* ── MAP + RANKING 통합 (같은 데이터 · 양방향 매칭) ── */
+          let _markerById = {};   // intersection_id → marker
+
+          async function refreshAll() {
+            // 단일 데이터 소스 — risk_score 기준 정렬
             const res = await fetch(window.location.origin + '/events/map-data');
-            const data = await res.json();
+            const all = await res.json();
+            const data = all.slice().sort((a,b) => (b.risk_score||0) - (a.risk_score||0));
 
+            // 1) 지도 마커 — 순위 번호 표시
             clearMarkers();
+            _markerById = {};
             const valid = data.filter(x => x.last_lat !== null && x.last_lon !== null);
-
-            valid.forEach(ev => {
+            valid.forEach((ev, idx) => {
               const color = markerColor(ev.risk_score);
-
-              const marker = L.circleMarker([ev.last_lat, ev.last_lon], {
-                radius: 11,
-                color: color,
-                fillColor: color,
-                fillOpacity: 0.85,
-                weight: 2
-              }).addTo(map);
-
+              const rank = idx + 1;
+              // DivIcon — 색깔 원 + 흰 #N 텍스트
+              const icon = L.divIcon({
+                className: 'rank-marker',
+                html: `<div style="background:${color};color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;font-family:JetBrains Mono,monospace;border:2px solid #fff;box-shadow:0 0 14px ${color};">#${rank}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+              });
+              const marker = L.marker([ev.last_lat, ev.last_lon], {icon}).addTo(map);
               marker.bindPopup(`
                 <div class="popup-body">
-                  <div class="popup-id">${ev.intersection_id}</div>
+                  <div class="popup-id">#${rank} · ${ev.intersection_id}</div>
                   event_count &nbsp;&nbsp;${ev.event_count}<br>
                   avg_duration &nbsp;${ev.avg_duration}<br>
                   signal_state &nbsp;${ev.signal_state || '-'}<br>
                   risk_score &nbsp;&nbsp;&nbsp;${ev.risk_score}
                 </div>
               `);
-
-              let r = 11;
-              const pulse = setInterval(() => {
-                try {
-                  r = r >= 16 ? 11 : r + 1;
-                  marker.setRadius(r);
-                } catch (e) {
-                  clearInterval(pulse);
-                }
-              }, 200);
-
+              marker.on('click', () => highlightRanking(ev.intersection_id));
               markers.push(marker);
+              _markerById[ev.intersection_id] = marker;
             });
-
             if (valid.length > 0) {
-              map.setView([valid[0].last_lat, valid[0].last_lon], 14);
+              map.setView([valid[0].last_lat, valid[0].last_lon], 13);
             }
-          }
 
-          /* ── RANKING ── */
-          async function loadRiskRanking() {
-            const res = await fetch(window.location.origin + '/risk/');
-            const data = await res.json();
-
+            // 2) 랭킹 카드 — 같은 정렬, 클릭 시 지도 fly-to + 팝업
             const wrap = document.getElementById('ranking');
             wrap.innerHTML = '';
-
             if (!data.length) {
               wrap.innerHTML = '<div class="placeholder" style="grid-column:1/-1;min-height:80px;">아직 이벤트 데이터가 없습니다.</div>';
               return;
             }
-
             data.slice(0, 5).forEach((item, idx) => {
               const div = document.createElement('div');
               div.className = rankClass(item.risk_score);
+              div.id = 'rank-' + item.intersection_id;
+              div.style.cursor = 'pointer';
               div.innerHTML = `
                 <div class="rank-head">
                   <div class="rank-title">#${idx + 1} &nbsp;${item.intersection_id}</div>
@@ -2017,13 +2007,30 @@ def prototype_ui():
                   signal_state &nbsp;${item.signal_state || '-'}
                 </div>
               `;
+              div.onclick = () => {
+                const m = _markerById[item.intersection_id];
+                if (m) {
+                  map.flyTo(m.getLatLng(), 15, {duration: 0.8});
+                  setTimeout(() => m.openPopup(), 800);
+                }
+                highlightRanking(item.intersection_id);
+              };
               wrap.appendChild(div);
             });
           }
 
-          async function refreshAll() {
-            await refreshMap();
-            await loadRiskRanking();
+          function highlightRanking(iid) {
+            // 모든 카드에서 highlight 제거 → 해당 카드만 강조
+            document.querySelectorAll('#ranking .rank-item, #ranking .rank-item-mid, #ranking .rank-item-high').forEach(el => {
+              el.style.outline = '';
+              el.style.boxShadow = '';
+            });
+            const el = document.getElementById('rank-' + iid);
+            if (el) {
+              el.style.outline = '2px solid var(--accent)';
+              el.style.boxShadow = '0 0 18px rgba(0,200,255,0.45)';
+              el.scrollIntoView({block:'nearest', behavior:'smooth'});
+            }
           }
 
           /* ── OCCUPANCY (2D / 3D) ── */

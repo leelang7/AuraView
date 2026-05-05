@@ -26,6 +26,8 @@ import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
+import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
 const String kApiBase = String.fromEnvironment(
   'AURAVIEW_API_BASE',
@@ -140,6 +142,10 @@ class _FleetHomeState extends State<FleetHome>
   Timer? _scnRotateTimer;
   List<double>? _prevFrameGray;  // motion diff 용 이전 프레임
 
+  // ★ ML Kit 객체 검출 (사람/차량 on-device 인식)
+  ObjectDetector? _objDetector;
+  bool _mlkitBusy = false;
+
   // ★ DEMO 시나리오 모드 — 사용자가 명시적으로 켤 때만 활성 (기본 OFF)
   // OFF: LIVE 모드 — 카메라 frame → 클라이언트 voxel (실제 환경)
   // ON:  DEMO 모드 — 서버 4 시나리오 자동 순환 (실내 시연용)
@@ -205,6 +211,18 @@ class _FleetHomeState extends State<FleetHome>
     _pulseAnim = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 900),
     );
+    // ML Kit 객체 검출기 초기화 (Android/iOS 만)
+    if (!kIsWeb) {
+      try {
+        _objDetector = ObjectDetector(
+          options: ObjectDetectorOptions(
+            mode: DetectionMode.single,
+            classifyObjects: false,
+            multipleObjects: true,
+          ),
+        );
+      } catch (_) {/* ML Kit 미지원 — 폴백 사용 */}
+    }
     _bootstrap();
   }
 
@@ -216,6 +234,7 @@ class _FleetHomeState extends State<FleetHome>
     _scnRotateTimer?.cancel();
     _posSub?.cancel();
     _cam?.dispose();
+    _objDetector?.close();
     _pulseAnim.dispose();
     super.dispose();
   }
@@ -253,16 +272,29 @@ class _FleetHomeState extends State<FleetHome>
   }
 
   /// 카메라 프레임 → 클라이언트(엣지) voxel 직접 생성. 서버 호출 X.
-  /// 도시정보 결합만 가벼운 GET /fusion (옵션).
+  /// + ML Kit 객체 검출 → class_grid_flat 채워서 사람/차량 형상 표시.
   Future<void> _fetchBev() async {
     if (_cam != null && _cam!.value.isInitialized && !_cam!.value.isTakingPicture) {
       try {
         final shot = await _cam!.takePicture();
         final bytes = await shot.readAsBytes();
+        // 1) voxel grid (edge + motion) 먼저 생성
+        final voxel = _voxelizeOnDevice(bytes);
+        // 2) ML Kit 객체 검출 시도 (LIVE 객체 형상 표시용)
+        List<int>? classGrid;
+        if (voxel != null && _objDetector != null && !_mlkitBusy) {
+          _mlkitBusy = true;
+          try {
+            classGrid = await _detectObjectsToClassGrid(shot.path, bytes, 40, 40);
+            if (classGrid != null) voxel['class_grid_flat'] = classGrid;
+          } catch (_) {} finally {
+            _mlkitBusy = false;
+          }
+        }
+        // 3) 임시 파일 정리
         if (!kIsWeb) {
           try { final f = File(shot.path); if (await f.exists()) await f.delete(); } catch (_) {}
         }
-        final voxel = _voxelizeOnDevice(bytes);
         if (voxel != null && mounted) {
           setState(() => _bev = voxel);
         }
@@ -316,6 +348,57 @@ class _FleetHomeState extends State<FleetHome>
   }
 
   /// voxel grid 의 신호등 영역 (멀리·중앙) 점유율을 0~1 occlusion_score 로 변환.
+  /// ML Kit 객체 검출 → BEV class_grid_flat 매핑.
+  /// 검출된 bbox 를 BEV 셀 (40×40) 에 마킹:
+  ///   - aspect ratio h/w > 1.5 → 사람 (cls=4)
+  ///   - else → 차량 (cls=1)
+  /// 위치 매핑:
+  ///   - col = bbox 중심 x / image_w * 40
+  ///   - row = (1 - bbox 중심 y / image_h) * 40   (y=top → row 40 멀리, y=bottom → row 0 가까이)
+  Future<List<int>?> _detectObjectsToClassGrid(String imagePath, Uint8List bytes, int rows, int cols) async {
+    try {
+      final inputImage = InputImage.fromFilePath(imagePath);
+      final objects = await _objDetector!.processImage(inputImage);
+      if (objects.isEmpty) return null;
+
+      // 이미지 dimensions — 원본 byte 에서 직접 디코드 (일부 폰은 metadata 미제공)
+      final src = img.decodeJpg(bytes);
+      if (src == null) return null;
+      final imgW = src.width.toDouble();
+      final imgH = src.height.toDouble();
+
+      final classGrid = List<int>.filled(rows * cols, 0);
+      for (final obj in objects) {
+        final box = obj.boundingBox;
+        final cxImg = (box.left + box.right) / 2;
+        final cyImg = (box.top + box.bottom) / 2;
+        final w = (box.right - box.left).abs();
+        final h = (box.bottom - box.top).abs();
+        if (w < 8 || h < 8) continue;  // 너무 작은 검출 skip
+        final aspect = h / w;
+        // 분류 (단순 휴리스틱)
+        final cls = aspect > 1.5 ? 4 : 1;  // 4=person 1=vehicle
+        // BEV 셀 매핑
+        final bevC = (cxImg / imgW * cols).round().clamp(0, cols - 1);
+        final bevR = ((1 - cyImg / imgH) * rows).round().clamp(0, rows - 1);
+        // 박스 사이즈 → BEV cell radius (1~3)
+        final pixelArea = w * h / (imgW * imgH);
+        final radius = (math.sqrt(pixelArea) * 14).clamp(1.0, 4.0).toInt();
+        for (int dr = -radius; dr <= radius; dr++) {
+          for (int dc = -radius; dc <= radius; dc++) {
+            final r = bevR + dr;
+            final c = bevC + dc;
+            if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
+            classGrid[r * cols + c] = cls;
+          }
+        }
+      }
+      return classGrid;
+    } catch (_) {
+      return null;
+    }
+  }
+
   double _estimateOcclusionScore() {
     final flat = _bev?['grid_flat'];
     if (flat is! List || flat.length != 1600) return 0.30;
@@ -1792,6 +1875,88 @@ class _Bev3DVoxelPainter extends CustomPainter {
         ..strokeWidth = 1.2);
   }
 
+  /// 우회전 시나리오 시각 보조 — ego 회전 곡선 화살표 + 충돌 위험점
+  void _drawRightTurnAids(Canvas canvas, Size size, double cameraX, double cameraZ) {
+    // 1) ego 회전 경로 — 곡선 (정지선 통과 → 가로 도로 우측)
+    // BEV 좌표: (0, 0) ego → (0, 24) 정지선 → (10, 30) 회전 중간 → (20, 32) 가로 도로 진입
+    final pathPoints = <List<double>>[
+      [0, 0], [0, 12], [0, 22],
+      [2, 26], [6, 28], [12, 30], [18, 32],
+    ];
+    // 화살표 스템 (시안 발광)
+    final pathPaint = Paint()
+      ..color = const Color(0xFF00C8FF)
+      ..strokeWidth = 6.0
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    final pathInner = Paint()
+      ..color = const Color(0xFFEEFAFF)
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+    for (int i = 0; i < pathPoints.length - 1; i++) {
+      final p1 = _project(pathPoints[i][0], 0, pathPoints[i][1], cameraX, cameraZ, size);
+      final p2 = _project(pathPoints[i+1][0], 0, pathPoints[i+1][1], cameraX, cameraZ, size);
+      canvas.drawLine(p1, p2, pathPaint);
+      canvas.drawLine(p1, p2, pathInner);
+    }
+    // 화살표 머리 (가로 도로 진입 끝)
+    final tip = _project(20, 0, 32, cameraX, cameraZ, size);
+    final tail1 = _project(16, 0, 30, cameraX, cameraZ, size);
+    final tail2 = _project(16, 0, 34, cameraX, cameraZ, size);
+    final headPath = Path()
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo(tail1.dx, tail1.dy)
+      ..lineTo(tail2.dx, tail2.dy)
+      ..close();
+    canvas.drawPath(headPath, Paint()..color = const Color(0xFF00C8FF));
+    canvas.drawPath(headPath, Paint()..color = const Color(0xFFEEFAFF)..style = PaintingStyle.stroke..strokeWidth = 1.5);
+
+    // 2) 충돌점 — ego 경로와 보행자 경로 교차 (대략 row 27-28, col 5-6)
+    // BEV 좌표 (10, 28) — 큰 빨간 펄스 ring + X 마크
+    final cxM = 10.0, czM = 28.0;
+    final centerP = _project(cxM, 0, czM, cameraX, cameraZ, size);
+    // 펄스 ring (애니메이션 효과)
+    final pulseT = (t * 1.5) % 1.0;
+    canvas.drawCircle(centerP, 14 + pulseT * 18, Paint()
+      ..color = const Color(0xFFFF3030).withValues(alpha: (1 - pulseT) * 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0);
+    canvas.drawCircle(centerP, 14, Paint()
+      ..color = const Color(0xFFFF3030).withValues(alpha: 0.30)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    // X 마크
+    final xPaint = Paint()
+      ..color = const Color(0xFFFF3030)
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(centerP.dx - 7, centerP.dy - 7),
+                    Offset(centerP.dx + 7, centerP.dy + 7), xPaint);
+    canvas.drawLine(Offset(centerP.dx + 7, centerP.dy - 7),
+                    Offset(centerP.dx - 7, centerP.dy + 7), xPaint);
+    // 라벨 "⚠️ 충돌 위험" 위쪽
+    final tp = TextPainter(
+      text: const TextSpan(text: '⚠️ 충돌 위험',
+        style: TextStyle(color: Color(0xFFFF5A5A), fontSize: 10, fontWeight: FontWeight.w900,
+                         shadows: [Shadow(color: Colors.black, blurRadius: 4)])),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(centerP.dx - tp.width/2, centerP.dy - 28));
+
+    // 3) 보행자 진행방향 화살표 (오른쪽으로 가로질러)
+    // 보행자가 col 50→58 방향 (BEV x = 5→9)
+    final pedArrowPaint = Paint()
+      ..color = const Color(0xFF00D8FF)
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    for (final pz in [25.0, 28.0, 31.0]) {
+      final p1 = _project(5, 0, pz, cameraX, cameraZ, size);
+      final p2 = _project(9, 0, pz, cameraX, cameraZ, size);
+      canvas.drawLine(p1, p2, pedArrowPaint);
+      // 화살표 head
+      canvas.drawCircle(p2, 2.5, Paint()..color = const Color(0xFF00D8FF));
+    }
+  }
+
   /// 보행자 — 시안 원기둥 (몸통) + 작은 구 (머리) + 바닥 펄스 링
   void _drawPedestrianMarker(Canvas canvas, Size size, double x, double z, double cx, double cz) {
     const color = Color(0xFF00D8FF);
@@ -1848,13 +2013,15 @@ class _Bev3DVoxelPainter extends CustomPainter {
     final cx = math.sin(t * 0.4) * 0.8;
     const cz = -3.0;
 
-    // ★ DEMO 모드 판단 — class_grid_flat 있으면 시나리오 (도로 인프라 표시)
-    //   LIVE 모드 (class 없음) → 도로 인프라 X · 카메라 voxel 만 raw 표시
+    // ★ DEMO 모드 판단 — scenario_id 가 있으면 가짜 도로 인프라 표시 (시연용)
+    //   LIVE 모드 (scenario_id 없음) → 도로 X · ML Kit 객체 검출 결과만 형상 표시
     final flatPre = bev?['grid_flat'];
     final shapePre = bev?['grid_shape_flat'];
     final classPre = bev?['class_grid_flat'];
     final hasShapePre = flatPre is List && shapePre is List && shapePre.length == 2;
-    final isDemoScene = hasShapePre && classPre is List && classPre.length == (shapePre[0] as num) * (shapePre[1] as num);
+    final hasClassPre = hasShapePre && classPre is List && classPre.length == (shapePre[0] as num) * (shapePre[1] as num);
+    final scnIdPre = bev?['scenario_id'] as String?;
+    final isDemoScene = scnIdPre != null && scnIdPre.isNotEmpty;
 
     if (!isDemoScene) {
       // ─────── LIVE 모드: 도로 인프라 X · 단순 reference grid 만 ───────
@@ -2047,7 +2214,8 @@ class _Bev3DVoxelPainter extends CustomPainter {
     final shape = shapePre;
     final classFlat = classPre;
     final hasShape = hasShapePre;
-    final hasClass = isDemoScene;
+    // 객체 형상 렌더링 조건: class_grid 가 존재하면 (DEMO든 LIVE+MLKit이든)
+    final hasClass = hasClassPre;
 
     if (hasShape && !hasClass) {
       // ── LIVE 모드: 카메라 frame voxel — TOP-K 만 표시 (도로 가시성 우선)
@@ -2186,6 +2354,37 @@ class _Bev3DVoxelPainter extends CustomPainter {
         } else if (cls == 5) {
           _drawSignalMarker(canvas, size, cxM, czM, cx, cz);
         }
+      }
+
+      // ── 시나리오별 시각 보조 (우회전 화살표, 충돌점 등) ──
+      final scnId = bev?['scenario_id'] as String?;
+      if (scnId == 'right_turn_pedestrian') {
+        _drawRightTurnAids(canvas, size, cx, cz);
+      }
+
+      // LIVE 모드에서 ML Kit 검출 결과 표시 (DEMO 시나리오 아닐 때만)
+      if (scnId == null) {
+        // LIVE + ML Kit
+        var personCount = 0, vehicleCount = 0;
+        for (int i = 0; i < classFlat.length; i++) {
+          final v = (classFlat[i] as num).toInt();
+          if (v == 4) personCount++;
+          if (v == 1) vehicleCount++;
+        }
+        final tp = TextPainter(
+          text: TextSpan(text: 'LIVE · ML Kit · 사람 ${personCount > 0 ? "✓" : "·"}  차량 ${vehicleCount > 0 ? "✓" : "·"}',
+            style: const TextStyle(color: Color(0xFF00E09A), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(size.width - tp.width - 8, 6));
+        // 좌상단 — 처리 파이프라인
+        const pipeText = '📷 → ML Kit Object Detection → BEV class grid';
+        final tp2 = TextPainter(
+          text: const TextSpan(text: pipeText,
+            style: TextStyle(color: Color(0xAA5A7A9A), fontSize: 8, fontWeight: FontWeight.w600)),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp2.paint(canvas, const Offset(8, 6));
       }
     }
 

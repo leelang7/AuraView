@@ -144,12 +144,13 @@ class _FleetHomeState extends State<FleetHome>
   // OFF: LIVE 모드 — 카메라 frame → 클라이언트 voxel (실제 환경)
   // ON:  DEMO 모드 — 서버 4 시나리오 자동 순환 (실내 시연용)
   bool _demoScenarioOn = false;
-  static const _scnList = ['truck_occlusion', 'motorcycle_blindspot', 'signal_occlusion', 'rainy_intersection'];
+  static const _scnList = ['truck_occlusion', 'motorcycle_blindspot', 'signal_occlusion', 'rainy_intersection', 'right_turn_pedestrian'];
   static const _scnLabels = {
     'truck_occlusion': '🚛 트럭 가림',
     'motorcycle_blindspot': '◀ 사각지대 이륜',
     'signal_occlusion': '🚦 버스 뒤 신호',
     'rainy_intersection': '🌧️ 우천',
+    'right_turn_pedestrian': '🚸 우회전 보행자',
   };
   int _scnIdx = 0;
 
@@ -1512,19 +1513,24 @@ class _Bev3DVoxelPainter extends CustomPainter {
   final double t;
   _Bev3DVoxelPainter({this.bev, required this.t});
 
-  // 3D 점 → 2D 화면 (Tesla-style 위에서 내려다 보는 axonometric)
-  // 캔버스 가득 채움 — x ∈ [-15, 15], z ∈ [-5, 55] 가 화면 영역
+  // 3D 점 → 2D 화면 (Tesla-style 살짝 기울어진 top-down — 3D 깊이감 살림)
+  // 캔버스 fit + perspective tilt: 멀리 객체는 작아지고 위로, 높은 객체는 위쪽 시각 offset
   Offset _project(double x, double y, double z, double cx, double cz, Size size) {
     final w = size.width, h = size.height;
-    // 미세 흔들림 (호흡 효과)
     final dx = x - cx;
     final dz = z;
-    // 캔버스 fit — 가로 30m, 세로 60m (적당한 margin)
-    final scaleX = (w - 24) / 30.0;       // 1m horizontal = (w-24)/30 px
-    final scaleZ = (h - 70) / 60.0;       // 1m forward = (h-70)/60 px
-    // ego 는 화면 하단 (z=0), 멀리 z 양수가 위쪽으로
-    final screenX = w / 2 + dx * scaleX;
-    final screenY = h - 30 - dz * scaleZ - y * scaleZ * 1.5;  // y 는 높이 visual offset
+    // 카메라 tilt 18° 가정 — 위에서 내려다 보되 약간 forward
+    const tiltCos = 0.951;  // cos(18°)
+    const tiltSin = 0.309;  // sin(18°)
+    // 거리에 따른 perspective shrink (far → smaller)
+    final perspective = 1.0 / (1.0 + dz * 0.012);
+    // 캔버스 fit — 가로 36m (-18~18), 세로 60m forward
+    final scaleX = (w - 24) / 36.0;
+    final scaleZ = (h - 70) / 60.0;
+    // 화면 X: 가로 perspective shrink + dx
+    final screenX = w / 2 + dx * scaleX * perspective;
+    // 화면 Y: 멀리 객체 위로 (tiltCos), 높이 객체 위로 (tiltSin)
+    final screenY = h - 32 - dz * scaleZ * tiltCos - y * scaleX * tiltSin * 4.0;
     return Offset(screenX, screenY);
   }
 

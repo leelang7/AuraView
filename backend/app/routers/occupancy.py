@@ -144,6 +144,17 @@ _SCENARIOS = {
         "recommended_action": "감속 + 와이퍼 최대 + 헤드라이트",
         "alert_text": "🌧️ 우천 보행자 흐림 — 감속 권고",
     },
+    "right_turn_pedestrian": {
+        "title": "우회전 시 횡단보도 보행자 — 사각지대 사고 빈발",
+        "narrative": "ego 우회전 진입 직전, 우측 횡단보도에 보행자 진입. A필러/우측 사각으로 운전자 미인지 위험.",
+        "advantage": "BEV 우측 횡단보도 보행자 prior + V2V 결합 — 우측 사각 100% 커버 (한국 대법 판례 우회전 보행자 우선)",
+        "ego_speed_kmh": 18,
+        "p_collision": 0.78,
+        "lead_time_s": 2.6,
+        "primary_threat": "우측 횡단보도 보행자",
+        "recommended_action": "완전 정지 + 우측 보행자 횡단 종료 후 진행",
+        "alert_text": "🚸 우회전 보행자 — 완전 정지 (보행자 우선)",
+    },
 }
 
 
@@ -273,6 +284,32 @@ def _build_scene(name: str, phase: float):
             {"class": "pedestrian_zone", "row": 51, "col": 47, "kind": "intent_prior", "distance_m": 25.5, "label": "🌧️ 우산 보행자 (우)"},
             {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "신호등"},
         ]
+    elif name == "right_turn_pedestrian":
+        # ego 우회전 진입 직전 — 자차는 정지선 근처 (속도 18km/h)
+        # 우측 횡단보도 영역 (행단방향 즉 가로 도로 측 횡단보도 row 48~60)
+        # 1) 우측 차로 차량 (옆 차선, col 41~45, row 18~27)
+        grid[18:27, 41:45] = 0.78; cls[18:27, 41:45] = 1
+        # 2) 좌측 차로 차량 (col 33~37, row 22~31)
+        grid[22:31, 33:37] = 0.80; cls[22:31, 33:37] = 1
+        # 3) 우측 횡단보도 위 보행자 (3명, 다양한 위치, phase 따라 미세 이동)
+        for i, (pr_base, pc) in enumerate([(48, 51), (52, 54), (56, 50)]):
+            wob = int(np.sin(phase * 0.7 + i) * 1.0)
+            grid[pr_base + wob:pr_base + wob + 4, pc:pc + 3] = 0.82
+            cls[pr_base + wob:pr_base + wob + 4, pc:pc + 3] = 4
+        # 4) ego 차량 우측 A필러 사각지대 (우측 가까이)
+        grid[8:24, 44:50] = 0.30; cls[8:24, 44:50] = 3
+        # 5) 전방 신호등 (col 38~40, row 50~52)
+        grid[50:52, 38:40] = 0.82; cls[50:52, 38:40] = 5
+        hotspots = [
+            {"class": "pedestrian_zone", "row": 52, "col": 53, "kind": "intent_prior", "distance_m": 13.0,
+             "label": "🚸 우측 횡단보도 보행자 (A필러 사각)"},
+            {"class": "blindspot_zone", "row": 16, "col": 47, "kind": "blindspot", "distance_m": 8.0,
+             "label": "우측 A필러 사각지대"},
+            {"class": "vehicle", "row": 22, "col": 43, "kind": "object", "distance_m": 11.0, "label": "우측 차로 차량"},
+            {"class": "vehicle", "row": 26, "col": 35, "kind": "object", "distance_m": 13.0, "label": "좌측 차로 차량"},
+            {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "전방 신호등"},
+        ]
+
     else:
         raise ValueError(f"unknown scenario: {name}")
 

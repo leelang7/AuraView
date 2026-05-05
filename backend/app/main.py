@@ -1325,6 +1325,11 @@ def prototype_ui():
                   <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--accent2);margin-top:4px;">우천 + 우산 보행자</div>
                   <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">노면 반사 · risk 0.61</div>
                 </button>
+                <button data-scn="right_turn_pedestrian" onclick="setOccScenario('right_turn_pedestrian')" class="scn-btn" style="padding:14px;background:rgba(255,59,59,0.10);border:2px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;">
+                  <div style="font-size:24px;">🚸</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--danger);margin-top:4px;">우회전 보행자</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">A필러 사각 · risk 0.78</div>
+                </button>
               </div>
             </div>
 

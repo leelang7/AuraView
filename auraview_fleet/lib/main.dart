@@ -2212,60 +2212,162 @@ class _Bev3DVoxelPainter extends CustomPainter {
     final hasClass = hasClassPre;
 
     if (hasShape && !hasClass) {
-      // ── LIVE 모드: 카메라 frame voxel — TOP-K 만 표시 (도로 가시성 우선)
+      // ── LIVE 모드 (Tesla-style): voxel dots + 클러스터 → 객체 silhouette ──
       final rows = (shape[0] as num).toInt();
       final cols = (shape[1] as num).toInt();
       final cellM = 40.0 / cols;
-      // 1차 필터: 임계값 ≥ 0.45 (높음) + 차로 영역 우선 (col 12~28)
-      final cells = <List<num>>[];
+
+      // 1) 활성 셀 binary mask (점유 ≥ 0.40)
+      final mask = List<bool>.filled(rows * cols, false);
       for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
           final p = ((flat[r * cols + c] ?? 0) as num).toDouble();
-          if (p < 0.45) continue;
-          // 차로 영역 가중치 (가운데 col 14~26)
-          final laneWeight = (c >= 12 && c <= 28) ? 1.5 : 0.6;
-          cells.add([r, c, p, p * laneWeight]);
+          if (p >= 0.40) mask[r * cols + c] = true;
         }
       }
-      // 점수 (p × laneWeight) 내림차순 → TOP 50 만
-      cells.sort((a, b) => (b[3] as num).compareTo(a[3] as num));
-      final topCells = cells.take(50).toList();
-      var liveCount = 0;
-      for (final cell in topCells) {
-        final r = (cell[0] as num).toInt();
-        final c = (cell[1] as num).toInt();
-        final p = (cell[2] as num).toDouble();
-        liveCount++;
-        final xM = ((c - cols / 2) + 0.5) * cellM;
-        final zM = (r + 0.5) * cellM;
-        final base = _project(xM, 0, zM, cx, cz, size);
-        // 점유 → 색상 (시안 → 주황 → 빨강) + 작은 dot
-        final col = p < 0.55
-            ? Color.lerp(const Color(0xFF00B8E0), const Color(0xFFFFB020), (p - 0.45) / 0.10)!
-            : Color.lerp(const Color(0xFFFFB020), const Color(0xFFFF3B3B), (p - 0.55) / 0.45)!;
-        final radius = (1.8 + (p - 0.45) * 5.0).clamp(1.5, 4.5);
-        canvas.drawCircle(base, radius * 1.4, Paint()
-          ..color = col.withValues(alpha: 0.40)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * 0.5));
-        canvas.drawCircle(base, radius, Paint()..color = col);
+
+      // 2) 8-connected 컴포넌트 클러스터링 (BFS)
+      final visited = List<bool>.filled(rows * cols, false);
+      const dirs8 = [
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1],           [0, 1],
+        [1, -1],  [1, 0],  [1, 1],
+      ];
+      final blobs = <Map<String, num>>[];  // {minR, maxR, minC, maxC, count, sumP}
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          final idx = r * cols + c;
+          if (visited[idx] || !mask[idx]) { visited[idx] = true; continue; }
+          final queue = <List<int>>[[r, c]];
+          visited[idx] = true;
+          int minR = r, maxR = r, minC = c, maxC = c, count = 0;
+          double sumP = 0;
+          while (queue.isNotEmpty) {
+            final p = queue.removeLast();
+            final cr = p[0], cc = p[1];
+            count++;
+            sumP += ((flat[cr * cols + cc] ?? 0) as num).toDouble();
+            if (cr < minR) minR = cr; if (cr > maxR) maxR = cr;
+            if (cc < minC) minC = cc; if (cc > maxC) maxC = cc;
+            for (final d in dirs8) {
+              final nr = cr + d[0], nc = cc + d[1];
+              if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+              final ni = nr * cols + nc;
+              if (visited[ni] || !mask[ni]) continue;
+              visited[ni] = true;
+              queue.add([nr, nc]);
+            }
+          }
+          if (count >= 3) {
+            blobs.add({
+              'minR': minR, 'maxR': maxR, 'minC': minC, 'maxC': maxC,
+              'count': count, 'avgP': sumP / count,
+            });
+          }
+        }
       }
+
+      // 3) 클러스터 → silhouette: aspect ratio 로 사람/차량/물체 분류
+      blobs.sort((a, b) => ((b['avgP'] as num) * (b['count'] as num))
+                              .compareTo((a['avgP'] as num) * (a['count'] as num)));
+      final topBlobs = blobs.take(8).toList();  // 상위 8개만 silhouette
+
+      var personHint = 0, vehicleHint = 0;
+      for (final b in topBlobs) {
+        final minR = (b['minR'] as num).toDouble();
+        final maxR = (b['maxR'] as num).toDouble();
+        final minC = (b['minC'] as num).toDouble();
+        final maxC = (b['maxC'] as num).toDouble();
+        final avgP = (b['avgP'] as num).toDouble();
+
+        final wM = (maxC - minC + 1) * cellM;
+        final lM = (maxR - minR + 1) * cellM;
+        final cxM = (((minC + maxC) / 2 + 0.5) - cols / 2) * cellM;
+        final czM = ((minR + maxR) / 2 + 0.5) * cellM;
+        final aspect = lM / (wM + 0.001);  // length(forward) / width(lateral)
+
+        // 분류 (휴리스틱):
+        //  - aspect > 1.4 (forward 으로 길쭉, 차로 방향 정렬) → 차량 후보
+        //  - 작고 일정한 (3~7 cells, 1×2~2×2) → 사람 후보
+        //  - 큰 wide blob → 차량 (옆에서 본 차)
+        //  - 그 외 → 일반 물체
+        final cellCount = (b['count'] as num).toInt();
+        final isPerson = cellCount <= 6 && wM <= 1.5 && lM <= 2.0;
+        final isVehicle = !isPerson && (aspect > 1.3 || wM > 2.0);
+
+        if (isPerson) {
+          personHint++;
+          // 사람 silhouette — 시안 작은 직사각형 + 머리 원
+          final base = _project(cxM, 0, czM, cx, cz, size);
+          final top = _project(cxM, 1.7, czM, cx, cz, size);
+          // 몸통
+          canvas.drawLine(base, top, Paint()
+            ..color = const Color(0xFF00D8FF)
+            ..strokeWidth = 5.0
+            ..strokeCap = StrokeCap.round);
+          // 머리
+          canvas.drawCircle(top, 4, Paint()..color = const Color(0xFF00D8FF));
+          // 바닥 펄스 링
+          canvas.drawCircle(base, 8, Paint()
+            ..color = const Color(0xFF00D8FF).withValues(alpha: 0.35)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+        } else if (isVehicle) {
+          vehicleHint++;
+          _drawVehicle(canvas, size, cxM, czM, lM.clamp(2.5, 8.0), wM.clamp(1.6, 3.0), cx, cz);
+        } else {
+          // 일반 물체 — 노란 outline 박스
+          final p1 = _project(cxM - wM/2, 0, czM - lM/2, cx, cz, size);
+          final p2 = _project(cxM + wM/2, 0, czM - lM/2, cx, cz, size);
+          final p3 = _project(cxM + wM/2, 0, czM + lM/2, cx, cz, size);
+          final p4 = _project(cxM - wM/2, 0, czM + lM/2, cx, cz, size);
+          canvas.drawPath(Path()..moveTo(p1.dx, p1.dy)..lineTo(p2.dx, p2.dy)
+                                  ..lineTo(p3.dx, p3.dy)..lineTo(p4.dx, p4.dy)..close(),
+            Paint()
+              ..color = const Color(0xFFFFB020).withValues(alpha: 0.30)
+              ..style = PaintingStyle.fill);
+          canvas.drawPath(Path()..moveTo(p1.dx, p1.dy)..lineTo(p2.dx, p2.dy)
+                                  ..lineTo(p3.dx, p3.dy)..lineTo(p4.dx, p4.dy)..close(),
+            Paint()
+              ..color = const Color(0xFFFFB020)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.5);
+        }
+      }
+
+      // 4) 잔여 voxel dots (background, 옅게)
+      var dotCount = 0;
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          final p = ((flat[r * cols + c] ?? 0) as num).toDouble();
+          if (p < 0.50) continue;
+          dotCount++;
+          if (dotCount > 30) break;  // 최대 30 dot 만
+          final xM = ((c - cols / 2) + 0.5) * cellM;
+          final zM = (r + 0.5) * cellM;
+          final base = _project(xM, 0, zM, cx, cz, size);
+          canvas.drawCircle(base, 1.2, Paint()
+            ..color = const Color(0xFF00E09A).withValues(alpha: 0.45));
+        }
+      }
+
       // 카운터 — 우상단
-      final activeText = liveCount > 0
-          ? 'LIVE · $liveCount voxel · 임계 0.45'
-          : 'LIVE · 카메라 voxel 대기';
+      final summary = (personHint > 0 || vehicleHint > 0)
+          ? 'LIVE · 사람 $personHint · 차량 $vehicleHint · ${topBlobs.length} blob'
+          : 'LIVE · ${topBlobs.length} blob 분석 중';
       final tp = TextPainter(
-        text: TextSpan(text: activeText,
+        text: TextSpan(text: summary,
           style: TextStyle(
-            color: liveCount > 0 ? const Color(0xFF00E09A) : _muted,
-            fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+            color: (personHint + vehicleHint > 0) ? const Color(0xFF00E09A) : _muted,
+            fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(size.width - tp.width - 8, 6));
       // 처리 파이프라인 표시 (좌상단)
-      final pipeText = '📷 → 64×64 grayscale → vEdge×3 + hEdge×1.2 + motion×2.5 → 40×40 voxel';
+      const pipeText = '📷 → voxel → 8-connected blob → 사람/차량 silhouette';
       final tp2 = TextPainter(
         text: TextSpan(text: pipeText,
-          style: TextStyle(color: _muted.withValues(alpha: 0.7), fontSize: 7.5, fontWeight: FontWeight.w600)),
+          style: TextStyle(color: _muted.withValues(alpha: 0.7), fontSize: 8, fontWeight: FontWeight.w600)),
         textDirection: TextDirection.ltr,
         maxLines: 1,
       )..layout(maxWidth: size.width - 16);

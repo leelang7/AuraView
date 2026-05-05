@@ -1331,13 +1331,16 @@ class _BevPanelState extends State<_BevPanel>
     final modeColor = isDemo ? _warn : _safe;
     final modeLabel = isDemo ? 'DEMO' : 'LIVE';
 
-    // BEV 캔버스 — fillScreen 이면 Expanded 로 가용 공간 모두 사용 (테슬라식)
+    // BEV 캔버스 — Expanded 로 가용 공간 모두 사용 (Size.infinite 명시)
     final bevCanvas = ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Container(
-        color: const Color(0xFF04080E),
-        child: CustomPaint(
-          painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t),
+      child: ColoredBox(
+        color: const Color(0xFF0A1018),
+        child: SizedBox.expand(
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t),
+          ),
         ),
       ),
     );
@@ -1632,18 +1635,18 @@ class _Bev3DVoxelPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // 배경
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF04080E));
+    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF0A1018));
 
-    // 자동 회전 카메라 (15초 주기)
-    final theta = t * 0.4;
+    // 자동 회전 카메라 (느린 회전 — Tesla 식)
+    final theta = t * 0.25;
     final cx = math.cos(theta) * 14;
-    final cz = math.sin(theta) * 14 + 8;
+    final cz = math.sin(theta) * 14 + 6;
 
     // ─────── 도심 4지 교차로 (Korean urban intersection) ───────
     // ego 진행 +z. 자차 도로 폭 12m (-6~+6), 정지선 z=24m, 교차로 본체 z=24~32m
     // 가로 도로 폭 8m (z=24~32), x= -25~25
-    final asphaltPaint = Paint()..color = const Color(0xFF14181F);
-    final swPaint = Paint()..color = const Color(0xFF2A3140);
+    final asphaltPaint = Paint()..color = const Color(0xFF1F242E);  // 밝은 아스팔트
+    final swPaint = Paint()..color = const Color(0xFF3A4252);        // 밝은 인도
 
     // 1) ego 도로 (-10 ~ 24)
     Path rectPath(double x1, double z1, double x2, double z2) {
@@ -1674,7 +1677,8 @@ class _Bev3DVoxelPainter extends CustomPainter {
     // 5) 중앙 노란 점선 (ego 도로 z=-10~24)
     final centerPaint = Paint()
       ..color = const Color(0xFFFACC15)
-      ..strokeWidth = 1.4;
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
     for (double dz = -10; dz < 24; dz += 1.0) {
       if ((dz * 10).floor() % 12 < 8) {
         final p1 = _project(0, 0, dz, cx, cz, size);
@@ -1702,7 +1706,8 @@ class _Bev3DVoxelPainter extends CustomPainter {
     // 6) 차선 흰 점선 — ego 도로 ±3 (양방향 2차선)
     final lanePaint = Paint()
       ..color = const Color(0xFFEEF0F4)
-      ..strokeWidth = 1.0;
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
     for (final lx in [-3.0, 3.0]) {
       for (double dz = -10; dz < 24; dz += 3.5) {
         canvas.drawLine(
@@ -1733,7 +1738,8 @@ class _Bev3DVoxelPainter extends CustomPainter {
     // 7) 정지선 4개 (ego 진입, 반대편, 좌가로, 우가로)
     final stopPaint = Paint()
       ..color = const Color(0xFFEEF0F4)
-      ..strokeWidth = 2.5;
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.square;
     canvas.drawLine(_project(-6, 0, 23.5, cx, cz, size), _project(6, 0, 23.5, cx, cz, size), stopPaint);
     canvas.drawLine(_project(-6, 0, 32.5, cx, cz, size), _project(6, 0, 32.5, cx, cz, size), stopPaint);
     canvas.drawLine(_project(-6, 0, 24, cx, cz, size), _project(-6, 0, 32, cx, cz, size), stopPaint);

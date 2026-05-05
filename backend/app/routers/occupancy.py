@@ -174,6 +174,7 @@ def _build_scene(name: str, phase: float):
       이륜: 5 rows × 2 cols (2.5m × 1m)
     """
     import numpy as np
+    import time as _time_mod
 
     grid = np.zeros((80, 80), dtype="float32")
     cls = np.zeros((80, 80), dtype="int8")  # class label per cell
@@ -290,14 +291,23 @@ def _build_scene(name: str, phase: float):
         # 2) 우측 횡단보도 보행자 (회전 경로 위 — 정지 필요)
         # 3) 마주오는 차량 (북→남, ego 도로 반대편 차로) — 회전 시 양보 또는 충돌 위험
 
+        # ★ ego 애니메이션 10s cycle 과 wall-clock 으로 sync
+        #   ego phase: 0.00-0.16 접근 / 0.16-0.44 정지(보행자 대기) / 0.44-0.68 우회전 / 0.68+ 동쪽 진행
+        cycle10 = (_time_mod.time() % 10.0) / 10.0
+
         # A. ego 우측 A필러 사각지대
         grid[16:48, 50:58] = 0.30; cls[16:48, 50:58] = 3
 
-        # B. 우측 횡단보도 보행자 (북→남 횡단)
-        ped_progress = (np.sin(phase * 0.5) + 1) * 0.5
-        ped_row = int(50 + ped_progress * 12)
-        grid[ped_row:ped_row + 3, 52:54] = 0.92
-        cls[ped_row:ped_row + 3, 52:54] = 4
+        # B. 우측 횡단보도 보행자 — ego 정지 구간(0.10~0.40) 동안만 빠르게 횡단,
+        #    그 후엔 인도로 사라짐 → ego 우회전(0.44+) 경로는 항상 클리어 (충돌 시연 X)
+        ped_visible = 0.10 <= cycle10 < 0.40
+        if ped_visible:
+            ped_progress = (cycle10 - 0.10) / 0.30
+            ped_row = int(48 + ped_progress * 16)  # z 24→32 fast one-way cross
+            grid[ped_row:ped_row + 3, 52:54] = 0.92
+            cls[ped_row:ped_row + 3, 52:54] = 4
+        else:
+            ped_row = 48  # off-crosswalk fallback for hotspot reference
 
         # C. 마주오는 차량 (반대편 차로) — 북에서 남으로
         # ★ 중앙선 (col 39~40) 침범 X — col 31~36 으로 안전 거리 확보
@@ -313,8 +323,12 @@ def _build_scene(name: str, phase: float):
         hotspots = [
             {"class": "blindspot_zone", "row": 32, "col": 54, "kind": "blindspot", "distance_m": 16.0,
              "label": "⚠️ 우측 A필러 사각지대"},
-            {"class": "pedestrian_zone", "row": ped_row + 1, "col": 53, "kind": "intent_prior",
-             "distance_m": (ped_row + 1) * 0.5, "label": "🚸 우측 횡단보도 보행자 (회전 경로)"},
+        ]
+        if ped_visible:
+            hotspots.append({"class": "pedestrian_zone", "row": ped_row + 1, "col": 53,
+                             "kind": "intent_prior", "distance_m": (ped_row + 1) * 0.5,
+                             "label": "🚸 우측 횡단보도 보행자 (회전 경로)"})
+        hotspots += [
             {"class": "vehicle", "row": oncoming_row + 6, "col": 33, "kind": "object",
              "distance_m": max(0, (oncoming_row + 6) * 0.5), "label": "🚗 마주오는 차량 (북→남)"},
         ]

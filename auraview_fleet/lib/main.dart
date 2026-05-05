@@ -2401,8 +2401,9 @@ class _Bev3DVoxelPainter extends CustomPainter {
       final scnIdForEgo = bev?['scenario_id'] as String?;
       if (scnIdForEgo == 'right_turn_pedestrian') {
         // 10초 cycle: 접근 → 정지(보행자 대기) → 회전 → 동쪽 진행 → 화면 밖 사라짐 → 재등장
-        // ★ 텔레포트 방지: 마지막에 가속해서 화면 밖으로 빠지고 일시적으로 invisible
-        final cycle = (t % 10.0) / 10.0;
+        // ★ wall-clock sync — backend 보행자 phase 와 동일 기준
+        final wallSec = DateTime.now().millisecondsSinceEpoch / 1000.0;
+        final cycle = (wallSec % 10.0) / 10.0;
         double egoX, egoZ, egoYawDeg;
         bool isStopped = false;
         bool egoVisible = true;

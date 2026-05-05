@@ -3018,7 +3018,8 @@ def prototype_ui():
               //   접근 → 정지 → 회전 → 동쪽 진행 → 화면 밖 사라짐 → 재등장
               //   텔레포트 방지: 마지막 가속해서 화면 밖, 그 후 invisible
               if (threeCtx.scenarioId === 'right_turn_pedestrian') {
-                const cycle = (threeCtx.t % 10.0) / 10.0;
+                // ★ wall-clock sync — backend 보행자 phase 와 동일 기준 (Date.now())
+                const cycle = ((Date.now() / 1000) % 10.0) / 10.0;
                 let egoX, egoZ, egoYawRad;
                 let egoVisible = true;
                 // ★ Korean RHT — ego 는 우측 차로(world x=+1.5) 중앙 주행 (중앙선 위 X)

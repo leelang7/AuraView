@@ -200,17 +200,195 @@ async function refreshStats() {
   }
 }
 
-/* ── BEV 오버레이 (단안 카메라 + 도시정보 결합) ───────────────────── */
-let bevOpen = false;
+/* ── BEV 3D VOXEL — 카메라 프레임 → /occupancy/infer 실시간 ────────── */
+let bevOpen = true;          // 기본 ON
 let bevTimer = null;
 let bevData = null;
 let fusionData = null;
+let bevThree = null;         // {renderer, scene, camera, voxelGroup, t}
+
+function ensureBevThree() {
+  if (bevThree) return bevThree;
+  const canvas = $('bevThree');
+  if (!canvas || typeof THREE === 'undefined') return null;
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x04080e);
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+  camera.position.set(-15, 16, -8);
+  camera.lookAt(0, 1, 18);
+  scene.add(new THREE.AmbientLight(0x88aacc, 0.65));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.85);
+  dir.position.set(20, 30, 10); scene.add(dir);
+
+  // ground + grid
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 40),
+    new THREE.MeshBasicMaterial({color:0x0a1624})
+  );
+  ground.rotation.x = -Math.PI/2; ground.position.z = 20; scene.add(ground);
+  const grid = new THREE.GridHelper(40, 40, 0x0f2a44, 0x0a1a2e);
+  grid.position.z = 20; scene.add(grid);
+
+  // EGO 차량 (시안)
+  const ego = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8, 1.4, 4),
+    new THREE.MeshStandardMaterial({color:0x00c8ff, emissive:0x003b55, metalness:0.6, roughness:0.3})
+  );
+  ego.position.set(0, 0.7, 0); scene.add(ego);
+
+  const voxelGroup = new THREE.Group();
+  scene.add(voxelGroup);
+
+  bevThree = {renderer, scene, camera, voxelGroup, t: 0};
+
+  function animate() {
+    bevThree.t += 0.005;
+    camera.position.x = Math.cos(bevThree.t * 0.25) * 22;
+    camera.position.z = Math.sin(bevThree.t * 0.25) * 22 + 14;
+    camera.lookAt(0, 2, 18);
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    const sz = Math.min(r.width, r.height) || 220;
+    renderer.setSize(sz, sz, false);
+    camera.aspect = 1; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  animate();
+  return bevThree;
+}
+
+function renderBev3D() {
+  const ctx = ensureBevThree();
+  if (!ctx || !bevData) return;
+  // clear voxels
+  while (ctx.voxelGroup.children.length) {
+    const m = ctx.voxelGroup.children.pop();
+    m.geometry && m.geometry.dispose();
+    m.material && m.material.dispose();
+  }
+  const flat = bevData.grid_flat;
+  const shape = bevData.grid_shape_flat || [40, 40];
+  const cell = bevData.grid_cell_m_flat || 1.0;
+  const forward = bevData.forward_m || 40;
+  const lateral = bevData.lateral_m || 20;
+  if (!Array.isArray(flat)) return;
+  const rows = shape[0], cols = shape[1];
+  const geom = new THREE.BoxGeometry(cell * 0.9, 1, cell * 0.9);
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const p = flat[r * cols + c] || 0;
+      if (p < 0.10) continue;
+      const t = Math.min(1, Math.max(0, p));
+      const height = Math.max(0.2, Math.min(6, t * 6));
+      const x = -lateral + c * cell + cell / 2;
+      const z = r * cell + cell / 2;
+      const color = new THREE.Color(t, 0.8 - 0.6 * t, 1.0 - 0.9 * t);
+      const mat = new THREE.MeshStandardMaterial({
+        color, emissive: color.clone().multiplyScalar(0.3),
+        transparent: true, opacity: 0.9,
+      });
+      const box = new THREE.Mesh(geom, mat);
+      box.position.set(x, height / 2, z);
+      box.scale.y = height;
+      ctx.voxelGroup.add(box);
+    }
+  }
+
+  // hotspot 마커 — 발광 sphere + Sprite 라벨
+  const colorByKind = (k) => ({
+    object:           new THREE.Color(1.00, 0.23, 0.23),
+    occluded_shadow:  new THREE.Color(1.00, 0.69, 0.13),
+    intent_prior:     new THREE.Color(0.00, 0.88, 0.60),
+    signal_shadow:    new THREE.Color(0.49, 0.23, 0.93),
+  }[k] || new THREE.Color(0, 0.78, 1));
+  const fine = bevData.shape || [80, 80];
+  for (const h of (bevData.hotspots || [])) {
+    const x = -lateral + (h.col / (fine[1] - 1)) * lateral * 2;
+    const z = (h.row / (fine[0] - 1)) * forward;
+    const col = colorByKind(h.kind);
+    const sph = new THREE.Mesh(
+      new THREE.SphereGeometry(0.7, 12, 12),
+      new THREE.MeshBasicMaterial({color: col, transparent: true, opacity: 0.9})
+    );
+    sph.position.set(x, 4.5, z);
+    ctx.voxelGroup.add(sph);
+    // beam
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 4.5, 8),
+      new THREE.MeshBasicMaterial({color: col, transparent:true, opacity:0.45})
+    );
+    beam.position.set(x, 2.25, z);
+    ctx.voxelGroup.add(beam);
+  }
+}
+
+/** 카메라 프레임 → JPEG → POST /occupancy/infer */
+async function inferFromCamera() {
+  if (!video || !video.videoWidth) return null;
+  // 작은 해상도로 캡처 (네트워크 절약)
+  const w = 480, h = Math.round(video.videoHeight * w / video.videoWidth);
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, w, h);
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.7));
+  if (!blob) return null;
+  const fd = new FormData();
+  fd.append('image', blob, 'frame.jpg');
+  fd.append('duration', '0');
+  fd.append('obstacle_type', 'unknown_vehicle');
+  fd.append('signal_state', '');
+  fd.append('taas_nearby', '0');
+  try {
+    const r = await fetch(API_BASE + '/occupancy/infer', {method:'POST', body: fd});
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
 
 async function fetchBev() {
-  try {
-    const r = await fetch(API_BASE + '/occupancy/demo');
-    if (r.ok) bevData = await r.json();
-  } catch(e) {}
+  // 1. 실제 카메라 프레임이 있으면 /occupancy/infer 우선 시도
+  let live = null;
+  if (video && video.videoWidth) {
+    live = await inferFromCamera();
+  }
+  if (live && live.occupancy) {
+    // /infer 응답 형식 → BEV 컴포넌트가 기대하는 형식으로 어댑트
+    const occ = live.occupancy;
+    bevData = {
+      shape: occ.shape || [80, 80],
+      grid_flat: occ.grid_flat || occ.grid?.flat?.() || [],
+      grid_shape_flat: occ.grid_shape_flat || occ.shape || [40, 40],
+      grid_cell_m_flat: occ.grid_cell_m_flat || 1.0,
+      forward_m: occ.forward_m || 40,
+      lateral_m: occ.lateral_m || 20,
+      hotspots: occ.hotspots || [],
+      occluded_mass: occ.occluded_mass || 0,
+      risk_summary: {
+        p_collision: live.risk?.p_collision || 0,
+        lead_time_s: 0,
+        recommended_action: live.risk?.p_collision > 0.4 ? '감속' : '정상',
+      },
+    };
+    $('bevSrc').textContent = 'CAMERA ●';
+    $('bevSrc').style.color = 'var(--safe)';
+  } else {
+    // fallback — demo
+    try {
+      const r = await fetch(API_BASE + '/occupancy/demo');
+      if (r.ok) bevData = await r.json();
+    } catch(e) {}
+    $('bevSrc').textContent = 'DEMO ●';
+    $('bevSrc').style.color = 'var(--warn)';
+  }
+
+  // 도시정보 결합
   const iid = ($('intersectionId').value || '').trim();
   if (iid) {
     try {
@@ -220,87 +398,22 @@ async function fetchBev() {
   } else {
     fusionData = null;
   }
-  renderBev();
-}
 
-function renderBev() {
-  const c = $('bevCanvas');
-  if (!c || !bevData) return;
-  const ctx = c.getContext('2d');
-  const W = c.width, H = c.height;
-  ctx.fillStyle = '#050A10'; ctx.fillRect(0, 0, W, H);
+  renderBev3D();
 
-  // 차로 가이드 점선
-  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-  ctx.lineWidth = 1; ctx.setLineDash([4, 6]);
-  for (const cx of [W*0.30, W*0.50, W*0.70]) {
-    ctx.beginPath(); ctx.moveTo(cx, 4); ctx.lineTo(cx, H-4); ctx.stroke();
-  }
-  ctx.setLineDash([]);
-
-  // 그리드 (40x40 다운샘플)
-  const flat = bevData.grid_flat;
-  const shape = bevData.grid_shape_flat;
-  if (Array.isArray(flat) && Array.isArray(shape) && shape.length === 2) {
-    const rows = shape[0], cols = shape[1];
-    const cw = W / cols, ch = H / rows;
-    for (let r = 0; r < rows; r++) {
-      for (let cc = 0; cc < cols; cc++) {
-        const p = flat[r * cols + cc] || 0;
-        if (p < 0.08) continue;
-        const t = Math.min(1, Math.max(0, p));
-        const yTop = H - (r + 1) * ch;
-        const xLeft = cc * cw;
-        ctx.fillStyle = `rgba(${Math.round(255*t)},${Math.round(180-140*t)},${Math.round(255*(1-t))},${0.5+0.4*t})`;
-        ctx.fillRect(xLeft, yTop, cw + 0.5, ch + 0.5);
-      }
-    }
-  }
-
-  // EGO (하단 중앙)
-  ctx.fillStyle = '#00C8FF';
-  ctx.beginPath(); ctx.arc(W*0.5, H-12, 6, 0, Math.PI*2); ctx.fill();
-  ctx.strokeStyle = '#FFF'; ctx.lineWidth = 1.5; ctx.stroke();
-
-  // Hotspot 박스 + 거리
-  const colorOf = k => ({object:'#FF3B3B', occluded_shadow:'#FFB020', intent_prior:'#00E09A', signal_shadow:'#7C3AED'})[k] || '#00C8FF';
-  ctx.font = 'bold 10px ui-monospace, monospace';
-  const fineRows = (bevData.shape || [80,80])[0];
-  const fineCols = (bevData.shape || [80,80])[1];
-  for (const h of (bevData.hotspots || [])) {
-    const px = (h.col / (fineCols - 1)) * W;
-    const py = H - (h.row / (fineRows - 1)) * H;
-    const col = colorOf(h.kind);
-    ctx.strokeStyle = col; ctx.lineWidth = 2;
-    ctx.strokeRect(px - 14, py - 11, 28, 22);
-    ctx.fillStyle = col;
-    ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = col;
-    ctx.fillText(`${(h.distance_m).toFixed(0)}m`, px + 16, py - 2);
-  }
-
-  // "도시정보 결합" 배지
-  if (fusionData) {
-    ctx.fillStyle = 'rgba(0,224,154,0.18)';
-    ctx.fillRect(6, 6, 90, 18);
-    ctx.fillStyle = '#00E09A'; ctx.font = 'bold 10px ui-monospace, monospace';
-    ctx.fillText('+CITY DATA', 11, 19);
-  }
-
-  // 우상단 risk_summary
-  const rs = bevData.risk_summary;
+  // 텍스트 갱신
+  const rs = bevData?.risk_summary;
   if (rs) {
-    ctx.font = 'bold 10px ui-monospace, monospace';
-    ctx.fillStyle = '#FF6B6B';
-    ctx.fillText(`${(rs.p_collision*100).toFixed(0)}% COL`, W-78, 18);
-    ctx.fillStyle = '#00E09A';
-    ctx.fillText(`${rs.lead_time_s}s LEAD`, W-78, 32);
+    $('bevRisk').textContent = `${(rs.p_collision*100).toFixed(0)}% COL`;
+    $('bevStat').innerHTML = `<span style="color:#FF6B6B;">${(rs.p_collision*100).toFixed(0)}% 충돌</span> · <span style="color:#00E09A;">${rs.lead_time_s||0}s 선행</span>`;
   }
-
-  // 텍스트 라인
-  if (rs) {
-    $('bevStat').innerHTML = `<span style="color:#FF6B6B;">${(rs.p_collision*100).toFixed(0)}% 충돌</span> · <span style="color:#00E09A;">${rs.lead_time_s}s 선행</span>`;
-  }
+  // hotspot 라인
+  const hs = (bevData?.hotspots || []).slice(0, 3);
+  $('bevHotspots').innerHTML = hs.map(h => {
+    const c = ({object:'#FF3B3B', occluded_shadow:'#FFB020', intent_prior:'#00E09A', signal_shadow:'#7C3AED'})[h.kind] || '#00C8FF';
+    return `<div style="color:${c};">● ${h.label || h.class} ${h.distance_m||'?'}m</div>`;
+  }).join('');
+  // 도시정보 라인
   if (fusionData) {
     let sigState = '?', vdsKmh = '?', taas = '?';
     try {
@@ -325,7 +438,7 @@ function toggleBev() {
     tog.style.borderColor = 'var(--accent)';
     tog.style.color = 'var(--accent)';
     fetchBev();
-    bevTimer = setInterval(fetchBev, 5000);
+    bevTimer = setInterval(fetchBev, 4000);
   } else {
     tog.style.borderColor = '';
     tog.style.color = '';
@@ -346,4 +459,13 @@ window.addEventListener('load', () => {
   startCamera();
   startGeo();
   refreshStats();
+  // 카메라 준비 약간 기다렸다가 BEV 자동 시작 (live)
+  setTimeout(() => {
+    bevOpen = true;
+    $('bevPanel').style.display = 'block';
+    $('bevToggle').style.borderColor = 'var(--accent)';
+    $('bevToggle').style.color = 'var(--accent)';
+    fetchBev();
+    bevTimer = setInterval(fetchBev, 4000);
+  }, 1500);
 });

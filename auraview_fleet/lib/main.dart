@@ -125,8 +125,8 @@ class _FleetHomeState extends State<FleetHome>
   DateTime? _prevSpeedTs;
   StreamSubscription<Position>? _posSub;
 
-  // BEV 오버레이 — 도시정보(신호/VDS/TAAS) 결합
-  bool _bevOpen = false;
+  // BEV 오버레이 — 도시정보(신호/VDS/TAAS) 결합 (기본 ON)
+  bool _bevOpen = true;
   Map<String, dynamic>? _bev;
   Map<String, dynamic>? _fusion;
   Timer? _bevTimer;
@@ -244,6 +244,10 @@ class _FleetHomeState extends State<FleetHome>
     _startLocationStream();
     _pollServer();
     Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
+
+    // BEV 자동 시작 (5초 주기)
+    _fetchBev();
+    _bevTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchBev());
 
     if (mounted) setState(() => _initing = false);
   }
@@ -693,24 +697,30 @@ class _BevToggleChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: active ? _accent.withValues(alpha: 0.20) : _surface.withValues(alpha: 0.7),
-          border: Border.all(color: active ? _accent : _muted.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(16),
+          color: active ? _accent.withValues(alpha: 0.30) : _surface.withValues(alpha: 0.80),
+          border: Border.all(
+            color: active ? _accent : _muted.withValues(alpha: 0.5),
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: active ? [
+            BoxShadow(color: _accent.withValues(alpha: 0.45), blurRadius: 14),
+          ] : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.grid_view_rounded, size: 14,
+            Icon(Icons.grid_view_rounded, size: 18,
                  color: active ? _accent : _muted),
-            const SizedBox(width: 6),
-            Text('BEV',
+            const SizedBox(width: 8),
+            Text(active ? 'BEV ON' : 'BEV',
                  style: TextStyle(
                    color: active ? _accent : _muted,
-                   fontSize: 12, fontWeight: FontWeight.w700,
-                   letterSpacing: 1.0,
+                   fontSize: 14, fontWeight: FontWeight.w800,
+                   letterSpacing: 1.2,
                  )),
           ],
         ),

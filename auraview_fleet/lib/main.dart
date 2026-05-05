@@ -2314,18 +2314,34 @@ class _Bev3DVoxelPainter extends CustomPainter {
       final motionFlat = bev?['motion_flat'];
       final hasMotion = motionFlat is List && motionFlat.length == rows * cols;
 
-      // 1) 활성 셀 binary mask — 점유 ≥ 0.45 + motion ≥ 0.10 (정지 객체 제외)
+      // ★ 글로벌 모션 ratio — 카메라 흔들림 감지
+      // 너무 많은 셀이 동시에 움직이면 = 카메라 shake → silhouette 억제
+      double cameraShakeRatio = 0.0;
+      if (hasMotion) {
+        var movingCells = 0, totalActive = 0;
+        for (int i = 0; i < rows * cols; i++) {
+          final m = ((motionFlat[i] ?? 0) as num).toDouble();
+          if (m > 0.05) movingCells++;
+          totalActive++;
+        }
+        cameraShakeRatio = movingCells / totalActive;
+      }
+      final isCameraShake = cameraShakeRatio > 0.45;  // 45% 이상 cell 움직임 = shake
+
+      // 1) 활성 셀 binary mask — 점유 ≥ 0.50 + motion ≥ 0.15 (더 엄격)
+      // 카메라 shake 시 mask 비활성화 (silhouette 0)
       final mask = List<bool>.filled(rows * cols, false);
-      for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) {
-          final p = ((flat[r * cols + c] ?? 0) as num).toDouble();
-          if (p < 0.45) continue;
-          // 모션 필수 — 정지 가구/벽 false positive 차단
-          if (hasMotion) {
-            final m = ((motionFlat[r * cols + c] ?? 0) as num).toDouble();
-            if (m < 0.08) continue;  // 움직임 < 8% → 정지 (skip)
+      if (!isCameraShake) {
+        for (int r = 0; r < rows; r++) {
+          for (int c = 0; c < cols; c++) {
+            final p = ((flat[r * cols + c] ?? 0) as num).toDouble();
+            if (p < 0.50) continue;
+            if (hasMotion) {
+              final m = ((motionFlat[r * cols + c] ?? 0) as num).toDouble();
+              if (m < 0.15) continue;  // 움직임 임계 0.08 → 0.15 (더 엄격)
+            }
+            mask[r * cols + c] = true;
           }
-          mask[r * cols + c] = true;
         }
       }
 
@@ -2457,9 +2473,11 @@ class _Bev3DVoxelPainter extends CustomPainter {
 
       // 카운터 — 우상단 (신뢰도 명시)
       final totalDetect = personHint + vehicleHint;
-      final summary = totalDetect > 0
-          ? 'LIVE · 사람 $personHint · 차량 $vehicleHint · 휴리스틱'
-          : '대기 — 움직이는 객체 없음';
+      final summary = isCameraShake
+          ? '카메라 흔들림 (${(cameraShakeRatio*100).toStringAsFixed(0)}%) · 검출 일시정지'
+          : totalDetect > 0
+            ? 'LIVE · 사람 $personHint · 차량 $vehicleHint · 휴리스틱'
+            : '대기 — 움직이는 객체 없음';
       final tp = TextPainter(
         text: TextSpan(text: summary,
           style: TextStyle(
@@ -2477,11 +2495,14 @@ class _Bev3DVoxelPainter extends CustomPainter {
         maxLines: 1,
       )..layout(maxWidth: size.width - 16);
       tp2.paint(canvas, const Offset(8, 6));
-      // 검출 0개일 때 화면 가운데 안내 (큰 화면 정지 객체만 있을 때)
-      if (totalDetect == 0 && topBlobs.isEmpty) {
+      // 검출 0개 또는 카메라 shake 시 화면 안내
+      if (totalDetect == 0 || isCameraShake) {
+        final msg = isCameraShake
+            ? '📱 카메라 흔들림 감지 (${(cameraShakeRatio*100).toStringAsFixed(0)}%)\n폰 고정 시 객체 검출 재개'
+            : '카메라 시야에 움직이는 객체 없음\n(정지 객체는 표시 안 됨 — false positive 방지)';
         final tp3 = TextPainter(
-          text: TextSpan(text: '카메라 시야에 움직이는 객체 없음\n(정지 객체는 표시 안 됨 — false positive 방지)',
-            style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600, height: 1.4)),
+          text: TextSpan(text: msg,
+            style: TextStyle(color: isCameraShake ? _warn : _muted, fontSize: 11, fontWeight: FontWeight.w700, height: 1.4)),
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.center,
           maxLines: 2,

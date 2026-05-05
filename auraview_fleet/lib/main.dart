@@ -1312,6 +1312,17 @@ class _BevPanelState extends State<_BevPanel>
   late Ticker _ticker;
   double _t = 0;
 
+  // ── 사용자 컨트롤 상태 (drag/pinch) ──
+  double _zoom = 1.0;          // 1.0 = 기본, 0.5 ~ 2.5
+  double _baseZoom = 1.0;
+  double _yawDeg = 0;          // -45 ~ 45 (좌우 회전)
+  double _baseYaw = 0;
+  Offset _baseFocal = Offset.zero;
+
+  void _resetView() {
+    setState(() { _zoom = 1.0; _yawDeg = 0; });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1333,14 +1344,33 @@ class _BevPanelState extends State<_BevPanel>
     final modeLabel = isDemo ? 'DEMO' : 'LIVE';
 
     // BEV 캔버스 — Expanded 로 가용 공간 모두 사용 (Size.infinite 명시)
+    // 사용자 컨트롤: 핀치 → zoom, 드래그 좌우 → yaw, 더블탭 → 리셋
     final bevCanvas = ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: ColoredBox(
-        color: const Color(0xFF0A1018),
-        child: SizedBox.expand(
-          child: CustomPaint(
-            size: Size.infinite,
-            painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t),
+      child: GestureDetector(
+        onScaleStart: (d) {
+          _baseZoom = _zoom;
+          _baseYaw = _yawDeg;
+          _baseFocal = d.focalPoint;
+        },
+        onScaleUpdate: (d) {
+          setState(() {
+            _zoom = (_baseZoom * d.scale).clamp(0.5, 2.5);
+            // 단일 손가락 드래그 → yaw 회전
+            if (d.scale == 1.0) {
+              final dx = d.focalPoint.dx - _baseFocal.dx;
+              _yawDeg = (_baseYaw + dx * 0.25).clamp(-60.0, 60.0);
+            }
+          });
+        },
+        onDoubleTap: _resetView,
+        child: ColoredBox(
+          color: const Color(0xFF0A1018),
+          child: SizedBox.expand(
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t, zoom: _zoom, yawDeg: _yawDeg),
+            ),
           ),
         ),
       ),
@@ -1382,15 +1412,37 @@ class _BevPanelState extends State<_BevPanel>
 
     final subtitle = Padding(
       padding: const EdgeInsets.only(top: 3, left: 19),
-      child: Text(
-        isDemo ? (widget.scenarioLabel ?? 'DEMO 시나리오') : '카메라 voxel · 실시간',
-        style: TextStyle(
-          color: modeColor.withValues(alpha: 0.85),
-          fontSize: 9.5,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.4,
+      child: Row(children: [
+        Expanded(
+          child: Text(
+            isDemo ? (widget.scenarioLabel ?? 'DEMO 시나리오') : '카메라 voxel · 실시간',
+            style: TextStyle(
+              color: modeColor.withValues(alpha: 0.85),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
+          ),
         ),
-      ),
+        // 줌/리셋 힌트 (탭 가능한 텍스트)
+        if (_zoom != 1.0 || _yawDeg != 0)
+          GestureDetector(
+            onTap: _resetView,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: _accent.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text(
+                '⟲ ${_zoom.toStringAsFixed(1)}× ${_yawDeg.toStringAsFixed(0)}°',
+                style: TextStyle(color: _accent, fontSize: 8, fontWeight: FontWeight.w800),
+              ),
+            ),
+          )
+        else
+          Text('핀치/드래그/더블탭', style: TextStyle(color: _muted, fontSize: 8, fontWeight: FontWeight.w600)),
+      ]),
     );
 
     if (widget.fillScreen) {
@@ -1511,26 +1563,32 @@ class _CityInfoLine extends StatelessWidget {
 class _Bev3DVoxelPainter extends CustomPainter {
   final Map<String, dynamic>? bev;
   final double t;
-  _Bev3DVoxelPainter({this.bev, required this.t});
+  final double zoom;          // 1.0 = 기본, 0.5~2.5
+  final double yawDeg;        // -60 ~ 60 (좌우 회전)
+  _Bev3DVoxelPainter({this.bev, required this.t, this.zoom = 1.0, this.yawDeg = 0});
 
   // 3D 점 → 2D 화면 (Tesla-style 살짝 기울어진 top-down — 3D 깊이감 살림)
-  // 캔버스 fit + perspective tilt: 멀리 객체는 작아지고 위로, 높은 객체는 위쪽 시각 offset
+  // 캔버스 fit + perspective tilt + 사용자 zoom/yaw 컨트롤
   Offset _project(double x, double y, double z, double cx, double cz, Size size) {
     final w = size.width, h = size.height;
-    final dx = x - cx;
-    final dz = z;
+    // yaw 회전 (Y축 기준 좌우 돌리기) — 사용자 드래그 컨트롤
+    final yaw = yawDeg * math.pi / 180.0;
+    final yawCos = math.cos(yaw), yawSin = math.sin(yaw);
+    // 회전 후 좌표 (z 축 중심 회전)
+    final rx = (x - cx) * yawCos - z * yawSin;
+    final rz = (x - cx) * yawSin + z * yawCos;
     // 카메라 tilt 18° 가정 — 위에서 내려다 보되 약간 forward
     const tiltCos = 0.951;  // cos(18°)
     const tiltSin = 0.309;  // sin(18°)
     // 거리에 따른 perspective shrink (far → smaller)
-    final perspective = 1.0 / (1.0 + dz * 0.012);
-    // 캔버스 fit — 가로 36m (-18~18), 세로 60m forward
-    final scaleX = (w - 24) / 36.0;
-    final scaleZ = (h - 70) / 60.0;
-    // 화면 X: 가로 perspective shrink + dx
-    final screenX = w / 2 + dx * scaleX * perspective;
+    final perspective = 1.0 / (1.0 + rz * 0.012);
+    // 캔버스 fit — 가로 36m (-18~18), 세로 60m forward · 사용자 zoom 적용
+    final scaleX = (w - 24) / 36.0 * zoom;
+    final scaleZ = (h - 70) / 60.0 * zoom;
+    // 화면 X: 가로 perspective shrink + rx
+    final screenX = w / 2 + rx * scaleX * perspective;
     // 화면 Y: 멀리 객체 위로 (tiltCos), 높이 객체 위로 (tiltSin)
-    final screenY = h - 32 - dz * scaleZ * tiltCos - y * scaleX * tiltSin * 4.0;
+    final screenY = h - 32 - rz * scaleZ * tiltCos - y * scaleX * tiltSin * 4.0;
     return Offset(screenX, screenY);
   }
 
@@ -1945,12 +2003,58 @@ class _Bev3DVoxelPainter extends CustomPainter {
     // ── EGO 차량 (시안 발광 박스 + 캐빈, 원점)
     _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
 
-    // ── 클래스 클러스터 → 객체별 형상 (web 와 동일 기법)
+    // ── voxel 렌더링: LIVE (class 없음 → heatmap voxel) / DEMO (class 있음 → 객체 형상)
     final flat = bev?['grid_flat'];
     final shape = bev?['grid_shape_flat'];
     final classFlat = bev?['class_grid_flat'];
-    if (flat is List && shape is List && shape.length == 2 &&
-        classFlat is List && classFlat.length == (shape[0] as num) * (shape[1] as num)) {
+    final hasShape = flat is List && shape is List && shape.length == 2;
+    final hasClass = hasShape && classFlat is List && classFlat.length == (shape[0] as num) * (shape[1] as num);
+
+    if (hasShape && !hasClass) {
+      // ── LIVE 모드 (class 없음): 카메라 voxel 그대로 — 활성 셀만 발광 dot 으로 표시
+      // 큐브 더미 X — Tesla식 점유 확률 발광 cells
+      final rows = (shape[0] as num).toInt();
+      final cols = (shape[1] as num).toInt();
+      final cellM = 40.0 / cols;
+      var liveCount = 0;
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          final p = ((flat[r * cols + c] ?? 0) as num).toDouble();
+          if (p < 0.20) continue;
+          liveCount++;
+          final xM = ((c - cols / 2) + 0.5) * cellM;
+          final zM = (r + 0.5) * cellM;
+          final base = _project(xM, 0, zM, cx, cz, size);
+          // 점유 확률 → 색상 (시안 → 주황 → 빨강) + 크기
+          final col = p < 0.4
+              ? Color.lerp(const Color(0xFF005580), const Color(0xFFFFB020), p / 0.4)!
+              : Color.lerp(const Color(0xFFFFB020), const Color(0xFFFF3B3B), (p - 0.4) / 0.6)!;
+          final radius = (1.5 + p * 3.5);
+          // 발광 (blur) + core
+          canvas.drawCircle(base, radius * 1.6, Paint()
+            ..color = col.withValues(alpha: 0.45)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * 0.6));
+          canvas.drawCircle(base, radius, Paint()..color = col);
+        }
+      }
+      // LIVE 카운터 — 우상단에 작게
+      if (liveCount > 0) {
+        final tp = TextPainter(
+          text: TextSpan(text: 'LIVE · $liveCount cells active',
+            style: const TextStyle(color: Color(0xFF00E09A), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(size.width - tp.width - 8, 6));
+      } else {
+        // voxel 활성 셀 0 — '대기 중' 안내
+        final tp = TextPainter(
+          text: TextSpan(text: '주행 시작 시 카메라 voxel 활성',
+            style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w700)),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset((size.width - tp.width) / 2, size.height - 24));
+      }
+    } else if (hasClass) {
       final rows = (shape[0] as num).toInt();
       final cols = (shape[1] as num).toInt();
       final cellM = 40.0 / cols;
@@ -2066,7 +2170,7 @@ class _Bev3DVoxelPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _Bev3DVoxelPainter old) =>
-      old.bev != bev || old.t != t;
+      old.bev != bev || old.t != t || old.zoom != zoom || old.yawDeg != yawDeg;
 }
 
 

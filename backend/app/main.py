@@ -222,6 +222,7 @@ def prototype_ui():
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
@@ -2964,15 +2965,35 @@ def prototype_ui():
             const voxelGroup = new THREE.Group();
             scene.add(voxelGroup);
 
-            threeCtx = {renderer, scene, camera, voxelGroup, t: 0};
+            // ★ OrbitControls — 마우스 좌클릭 회전 / 휠 zoom / 우클릭 pan
+            // (THREE.OrbitControls 가 examples/js/controls 에서 로드되어야 함)
+            let controls = null;
+            try {
+              controls = new THREE.OrbitControls(camera, canvas);
+              controls.target.set(0, 2, 18);  // ego 약간 앞 + 교차로
+              controls.enableDamping = true;
+              controls.dampingFactor = 0.08;
+              controls.minDistance = 8;
+              controls.maxDistance = 80;
+              controls.maxPolarAngle = Math.PI * 0.48;  // 거의 수평까지 (지면 아래로 가지 않게)
+              controls.minPolarAngle = Math.PI * 0.10;  // 너무 위에서만 보지도 않게
+              controls.update();
+            } catch (e) {
+              console.warn('OrbitControls 로드 실패 — 자동 회전 폴백', e);
+            }
 
-            let yaw = 0;
+            threeCtx = {renderer, scene, camera, voxelGroup, t: 0, controls};
+
             function animate() {
               threeCtx.t += 0.005;
-              yaw = 0.0005 + yaw;
-              camera.position.x = Math.cos(threeCtx.t * 0.25) * 30;
-              camera.position.z = Math.sin(threeCtx.t * 0.25) * 30 + 10;
-              camera.lookAt(0, 2, 18);
+              if (controls) {
+                controls.update();
+              } else {
+                // 폴백: 자동 회전
+                camera.position.x = Math.cos(threeCtx.t * 0.25) * 30;
+                camera.position.z = Math.sin(threeCtx.t * 0.25) * 30 + 10;
+                camera.lookAt(0, 2, 18);
+              }
               renderer.render(scene, camera);
               requestAnimationFrame(animate);
             }

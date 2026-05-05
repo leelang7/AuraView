@@ -145,15 +145,15 @@ _SCENARIOS = {
         "alert_text": "🌧️ 우천 보행자 흐림 — 감속 권고",
     },
     "right_turn_pedestrian": {
-        "title": "우회전 시 횡단보도 보행자 — 사각지대 사고 빈발",
-        "narrative": "ego 우회전 진입 직전, 우측 횡단보도에 보행자 진입. A필러/우측 사각으로 운전자 미인지 위험.",
-        "advantage": "BEV 우측 횡단보도 보행자 prior + V2V 결합 — 우측 사각 100% 커버 (한국 대법 판례 우회전 보행자 우선)",
-        "ego_speed_kmh": 18,
-        "p_collision": 0.78,
+        "title": "우회전 진행 중 우측 횡단보도 보행자 — A필러 사각",
+        "narrative": "ego 우회전 진행 중, 가로 도로 우측 횡단보도를 건너는 보행자 3명. A필러로 운전자 미인지 + ego 회전 경로와 정확히 충돌.",
+        "advantage": "BEV 우측 횡단보도 prior + 회전 경로 sweep zone — 사각 100% 커버 (한국 대법 판례: 우회전 시 보행자 우선)",
+        "ego_speed_kmh": 12,
+        "p_collision": 0.81,
         "lead_time_s": 2.6,
-        "primary_threat": "우측 횡단보도 보행자",
-        "recommended_action": "완전 정지 + 우측 보행자 횡단 종료 후 진행",
-        "alert_text": "🚸 우회전 보행자 — 완전 정지 (보행자 우선)",
+        "primary_threat": "우측 횡단보도 보행자 (회전 경로 위)",
+        "recommended_action": "즉시 정지 + 보행자 통과 후 진행",
+        "alert_text": "🚸 우회전 보행자 발견 — 즉시 정지",
     },
 }
 
@@ -285,29 +285,44 @@ def _build_scene(name: str, phase: float):
             {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "신호등"},
         ]
     elif name == "right_turn_pedestrian":
-        # ego 우회전 진입 직전 — 자차는 정지선 근처 (속도 18km/h)
-        # 우측 횡단보도 영역 (행단방향 즉 가로 도로 측 횡단보도 row 48~60)
-        # 1) 우측 차로 차량 (옆 차선, col 41~45, row 18~27)
+        # ego 우회전 진행 중 — ego는 정지선 통과 후 가로 도로 우측 차로로 진입
+        # 우측 횡단보도(가로 도로 우측 끝): row 50~58, col 50~57
+        # 보행자가 우측 횡단보도를 건너는 중 → ego 우회전 경로와 충돌 위험
+
+        # 1) ego 우회전 경로 점유 (cyan path) — 직진 일부 + 우측 곡선
+        # 정지선 (row 48) 통과 → 가로 도로 우측 차로 (row 56, col 50)
+        # 곡선 경로 표시: row 48→56, col 39→50 (대각선 영역)
+        for i in range(6):
+            t_curve = i / 5.0  # 0~1
+            r = int(48 + t_curve * 8)
+            c = int(39 + t_curve * 11)
+            grid[r:r+3, c:c+3] = 0.20; cls[r:r+3, c:c+3] = 3  # occlusion (sweep zone) → 강조
+
+        # 2) 우측 횡단보도 보행자 3명 (실제 횡단 중)
+        # 보행자가 도로 안쪽 (col 50~52) → 도로 가로질러 ↔ (col 56~58)
+        for i, base in enumerate([48, 52, 56]):
+            wob = int(np.sin(phase * 0.8 + i * 0.7) * 1.0)
+            pc_offset = int(np.cos(phase * 0.5 + i) * 1.5)  # phase 따라 좌우 이동
+            grid[base + wob:base + wob + 4, 50 + pc_offset:53 + pc_offset] = 0.85
+            cls[base + wob:base + wob + 4, 50 + pc_offset:53 + pc_offset] = 4
+
+        # 3) 우측 차로 차량 (옆 차선, ego 옆 — col 41~45, row 18~27)
         grid[18:27, 41:45] = 0.78; cls[18:27, 41:45] = 1
-        # 2) 좌측 차로 차량 (col 33~37, row 22~31)
+        # 4) 좌측 차로 차량 (col 33~37, row 22~31)
         grid[22:31, 33:37] = 0.80; cls[22:31, 33:37] = 1
-        # 3) 우측 횡단보도 위 보행자 (3명, 다양한 위치, phase 따라 미세 이동)
-        for i, (pr_base, pc) in enumerate([(48, 51), (52, 54), (56, 50)]):
-            wob = int(np.sin(phase * 0.7 + i) * 1.0)
-            grid[pr_base + wob:pr_base + wob + 4, pc:pc + 3] = 0.82
-            cls[pr_base + wob:pr_base + wob + 4, pc:pc + 3] = 4
-        # 4) ego 차량 우측 A필러 사각지대 (우측 가까이)
-        grid[8:24, 44:50] = 0.30; cls[8:24, 44:50] = 3
-        # 5) 전방 신호등 (col 38~40, row 50~52)
-        grid[50:52, 38:40] = 0.82; cls[50:52, 38:40] = 5
+        # 5) ego A필러 사각지대 — 우측 전방 (보행자가 들어가는 방향)
+        # ego 방향에서 보면 우측 30도 방향 사각이 col 44~52, row 8~22
+        grid[8:22, 45:52] = 0.32; cls[8:22, 45:52] = 3
+        # 6) 가로 도로 우측 끝 신호등 (col 53~55, row 50~52)
+        grid[50:52, 54:56] = 0.85; cls[50:52, 54:56] = 5
         hotspots = [
-            {"class": "pedestrian_zone", "row": 52, "col": 53, "kind": "intent_prior", "distance_m": 13.0,
-             "label": "🚸 우측 횡단보도 보행자 (A필러 사각)"},
-            {"class": "blindspot_zone", "row": 16, "col": 47, "kind": "blindspot", "distance_m": 8.0,
-             "label": "우측 A필러 사각지대"},
+            {"class": "pedestrian_zone", "row": 52, "col": 51, "kind": "intent_prior", "distance_m": 13.5,
+             "label": "🚸 우측 횡단보도 보행자 3명 (ego 회전 경로)"},
+            {"class": "blindspot_zone", "row": 14, "col": 48, "kind": "blindspot", "distance_m": 9.0,
+             "label": "우측 A필러 사각지대 (보행자 미인지)"},
             {"class": "vehicle", "row": 22, "col": 43, "kind": "object", "distance_m": 11.0, "label": "우측 차로 차량"},
             {"class": "vehicle", "row": 26, "col": 35, "kind": "object", "distance_m": 13.0, "label": "좌측 차로 차량"},
-            {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "전방 신호등"},
+            {"class": "signal", "row": 51, "col": 55, "kind": "signal", "distance_m": 27.5, "label": "🚦 가로 도로 신호등 (회전 후 진행)"},
         ]
 
     else:

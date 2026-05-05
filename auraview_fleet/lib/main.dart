@@ -278,13 +278,10 @@ class _FleetHomeState extends State<FleetHome>
       try {
         final shot = await _cam!.takePicture();
         final bytes = await shot.readAsBytes();
-        // 1) voxel grid (edge + motion) 먼저 생성
+        // 1) voxel grid (edge + motion) — 100% on-device (서버 X)
         final voxel = _voxelizeOnDevice(bytes);
-        // 2) ML Kit 비활성화 — aspect ratio 휴리스틱 분류 신뢰성 낮음 (오인식 빈발)
-        //    실 환경: voxel dots (edge + motion) 만 사용
-        //    추후 정확한 사람 검출 필요 시 google_mlkit_pose_detection 으로 교체
-        // List<int>? classGrid = ...
-        // 3) 임시 파일 정리
+
+        // 2) 임시 파일 정리
         if (!kIsWeb) {
           try { final f = File(shot.path); if (await f.exists()) await f.delete(); } catch (_) {}
         }
@@ -341,6 +338,103 @@ class _FleetHomeState extends State<FleetHome>
   }
 
   /// voxel grid 의 신호등 영역 (멀리·중앙) 점유율을 0~1 occlusion_score 로 변환.
+  /// (보존, 사용 X) 서버 YOLO 호출 — 엣지 처리 원칙으로 미사용
+  /// 향후 시연/디버그용으로만 호출 가능 — LIVE 모드 기본은 100% on-device.
+  // ignore: unused_element
+  Future<void> _serverObjectDetect(Uint8List bytes, Map<String, dynamic> voxel) async {
+    try {
+      final url = Uri.parse('$kApiBase/occupancy/infer');
+      final req = http.MultipartRequest('POST', url);
+      req.fields['duration'] = '0.0';
+      req.fields['obstacle_type'] = 'unknown';
+      req.fields['signal_state'] = '';
+      req.fields['taas_nearby'] = '0';
+      // 이미지를 multipart 로 추가 (memory bytes)
+      req.files.add(http.MultipartFile.fromBytes('image', bytes,
+          filename: 'frame.jpg'));
+      final streamed = await req.send().timeout(const Duration(seconds: 8));
+      if (streamed.statusCode != 200) return;
+      final body = await streamed.stream.bytesToString();
+      final data = jsonDecode(body) as Map<String, dynamic>;
+
+      // hydranet detection 결과: vehicles / vrus / signals 카운트 + bbox 별 라벨
+      final hydra = data['hydranet'] as Map<String, dynamic>?;
+      final occupancy = data['occupancy'] as Map<String, dynamic>?;
+      if (hydra == null || occupancy == null) return;
+
+      // occupancy.grid_flat (서버 16×16 또는 다른) → 변환 필요
+      // 단순화: server 가 hotspot 형태로 객체 위치 제공할 때 사용
+      // 일단 hydra count 만 우상단 표시용으로 voxel 에 저장
+      voxel['server_detect'] = {
+        'vehicles': hydra['vehicles'] ?? 0,
+        'vrus': hydra['vrus'] ?? 0,
+        'signals': hydra['signals'] ?? 0,
+        'p_collision': data['risk']?['p_collision'] ?? 0.0,
+        'ts': DateTime.now().millisecondsSinceEpoch,
+      };
+
+      // ★ 서버 hotspot bbox → BEV class grid 매핑 (간단 휴리스틱)
+      // hydra detection bbox 가 image-space (1080×1920) → BEV (40×40)
+      // bbox center y 가 가까울수록 (큰 y) row 작음 (가까이)
+      const rows = 40, cols = 40;
+      final classGrid = List<int>.filled(rows * cols, 0);
+
+      List<dynamic> mergeAll() {
+        final out = <dynamic>[];
+        // 서버 raw detections 가 detect.* 또는 hydra.* 형태로 있을 수 있음
+        if (data['detections'] is List) out.addAll(data['detections']);
+        return out;
+      }
+      // 폴백: hydra.detections 같은 구조 없으면 hydra count 만 표시 (위에서 저장)
+
+      for (final d in mergeAll()) {
+        if (d is! Map) continue;
+        final cls = d['class_name'] as String?;
+        final bbox = d['bbox_xyxy'] as List?;
+        if (bbox == null || bbox.length != 4) continue;
+        final imgSize = d['image_size'] as List?;
+        if (imgSize == null || imgSize.length != 2) continue;
+        final iw = (imgSize[0] as num).toDouble();
+        final ih = (imgSize[1] as num).toDouble();
+        final x1 = (bbox[0] as num).toDouble();
+        final y1 = (bbox[1] as num).toDouble();
+        final x2 = (bbox[2] as num).toDouble();
+        final y2 = (bbox[3] as num).toDouble();
+        final cxImg = (x1 + x2) / 2;
+        final cyImg = (y1 + y2) / 2;
+        // class label 매핑 (YOLOv8n COCO)
+        int clsId = 0;
+        if (cls == null) continue;
+        if (['person'].contains(cls)) clsId = 4;
+        else if (['car', 'truck', 'bus', 'motorcycle'].contains(cls)) {
+          clsId = (cls == 'motorcycle') ? 2 : 1;
+        }
+        else if (['traffic light'].contains(cls)) clsId = 5;
+        if (clsId == 0) continue;
+        final bevC = (cxImg / iw * cols).round().clamp(0, cols - 1);
+        final bevR = ((1 - cyImg / ih) * rows).round().clamp(0, rows - 1);
+        // 박스 사이즈 → BEV cell radius (1~3)
+        final wPix = (x2 - x1).abs();
+        final hPix = (y2 - y1).abs();
+        final pixelArea = wPix * hPix / (iw * ih);
+        final radius = (math.sqrt(pixelArea) * 12).clamp(1.0, 3.0).toInt();
+        for (int dr = -radius; dr <= radius; dr++) {
+          for (int dc = -radius; dc <= radius; dc++) {
+            final r = bevR + dr, c = bevC + dc;
+            if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
+            classGrid[r * cols + c] = clsId;
+          }
+        }
+      }
+
+      // 검출된 게 1개라도 있으면 class_grid 적용
+      if (classGrid.any((v) => v != 0)) {
+        voxel['class_grid_flat'] = classGrid;
+      }
+      if (mounted) setState(() {});  // re-paint
+    } catch (_) {/* 네트워크 실패 — 휴리스틱 fallback */}
+  }
+
   /// ML Kit 객체 검출 → BEV class_grid_flat 매핑.
   /// 검출된 bbox 를 BEV 셀 (40×40) 에 마킹:
   ///   - aspect ratio h/w > 1.5 → 사람 (cls=4)
@@ -443,10 +537,9 @@ class _FleetHomeState extends State<FleetHome>
         }
       }
 
-      // 2) 수직 에지 — 위 cell vs 현재 cell 차이 (객체 윤곽 위쪽 검출)
-      // + 좌우 에지 — 옆 cell 과 차이 (객체 측면)
-      // + motion diff — 이전 프레임과 차이 (움직임)
+      // 2) 수직 에지 + 좌우 에지 + motion diff (분리 저장)
       final flat = List<double>.filled(ROWS * COLS, 0.0);
+      final motionFlat = List<double>.filled(ROWS * COLS, 0.0);  // ★ 움직임만
       for (int r = 0; r < ROWS; r++) {
         for (int c = 0; c < COLS; c++) {
           final cur = grays[r * COLS + c];
@@ -460,8 +553,9 @@ class _FleetHomeState extends State<FleetHome>
           if (_prevFrameGray != null && _prevFrameGray!.length == ROWS * COLS) {
             motion = (cur - _prevFrameGray![r * COLS + c]).abs();
           }
-          // 결합 — 수직 에지 가중치 가장 크게 (도로 위 객체)
-          final occ = (vEdge * 3.0 + hEdge * 1.2 + motion * 2.5).clamp(0.0, 1.0);
+          motionFlat[r * COLS + c] = motion.clamp(0.0, 1.0);
+          // 결합 — 정지 가구/벽 false positive 줄이기 위해 motion 가중 ↑
+          final occ = (vEdge * 2.0 + hEdge * 0.8 + motion * 4.0).clamp(0.0, 1.0);
           flat[r * COLS + c] = occ;
         }
       }
@@ -526,6 +620,7 @@ class _FleetHomeState extends State<FleetHome>
       return {
         'shape': [80, 80],
         'grid_flat': flat,
+        'motion_flat': motionFlat,
         'grid_shape_flat': [ROWS, COLS],
         'grid_cell_m_flat': 1.0,
         'forward_m': 40.0,
@@ -2216,13 +2311,21 @@ class _Bev3DVoxelPainter extends CustomPainter {
       final rows = (shape[0] as num).toInt();
       final cols = (shape[1] as num).toInt();
       final cellM = 40.0 / cols;
+      final motionFlat = bev?['motion_flat'];
+      final hasMotion = motionFlat is List && motionFlat.length == rows * cols;
 
-      // 1) 활성 셀 binary mask (점유 ≥ 0.40)
+      // 1) 활성 셀 binary mask — 점유 ≥ 0.45 + motion ≥ 0.10 (정지 객체 제외)
       final mask = List<bool>.filled(rows * cols, false);
       for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
           final p = ((flat[r * cols + c] ?? 0) as num).toDouble();
-          if (p >= 0.40) mask[r * cols + c] = true;
+          if (p < 0.45) continue;
+          // 모션 필수 — 정지 가구/벽 false positive 차단
+          if (hasMotion) {
+            final m = ((motionFlat[r * cols + c] ?? 0) as num).toDouble();
+            if (m < 0.08) continue;  // 움직임 < 8% → 정지 (skip)
+          }
+          mask[r * cols + c] = true;
         }
       }
 
@@ -2258,7 +2361,8 @@ class _Bev3DVoxelPainter extends CustomPainter {
               queue.add([nr, nc]);
             }
           }
-          if (count >= 3) {
+          // 최소 4 cells 필요 (작은 노이즈 cluster 차단)
+          if (count >= 4) {
             blobs.add({
               'minR': minR, 'maxR': maxR, 'minC': minC, 'maxC': maxC,
               'count': count, 'avgP': sumP / count,
@@ -2351,20 +2455,21 @@ class _Bev3DVoxelPainter extends CustomPainter {
         }
       }
 
-      // 카운터 — 우상단
-      final summary = (personHint > 0 || vehicleHint > 0)
-          ? 'LIVE · 사람 $personHint · 차량 $vehicleHint · ${topBlobs.length} blob'
-          : 'LIVE · ${topBlobs.length} blob 분석 중';
+      // 카운터 — 우상단 (신뢰도 명시)
+      final totalDetect = personHint + vehicleHint;
+      final summary = totalDetect > 0
+          ? 'LIVE · 사람 $personHint · 차량 $vehicleHint · 휴리스틱'
+          : '대기 — 움직이는 객체 없음';
       final tp = TextPainter(
         text: TextSpan(text: summary,
           style: TextStyle(
-            color: (personHint + vehicleHint > 0) ? const Color(0xFF00E09A) : _muted,
+            color: totalDetect > 0 ? const Color(0xFF00E09A) : _muted.withValues(alpha: 0.85),
             fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(size.width - tp.width - 8, 6));
       // 처리 파이프라인 표시 (좌상단)
-      const pipeText = '📷 → voxel → 8-connected blob → 사람/차량 silhouette';
+      const pipeText = '📷 edge + motion (≥0.08) → 8-connected blob (≥4 cells)';
       final tp2 = TextPainter(
         text: TextSpan(text: pipeText,
           style: TextStyle(color: _muted.withValues(alpha: 0.7), fontSize: 8, fontWeight: FontWeight.w600)),
@@ -2372,6 +2477,17 @@ class _Bev3DVoxelPainter extends CustomPainter {
         maxLines: 1,
       )..layout(maxWidth: size.width - 16);
       tp2.paint(canvas, const Offset(8, 6));
+      // 검출 0개일 때 화면 가운데 안내 (큰 화면 정지 객체만 있을 때)
+      if (totalDetect == 0 && topBlobs.isEmpty) {
+        final tp3 = TextPainter(
+          text: TextSpan(text: '카메라 시야에 움직이는 객체 없음\n(정지 객체는 표시 안 됨 — false positive 방지)',
+            style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600, height: 1.4)),
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+        )..layout(maxWidth: size.width - 40);
+        tp3.paint(canvas, Offset((size.width - tp3.width) / 2, size.height * 0.5));
+      }
     } else if (hasClass) {
       final rows = (shape[0] as num).toInt();
       final cols = (shape[1] as num).toInt();

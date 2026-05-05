@@ -162,9 +162,10 @@ def seed_demo(db: Session = Depends(get_db), force: bool = False):
 
     이미 실데이터가 5건 이상 있으면 skip (force=true 로 강제).
     """
-    existing = db.query(BlindSignalEvent).count()
-    if existing >= 5 and not force:
-        return {"status": "skipped", "existing": existing, "reason": "이미 5건 이상 존재"}
+    # 교차로 다양성 기준 — 5개 이상 unique intersection 있으면 skip
+    existing_iids = {row[0] for row in db.query(BlindSignalEvent.intersection_id).distinct().all()}
+    if len(existing_iids) >= 5 and not force:
+        return {"status": "skipped", "existing_intersections": len(existing_iids), "reason": "이미 5개 이상 교차로 존재"}
 
     created = []
     for iid, name, lat, lon, count, dur, sig, obs in DEMO_INTERSECTIONS:

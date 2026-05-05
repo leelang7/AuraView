@@ -27,6 +27,7 @@
 
 - **Dashboard:** https://auraview.allthatai.kr/ui ← 9탭 풀 데모
 - **Mobile App (Flutter / PWA):** https://auraview.allthatai.kr/pwa/
+- **Native APK (Android 공개 다운로드):** [`releases/latest/auraview_fleet.apk`](https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk) ← 인증 불요, BEV HUD + Fleet 자동 업로드
 - **Slides (Reveal.js 발표):** https://auraview.allthatai.kr/slides/
 - **Kiosk (무인 자동 시연):** https://auraview.allthatai.kr/kiosk/
 - **API Docs (Swagger):** https://auraview.allthatai.kr/docs

@@ -920,46 +920,136 @@ class _FleetHomeState extends State<FleetHome>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 카메라 풀스크린
-            if (_cam != null && _cam!.value.isInitialized)
-              _FullCameraPreview(controller: _cam!)
-            else
-              const _CameraPlaceholder(),
-
-            // 비네트
+            // 배경 그라디언트 (BEV 위로 통과)
             Container(
               decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.center, radius: 1.0,
-                  colors: [Color(0x00000000), Color(0xCC000000)],
-                  stops: [0.55, 1.0],
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Color(0xFF0A0F18), Color(0xFF04080E)],
                 ),
               ),
             ),
 
-            // 캡처 펄스 링
+            // ─── 메인 레이아웃: 상단 status / BEV 메인 / 카메라 PiP / 드라이브 버튼 ───
+            SafeArea(
+              child: Column(
+                children: [
+                  // 1) 상단 status bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                    child: _UnifiedStatusBar(
+                      shadowOn: _shadowOn,
+                      uploads: _uploads,
+                      online: _serverError.isEmpty,
+                      pos: _pos,
+                      onSettingsTap: _openDetailSheet,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 2) Alert HUD 또는 Idle 카드 (조건부)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: _altSignal != null
+                      ? _SignalHud(
+                          altSignal: _altSignal!,
+                          intersectionName: _autoIntersectionName ??
+                              (_intersectionId != null ? '교차로 $_intersectionId' : ''),
+                          pulse: _lastReason == 'signal_occluded',
+                        )
+                      : _IdleStatusCard(
+                          uploads: _uploads,
+                          captures: _captures,
+                          shadowOn: _shadowOn,
+                          intersectionId: _autoIntersectionId ?? _intersectionId,
+                          intersectionName: _autoIntersectionName,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 3) ★ BEV 메인 화면 (Tesla 모니터 스타일) — Expanded로 가용 공간 모두 사용
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: _BevPanel(
+                        bev: _demoScenarioOn ? (_serverBev ?? _bev) : _bev,
+                        fusion: _fusion,
+                        demoMode: _demoScenarioOn,
+                        scenarioLabel: _demoScenarioOn
+                            ? (_scnLabels[_scnList[_scnIdx % _scnList.length]] ?? '')
+                            : null,
+                        onToggleDemo: _toggleDemoScenario,
+                        fillScreen: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+
+            // 4) 카메라 PiP — 좌하단 작게 (140×100) · 드라이브 버튼 위
+            if (_cam != null && _cam!.value.isInitialized)
+              Positioned(
+                left: 14, bottom: 100,
+                child: GestureDetector(
+                  onTap: () { /* 추후: 풀스크린 토글 */ },
+                  child: Container(
+                    width: 140, height: 100,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _accent.withValues(alpha: 0.40), width: 1.2),
+                      boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 12)],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(9),
+                      child: Stack(fit: StackFit.expand, children: [
+                        _FullCameraPreview(controller: _cam!),
+                        Positioned(
+                          top: 4, left: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xCC0D1520),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Container(
+                                width: 5, height: 5,
+                                decoration: BoxDecoration(
+                                  color: _shadowOn ? _safe : _muted, shape: BoxShape.circle,
+                                  boxShadow: _shadowOn ? [BoxShadow(color: _safe, blurRadius: 4)] : null,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text('CAM', style: TextStyle(color: _accent, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                            ]),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+
+            // 5) 캡처 펄스 링 (BEV 위에 깜빡)
             AnimatedBuilder(
               animation: _pulseAnim,
               builder: (_, __) {
                 if (_pulseAnim.value == 0) return const SizedBox.shrink();
                 final t = _pulseAnim.value;
                 return IgnorePointer(
-                  child: Center(
+                  child: Align(
+                    alignment: const Alignment(0, -0.05),
                     child: Container(
                       width: 200 + 240 * t,
                       height: 200 + 240 * t,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: _safe.withValues(alpha: (1 - t) * 0.85),
-                          width: 3,
+                          color: _safe.withValues(alpha: (1 - t) * 0.55),
+                          width: 2,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _safe.withValues(alpha: (1 - t) * 0.4),
-                            blurRadius: 28,
-                          ),
-                        ],
                       ),
                     ),
                   ),
@@ -967,73 +1057,19 @@ class _FleetHomeState extends State<FleetHome>
               },
             ),
 
-            // 상단 단일 status 배지 — 모든 정보 통합
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-                child: _UnifiedStatusBar(
-                  shadowOn: _shadowOn,
-                  uploads: _uploads,
-                  online: _serverError.isEmpty,
-                  pos: _pos,
-                  onSettingsTap: _openDetailSheet,
-                ),
-              ),
-            ),
-
-            // BEV — 우하단 (Tesla 식 voxel · 항상 ON · 화면 폭 42% 자동 크기)
-            // LIVE 모드 (기본): 카메라 frame → 클라이언트 voxel
-            // DEMO 모드 (토글 ON): 서버 /occupancy/demo class_grid_flat (시나리오 4종)
-            Positioned(
-              right: 10, bottom: 130,
-              child: _BevPanel(
-                bev: _demoScenarioOn ? (_serverBev ?? _bev) : _bev,
-                fusion: _fusion,
-                demoMode: _demoScenarioOn,
-                scenarioLabel: _demoScenarioOn
-                    ? (_scnLabels[_scnList[_scnIdx % _scnList.length]] ?? '')
-                    : null,
-                onToggleDemo: _toggleDemoScenario,
-              ),
-            ),
-
-            // ★ HUD: 가려진 신호등 자동 안내 — alt_signal 응답 있을 때 표시
-            if (_altSignal != null)
-              Positioned(
-                top: 78, left: 12, right: 12,
-                child: _SignalHud(
-                  altSignal: _altSignal!,
-                  intersectionName: _autoIntersectionName ??
-                      (_intersectionId != null ? '교차로 $_intersectionId' : ''),
-                  pulse: _lastReason == 'signal_occluded',
-                ),
-              )
-            else
-              // 신호 HUD 없을 때 — 상단에 상태 정보 카드 (텅 비지 않게)
-              Positioned(
-                top: 78, left: 12, right: 12,
-                child: _IdleStatusCard(
-                  uploads: _uploads,
-                  captures: _captures,
-                  shadowOn: _shadowOn,
-                  intersectionId: _autoIntersectionId ?? _intersectionId,
-                  intersectionName: _autoIntersectionName,
-                ),
-              ),
-
-            // 자동 캡처 펄스 (캡처 직후 잠깐 노출) — 컨셉 한글 라벨
+            // 6) 자동 캡처 reason 배지 (캡처 직후)
             if (_shadowOn && _lastReason != 'ok' && _lastReason != 'idle')
               Positioned(
-                top: 168, left: 0, right: 0,
+                top: 200, left: 0, right: 0,
                 child: Center(child: _LiveBadge(reason: _reasonKo(_lastReason))),
               ),
 
-            // 하단 단일 큰 버튼 — 주행 시작 / 중지
+            // 7) 하단 드라이브 버튼
             SafeArea(
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
+                  padding: const EdgeInsets.only(bottom: 18),
                   child: _DriveButton(
                     on: _shadowOn,
                     onTap: _toggleShadow,
@@ -1263,7 +1299,8 @@ class _BevPanel extends StatefulWidget {
   final bool demoMode;            // ★ true 면 DEMO 시나리오 표시
   final String? scenarioLabel;    // 활성 시나리오 명 (DEMO 모드일 때만)
   final VoidCallback? onToggleDemo;
-  const _BevPanel({this.bev, this.fusion, this.demoMode = false, this.scenarioLabel, this.onToggleDemo});
+  final bool fillScreen;          // ★ true: Tesla 모니터 모드 (Expanded 부모, 큰 화면)
+  const _BevPanel({this.bev, this.fusion, this.demoMode = false, this.scenarioLabel, this.onToggleDemo, this.fillScreen = false});
 
   @override
   State<_BevPanel> createState() => _BevPanelState();
@@ -1290,18 +1327,99 @@ class _BevPanelState extends State<_BevPanel>
 
   @override
   Widget build(BuildContext context) {
-    // 폰 화면 폭 기준으로 BEV 크기 조정 — 화면 폭의 42%, 최소 220 / 최대 320
-    final screenW = MediaQuery.of(context).size.width;
-    final panelW = (screenW * 0.42).clamp(220.0, 320.0);
     final isDemo = widget.demoMode;
     final modeColor = isDemo ? _warn : _safe;
     final modeLabel = isDemo ? 'DEMO' : 'LIVE';
 
+    // BEV 캔버스 — fillScreen 이면 Expanded 로 가용 공간 모두 사용 (테슬라식)
+    final bevCanvas = ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        color: const Color(0xFF04080E),
+        child: CustomPaint(
+          painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t),
+        ),
+      ),
+    );
+
+    final header = Row(children: [
+      Icon(Icons.view_in_ar, size: 14, color: _accent),
+      const SizedBox(width: 4),
+      Text('BEV · 3D OCCUPANCY',
+           style: TextStyle(color: _accent, fontSize: 11,
+                            fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+      const Spacer(),
+      // 모드 토글
+      GestureDetector(
+        onTap: widget.onToggleDemo,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: modeColor.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(99),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 7, height: 7,
+              decoration: BoxDecoration(
+                color: modeColor, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: modeColor, blurRadius: 6)],
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(modeLabel,
+                 style: TextStyle(color: modeColor, fontSize: 10,
+                                  fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+          ]),
+        ),
+      ),
+    ]);
+
+    final subtitle = Padding(
+      padding: const EdgeInsets.only(top: 3, left: 19),
+      child: Text(
+        isDemo ? (widget.scenarioLabel ?? 'DEMO 시나리오') : '카메라 voxel · 실시간',
+        style: TextStyle(
+          color: modeColor.withValues(alpha: 0.85),
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+
+    if (widget.fillScreen) {
+      // 테슬라 모니터 모드: 부모 Expanded → 가용 공간 모두 BEV 캔버스
+      return Container(
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: _bg.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: modeColor.withValues(alpha: 0.30), blurRadius: 24, spreadRadius: 1)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            header,
+            subtitle,
+            const SizedBox(height: 8),
+            Expanded(child: bevCanvas),
+            const SizedBox(height: 6),
+            if (widget.bev != null) _BevStatLine(bev: widget.bev!),
+            if (widget.fusion != null) _CityInfoLine(fusion: widget.fusion!),
+          ],
+        ),
+      );
+    }
+
+    // (legacy) 코너 미니 모드 — 사용 안 함
+    final screenW = MediaQuery.of(context).size.width;
+    final panelW = (screenW * 0.42).clamp(220.0, 320.0);
     return Container(
       width: panelW,
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       decoration: BoxDecoration(
-        // 외곽 box 제거 — 발광 그림자만 남김 (border 없이 부드럽게)
         color: _bg.withValues(alpha: 0.78),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [BoxShadow(color: modeColor.withValues(alpha: 0.35), blurRadius: 18, spreadRadius: 1)],
@@ -1310,66 +1428,9 @@ class _BevPanelState extends State<_BevPanel>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(children: [
-            Icon(Icons.view_in_ar, size: 13, color: _accent),
-            const SizedBox(width: 4),
-            Text('BEV · 3D',
-                 style: TextStyle(color: _accent, fontSize: 10,
-                                  fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-            const Spacer(),
-            // 모드 토글 (탭 한번에 LIVE↔DEMO)
-            GestureDetector(
-              onTap: widget.onToggleDemo,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: modeColor.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 6, height: 6,
-                    decoration: BoxDecoration(
-                      color: modeColor, shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: modeColor, blurRadius: 5)],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(modeLabel,
-                       style: TextStyle(color: modeColor, fontSize: 9,
-                                        fontWeight: FontWeight.w900, letterSpacing: 0.8)),
-                ]),
-              ),
-            ),
-          ]),
-          // 모드 부제 — LIVE: '카메라 voxel 실시간', DEMO: 시나리오 명
-          Padding(
-            padding: const EdgeInsets.only(top: 3, left: 17),
-            child: Text(
-              isDemo
-                  ? (widget.scenarioLabel ?? 'DEMO 시나리오')
-                  : '카메라 voxel · 실시간',
-              style: TextStyle(
-                color: modeColor.withValues(alpha: 0.85),
-                fontSize: 8.5,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ),
-          AspectRatio(
-            aspectRatio: 1.0,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                color: const Color(0xFF04080E),
-                child: CustomPaint(
-                  painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t),
-                ),
-              ),
-            ),
-          ),
+          header,
+          subtitle,
+          AspectRatio(aspectRatio: 1.0, child: bevCanvas),
           const SizedBox(height: 6),
           if (widget.bev != null) _BevStatLine(bev: widget.bev!),
           if (widget.fusion != null) _CityInfoLine(fusion: widget.fusion!),

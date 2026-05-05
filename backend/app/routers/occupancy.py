@@ -151,6 +151,16 @@ def _build_scene(name: str, phase: float):
     """시나리오 이름 + phase(0~2π) → (grid prob, class_grid, hotspots).
 
     class_grid: 0=free, 1=truck/bus, 2=motorcycle/car, 3=occlusion, 4=pedestrian, 5=signal
+
+    좌표: 80×80, 0.5m/cell, ego facing +row 방향 (row 0 = ego, row 79 = far 40m)
+    차로: col 32~38 (좌차로 ego 진행), col 38~44 (우차로 ego 진행)
+    ego 위치: row 0, col 39 (자차 차로 우측)
+
+    차량 형상 가이드 (진행방향 +row, 가로 +col):
+      트럭: 16 rows × 5 cols (8m × 2.5m)
+      버스: 22 rows × 6 cols (11m × 3m)
+      차량: 9 rows × 4 cols (4.5m × 2m)
+      이륜: 5 rows × 2 cols (2.5m × 1m)
     """
     import numpy as np
 
@@ -158,88 +168,110 @@ def _build_scene(name: str, phase: float):
     cls = np.zeros((80, 80), dtype="int8")  # class label per cell
 
     if name == "truck_occlusion":
-        truck_off = int(np.sin(phase) * 1.5)
-        grid[22:30, 30 + truck_off:50 + truck_off] = 0.92; cls[22:30, 30 + truck_off:50 + truck_off] = 1  # 트럭
-        grid[30:50, 32 + truck_off:48 + truck_off] = 0.55; cls[30:50, 32 + truck_off:48 + truck_off] = 3  # occlusion shadow
-        moto_progress = (np.sin(phase * 0.5) + 1) * 0.5
-        moto_row = int(14 + moto_progress * 8)
-        grid[moto_row:moto_row + 4, 12:18] = 0.78; cls[moto_row:moto_row + 4, 12:18] = 2
+        # 트럭 — 우측 차로 (col 38~43, 8m 길이) 전방 11~19m
+        truck_off = int(np.sin(phase) * 0.8)
+        grid[22:38, 38 + truck_off:43 + truck_off] = 0.92
+        cls[22:38, 38 + truck_off:43 + truck_off] = 1
+        # 트럭 뒤 occlusion shadow (트럭 뒤 가려진 영역, 동일 col, row 38~58)
+        grid[38:58, 38 + truck_off:43 + truck_off] = 0.55
+        cls[38:58, 38 + truck_off:43 + truck_off] = 3
+        # 횡단보도 부근 보행자 zone (row 50~55, col 35~46)
         ped_intensity = 0.55 + 0.15 * (np.cos(phase) + 1) * 0.5
-        grid[34:42, 50:62] = ped_intensity; cls[34:42, 50:62] = 4
-        grid[24:30, 50:54] = 0.40 + 0.15 * abs(np.sin(phase * 1.5)); cls[24:30, 50:54] = 5
+        grid[50:55, 35:46] = ped_intensity; cls[50:55, 35:46] = 4
+        # 좌측 차로 차량 (col 33~37, row 18~27)
+        grid[18:27, 33:37] = 0.85; cls[18:27, 33:37] = 1
+        # 좌측 옆 차로 이륜차 (col 30~32, 진행방향 길게 row 14~19)
+        moto_progress = (np.sin(phase * 0.5) + 1) * 0.5
+        moto_row = int(12 + moto_progress * 6)
+        grid[moto_row:moto_row + 5, 30:32] = 0.85
+        cls[moto_row:moto_row + 5, 30:32] = 2
+        # 신호등 (트럭 뒤 멀리 row 60~62, col 38~40)
+        grid[60:62, 38:40] = 0.40 + 0.15 * abs(np.sin(phase * 1.5))
+        cls[60:62, 38:40] = 5
         hotspots = [
-            {"class": "truck", "row": 26, "col": 40, "kind": "object", "distance_m": 12.0, "label": "전방 트럭 (시야 가림)"},
-            {"class": "occlusion", "row": 40, "col": 40, "kind": "occluded_shadow", "distance_m": 18.0, "label": "트럭 뒤 unknown 영역"},
-            {"class": "motorcycle", "row": 16, "col": 15, "kind": "object", "distance_m": 8.0, "label": "좌측 차로 이륜차"},
-            {"class": "pedestrian_zone", "row": 38, "col": 56, "kind": "intent_prior", "distance_m": 19.0, "label": "⭐ 보행자 likely (V2V+Bus prior)"},
-            {"class": "signal_occluded", "row": 27, "col": 52, "kind": "signal_shadow", "distance_m": 13.5, "label": "신호등 가림"},
+            {"class": "truck", "row": 30, "col": 40, "kind": "object", "distance_m": 15.0, "label": "전방 트럭 (시야 가림)"},
+            {"class": "occlusion", "row": 48, "col": 40, "kind": "occluded_shadow", "distance_m": 24.0, "label": "트럭 뒤 unknown 영역"},
+            {"class": "vehicle", "row": 22, "col": 35, "kind": "object", "distance_m": 11.0, "label": "좌측 차로 차량"},
+            {"class": "motorcycle", "row": moto_row + 2, "col": 31, "kind": "object", "distance_m": 8.0, "label": "🏍️ 좌측 옆 이륜차"},
+            {"class": "pedestrian_zone", "row": 53, "col": 40, "kind": "intent_prior", "distance_m": 26.5, "label": "⭐ 횡단보도 보행자 likely"},
+            {"class": "signal_occluded", "row": 61, "col": 39, "kind": "signal_shadow", "distance_m": 30.5, "label": "신호등 (가림)"},
         ]
 
     elif name == "motorcycle_blindspot":
-        # 1) 자차 좌측 사각지대 영역 (배경, 먼저 깔기)
-        grid[10:25, 5:14] = 0.30; cls[10:25, 5:14] = 3
-        # 2) 우측 차로 차량
-        grid[20:28, 60:72] = 0.85; cls[20:28, 60:72] = 1
-        # 3) 전방 신호등
-        grid[40:46, 38:42] = 0.60; cls[40:46, 38:42] = 5
-        # 4) ego 좌후방 사각지대 이륜차 — 좌측 가까이 (row ~10, col 10~14) 빠르게 접근
-        # ★ 마지막에 그려서 occlusion 영역 위에 표시
+        # 자차 좌측 사각지대 영역 — 옆구리 (row 4~14, col 32~36)
+        grid[4:14, 32:36] = 0.30; cls[4:14, 32:36] = 3
+        # 좌측 사각지대 이륜차 — 자차 옆구리 (col 32~34, 진행방향 row 4~9 빠르게 접근)
         moto_progress = (phase / (2 * 3.14159))
-        moto_row = int(8 + moto_progress * 6)
-        grid[moto_row:moto_row + 5, 8:14] = 0.92; cls[moto_row:moto_row + 5, 8:14] = 2
+        moto_row = int(2 + moto_progress * 8)
+        grid[moto_row:moto_row + 5, 32:34] = 0.92
+        cls[moto_row:moto_row + 5, 32:34] = 2
+        # 우측 차로 차량 (col 41~45, row 18~27)
+        grid[18:27, 41:45] = 0.85; cls[18:27, 41:45] = 1
+        # 좌측 차로 차량 (사각지대 너머, col 33~37, row 22~31)
+        grid[22:31, 33:37] = 0.78; cls[22:31, 33:37] = 1
+        # 전방 신호등 (col 38~40, row 50~52)
+        grid[50:52, 38:40] = 0.78; cls[50:52, 38:40] = 5
         hotspots = [
-            {"class": "motorcycle", "row": moto_row + 2, "col": 11, "kind": "object", "distance_m": 5.0, "label": "⚠️ 좌측 사각지대 이륜차 (5m)"},
-            {"class": "blindspot_zone", "row": 16, "col": 9, "kind": "blindspot", "distance_m": 4.0, "label": "백미러 사각지대 영역"},
-            {"class": "vehicle", "row": 24, "col": 66, "kind": "object", "distance_m": 11.0, "label": "우측 차로 차량"},
+            {"class": "motorcycle", "row": moto_row + 2, "col": 33, "kind": "object", "distance_m": 4.0, "label": "⚠️ 좌측 사각지대 이륜차 (4m)"},
+            {"class": "blindspot_zone", "row": 9, "col": 34, "kind": "blindspot", "distance_m": 4.5, "label": "백미러 사각지대 영역"},
+            {"class": "vehicle", "row": 22, "col": 43, "kind": "object", "distance_m": 11.0, "label": "우측 차로 차량"},
+            {"class": "vehicle", "row": 26, "col": 35, "kind": "object", "distance_m": 13.0, "label": "좌측 차로 차량"},
+            {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "전방 신호등"},
         ]
 
     elif name == "signal_occlusion":
-        # 전방 버스 (큰 객체) 25m 거리 신호등 가림
-        bus_off = int(np.sin(phase * 0.8) * 0.8)
-        grid[36:48, 28 + bus_off:52 + bus_off] = 0.94; cls[36:48, 28 + bus_off:52 + bus_off] = 1  # 버스
-        # 가려진 신호등 위치 (버스 뒤)
-        sig_state = (phase % 2) > 1  # 점멸 효과
-        grid[50:56, 36:44] = 0.88 if sig_state else 0.60; cls[50:56, 36:44] = 5
-        # 좌측 차로 차량
-        grid[20:28, 18:30] = 0.75; cls[20:28, 18:30] = 1
-        # 보행자 정류장 부근
-        grid[44:50, 60:70] = 0.55; cls[44:50, 60:70] = 4
-        # 우측 사이로 끼어드는 오토바이 (배달)
+        # 버스 — 우측 차로 (col 38~44, 11m 길이, 전방 18~29m → row 36~58)
+        bus_off = int(np.sin(phase * 0.8) * 0.5)
+        grid[36:58, 38 + bus_off:44 + bus_off] = 0.94
+        cls[36:58, 38 + bus_off:44 + bus_off] = 1
+        # 버스 뒤 가려진 신호등 (row 64~66, col 38~40, 멀리 32m)
+        sig_state = (phase % 2) > 1
+        grid[64:66, 38:40] = 0.88 if sig_state else 0.60
+        cls[64:66, 38:40] = 5
+        # 좌측 차로 차량 (col 33~37, row 22~31)
+        grid[22:31, 33:37] = 0.82; cls[22:31, 33:37] = 1
+        # 우측 끼어드는 배달 오토바이 (col 45~47, row 16~21)
         moto_progress = (np.sin(phase * 0.6) + 1) * 0.5
-        moto_row = int(18 + moto_progress * 6)
-        grid[moto_row:moto_row + 5, 50:55] = 0.82; cls[moto_row:moto_row + 5, 50:55] = 2
+        moto_row = int(14 + moto_progress * 6)
+        grid[moto_row:moto_row + 5, 45:47] = 0.85
+        cls[moto_row:moto_row + 5, 45:47] = 2
+        # 우측 인도 정류장 보행자 zone (col 50~57, row 44~50)
+        grid[44:50, 50:57] = 0.55; cls[44:50, 50:57] = 4
         hotspots = [
-            {"class": "bus", "row": 42, "col": 40, "kind": "object", "distance_m": 18.0, "label": "전방 버스 (신호 가림)"},
-            {"class": "signal_occluded", "row": 53, "col": 40, "kind": "signal_shadow", "distance_m": 25.0, "label": "🚦 적색 신호 (버스 뒤·API 복원)"},
-            {"class": "motorcycle", "row": moto_row + 2, "col": 52, "kind": "object", "distance_m": 10.0, "label": "🏍️ 우측 끼어들기 오토바이"},
-            {"class": "pedestrian_zone", "row": 46, "col": 65, "kind": "intent_prior", "distance_m": 22.0, "label": "정류장 보행자 likely"},
+            {"class": "bus", "row": 47, "col": 41, "kind": "object", "distance_m": 23.5, "label": "전방 버스 (신호 가림)"},
+            {"class": "signal_occluded", "row": 65, "col": 39, "kind": "signal_shadow", "distance_m": 32.5, "label": "🚦 적색 신호 (버스 뒤·API 복원)"},
+            {"class": "vehicle", "row": 26, "col": 35, "kind": "object", "distance_m": 13.0, "label": "좌측 차로 차량"},
+            {"class": "motorcycle", "row": moto_row + 2, "col": 46, "kind": "object", "distance_m": 9.5, "label": "🏍️ 우측 끼어들기 이륜차"},
+            {"class": "pedestrian_zone", "row": 47, "col": 53, "kind": "intent_prior", "distance_m": 23.5, "label": "정류장 보행자 likely"},
         ]
 
     elif name == "rainy_intersection":
-        # 노면 반사 — 전체적으로 약한 noise
+        # 노면 반사 — 약한 noise
         np.random.seed(int(phase * 100) % 1000)
-        grid += np.random.rand(80, 80) * 0.10
-        # 우산 보행자 — 윤곽 흐림 (intensity 낮음)
-        for ped_col in [25, 45, 60]:
-            ped_row = 30 + (ped_col % 7)
-            grid[ped_row:ped_row + 4, ped_col:ped_col + 4] = 0.65
-            cls[ped_row:ped_row + 4, ped_col:ped_col + 4] = 4
-        # 전방 차량
-        grid[24:30, 32:48] = 0.85; cls[24:30, 32:48] = 1
-        # 신호등
-        grid[44:50, 38:42] = 0.78; cls[44:50, 38:42] = 5
-        # 우천 배달 오토바이 (좌측, 약간 흔들림)
-        wobble = int(np.sin(phase * 1.2) * 0.7)
-        moto_row = int(15 + (np.cos(phase * 0.4) + 1) * 4)
-        grid[moto_row:moto_row + 5, 12 + wobble:17 + wobble] = 0.79
-        cls[moto_row:moto_row + 5, 12 + wobble:17 + wobble] = 2
+        grid += np.random.rand(80, 80) * 0.08
+        # 전방 차량 (우차로 col 38~42, row 24~33)
+        grid[24:33, 38:42] = 0.85; cls[24:33, 38:42] = 1
+        # 좌측 차로 차량 (col 33~37, row 28~37)
+        grid[28:37, 33:37] = 0.80; cls[28:37, 33:37] = 1
+        # 신호등 (col 38~40, row 50~52)
+        grid[50:52, 38:40] = 0.78; cls[50:52, 38:40] = 5
+        # 횡단보도 부근 우산 보행자 (3명, row 48~52)
+        for (pc, pr) in [(33, 48), (39, 50), (46, 49)]:
+            grid[pr:pr + 4, pc:pc + 3] = 0.65
+            cls[pr:pr + 4, pc:pc + 3] = 4
+        # 우천 배달 오토바이 (col 30~32 좌측 옆 차로, 흔들림)
+        wobble = int(np.sin(phase * 1.2) * 0.5)
+        moto_row = int(13 + (np.cos(phase * 0.4) + 1) * 4)
+        grid[moto_row:moto_row + 5, 30 + wobble:32 + wobble] = 0.85
+        cls[moto_row:moto_row + 5, 30 + wobble:32 + wobble] = 2
         hotspots = [
-            {"class": "vehicle", "row": 27, "col": 40, "kind": "object", "distance_m": 13.5, "label": "전방 차량"},
-            {"class": "motorcycle", "row": moto_row + 2, "col": 14, "kind": "object", "distance_m": 9.0, "label": "🏍️ 배달 오토바이 (우천 미끄럼 위험)"},
-            {"class": "pedestrian_zone", "row": 32, "col": 27, "kind": "intent_prior", "distance_m": 16.0, "label": "🌧️ 우산 보행자 (좌)"},
-            {"class": "pedestrian_zone", "row": 38, "col": 47, "kind": "intent_prior", "distance_m": 19.0, "label": "🌧️ 우산 보행자 (중)"},
-            {"class": "pedestrian_zone", "row": 35, "col": 62, "kind": "intent_prior", "distance_m": 17.5, "label": "🌧️ 우산 보행자 (우)"},
-            {"class": "signal", "row": 47, "col": 40, "kind": "signal", "distance_m": 23.5, "label": "신호등 (정상 가시)"},
+            {"class": "vehicle", "row": 28, "col": 40, "kind": "object", "distance_m": 14.0, "label": "전방 차량"},
+            {"class": "vehicle", "row": 32, "col": 35, "kind": "object", "distance_m": 16.0, "label": "좌측 차로 차량"},
+            {"class": "motorcycle", "row": moto_row + 2, "col": 31, "kind": "object", "distance_m": 9.0, "label": "🏍️ 배달 이륜 (우천 미끄럼)"},
+            {"class": "pedestrian_zone", "row": 50, "col": 34, "kind": "intent_prior", "distance_m": 25.0, "label": "🌧️ 우산 보행자 (좌)"},
+            {"class": "pedestrian_zone", "row": 52, "col": 40, "kind": "intent_prior", "distance_m": 26.0, "label": "🌧️ 우산 보행자 (중)"},
+            {"class": "pedestrian_zone", "row": 51, "col": 47, "kind": "intent_prior", "distance_m": 25.5, "label": "🌧️ 우산 보행자 (우)"},
+            {"class": "signal", "row": 51, "col": 39, "kind": "signal", "distance_m": 25.5, "label": "신호등"},
         ]
     else:
         raise ValueError(f"unknown scenario: {name}")

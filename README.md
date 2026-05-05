@@ -1,7 +1,7 @@
 # AuraView
 
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-36%2F36%20passed-brightgreen)](backend/tests/)
+[![tests](https://img.shields.io/badge/tests-38%2F38%20passed-brightgreen)](backend/tests/)
 [![model AUC](https://img.shields.io/badge/Risk%20Transformer%20AUC-0.9403-00c8ff)](models/risk_transformer_trained_metric.json)
 [![inference p99](https://img.shields.io/badge/inference%20p99-1.04ms-7c3aed)](https://auraview.allthatai.kr/benchmark/all)
 [![license](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
@@ -89,7 +89,7 @@
 | F1 @ 0.5 | 0.905 | 상동 (n=1000, 라벨 노이즈 6%) |
 | 사고 재현 영상 평균 **선행 경고 시간** | **5.72s** | 합성 시나리오 3종 |
 | 협업 인지 lift (단독 vs Fused) | **+10~31%p** | TAB ⑨ 실시간 시연 |
-| 통합 테스트 | **18 / 18 PASS** | `backend/tests/` |
+| 통합 테스트 | **38 / 38 PASS** | `backend/tests/` (18 endpoint + 12 collab unit + 8 impact/positioning) |
 
 ---
 
@@ -120,14 +120,14 @@
 
 ```
 github.com/leelang7/AuraView
-├── backend/                    FastAPI + 9 라우터 + 18 pytest
+├── backend/                    FastAPI + 9 라우터 + 38 pytest
 │   └── app/
 │       ├── routers/            occupancy · fleet · fusion · dsz · kmaas ·
 │       │                       reports · scenario · showreel · heatmap · collab
 │       ├── services/           hydranet · occupancy · risk_transformer · intent ·
 │       │                       v2v · bus_aware · bidirectional · pii · dsz_adapter ·
 │       │                       scenario · showreel · hazard_report · public_api
-│       └── tests/              18 통합 테스트 (외부 API fallback)
+│       └── tests/              38 통합 테스트 (외부 API fallback)
 ├── auraview_fleet/             Flutter (Android + Web) — Perception Eye 아이콘 + 풀스크린 UX
 ├── frontend_pwa/               백업 PWA (HTML/JS)
 ├── landing/                    allthatai.kr 랜딩 페이지 (GitHub Pages 배포 대상)
@@ -195,7 +195,7 @@ pip install -r requirements.txt
 cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-대시보드: http://localhost:8000/ui · 통합 테스트: `cd backend && pytest tests/` (30개)
+대시보드: http://localhost:8000/ui · 통합 테스트: `cd backend && pytest tests/` (38개)
 모델 학습 (선택): `python notebooks/train_risk_transformer_real.py` (~3분, AUC 0.94)
 
 ### Flutter Mobile App (`auraview_fleet/`)

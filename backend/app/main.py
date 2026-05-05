@@ -1689,6 +1689,44 @@ def prototype_ui():
               <div id="freshGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px;">로딩 중…</div>
             </div>
 
+            <!-- ★ KPI vs 목표 시각화 — 공모전 평가지표 -->
+            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,224,154,0.05),rgba(0,200,255,0.03));">
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">📊 KPI vs TARGET · 공모전 평가지표</div>
+              <div class="section-label">// 한국 도심 가려진 신호등 조기 감지 — 정량 KPI 달성 현황</div>
+              <div id="kpiTargetGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px;">
+                <div class="placeholder" style="grid-column:1/-1;">로딩 중…</div>
+              </div>
+              <!-- Early Detection Gauge -->
+              <div style="margin-top:18px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                  <div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;">EARLY DETECTION RATE</div>
+                    <div style="margin-top:4px;font-family:'Black Han Sans',sans-serif;font-size:20px;color:var(--safe);">
+                      <span id="earlyDetText">…</span>
+                    </div>
+                    <div style="margin-top:2px;font-size:11px;color:var(--muted);">평균 선행 경고 시간 — 사고 발생 X초 전 위험 감지</div>
+                  </div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:right;">
+                    <div>목표 ≥ 2.0s</div>
+                    <div id="earlyDetTarget" style="margin-top:2px;color:var(--safe);">달성 중</div>
+                  </div>
+                </div>
+                <div style="margin-top:10px;height:14px;background:rgba(255,255,255,0.04);border-radius:8px;overflow:hidden;position:relative;">
+                  <div id="earlyDetBar" style="width:0%;height:100%;background:linear-gradient(90deg,var(--accent),var(--safe));transition:width 0.8s ease-out;"></div>
+                  <div style="position:absolute;left:40%;top:0;bottom:0;width:1px;background:rgba(255,176,32,0.6);">
+                    <span style="position:absolute;top:-14px;left:-20px;font-size:9px;color:var(--warn);font-family:'JetBrains Mono',monospace;">target 2.0s</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 시나리오별 분리도 차트 -->
+              <div style="margin-top:14px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;">SCENARIO SEPARATION · 시나리오별 양/음성 분리도</div>
+                <canvas id="scenarioChart" height="120" style="width:100%;height:120px;margin-top:8px;"></canvas>
+                <div id="scenarioLegend" style="margin-top:6px;display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);"></div>
+              </div>
+            </div>
+
             <!-- ★ 모델 metric 라이브 카드 (/healthz/details 에서 자동 fetch) -->
             <div class="card" style="margin-bottom:14px;">
               <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">MODEL METRIC · LIVE</div>
@@ -3390,14 +3428,48 @@ def prototype_ui():
             const res = await fetch(window.location.origin + '/reports/list');
             const data = await res.json();
             const items = data.items || [];
+            // 비어있으면 자동 생성
+            if (items.length === 0) {
+              try {
+                await fetch(window.location.origin + '/reports/generate?top=10', {method:'POST'});
+                const r2 = await fetch(window.location.origin + '/reports/list').then(r => r.json());
+                return _renderReportList(r2.items || []);
+              } catch(e) {}
+            }
+            _renderReportList(items);
+          }
+
+          function _renderReportList(items) {
+            if (items.length === 0) {
+              document.getElementById('reportOut').innerHTML =
+                '<div class="placeholder" style="margin-top:14px;">아직 생성된 리포트가 없습니다. "Top 20 리포트 생성" 버튼을 눌러주세요.</div>';
+              return;
+            }
+            const latest = items[0];
+            const listHtml = items.map(i => `
+              <div class="rank-item" style="margin-top:8px;cursor:pointer;" onclick="document.getElementById('reportPreview').src='${i.html_url}';">
+                <div class="rank-head">
+                  <div class="rank-title">📄 ${i.name}</div>
+                  <span class="badge b-g">${i.size_kb} KB</span>
+                </div>
+                <div class="rank-body">${i.created_at} · <a style="color:var(--accent)" target="_blank" href="${i.html_url}" onclick="event.stopPropagation();">HTML</a> · <a style="color:var(--accent)" target="_blank" href="${i.json_url}" onclick="event.stopPropagation();">JSON</a></div>
+              </div>`).join('');
             document.getElementById('reportOut').innerHTML = `
-              <div class="card" style="margin-top:14px;">
-                <div class="section-label">// 최근 ${items.length}건</div>
-                ${items.map(i => `
-                  <div class="rank-item" style="margin-top:8px;">
-                    <div class="rank-head"><div class="rank-title">${i.name}</div><span class="badge b-g">${i.size_kb} KB</span></div>
-                    <div class="rank-body">${i.created_at} · <a style="color:var(--accent)" target="_blank" href="${i.html_url}">HTML</a> · <a style="color:var(--accent)" target="_blank" href="${i.json_url}">JSON</a></div>
-                  </div>`).join('')}
+              <div class="dashboard-grid" style="margin-top:14px;">
+                <div class="left-col">
+                  <div class="card">
+                    <div class="card-tag">RECENT REPORTS · ${items.length}건</div>
+                    <div class="section-label">// 클릭하면 우측에 미리보기</div>
+                    ${listHtml}
+                  </div>
+                </div>
+                <div class="right-col">
+                  <div class="card">
+                    <div class="card-tag">LATEST REPORT PREVIEW</div>
+                    <div class="section-label">// ${latest.name}</div>
+                    <iframe id="reportPreview" src="${latest.html_url}" style="width:100%;height:520px;margin-top:10px;border:1px solid var(--border);border-radius:12px;background:#fff;"></iframe>
+                  </div>
+                </div>
               </div>`;
           }
 
@@ -3445,7 +3517,134 @@ def prototype_ui():
                 document.getElementById('metricGrid').innerHTML =
                   '<div class="placeholder" style="grid-column:1/-1;min-height:60px;">/healthz/details 응답 실패</div>';
               }
+
+              // KPI vs 목표 + Early Detection + Scenario chart
+              try {
+                const sm = await fetch(window.location.origin + '/summary.json').then(r=>r.json());
+                renderKpiTargets(sm);
+                renderScenarioChart(sm);
+              } catch(e) {
+                console.error('summary.json fetch failed', e);
+              }
             });
+
+            // KPI vs 목표 시각화
+            function renderKpiTargets(sm) {
+              const m = sm.model_trained || sm.model_baseline || {};
+              const targets = {
+                auc:       {value: m.auc, target: 0.85, label: 'AUC',         desc: '판별 정확도'},
+                f1:        {value: m.f1_at_0_5, target: 0.82, label: 'F1 Score',   desc: '정밀도·재현율 조화평균'},
+                precision: {value: m.precision_at_0_5, target: 0.85, label: 'Precision', desc: '오경고 억제'},
+                recall:    {value: m.recall_at_0_5, target: 0.80, label: 'Recall',    desc: '실제 위험 포착'},
+              };
+              const grid = document.getElementById('kpiTargetGrid');
+              if (!grid) return;
+              grid.innerHTML = '';
+              for (const [k, v] of Object.entries(targets)) {
+                if (v.value == null) continue;
+                const pct = Math.min(100, (v.value / 1.0) * 100);
+                const targetPct = (v.target / 1.0) * 100;
+                const meets = v.value >= v.target;
+                const ratio = ((v.value / v.target) * 100).toFixed(1);
+                const color = meets ? 'var(--safe)' : 'var(--warn)';
+                const div = document.createElement('div');
+                div.style.cssText = 'padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;border-left:3px solid ' + color + ';';
+                div.innerHTML = `
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div>
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;">${v.label.toUpperCase()}</div>
+                      <div style="margin-top:4px;font-size:10px;color:var(--muted);">${v.desc}</div>
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 6px;background:${meets?'rgba(0,224,154,0.15)':'rgba(255,176,32,0.15)'};color:${color};border-radius:4px;font-weight:700;">
+                      ${meets ? '✓ 달성' : '진행'}
+                    </div>
+                  </div>
+                  <div style="margin-top:10px;display:flex;align-items:baseline;gap:8px;">
+                    <span style="font-family:'Black Han Sans',sans-serif;font-size:28px;color:${color};">${v.value.toFixed(3)}</span>
+                    <span style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">/ 목표 ${v.target.toFixed(2)}</span>
+                  </div>
+                  <div style="margin-top:8px;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;position:relative;">
+                    <div style="width:${pct}%;height:100%;background:${color};"></div>
+                    <div style="position:absolute;left:${targetPct}%;top:-2px;bottom:-2px;width:2px;background:var(--warn);"></div>
+                  </div>
+                  <div style="margin-top:6px;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:right;">
+                    목표 대비 ${ratio}%
+                  </div>
+                `;
+                grid.appendChild(div);
+              }
+
+              // Early Detection
+              const lead = m.avg_lead_time_s;
+              const earlyTarget = 2.0;
+              if (lead != null) {
+                document.getElementById('earlyDetText').textContent = lead.toFixed(2) + ' 초';
+                const ratio = Math.min(100, (lead / 5.0) * 100);
+                document.getElementById('earlyDetBar').style.width = ratio + '%';
+                const target = document.getElementById('earlyDetTarget');
+                if (target) target.textContent = lead >= earlyTarget ? ('✓ ' + ((lead - earlyTarget)).toFixed(1) + 's 초과 달성') : ('진행 중');
+              }
+            }
+
+            // 시나리오별 분리도 차트 (mixed/rush_hour/night/rainy)
+            function renderScenarioChart(sm) {
+              const sep = (sm.model_baseline && sm.model_baseline.scenario_separation) || {};
+              const c = document.getElementById('scenarioChart');
+              if (!c || Object.keys(sep).length === 0) return;
+              const ctx = c.getContext('2d');
+              const dpr = window.devicePixelRatio || 1;
+              const W = c.clientWidth, H = 120;
+              c.width = W * dpr; c.height = H * dpr;
+              ctx.scale(dpr, dpr);
+              ctx.clearRect(0, 0, W, H);
+
+              const labels = ['mixed', 'rush_hour', 'night', 'rainy'];
+              const labelKo = {mixed:'혼합', rush_hour:'출퇴근', night:'야간', rainy:'우천'};
+              const padX = 10, padTop = 10, padBot = 22;
+              const innerW = W - padX * 2;
+              const innerH = H - padTop - padBot;
+
+              // 그리드
+              ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+              for (let i = 0; i <= 4; i++) {
+                const y = padTop + (innerH * i) / 4;
+                ctx.beginPath(); ctx.moveTo(padX, y); ctx.lineTo(W - padX, y); ctx.stroke();
+              }
+
+              const groupW = innerW / labels.length;
+              const barW = (groupW - 16) / 2;
+              labels.forEach((lab, i) => {
+                const v = sep[lab];
+                if (!v) return;
+                const xBase = padX + groupW * i + 8;
+                // pos_avg (시안) / neg_avg (회색)
+                const posH = (v.pos_avg || 0) * innerH;
+                const negH = (v.neg_avg || 0) * innerH;
+                ctx.fillStyle = 'rgba(0,200,255,0.85)';
+                ctx.fillRect(xBase, padTop + innerH - posH, barW, posH);
+                ctx.fillStyle = 'rgba(124,58,237,0.55)';
+                ctx.fillRect(xBase + barW + 2, padTop + innerH - negH, barW, negH);
+
+                // 분리도 텍스트
+                ctx.fillStyle = 'rgba(0,224,154,1)';
+                ctx.font = "bold 11px 'JetBrains Mono', monospace";
+                ctx.fillText('+' + (v.separation || 0).toFixed(2), xBase, padTop - 1);
+
+                // 라벨
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.font = "10px 'Noto Sans KR', sans-serif";
+                ctx.fillText(labelKo[lab] || lab, xBase, H - 6);
+              });
+              // 레전드
+              const legend = document.getElementById('scenarioLegend');
+              if (legend) {
+                legend.innerHTML = `
+                  <span><span style="display:inline-block;width:10px;height:10px;background:rgba(0,200,255,0.85);margin-right:4px;"></span>위험 평균 (pos)</span>
+                  <span><span style="display:inline-block;width:10px;height:10px;background:rgba(124,58,237,0.55);margin-right:4px;"></span>안전 평균 (neg)</span>
+                  <span style="color:var(--safe);">분리도 = pos − neg (높을수록 ↑)</span>
+                `;
+              }
+            }
           })();
 
           /* ── LIVE SCORECARD COUNTERS ── */

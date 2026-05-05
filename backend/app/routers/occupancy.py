@@ -111,21 +111,33 @@ def occupancy_demo():
       row 0  = ego 위치 (가까움) ↑
       row 79 = 40m 전방 (멀음)
       col 39 = 차로 중앙
+
+    동적: 매 호출마다 시간 기반 미세 변화 (사용자가 라이브 갱신 느낌 받게).
     """
     import numpy as np
+    import time
+    # 시간 기반 phase (0~2π) — 4초 주기로 여러 객체 위치 살짝 흔들림
+    t = time.time()
+    phase = (t % 4.0) / 4.0 * 2 * 3.14159
+
     grid = np.zeros((80, 80), dtype="float32")
 
-    # 1) 전방 트럭 — 12m 거리 (row 24), 횡단보도 직전. 차로 중앙 폭 8m (col 30~50).
-    grid[22:30, 30:50] = 0.92          # 트럭 본체 (확실)
-    # 2) 트럭 뒤 가려진 occlusion shadow — Tesla Occupancy 핵심 차별화
-    grid[30:50, 32:48] = 0.55          # "보일 수 있는 영역, 모름 → 확률" → unknown_mass
-    # 3) 좌측 차로 이륜차 접근 — 8m 거리 (row 16), col 14
-    grid[14:18, 12:18] = 0.78          # 이륜차 (yolov 검출)
-    grid[18:24, 14:20] = 0.30          # 이륜차 trail (motion blur)
-    # 4) 횡단보도 우측 (트럭 뒤) — 보행자 likely zone (V2V + Bus-Aware prior 결합)
-    grid[34:42, 50:62] = 0.62          # ⭐ "여기서 보행자 등장 확률 high" — Tesla 가 못 봄
-    # 5) 좌상단 신호등 가림 zone — 트럭 위쪽
-    grid[24:30, 50:54] = 0.45          # signal occluded shadow
+    # 1) 전방 트럭 — 12m 거리, 차로 중앙. 약간 좌우 흔들림 (현실감)
+    truck_off = int(np.sin(phase) * 1.5)
+    grid[22:30, 30 + truck_off:50 + truck_off] = 0.92
+    # 2) 트럭 뒤 occlusion shadow — 트럭 따라 함께 이동
+    grid[30:50, 32 + truck_off:48 + truck_off] = 0.55
+    # 3) 좌측 차로 이륜차 — 시간에 따라 row 변화 (멀리서 가까이)
+    moto_progress = (np.sin(phase * 0.5) + 1) * 0.5  # 0~1
+    moto_row = int(14 + moto_progress * 8)            # 14~22
+    grid[moto_row:moto_row + 4, 12:18] = 0.78
+    grid[moto_row + 4:moto_row + 10, 14:20] = 0.30   # trail
+    # 4) 보행자 likely zone — pulse intensity (V2V + Bus prior)
+    ped_intensity = 0.55 + 0.15 * (np.cos(phase) + 1) * 0.5  # 0.55~0.70
+    grid[34:42, 50:62] = ped_intensity
+    # 5) 신호등 가림 — 깜빡임
+    sig_intensity = 0.40 + 0.15 * abs(np.sin(phase * 1.5))
+    grid[24:30, 50:54] = sig_intensity
 
     # 3D voxel 용 — 다운샘플 (40x40 = 1600 voxels) 로 가벼움
     coarse = grid[::2, ::2]

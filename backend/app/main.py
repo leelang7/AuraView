@@ -1108,94 +1108,40 @@ def prototype_ui():
 
             <div class="dashboard-grid">
               <div class="left-col">
-                <div class="card control-card">
-                  <div class="card-tag">FIELD INPUT</div>
-                  <div class="section-label">// 현장 입력</div>
-
-                  <div class="hero-copy">
-                    <div class="hero-title">보이지 않는 신호를 대신 보여준다</div>
-                    <div class="hero-desc">현장 이미지·영상과 공공 신호정보를 결합해, 앞차나 대형차에 가려진 신호 상황을 감지하고 즉시 대체 안내합니다.</div>
-                  </div>
-
-                  <div class="form-grid">
-                    <div>
-                      <label>교차로 선택</label>
-                      <select id="intersection_id"></select>
-                    </div>
-
-                    <div class="btn-row">
-                      <div>
-                        <label>사용자 위도</label>
-                        <input id="user_lat" type="number" step="0.000001" placeholder="37.566535"/>
-                      </div>
-                      <div>
-                        <label>사용자 경도</label>
-                        <input id="user_lon" type="number" step="0.000001" placeholder="126.977969"/>
-                      </div>
-                    </div>
-
-                    <div class="btn-row">
-                      <div>
-                        <label>지속시간 (초)</label>
-                        <input id="duration" type="number" step="0.1" value="3.5"/>
-                      </div>
-                      <div>
-                        <label>장애물 유형</label>
-                        <select id="obstacle_type">
-                          <option value="truck">truck</option>
-                          <option value="bus">bus</option>
-                          <option value="top_truck">top_truck</option>
-                          <option value="van">van</option>
-                          <option value="unknown_vehicle">unknown_vehicle</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label>현장 이미지</label>
-                      <label class="file-label" id="imageLabel" for="image_file">
-                        <span>📷</span>
-                        <span id="imageName">이미지를 선택하세요 (jpg, png)</span>
-                      </label>
-                      <input id="image_file" type="file" accept="image/*" capture="environment" onchange="updateFileLabel('image_file','imageLabel','imageName')"/>
-                    </div>
-
-                    <div>
-                      <label>영상 업로드</label>
-                      <label class="file-label" id="videoLabel" for="video_file">
-                        <span>🎬</span>
-                        <span id="videoName">영상을 선택하세요 (mp4, avi)</span>
-                      </label>
-                      <input id="video_file" type="file" accept="video/*" onchange="updateFileLabel('video_file','videoLabel','videoName')"/>
-                    </div>
-
-                    <button class="btn-video" onclick="runVideo()">영상 위험 분석 실행</button>
-
-                    <div class="btn-row">
-                      <button class="btn-secondary" onclick="getLocation()">현재 위치 가져오기</button>
-                      <button class="btn-secondary" onclick="loadSignal()">신호 조회</button>
-                    </div>
-
-                    <div class="btn-row">
-                      <button class="btn-danger" onclick="autoDetect()">이미지 위험 분석</button>
-                      <button class="btn-default" onclick="refreshAll()">지도 데이터 갱신</button>
-                    </div>
-                  </div>
-
-                  <div id="statusBox" class="status">
-                    <div class="status-title">SYSTEM STATUS</div>
-                    <div class="status-main">대기 중</div>
-                    <div class="status-meta">이미지 또는 영상을 업로드하고 분석을 실행하세요.</div>
-                  </div>
-                </div>
-
+                <!-- Fleet 자동 수집 통합 통계 (사용자 입력 폼 X) -->
                 <div class="card">
-                  <div class="section-label">// 분석 결과</div>
-                  <div class="preview-wrap" id="previewWrap">
-                    <div class="placeholder">
-                      <div class="placeholder-icon">🔍</div>
-                      오버레이 결과와 영상 분석 리포트가 여기 표시됩니다.
+                  <div class="card-tag">FLEET · 자동 수집 통계</div>
+                  <div class="section-label">// 폰 → AuraView 백엔드 → 모델 재학습</div>
+                  <div class="hero-copy">
+                    <div class="hero-title">현장 데이터는 사용자 폰이 자동 수집</div>
+                    <div class="hero-desc">PWA / Native 앱이 위험 순간만 PII 마스킹 후 업로드. 본 대시보드는 누적 통계 + 라이브 분포 시각화.</div>
+                  </div>
+                  <div id="dashStats" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px;">
+                    <div class="stat" style="padding:14px;border-radius:10px;background:rgba(0,200,255,0.06);border:1px solid var(--border);">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;">FLEET 누적</div>
+                      <div id="dashUploads" style="font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--accent);">…</div>
+                      <div style="font-size:11px;color:var(--muted);">건 (PII 마스킹 완료)</div>
                     </div>
+                    <div class="stat" style="padding:14px;border-radius:10px;background:rgba(0,224,154,0.06);border:1px solid var(--border);">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;">활성 단말</div>
+                      <div id="dashDevices" style="font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--safe);">…</div>
+                      <div style="font-size:11px;color:var(--muted);">대 (라이브 polling)</div>
+                    </div>
+                    <div class="stat" style="padding:14px;border-radius:10px;background:rgba(255,176,32,0.06);border:1px solid var(--border);">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;">생성 시나리오</div>
+                      <div id="dashScenarios" style="font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--warn);">…</div>
+                      <div style="font-size:11px;color:var(--muted);">편 (재현 영상)</div>
+                    </div>
+                    <div class="stat" style="padding:14px;border-radius:10px;background:rgba(124,58,237,0.06);border:1px solid var(--border);">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;">정책 리포트</div>
+                      <div id="dashReports" style="font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--accent2,#7c3aed);">…</div>
+                      <div style="font-size:11px;color:var(--muted);">건 (Top-N 자동)</div>
+                    </div>
+                  </div>
+                  <div style="margin-top:14px;padding:12px;background:var(--surface2);border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">
+                    📱 사용자 흐름: <a href="/pwa/" target="_blank" style="color:var(--accent);">/pwa</a> 또는 Native APK → 카메라 자동 캡처<br>
+                    🤖 자동 트리거: 🚦 신호 가림 · 🚛 횡단보도 가림 · ◀▶ 사각지대<br>
+                    🔒 업로드 시: PII 마스킹 + 위치 + heading + 속도
                   </div>
                 </div>
               </div>
@@ -3021,6 +2967,24 @@ def prototype_ui():
               setIfExists('sc_fusion', (fu.count ?? 0) + '종');
             } catch(e) {}
           }
+
+          // TAB ① 자동 수집 통계 — 30초 주기
+          async function refreshDashStats() {
+            try {
+              const [fl, sc, rep] = await Promise.all([
+                fetch(window.location.origin + '/fleet/stats').then(r=>r.json()).catch(()=>({})),
+                fetch(window.location.origin + '/scenario/list').then(r=>r.json()).catch(()=>({items:[]})),
+                fetch(window.location.origin + '/reports/list').then(r=>r.json()).catch(()=>({items:[]})),
+              ]);
+              const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+              set('dashUploads', (fl.total ?? 0).toLocaleString());
+              set('dashDevices', fl.unique_devices ?? 0);
+              set('dashScenarios', (sc.items||[]).length);
+              set('dashReports', (rep.items||[]).length);
+            } catch(e) {}
+          }
+          setTimeout(refreshDashStats, 600);
+          setInterval(refreshDashStats, 30000);
 
           // ⭐ 임팩트 + 데이터 freshness (TAB ⑤ 에서 표시) — 30초 주기로 갱신
           async function refreshImpactAndFreshness() {

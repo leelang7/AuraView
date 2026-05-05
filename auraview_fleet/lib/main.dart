@@ -843,6 +843,7 @@ class _FleetHomeState extends State<FleetHome>
                   uploads: _uploads,
                   online: _serverError.isEmpty,
                   pos: _pos,
+                  onSettingsTap: _openDetailSheet,
                 ),
               ),
             ),
@@ -922,11 +923,13 @@ class _UnifiedStatusBar extends StatelessWidget {
   final int uploads;
   final bool online;
   final Position? pos;
+  final VoidCallback? onSettingsTap;
   const _UnifiedStatusBar({
     required this.shadowOn,
     required this.uploads,
     required this.online,
     required this.pos,
+    this.onSettingsTap,
   });
 
   @override
@@ -961,22 +964,6 @@ class _UnifiedStatusBar extends StatelessWidget {
         const SizedBox(width: 10),
         Text('Aura', style: TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
         Text('View', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w800)),
-        const SizedBox(width: 6),
-        // 가시 설정 버튼 (스와이프 외에)
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () {
-              final state = context.findAncestorStateOfType<_FleetHomeState>();
-              state?._openDetailSheet();
-            },
-            child: const Padding(
-              padding: EdgeInsets.all(4),
-              child: Icon(Icons.tune_rounded, size: 18, color: _muted),
-            ),
-          ),
-        ),
         const Spacer(),
         // 속도
         if (hasGps) ...[
@@ -994,6 +981,21 @@ class _UnifiedStatusBar extends StatelessWidget {
         // 서버
         Icon(online ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
              size: 14, color: online ? _safe : _danger),
+        const SizedBox(width: 12),
+        // ⚙ 설정 버튼 — 우측 끝, 큰 박스 (탭 즉시 시트)
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onSettingsTap,
+          child: Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: _accent.withValues(alpha: 0.18),
+              border: Border.all(color: _accent.withValues(alpha: 0.6), width: 1.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.tune_rounded, size: 20, color: _accent),
+          ),
+        ),
       ]),
     );
   }

@@ -82,15 +82,28 @@ def _draw_logo(img: Image.Image, scale: float = 1.0) -> None:
     d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=CYAN_ACCENT + (255,))
 
 
-def make_icon(size: int, *, rounded: bool = False, foreground_only: bool = False) -> Image.Image:
-    """단일 아이콘 생성."""
+def make_icon(size: int, *, rounded: bool = False, foreground_only: bool = False,
+              adaptive_background: bool = False) -> Image.Image:
+    """단일 아이콘 생성.
+
+    Android adaptive icon 구조:
+      ic_launcher_background : 풀 캔버스 (108dp, 안전영역 X — 시스템이 마스킹)
+      ic_launcher_foreground : 풀 캔버스, logo 는 중앙 66% 안에 (안전영역)
+    """
+    if adaptive_background:
+        # 그라디언트 배경만 (logo X) — adaptive layer 1
+        return _radial_bg(size, 0)
+
     if foreground_only:
-        # adaptive icon foreground — 투명 배경 + 큰 logo (Android adaptive 는 자동 클리핑)
+        # 풀 캔버스 투명 + logo 중앙 (안전영역 안에)
+        # 시스템이 1.5x 확대 후 마스크 — 그래서 안전영역은 캔버스 66%
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        # Adaptive icon 의 안전 영역은 ~66% — logo 를 좀 더 작게
-        layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        _draw_logo(layer, scale=0.95)
-        img = Image.alpha_composite(img, layer)
+        # safe zone 안에 logo 그리기 — 캔버스 66% 영역 (size*0.34 마진)
+        margin = int(size * 0.17)
+        inner_size = size - margin * 2
+        layer = Image.new("RGBA", (inner_size, inner_size), (0, 0, 0, 0))
+        _draw_logo(layer, scale=1.6)  # 더 크게 — 안전영역 잘 채우게
+        img.paste(layer, (margin, margin), layer)
         return img
 
     corner = int(size * (0.5 if rounded else 0.22))
@@ -111,9 +124,14 @@ def main():
     for folder, size in android_sizes.items():
         p = ANDROID_RES / folder
         p.mkdir(parents=True, exist_ok=True)
+        # 1) Legacy launcher icon (Android < 26)
         make_icon(size, rounded=False).save(p / "ic_launcher.png", "PNG")
         make_icon(size, rounded=True).save(p / "ic_launcher_round.png", "PNG")
+        # 2) Adaptive icon layers (Android 8+)
+        # foreground: logo 만 중앙 안전영역에
         make_icon(size, foreground_only=True).save(p / "ic_launcher_foreground.png", "PNG")
+        # background: 풀 라디알 (logo X) — adaptive 시스템이 합성
+        make_icon(size, adaptive_background=True).save(p / "ic_launcher_background.png", "PNG")
         print(f"[ok] {folder}/ ({size}px)")
 
     # Web (PWA manifest)

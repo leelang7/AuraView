@@ -3009,19 +3009,19 @@ def prototype_ui():
                 } else if (cycle < 0.44) {
                   egoX = 0; egoZ = 22; egoYawRad = 0;
                 } else if (cycle < 0.68) {
+                  // ★ 우회전: rotation.y POSITIVE 가 +Z→+X (북→동) = 우회전
+                  // 이전 -π/2 는 좌회전 (+Z→-X) 이라 차가 후진 좌회전 보였음
                   const p = (cycle - 0.44) / 0.24;
                   egoX = 18 * p * p;
                   egoZ = 22 + 10 * p;
-                  egoYawRad = -(Math.PI / 2) * p;
+                  egoYawRad = (Math.PI / 2) * p;  // ★ POSITIVE = 우회전
                 } else if (cycle < 0.88) {
-                  // 동쪽 가속해서 화면 밖
                   const p = (cycle - 0.68) / 0.20;
-                  egoX = 18 + p * 32;  // 18→50
+                  egoX = 18 + p * 32;
                   egoZ = 32;
-                  egoYawRad = -Math.PI / 2;
+                  egoYawRad = Math.PI / 2;  // ★ POSITIVE
                   if (p > 0.7) egoVisible = false;
                 } else {
-                  // 사라진 상태 (텔레포트 안 보임)
                   egoVisible = false;
                   egoX = 0; egoZ = 0; egoYawRad = 0;
                 }

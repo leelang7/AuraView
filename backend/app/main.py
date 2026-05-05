@@ -2932,21 +2932,82 @@ def prototype_ui():
               };
 
               const drawMotorcycle = (cx, cz, lenM, widthM, color) => {
-                // 좁고 길쭉한 차체 + 라이더
-                const bodyL = Math.max(lenM, 1.8);
-                const body = new THREE.Mesh(
-                  new THREE.BoxGeometry(0.5, 0.7, bodyL),
-                  new THREE.MeshStandardMaterial({color, emissive: color.clone().multiplyScalar(0.30), metalness:0.6, roughness:0.3, transparent:true, opacity:0.9})
+                // 실제 오토바이 형상: 바퀴 2개 + 프레임 + 핸들 + 시트 + 라이더 + 헤드라이트
+                const bodyL = Math.max(lenM, 1.9);
+                const wheelOff = bodyL * 0.42;  // 앞뒤 바퀴 거리
+                const wheelR = 0.32;
+
+                // 앞바퀴 (z 방향 기준 — 진행방향)
+                const wheelMat = new THREE.MeshStandardMaterial({color: 0x1a1a22, metalness:0.4, roughness:0.6, transparent:true, opacity:0.95});
+                const wheelGeom = new THREE.CylinderGeometry(wheelR, wheelR, 0.18, 14);
+                const frontWheel = new THREE.Mesh(wheelGeom, wheelMat);
+                frontWheel.rotation.z = Math.PI / 2;  // 측면 보이게
+                frontWheel.position.set(cx, wheelR, cz + wheelOff);
+                ctx.voxelGroup.add(frontWheel);
+                // 뒷바퀴
+                const rearWheel = new THREE.Mesh(wheelGeom, wheelMat);
+                rearWheel.rotation.z = Math.PI / 2;
+                rearWheel.position.set(cx, wheelR, cz - wheelOff);
+                ctx.voxelGroup.add(rearWheel);
+
+                // 프레임 (기울어진 막대) — 앞바퀴 위에서 뒷바퀴 시트까지
+                const frameMat = new THREE.MeshStandardMaterial({color, emissive: color.clone().multiplyScalar(0.30), metalness:0.7, roughness:0.25, transparent:true, opacity:0.92});
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.18, bodyL * 0.65), frameMat);
+                frame.position.set(cx, 0.55, cz);
+                ctx.voxelGroup.add(frame);
+
+                // 연료탱크 (중앙)
+                const tank = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.32, 0.50), frameMat);
+                tank.position.set(cx, 0.78, cz - 0.05);
+                ctx.voxelGroup.add(tank);
+
+                // 시트 (뒷바퀴 위)
+                const seat = new THREE.Mesh(
+                  new THREE.BoxGeometry(0.32, 0.10, 0.45),
+                  new THREE.MeshStandardMaterial({color: 0x1a1a22, transparent:true, opacity:0.9})
                 );
-                body.position.set(cx, 0.35, cz);
-                ctx.voxelGroup.add(body);
-                // 라이더
+                seat.position.set(cx, 0.94, cz - wheelOff * 0.55);
+                ctx.voxelGroup.add(seat);
+
+                // 핸들바 (앞바퀴 위 가로 막대)
+                const handle = new THREE.Mesh(
+                  new THREE.BoxGeometry(0.55, 0.06, 0.06),
+                  new THREE.MeshStandardMaterial({color: 0x222234, metalness:0.7, roughness:0.3, transparent:true, opacity:0.95})
+                );
+                handle.position.set(cx, 1.05, cz + wheelOff * 0.85);
+                ctx.voxelGroup.add(handle);
+
+                // 헤드라이트
+                const headlight = new THREE.Mesh(
+                  new THREE.SphereGeometry(0.12, 10, 8),
+                  new THREE.MeshBasicMaterial({color: 0xfff7c0, transparent:true, opacity:0.95})
+                );
+                headlight.position.set(cx, 0.92, cz + wheelOff * 0.95);
+                ctx.voxelGroup.add(headlight);
+
+                // 라이더 (몸통 + 머리)
                 const rider = new THREE.Mesh(
-                  new THREE.CylinderGeometry(0.22, 0.22, 0.9, 8),
-                  new THREE.MeshStandardMaterial({color: 0xffd54a, emissive: 0x884400, transparent:true, opacity:0.85})
+                  new THREE.CylinderGeometry(0.22, 0.26, 0.85, 10),
+                  new THREE.MeshStandardMaterial({color: 0xffd54a, emissive: 0x6b4500, metalness:0.2, roughness:0.5, transparent:true, opacity:0.9})
                 );
-                rider.position.set(cx, 0.7 + 0.45, cz - 0.1);
+                rider.position.set(cx, 1.36, cz - wheelOff * 0.55);
                 ctx.voxelGroup.add(rider);
+                // 헬멧
+                const helmet = new THREE.Mesh(
+                  new THREE.SphereGeometry(0.20, 12, 10),
+                  new THREE.MeshStandardMaterial({color: 0xff5a5a, emissive: 0x441010, metalness:0.5, roughness:0.4, transparent:true, opacity:0.95})
+                );
+                helmet.position.set(cx, 1.92, cz - wheelOff * 0.55);
+                ctx.voxelGroup.add(helmet);
+
+                // 위험 펄스 링 (오토바이 강조 — 사각지대 alert)
+                const ring = new THREE.Mesh(
+                  new THREE.RingGeometry(bodyL * 0.4, bodyL * 0.5, 24),
+                  new THREE.MeshBasicMaterial({color: 0xff8c00, transparent:true, opacity:0.55, side: THREE.DoubleSide})
+                );
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.set(cx, 0.05, cz);
+                ctx.voxelGroup.add(ring);
               };
 
               const drawPedestrian = (cx, cz) => {

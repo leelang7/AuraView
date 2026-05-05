@@ -203,9 +203,14 @@ def _build_scene(name: str, phase: float):
         grid[20:28, 18:30] = 0.75; cls[20:28, 18:30] = 1
         # 보행자 정류장 부근
         grid[44:50, 60:70] = 0.55; cls[44:50, 60:70] = 4
+        # 우측 사이로 끼어드는 오토바이 (배달)
+        moto_progress = (np.sin(phase * 0.6) + 1) * 0.5
+        moto_row = int(18 + moto_progress * 6)
+        grid[moto_row:moto_row + 5, 50:55] = 0.82; cls[moto_row:moto_row + 5, 50:55] = 2
         hotspots = [
             {"class": "bus", "row": 42, "col": 40, "kind": "object", "distance_m": 18.0, "label": "전방 버스 (신호 가림)"},
             {"class": "signal_occluded", "row": 53, "col": 40, "kind": "signal_shadow", "distance_m": 25.0, "label": "🚦 적색 신호 (버스 뒤·API 복원)"},
+            {"class": "motorcycle", "row": moto_row + 2, "col": 52, "kind": "object", "distance_m": 10.0, "label": "🏍️ 우측 끼어들기 오토바이"},
             {"class": "pedestrian_zone", "row": 46, "col": 65, "kind": "intent_prior", "distance_m": 22.0, "label": "정류장 보행자 likely"},
         ]
 
@@ -222,8 +227,14 @@ def _build_scene(name: str, phase: float):
         grid[24:30, 32:48] = 0.85; cls[24:30, 32:48] = 1
         # 신호등
         grid[44:50, 38:42] = 0.78; cls[44:50, 38:42] = 5
+        # 우천 배달 오토바이 (좌측, 약간 흔들림)
+        wobble = int(np.sin(phase * 1.2) * 0.7)
+        moto_row = int(15 + (np.cos(phase * 0.4) + 1) * 4)
+        grid[moto_row:moto_row + 5, 12 + wobble:17 + wobble] = 0.79
+        cls[moto_row:moto_row + 5, 12 + wobble:17 + wobble] = 2
         hotspots = [
             {"class": "vehicle", "row": 27, "col": 40, "kind": "object", "distance_m": 13.5, "label": "전방 차량"},
+            {"class": "motorcycle", "row": moto_row + 2, "col": 14, "kind": "object", "distance_m": 9.0, "label": "🏍️ 배달 오토바이 (우천 미끄럼 위험)"},
             {"class": "pedestrian_zone", "row": 32, "col": 27, "kind": "intent_prior", "distance_m": 16.0, "label": "🌧️ 우산 보행자 (좌)"},
             {"class": "pedestrian_zone", "row": 38, "col": 47, "kind": "intent_prior", "distance_m": 19.0, "label": "🌧️ 우산 보행자 (중)"},
             {"class": "pedestrian_zone", "row": 35, "col": 62, "kind": "intent_prior", "distance_m": 17.5, "label": "🌧️ 우산 보행자 (우)"},

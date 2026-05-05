@@ -1297,69 +1297,113 @@ def prototype_ui():
             </div>
           </div>
 
-          <!-- TAB 2 : BEV Occupancy -->
+          <!-- TAB 2 : BEV Occupancy + 사각지대/신호 가림 통합 데모 -->
           <div class="tab-panel" id="tab2">
+
+            <!-- 시나리오 picker -->
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--accent),var(--accent2));">⚠️ 사각지대 / 신호 가림 / 우천 / 야간 — 통합 시나리오 데모</div>
+              <div class="section-label">// 클릭 시 BEV 객체 클러스터 + 알림 HUD 즉시 갱신 (1초 주기 라이브)</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:12px;" id="scnPickerRow">
+                <button data-scn="truck_occlusion" onclick="setOccScenario('truck_occlusion')" class="scn-btn active" style="padding:14px;background:rgba(255,90,90,0.12);border:2px solid var(--danger);color:var(--text);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;">
+                  <div style="font-size:24px;">🚛</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--danger);margin-top:4px;">트럭 가림 + 보행자</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">정지선 12m 전 · risk 0.68</div>
+                </button>
+                <button data-scn="motorcycle_blindspot" onclick="setOccScenario('motorcycle_blindspot')" class="scn-btn" style="padding:14px;background:rgba(255,176,32,0.10);border:2px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;">
+                  <div style="font-size:24px;">◀</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--warn);margin-top:4px;">좌측 사각지대 이륜차</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">차선 변경 직전 · risk 0.72</div>
+                </button>
+                <button data-scn="signal_occlusion" onclick="setOccScenario('signal_occlusion')" class="scn-btn" style="padding:14px;background:rgba(0,200,255,0.08);border:2px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;">
+                  <div style="font-size:24px;">🚦</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--accent);margin-top:4px;">버스 뒤 신호 가림</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">교차로 18m 전 · risk 0.58</div>
+                </button>
+                <button data-scn="rainy_intersection" onclick="setOccScenario('rainy_intersection')" class="scn-btn" style="padding:14px;background:rgba(124,58,237,0.08);border:2px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;">
+                  <div style="font-size:24px;">🌧️</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--accent2);margin-top:4px;">우천 + 우산 보행자</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">노면 반사 · risk 0.61</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 알림 HUD 카드 (BEV 위에 겹쳐서 시뮬레이션) -->
+            <div id="alertHud" class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(255,90,90,0.12),rgba(255,176,32,0.06));border:1.5px solid rgba(255,90,90,0.50);position:relative;overflow:hidden;">
+              <div style="position:absolute;top:0;left:0;height:100%;width:4px;background:linear-gradient(180deg,var(--danger),var(--warn));animation:pri-pulse 1.6s ease-in-out infinite;"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                <div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--danger);">🚨 LIVE ALERT · HUD 표시 텍스트</div>
+                  <div id="alertHudText" style="margin-top:4px;font-family:'Black Han Sans',sans-serif;font-size:22px;color:var(--text);line-height:1.25;">시나리오 로딩 중…</div>
+                  <div id="alertHudSub" style="margin-top:4px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(2,auto);gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;">
+                  <div style="text-align:right;color:var(--muted);">충돌 확률</div><div id="alertHudPC" style="color:var(--danger);font-weight:700;">…</div>
+                  <div style="text-align:right;color:var(--muted);">선행 경고</div><div id="alertHudLT" style="color:var(--safe);font-weight:700;">…</div>
+                  <div style="text-align:right;color:var(--muted);">권고</div><div id="alertHudAct" style="color:var(--accent);font-weight:700;">…</div>
+                </div>
+              </div>
+            </div>
+
             <div class="dashboard-grid">
               <div class="left-col">
                 <div class="card">
-                  <div class="card-tag">OCCUPANCY</div>
-                  <div class="section-label">// BEV 점유 추정 입력</div>
-                  <div class="hero-copy">
-                    <div class="hero-title">보이지 않는 공간을 확률로 채운다</div>
-                    <div class="hero-desc">Tesla Occupancy Network 방식의 경량 버전. 영상 프레임에서 BEV(조감도) 40m × 40m 범위 점유 확률을 실시간으로 복원합니다.</div>
+                  <div class="section-label">// BEV Tesla-style · 객체별 색상 클러스터 · <span id="occModeLabel">3D Voxel</span></div>
+                  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                    <button class="btn-secondary" style="width:auto;padding:7px 12px;font-size:11px;" onclick="setOccMode('2d')">2D Heatmap</button>
+                    <button class="btn-accent" style="width:auto;padding:7px 12px;font-size:11px;" onclick="setOccMode('3d')">3D Voxel</button>
+                    <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);align-self:center;">자동 갱신 1초</span>
                   </div>
-
-                  <div class="form-grid">
-                    <div>
-                      <label>현장 이미지</label>
-                      <label class="file-label" id="occLabel" for="occ_file">
-                        <span>📷</span>
-                        <span id="occName">이미지를 선택하세요</span>
-                      </label>
-                      <input id="occ_file" type="file" accept="image/*" onchange="updateFileLabel('occ_file','occLabel','occName')"/>
-                    </div>
-                    <div class="btn-row">
-                      <div>
-                        <label>지속시간(s)</label>
-                        <input id="occ_duration" type="number" step="0.1" value="3.5"/>
-                      </div>
-                      <div>
-                        <label>장애물</label>
-                        <select id="occ_obstacle">
-                          <option value="truck">truck</option>
-                          <option value="bus">bus</option>
-                          <option value="van">van</option>
-                          <option value="car">car</option>
-                        </select>
-                      </div>
-                    </div>
-                    <button class="btn-accent" onclick="runOccupancy()">BEV Occupancy 추정</button>
-                    <button class="btn-secondary" onclick="loadOccupancyDemo()">데모 그리드 보기</button>
+                  <div class="preview-wrap" id="occCanvasWrap" style="height:520px;display:flex;align-items:center;justify-content:center;">
+                    <div class="placeholder"><div class="placeholder-icon">🗺️</div>BEV 추정 결과 로딩 중…</div>
                   </div>
-
-                  <div id="occResultBox" class="status">
-                    <div class="status-title">BEV RESULT</div>
-                    <div class="status-main">대기 중</div>
-                    <div class="status-meta">Occupancy mass · Intent · Risk 확률이 여기에 표시됩니다.</div>
+                  <canvas id="occThreeCanvas" style="display:none;width:100%;height:520px;border-radius:12px;background:#04080e;"></canvas>
+                  <!-- 색상 범례 -->
+                  <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;">
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#3a8fff;border-radius:2px;"></span><span style="color:var(--muted);">Vehicle</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#ff8c00;border-radius:2px;"></span><span style="color:var(--muted);">Motorcycle</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#7c3aed;border-radius:2px;opacity:0.6;"></span><span style="color:var(--muted);">Occlusion</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#00d8ff;border-radius:2px;"></span><span style="color:var(--muted);">Pedestrian</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;background:#ff5a5a;border-radius:2px;"></span><span style="color:var(--muted);">Signal</span></div>
                   </div>
                 </div>
               </div>
 
               <div class="right-col">
                 <div class="card">
-                  <div class="section-label">// BEV Occupancy · <span id="occModeLabel">2D Heatmap</span></div>
-                  <div style="display:flex;gap:8px;margin-bottom:10px;">
-                    <button class="btn-secondary" style="width:auto;padding:8px 14px;" onclick="setOccMode('2d')">2D Heatmap</button>
-                    <button class="btn-accent" style="width:auto;padding:8px 14px;" onclick="setOccMode('3d')">3D Voxel (FSD-style)</button>
+                  <div class="section-label">// 검출된 객체 · 거리 / 종류 / 라벨</div>
+                  <div id="hotspotList" style="margin-top:8px;display:grid;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;">
+                    <div class="placeholder">시나리오 로딩 중…</div>
                   </div>
-                  <div class="preview-wrap" id="occCanvasWrap" style="height:560px;display:flex;align-items:center;justify-content:center;">
-                    <div class="placeholder"><div class="placeholder-icon">🗺️</div>BEV 추정 결과가 여기에 표시됩니다.</div>
-                  </div>
-                  <canvas id="occThreeCanvas" style="display:none;width:100%;height:560px;border-radius:12px;background:#04080e;"></canvas>
                 </div>
+
                 <div class="card">
-                  <div class="section-label">// Attention (E2E Risk Transformer)</div>
-                  <div id="occAttention" class="rank-body">모델이 어느 feature에 주목했는지 표시됩니다.</div>
+                  <div class="section-label">// 시나리오 설명 · AuraView 강점</div>
+                  <div id="scnNarrative" style="margin-top:8px;font-size:12px;color:var(--text);line-height:1.5;">…</div>
+                  <div id="scnAdv" style="margin-top:10px;padding:10px;background:rgba(0,224,154,0.08);border-left:3px solid var(--safe);border-radius:6px;font-size:11px;color:var(--text);font-family:'JetBrains Mono',monospace;line-height:1.5;">…</div>
+                </div>
+
+                <div class="card">
+                  <div class="section-label">// 직접 이미지 추론 (선택)</div>
+                  <details>
+                    <summary style="cursor:pointer;color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace;">▸ 사용자 이미지로 BEV 추정</summary>
+                    <div class="form-grid" style="margin-top:10px;">
+                      <div>
+                        <label>현장 이미지</label>
+                        <label class="file-label" id="occLabel" for="occ_file">
+                          <span>📷</span><span id="occName">이미지를 선택하세요</span>
+                        </label>
+                        <input id="occ_file" type="file" accept="image/*" onchange="updateFileLabel('occ_file','occLabel','occName')"/>
+                      </div>
+                      <div class="btn-row">
+                        <div><label>지속(s)</label><input id="occ_duration" type="number" step="0.1" value="3.5"/></div>
+                        <div><label>장애물</label><select id="occ_obstacle"><option value="truck">truck</option><option value="bus">bus</option><option value="car">car</option></select></div>
+                      </div>
+                      <button class="btn-accent" onclick="runOccupancy()">BEV 추정</button>
+                    </div>
+                    <div id="occAttention" class="rank-body" style="margin-top:10px;font-size:11px;"></div>
+                    <div id="occResultBox" class="status" style="margin-top:10px;"><div class="status-meta">결과가 여기 표시됩니다.</div></div>
+                  </details>
                 </div>
               </div>
             </div>
@@ -2791,21 +2835,40 @@ def prototype_ui():
             const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
             const lerp = (a, b, t) => a + (b - a) * t;
 
+            // Tesla-style 객체별 색상: class_grid_flat (0:free 1:vehicle 2:moto 3:occ 4:ped 5:signal)
+            const classColors = {
+              0: null,
+              1: new THREE.Color(0x3a8fff),  // vehicle/truck/bus — steel blue
+              2: new THREE.Color(0xff8c00),  // motorcycle — orange
+              3: new THREE.Color(0x7c3aed),  // occlusion — purple (반투명)
+              4: new THREE.Color(0x00d8ff),  // pedestrian — cyan
+              5: new THREE.Color(0xff5a5a),  // signal — red
+            };
+            const classOpacity = {1:0.95, 2:0.92, 3:0.45, 4:0.85, 5:0.95};
+            const classHeightScale = {1:1.4, 2:1.0, 3:0.4, 4:1.5, 5:2.2};
+            const useClass = Array.isArray(data.class_grid_flat) && data.class_grid_flat.length === rows * cols;
+
             for (let r = 0; r < rows; r++) {
               for (let c = 0; c < cols; c++) {
                 const p = data.grid_flat[r * cols + c] || 0;
                 if (p < 0.08) continue;
-                const height = clamp(p * 6, 0.2, 6);
                 const x = -lateral + c * cell + cell / 2;
                 const z = r * cell + cell / 2;
-                // color ramp: cyan (low) → orange → red (high)
-                const t = clamp(p, 0, 1);
-                const color = new THREE.Color(
-                  lerp(0.0, 1.0, t),
-                  lerp(0.8, 0.2, t),
-                  lerp(1.0, 0.1, t)
-                );
-                const mat = new THREE.MeshStandardMaterial({color, emissive: color.clone().multiplyScalar(0.25), transparent:true, opacity:0.85});
+                let color, opacity, height;
+                if (useClass) {
+                  const cls = data.class_grid_flat[r * cols + c] || 0;
+                  if (cls === 0) continue;  // free space skip
+                  color = classColors[cls];
+                  opacity = classOpacity[cls] || 0.85;
+                  height = clamp(p * 6 * (classHeightScale[cls] || 1), 0.3, 8);
+                } else {
+                  // 폴백: heatmap (cyan→orange→red)
+                  const t = clamp(p, 0, 1);
+                  color = new THREE.Color(lerp(0.0, 1.0, t), lerp(0.8, 0.2, t), lerp(1.0, 0.1, t));
+                  opacity = 0.85;
+                  height = clamp(p * 6, 0.2, 6);
+                }
+                const mat = new THREE.MeshStandardMaterial({color, emissive: color.clone().multiplyScalar(0.30), transparent:true, opacity});
                 const box = new THREE.Mesh(geom, mat);
                 box.position.set(x, height / 2, z);
                 box.scale.y = height;
@@ -2866,49 +2929,93 @@ def prototype_ui():
             }
           }
 
+          let _currentScenario = 'truck_occlusion';
+          let _occRefreshTimer = null;
+
+          function setOccScenario(name) {
+            _currentScenario = name;
+            // 버튼 강조
+            document.querySelectorAll('.scn-btn').forEach(b => {
+              const active = b.dataset.scn === name;
+              b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+              b.style.boxShadow = active ? '0 0 16px rgba(0,200,255,0.40)' : 'none';
+            });
+            loadOccupancyDemo();
+          }
+
           async function loadOccupancyDemo() {
-            const res = await fetch(window.location.origin + '/occupancy/demo');
+            const res = await fetch(window.location.origin + '/occupancy/demo?scenario=' + encodeURIComponent(_currentScenario));
             const data = await res.json();
             renderOccCanvas(data);
             const sc = data.scenario || {};
             const rs = data.risk_summary || {};
-            const hs = (data.hotspots || []).map(h =>
-              '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);"><span>' +
-              (h.kind === 'occluded_shadow' ? '🌫️' :
-               h.kind === 'intent_prior' ? '⭐' :
-               h.kind === 'signal_shadow' ? '🚦' :
-               h.class === 'motorcycle' ? '🏍️' : '🚛') +
-              ' ' + h.label + '</span><span style="color:var(--accent);">' + h.distance_m + 'm</span></div>'
-            ).join('');
+
+            // 알림 HUD 카드 갱신
+            const hudText = document.getElementById('alertHudText');
+            const hudSub = document.getElementById('alertHudSub');
+            if (hudText) hudText.textContent = data.alert_text || sc.title || '';
+            if (hudSub) hudSub.textContent = sc.title || '';
+            const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            setText('alertHudPC', rs.p_collision != null ? (rs.p_collision*100).toFixed(0) + '%' : '—');
+            setText('alertHudLT', rs.lead_time_s != null ? rs.lead_time_s + 's' : '—');
+            setText('alertHudAct', rs.recommended_action || '—');
+
+            // hotspot 리스트
+            const hsList = document.getElementById('hotspotList');
+            if (hsList) {
+              const iconOf = (h) => {
+                if (h.kind === 'occluded_shadow' || h.kind === 'blindspot') return '🌫️';
+                if (h.kind === 'intent_prior') return '⭐';
+                if (h.kind === 'signal_shadow' || h.kind === 'signal') return '🚦';
+                if (h.class === 'motorcycle') return '🏍️';
+                if (h.class === 'bus') return '🚌';
+                if (h.class === 'truck') return '🚛';
+                if (h.class === 'vehicle') return '🚗';
+                return '◆';
+              };
+              hsList.innerHTML = (data.hotspots || []).map(h => {
+                const color = (h.kind === 'occluded_shadow' || h.kind === 'blindspot') ? 'var(--accent2)' :
+                              h.kind === 'intent_prior' ? 'var(--safe)' :
+                              h.kind === 'signal_shadow' ? 'var(--danger)' :
+                              'var(--accent)';
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-left:2px solid ${color};border-radius:6px;">
+                  <span style="display:flex;align-items:center;gap:6px;">${iconOf(h)} <span style="color:var(--text);">${h.label}</span></span>
+                  <span style="color:${color};font-weight:700;">${h.distance_m}m</span>
+                </div>`;
+              }).join('');
+            }
+
+            const narEl = document.getElementById('scnNarrative');
+            const advEl = document.getElementById('scnAdv');
+            if (narEl) narEl.innerHTML = sc.narrative || '';
+            if (advEl) advEl.innerHTML = '⭐ ' + (sc.auraview_advantage || '');
+
+            // 사용자 이미지 추론용 결과 박스도 함께 갱신 (선택 영역)
             const box = document.getElementById('occResultBox');
-            box.className = 'status info';
-            box.innerHTML = `
-              <div class="status-title">${sc.title || 'BEV DEMO'}</div>
-              <div class="status-main" style="font-size:14px;line-height:1.45;">${sc.narrative || ''}</div>
-              <div class="status-meta" style="margin-top:10px;">
-                <div style="font-weight:700;color:var(--accent);">감지된 객체 + 가려진 영역</div>
-                ${hs}
-                <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">
-                  <span style="color:var(--danger);font-weight:700;">충돌 확률 ${(rs.p_collision*100).toFixed(0)}%</span>
-                  · 선행 경고 <span style="color:var(--safe);font-weight:700;">${rs.lead_time_s}s</span>
-                  · ${rs.recommended_action}
-                </div>
-              </div>`;
+            if (box) {
+              box.className = 'status info';
+              box.innerHTML = `<div class="status-meta">시나리오 활성 — ${sc.title}</div>`;
+            }
           }
 
-          // ⭐ TAB ② 진입 시 자동 BEV 데모 로드 + 3D 모드 — 빈 플레이스홀더 안 보이게
+          // ⭐ TAB ② 진입 시 자동 BEV 데모 로드 + 3D 모드 + 1초 주기 라이브 갱신
           (function setupBEVAutoLoad(){
             const tab2 = document.querySelector('[data-tab="tab2"]');
             if (!tab2) return;
             let loaded = false;
             tab2.addEventListener('click', async () => {
-              if (loaded) return;
+              if (loaded) {
+                if (_occRefreshTimer) clearInterval(_occRefreshTimer);
+                _occRefreshTimer = setInterval(loadOccupancyDemo, 1000);
+                return;
+              }
               loaded = true;
               try {
                 await loadOccupancyDemo();
-                // 자동으로 3D voxel 모드로 전환 (FSD-style)
                 if (typeof setOccMode === 'function') setOccMode('3d');
-              } catch(e) { /* placeholder 유지 */ }
+                // 1초 주기 갱신 — phase 애니메이션 실시간 반영
+                _occRefreshTimer = setInterval(loadOccupancyDemo, 1000);
+              } catch(e) {}
             });
           })();
 

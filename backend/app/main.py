@@ -1390,14 +1390,29 @@ def prototype_ui():
               </div>
               <div class="right-col">
                 <div class="card">
-                  <div class="section-label">// 엣지 단말 PWA 설치</div>
+                  <div class="section-label">// 엣지 단말 설치 — PWA 또는 Native APK</div>
                   <div class="hero-copy">
                     <div class="hero-title">📱 스마트폰이 그대로 엣지 단말</div>
-                    <div class="hero-desc">아래 QR을 스캔하면 AuraView Fleet PWA가 설치됩니다. 카메라로 Shadow Mode가 자동 시작됩니다.</div>
+                    <div class="hero-desc">QR 스캔 시 카메라 Shadow Mode 자동 시작. PWA는 즉시, APK는 GitHub Releases 최신 빌드.</div>
                   </div>
-                  <div id="pwaQr" style="margin-top:14px;display:flex;justify-content:center;background:#fff;border-radius:12px;padding:16px;"></div>
-                  <div style="margin-top:12px;text-align:center;">
-                    <a id="pwaLink" href="/pwa" target="_blank" style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:12px;">/pwa</a>
+                  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px;">
+                    <div style="text-align:center;">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:6px;">PWA · 즉시 설치</div>
+                      <div id="pwaQr" style="display:flex;justify-content:center;background:#fff;border-radius:12px;padding:10px;"></div>
+                      <div style="margin-top:8px;">
+                        <a id="pwaLink" href="/pwa" target="_blank" style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px;">/pwa</a>
+                      </div>
+                    </div>
+                    <div style="text-align:center;">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--safe);letter-spacing:2px;margin-bottom:6px;">APK · 네이티브</div>
+                      <div id="apkQr" style="display:flex;justify-content:center;background:#fff;border-radius:12px;padding:10px;"></div>
+                      <div style="margin-top:8px;">
+                        <a id="apkLink" href="https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk" target="_blank" style="color:var(--safe);font-family:'JetBrains Mono',monospace;font-size:11px;">latest APK ↓</a>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;">
+                    APK 설치 시 "출처 알 수 없는 앱 허용" 1회 필요 · BEV HUD + Fleet 자동 업로드
                   </div>
                 </div>
               </div>
@@ -2909,7 +2924,7 @@ def prototype_ui():
             }
           }
 
-          /* ── PWA QR ── */
+          /* ── PWA QR + APK QR ── */
           (function drawPwaQR(){
             try {
               const url = window.location.origin + '/pwa';
@@ -2918,7 +2933,17 @@ def prototype_ui():
               const qr = qrcode(0, 'M');
               qr.addData(url);
               qr.make();
-              document.getElementById('pwaQr').innerHTML = qr.createImgTag(6, 12);
+              document.getElementById('pwaQr').innerHTML = qr.createImgTag(5, 10);
+            } catch(e) {}
+          })();
+          (function drawApkQR(){
+            try {
+              const apkUrl = 'https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk';
+              const qr = qrcode(0, 'M');
+              qr.addData(apkUrl);
+              qr.make();
+              const el = document.getElementById('apkQr');
+              if (el) el.innerHTML = qr.createImgTag(5, 10);
             } catch(e) {}
           })();
 

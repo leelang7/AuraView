@@ -91,3 +91,28 @@ jobs:
             auraview_fleet/build/app/outputs/flutter-apk/*.apk
           retention-days: 90
           if-no-files-found: warn
+
+      # 공개 다운로드 — "latest" 릴리즈에 APK 첨부 (인증 없이 다운로드 가능)
+      - name: rename apk for release
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p ../release_assets
+          cp build/app/outputs/flutter-apk/app-release.apk ../release_assets/auraview_fleet.apk \
+            || cp build/app/outputs/flutter-apk/app-debug.apk ../release_assets/auraview_fleet.apk
+
+      - name: publish to "latest" release (APK)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: AuraView Fleet · Latest Build
+          body: |
+            가장 최신 Native APK · 자동 빌드 (커밋 ${{ github.sha }}).
+
+            **공개 다운로드 (인증 불요)**:
+            <https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk>
+          files: release_assets/auraview_fleet.apk
+          make_latest: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

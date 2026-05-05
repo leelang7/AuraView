@@ -1034,6 +1034,42 @@ def prototype_ui():
           <!-- TAB 1 -->
           <div class="tab-panel active" id="tab1">
 
+            <!-- 🚦 가려진 신호등 대체 안내 카드 (기획서 핵심 시나리오) -->
+            <div style="margin-bottom:14px;padding:18px 20px;background:linear-gradient(135deg,rgba(255,59,59,0.08),rgba(255,176,32,0.04));border:1px solid rgba(255,176,32,0.30);border-radius:14px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;">
+              <div style="flex:1 1 240px;min-width:0;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--warn);">
+                  // 가려진 신호등 대체 안내 활성화
+                </div>
+                <div id="altSignalGuide" style="margin-top:6px;font-family:'Black Han Sans',sans-serif;font-size:18px;line-height:1.3;color:var(--warn);">
+                  교차로 ID + occlusion_score 입력 시 활성화
+                </div>
+                <div id="altSignalSub" style="margin-top:4px;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;"></div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input id="altIid" type="text" value="1007" style="width:80px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;"/>
+                <input id="altOcc" type="number" min="0" max="1" step="0.1" value="0.6" style="width:60px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;"/>
+                <button onclick="loadAltSignal()" style="padding:6px 14px;background:rgba(255,176,32,0.20);color:var(--warn);border:1px solid var(--warn);border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">조회</button>
+              </div>
+            </div>
+            <script>
+              async function loadAltSignal() {
+                const iid = document.getElementById('altIid').value;
+                const occ = document.getElementById('altOcc').value;
+                try {
+                  const r = await fetch(window.location.origin + '/signals/' + iid + '/alternate?occlusion_score=' + occ).then(r => r.json());
+                  document.getElementById('altSignalGuide').textContent = r.alt_guide || '';
+                  document.getElementById('altSignalSub').innerHTML =
+                    'intersection ' + r.intersection_id + ' · ' + r.signal_state +
+                    (r.remain_time_s !== null ? ' · 남은 ' + r.remain_time_s + '초' : '') +
+                    ' · risk ' + r.risk_score +
+                    ' · <span style="color:var(--accent);">' + (r.alt_action || '') + '</span>';
+                } catch(e) {
+                  document.getElementById('altSignalSub').textContent = '/signals API 응답 실패';
+                }
+              }
+              setTimeout(loadAltSignal, 800);
+            </script>
+
             <!-- ⭐ IMPACT BANNER — 첫 화면 시각 헤드라인 -->
             <div style="margin-bottom:14px;padding:18px 20px;background:linear-gradient(135deg,rgba(0,224,154,0.10),rgba(0,200,255,0.06));border:1px solid rgba(0,224,154,0.30);border-radius:14px;display:flex;flex-wrap:wrap;align-items:center;gap:18px;">
               <div style="flex:1 1 280px;min-width:0;">

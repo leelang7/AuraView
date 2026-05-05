@@ -16,6 +16,9 @@ on:
       - ".github/workflows/flutter-build.yml"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   web:
     name: Flutter Web

@@ -1673,6 +1673,33 @@ def prototype_ui():
               </div>
             </div>
 
+            <!-- 🎮 인터랙티브 임팩트 시뮬레이터 — 도입률 슬라이더 -->
+            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,224,154,0.06),rgba(0,200,255,0.03));border:1px solid rgba(0,224,154,0.30);">
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">🎮 IMPACT SIMULATOR · INTERACTIVE</div>
+              <div class="section-label">// 슬라이더로 도입 비율 조정 → 연간 예방 효과 실시간 계산 (TAAS 2024 기반)</div>
+              <div style="margin-top:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1.5px;">URBAN INTERSECTION COVERAGE</div>
+                  <div style="display:flex;gap:8px;align-items:baseline;">
+                    <span id="simCovText" style="font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--safe);">10%</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);">도시 교차로 중</span>
+                  </div>
+                </div>
+                <input id="simCovSlider" type="range" min="1" max="100" value="10" style="width:100%;height:6px;-webkit-appearance:none;appearance:none;background:linear-gradient(90deg,var(--accent),var(--safe));border-radius:3px;outline:none;cursor:pointer;"/>
+                <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);">
+                  <span>1%</span><span>5% Pilot</span><span>25% 확산</span><span>50%</span><span>100% 전국</span>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1.5px;">LEAD TIME</span>
+                  <input id="simLeadInput" type="number" value="3.38" step="0.1" min="1.0" max="6.0" style="width:80px;padding:4px 8px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;"/>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);">초 (모델 평균)</span>
+                </div>
+              </div>
+              <div id="simResult" style="margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+                <div class="placeholder" style="grid-column:1/-1;">시뮬레이션 결과 로딩 중…</div>
+              </div>
+            </div>
+
             <!-- ⭐ 위험 교차로 Top-10 + 예방 효과 (서울) -->
             <div class="card" style="margin-bottom:14px;">
               <div class="card-tag" style="background:linear-gradient(135deg,var(--danger),var(--accent2,#7c3aed));">RISK INTERSECTIONS · TOP-10 · SEOUL</div>
@@ -3555,7 +3582,60 @@ def prototype_ui():
                 const tv = await fetch(window.location.origin + '/positioning/tesla-vs-auraview').then(r=>r.json());
                 renderTeslaCompare(tv);
               } catch(e) {}
+              // 시뮬레이터 초기화
+              setupImpactSimulator();
             });
+
+            // 인터랙티브 임팩트 시뮬레이터
+            function setupImpactSimulator() {
+              const slider = document.getElementById('simCovSlider');
+              const leadInput = document.getElementById('simLeadInput');
+              if (!slider || !leadInput) return;
+              if (slider.dataset.bound) return;
+              slider.dataset.bound = '1';
+
+              let _simT = null;
+              const debounce = (fn, ms) => () => { clearTimeout(_simT); _simT = setTimeout(fn, ms); };
+
+              async function runSim() {
+                const cov = (parseFloat(slider.value) / 100).toFixed(2);
+                const lead = parseFloat(leadInput.value || '3.38');
+                document.getElementById('simCovText').textContent = parseFloat(slider.value) + '%';
+                try {
+                  const r = await fetch(window.location.origin + '/impact?coverage=' + cov + '&lead=' + lead).then(r => r.json());
+                  const p = r.projected_prevented || {};
+                  const inputs = r.inputs || {};
+                  const result = document.getElementById('simResult');
+                  if (!result) return;
+                  result.innerHTML = `
+                    <div style="padding:14px;background:var(--surface2);border-left:3px solid var(--safe);border-radius:8px;">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);">사고 예방</div>
+                      <div style="margin-top:4px;font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--safe);">${(p.prevented_accidents||0).toLocaleString()}</div>
+                      <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">건/년</div>
+                    </div>
+                    <div style="padding:14px;background:var(--surface2);border-left:3px solid var(--danger);border-radius:8px;">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);">사망 감소</div>
+                      <div style="margin-top:4px;font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--danger);">${(p.prevented_deaths||0).toLocaleString()}</div>
+                      <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">명/년</div>
+                    </div>
+                    <div style="padding:14px;background:var(--surface2);border-left:3px solid var(--warn);border-radius:8px;">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);">부상 감소</div>
+                      <div style="margin-top:4px;font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--warn);">${(p.prevented_injured||0).toLocaleString()}</div>
+                      <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">명/년</div>
+                    </div>
+                    <div style="padding:14px;background:var(--surface2);border-left:3px solid var(--accent2);border-radius:8px;">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);">회피율</div>
+                      <div style="margin-top:4px;font-family:'Black Han Sans',sans-serif;font-size:24px;color:var(--accent2);">${((r.preventability||0)*100).toFixed(1)}%</div>
+                      <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">lead × 0.25</div>
+                    </div>
+                  `;
+                } catch(e) {}
+              }
+
+              slider.addEventListener('input', debounce(runSim, 200));
+              leadInput.addEventListener('input', debounce(runSim, 300));
+              runSim();
+            }
 
             function renderBenchmark(bm) {
               const grid = document.getElementById('benchGrid');

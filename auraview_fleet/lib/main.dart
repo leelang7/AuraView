@@ -263,12 +263,32 @@ class _FleetHomeState extends State<FleetHome>
     _scnRotateTimer?.cancel();
     if (_demoScenarioOn) {
       _scnIdx = 0;
-      _fetchBev();
-      _scnRotateTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-        _scnIdx = (_scnIdx + 1) % _scnList.length;
-        _fetchBev();
+      _pollDemoScene();
+      // 1.5초 주기 — 시나리오 차량 movement (phase) 부드럽게 갱신
+      // 8초마다 시나리오 인덱스 변경 (8/1.5 ≈ 5 ticks)
+      var tick = 0;
+      _scnRotateTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+        tick++;
+        if (tick % 5 == 0) {
+          _scnIdx = (_scnIdx + 1) % _scnList.length;
+        }
+        _pollDemoScene();
       });
     }
+  }
+
+  /// DEMO 시나리오 데이터만 빠르게 폴링 (카메라 캡처 X)
+  Future<void> _pollDemoScene() async {
+    if (!_demoScenarioOn) return;
+    try {
+      final scn = _scnList[_scnIdx % _scnList.length];
+      final r = await http.get(Uri.parse('$kApiBase/occupancy/demo?scenario=$scn'))
+          .timeout(const Duration(seconds: 4));
+      if (r.statusCode == 200) {
+        final body = jsonDecode(r.body) as Map<String, dynamic>;
+        if (mounted) setState(() => _serverBev = body);
+      }
+    } catch (_) {}
   }
 
   /// 카메라 프레임 → 클라이언트(엣지) voxel 직접 생성. 서버 호출 X.

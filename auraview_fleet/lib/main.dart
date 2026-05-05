@@ -1490,6 +1490,9 @@ class _BevPanelState extends State<_BevPanel>
   double _yawDeg = 0;          // -45 ~ 45 (좌우 회전)
   double _baseYaw = 0;
   Offset _baseFocal = Offset.zero;
+  // FPS 추적
+  final List<double> _frameTimes = [];
+  double _fps = 0;
 
   void _resetView() {
     setState(() { _zoom = 1.0; _yawDeg = 0; });
@@ -1499,7 +1502,14 @@ class _BevPanelState extends State<_BevPanel>
   void initState() {
     super.initState();
     _ticker = Ticker((d) {
-      setState(() { _t = d.inMilliseconds / 1000.0; });
+      final now = d.inMilliseconds / 1000.0;
+      // FPS 계산 — 최근 0.5초 frame 카운트 / 0.5
+      _frameTimes.add(now);
+      while (_frameTimes.isNotEmpty && now - _frameTimes.first > 0.5) {
+        _frameTimes.removeAt(0);
+      }
+      _fps = _frameTimes.length * 2.0;  // 0.5초 윈도우 → ×2
+      setState(() { _t = now; });
     })..start();
   }
 
@@ -1543,7 +1553,7 @@ class _BevPanelState extends State<_BevPanel>
           child: SizedBox.expand(
             child: CustomPaint(
               size: Size.infinite,
-              painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t, zoom: _zoom, yawDeg: _yawDeg),
+              painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t, zoom: _zoom, yawDeg: _yawDeg, fps: _fps),
             ),
           ),
         ),
@@ -1739,7 +1749,8 @@ class _Bev3DVoxelPainter extends CustomPainter {
   final double t;
   final double zoom;          // 1.0 = 기본, 0.5~2.5
   final double yawDeg;        // -60 ~ 60 (좌우 회전)
-  _Bev3DVoxelPainter({this.bev, required this.t, this.zoom = 1.0, this.yawDeg = 0});
+  final double fps;           // 화면 갱신 fps
+  _Bev3DVoxelPainter({this.bev, required this.t, this.zoom = 1.0, this.yawDeg = 0, this.fps = 0});
 
   // 3D 점 → 2D 화면 (Tesla-style 살짝 기울어진 top-down — 3D 깊이감 살림)
   // 캔버스 fit + perspective tilt + 사용자 zoom/yaw 컨트롤
@@ -1964,86 +1975,57 @@ class _Bev3DVoxelPainter extends CustomPainter {
         ..strokeWidth = 1.2);
   }
 
-  /// 우회전 시나리오 시각 보조 — ego 회전 곡선 화살표 + 충돌 위험점
+  /// 우회전 시나리오 — 핵심 로직만:
+  ///   ego 우회전 시 우측 사각지대에 보행자 → 검출되면 정지 권고
   void _drawRightTurnAids(Canvas canvas, Size size, double cameraX, double cameraZ) {
-    // 1) ego 회전 경로 — 곡선 (정지선 통과 → 가로 도로 우측)
-    // BEV 좌표: (0, 0) ego → (0, 24) 정지선 → (10, 30) 회전 중간 → (20, 32) 가로 도로 진입
-    final pathPoints = <List<double>>[
-      [0, 0], [0, 12], [0, 22],
-      [2, 26], [6, 28], [12, 30], [18, 32],
-    ];
-    // 화살표 스템 (시안 발광)
-    final pathPaint = Paint()
-      ..color = const Color(0xFF00C8FF)
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
-    final pathInner = Paint()
-      ..color = const Color(0xFFEEFAFF)
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round;
-    for (int i = 0; i < pathPoints.length - 1; i++) {
-      final p1 = _project(pathPoints[i][0], 0, pathPoints[i][1], cameraX, cameraZ, size);
-      final p2 = _project(pathPoints[i+1][0], 0, pathPoints[i+1][1], cameraX, cameraZ, size);
-      canvas.drawLine(p1, p2, pathPaint);
-      canvas.drawLine(p1, p2, pathInner);
-    }
-    // 화살표 머리 (가로 도로 진입 끝)
-    final tip = _project(20, 0, 32, cameraX, cameraZ, size);
-    final tail1 = _project(16, 0, 30, cameraX, cameraZ, size);
-    final tail2 = _project(16, 0, 34, cameraX, cameraZ, size);
-    final headPath = Path()
-      ..moveTo(tip.dx, tip.dy)
-      ..lineTo(tail1.dx, tail1.dy)
-      ..lineTo(tail2.dx, tail2.dy)
-      ..close();
-    canvas.drawPath(headPath, Paint()..color = const Color(0xFF00C8FF));
-    canvas.drawPath(headPath, Paint()..color = const Color(0xFFEEFAFF)..style = PaintingStyle.stroke..strokeWidth = 1.5);
+    // ego 우측 A필러 사각지대 영역 (cone 형 강조) — class_grid cls=3 가 이미 그려짐
+    // 추가: 사각지대 영역에 "⚠️ A필러 사각" 라벨
 
-    // 2) 충돌점 — ego 경로와 보행자 경로 교차 (대략 row 27-28, col 5-6)
-    // BEV 좌표 (10, 28) — 큰 빨간 펄스 ring + X 마크
-    final cxM = 10.0, czM = 28.0;
-    final centerP = _project(cxM, 0, czM, cameraX, cameraZ, size);
-    // 펄스 ring (애니메이션 효과)
-    final pulseT = (t * 1.5) % 1.0;
-    canvas.drawCircle(centerP, 14 + pulseT * 18, Paint()
-      ..color = const Color(0xFFFF3030).withValues(alpha: (1 - pulseT) * 0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0);
-    canvas.drawCircle(centerP, 14, Paint()
-      ..color = const Color(0xFFFF3030).withValues(alpha: 0.30)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
-    // X 마크
-    final xPaint = Paint()
-      ..color = const Color(0xFFFF3030)
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(centerP.dx - 7, centerP.dy - 7),
-                    Offset(centerP.dx + 7, centerP.dy + 7), xPaint);
-    canvas.drawLine(Offset(centerP.dx + 7, centerP.dy - 7),
-                    Offset(centerP.dx - 7, centerP.dy + 7), xPaint);
-    // 라벨 "⚠️ 충돌 위험" 위쪽
-    final tp = TextPainter(
-      text: const TextSpan(text: '⚠️ 충돌 위험',
-        style: TextStyle(color: Color(0xFFFF5A5A), fontSize: 10, fontWeight: FontWeight.w900,
+    // 1) 사각지대 라벨 — 우측 A필러 영역 가운데
+    final blindCenter = _project(8.5, 0, 18, cameraX, cameraZ, size);
+    canvas.drawCircle(blindCenter, 22, Paint()
+      ..color = const Color(0xFF7C3AED).withValues(alpha: 0.20)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    final tpBlind = TextPainter(
+      text: const TextSpan(text: '⚠️ A필러 사각',
+        style: TextStyle(color: Color(0xFFA995FF), fontSize: 11, fontWeight: FontWeight.w900,
                          shadows: [Shadow(color: Colors.black, blurRadius: 4)])),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(centerP.dx - tp.width/2, centerP.dy - 28));
+    tpBlind.paint(canvas, Offset(blindCenter.dx - tpBlind.width/2, blindCenter.dy - 6));
 
-    // 3) 보행자 진행방향 화살표 (오른쪽으로 가로질러)
-    // 보행자가 col 50→58 방향 (BEV x = 5→9)
-    final pedArrowPaint = Paint()
-      ..color = const Color(0xFF00D8FF)
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-    for (final pz in [25.0, 28.0, 31.0]) {
-      final p1 = _project(5, 0, pz, cameraX, cameraZ, size);
-      final p2 = _project(9, 0, pz, cameraX, cameraZ, size);
-      canvas.drawLine(p1, p2, pedArrowPaint);
-      // 화살표 head
-      canvas.drawCircle(p2, 2.5, Paint()..color = const Color(0xFF00D8FF));
-    }
+    // 2) ⛔ 큰 정지 안내 라벨 — 화면 상단 가운데 (보행자 검출됨 가정)
+    final stopBg = Rect.fromLTWH((size.width - 240) / 2, size.height * 0.20, 240, 56);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(stopBg, const Radius.circular(12)),
+      Paint()
+        ..color = const Color(0xFFFF3030).withValues(alpha: 0.92)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(stopBg, const Radius.circular(12)),
+      Paint()..color = const Color(0xFFFF3030),
+    );
+    // 펄스 효과
+    final pulseT = (t * 1.5) % 1.0;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(stopBg.inflate(4 + pulseT * 6), const Radius.circular(14)),
+      Paint()
+        ..color = const Color(0xFFFF5A5A).withValues(alpha: (1 - pulseT) * 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
+    final tpStop = TextPainter(
+      text: const TextSpan(children: [
+        TextSpan(text: '⛔ 정지\n',
+          style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, height: 1.1)),
+        TextSpan(text: '우측 사각지대 보행자 검출',
+          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+      ]),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    )..layout(maxWidth: 240);
+    tpStop.paint(canvas, Offset(stopBg.left + (stopBg.width - tpStop.width) / 2, stopBg.top + 6));
   }
 
   /// 보행자 — 시안 원기둥 (몸통) + 작은 구 (머리) + 바닥 펄스 링
@@ -2328,22 +2310,27 @@ class _Bev3DVoxelPainter extends CustomPainter {
       }
       final isCameraShake = cameraShakeRatio > 0.45;  // 45% 이상 cell 움직임 = shake
 
-      // 1) 활성 셀 binary mask — 점유 ≥ 0.50 + motion ≥ 0.15 (더 엄격)
-      // 카메라 shake 시 mask 비활성화 (silhouette 0)
-      final mask = List<bool>.filled(rows * cols, false);
+      // 1) 두 가지 mask:
+      //   - motionMask: motion ≥ 0.15 → 움직이는 객체 (고신뢰)
+      //   - staticMask: edge 강 + motion 낮음 → 정지 객체 (저신뢰)
+      final motionMask = List<bool>.filled(rows * cols, false);
+      final staticMask = List<bool>.filled(rows * cols, false);
       if (!isCameraShake) {
         for (int r = 0; r < rows; r++) {
           for (int c = 0; c < cols; c++) {
             final p = ((flat[r * cols + c] ?? 0) as num).toDouble();
             if (p < 0.50) continue;
-            if (hasMotion) {
-              final m = ((motionFlat[r * cols + c] ?? 0) as num).toDouble();
-              if (m < 0.15) continue;  // 움직임 임계 0.08 → 0.15 (더 엄격)
+            final m = hasMotion ? ((motionFlat[r * cols + c] ?? 0) as num).toDouble() : 0.0;
+            if (m >= 0.15) {
+              motionMask[r * cols + c] = true;  // 움직임 객체 (사람/차량)
+            } else if (p >= 0.65 && m < 0.05) {
+              staticMask[r * cols + c] = true;  // 정지 객체 (가만히 있는 사람/차)
             }
-            mask[r * cols + c] = true;
           }
         }
       }
+      // alias for downstream code
+      final mask = motionMask;
 
       // 2) 8-connected 컴포넌트 클러스터링 (BFS)
       final visited = List<bool>.filled(rows * cols, false);
@@ -2455,6 +2442,59 @@ class _Bev3DVoxelPainter extends CustomPainter {
         }
       }
 
+      // ★ 정지 객체 검출 (staticMask) — 옅은 회색 outline 박스 (저신뢰도)
+      var staticHint = 0;
+      if (!isCameraShake) {
+        final visitedS = List<bool>.filled(rows * cols, false);
+        for (int r = 0; r < rows; r++) {
+          for (int c = 0; c < cols; c++) {
+            final idx = r * cols + c;
+            if (visitedS[idx] || !staticMask[idx]) { visitedS[idx] = true; continue; }
+            final queue = <List<int>>[[r, c]];
+            visitedS[idx] = true;
+            int minR = r, maxR = r, minC = c, maxC = c, scount = 0;
+            while (queue.isNotEmpty) {
+              final p = queue.removeLast();
+              final cr = p[0], cc = p[1];
+              scount++;
+              if (cr < minR) minR = cr; if (cr > maxR) maxR = cr;
+              if (cc < minC) minC = cc; if (cc > maxC) maxC = cc;
+              for (final d in dirs8) {
+                final nr = cr + d[0], nc = cc + d[1];
+                if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+                final ni = nr * cols + nc;
+                if (visitedS[ni] || !staticMask[ni]) continue;
+                visitedS[ni] = true;
+                queue.add([nr, nc]);
+              }
+            }
+            // 큰 정지 blob (≥ 6 cells) 만 표시
+            if (scount >= 6 && staticHint < 6) {
+              staticHint++;
+              final wM = (maxC - minC + 1) * cellM;
+              final lM = (maxR - minR + 1) * cellM;
+              final cxM = (((minC + maxC) / 2 + 0.5) - cols / 2) * cellM;
+              final czM = ((minR + maxR) / 2 + 0.5) * cellM;
+              // 옅은 회색 outline box (정지 = 저신뢰도)
+              final p1 = _project(cxM - wM/2, 0, czM - lM/2, cx, cz, size);
+              final p2 = _project(cxM + wM/2, 0, czM - lM/2, cx, cz, size);
+              final p3 = _project(cxM + wM/2, 0, czM + lM/2, cx, cz, size);
+              final p4 = _project(cxM - wM/2, 0, czM + lM/2, cx, cz, size);
+              final outlinePath = Path()
+                ..moveTo(p1.dx, p1.dy)..lineTo(p2.dx, p2.dy)
+                ..lineTo(p3.dx, p3.dy)..lineTo(p4.dx, p4.dy)..close();
+              canvas.drawPath(outlinePath, Paint()
+                ..color = const Color(0xFF8090A8).withValues(alpha: 0.15)
+                ..style = PaintingStyle.fill);
+              canvas.drawPath(outlinePath, Paint()
+                ..color = const Color(0xFFA0B0C8).withValues(alpha: 0.55)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1.0);
+            }
+          }
+        }
+      }
+
       // 4) 잔여 voxel dots (background, 옅게)
       var dotCount = 0;
       for (int r = 0; r < rows; r++) {
@@ -2471,13 +2511,15 @@ class _Bev3DVoxelPainter extends CustomPainter {
         }
       }
 
-      // 카운터 — 우상단 (신뢰도 명시)
+      // 카운터 — 우상단 (신뢰도 명시) + FPS
       final totalDetect = personHint + vehicleHint;
+      final fpsStr = fps > 0 ? ' · ${fps.toStringAsFixed(0)} fps' : '';
+      final staticStr = staticHint > 0 ? ' · 정지 $staticHint' : '';
       final summary = isCameraShake
-          ? '카메라 흔들림 (${(cameraShakeRatio*100).toStringAsFixed(0)}%) · 검출 일시정지'
+          ? '카메라 흔들림 (${(cameraShakeRatio*100).toStringAsFixed(0)}%)$fpsStr'
           : totalDetect > 0
-            ? 'LIVE · 사람 $personHint · 차량 $vehicleHint · 휴리스틱'
-            : '대기 — 움직이는 객체 없음';
+            ? '사람 $personHint · 차량 $vehicleHint$staticStr$fpsStr'
+            : (staticHint > 0 ? '정지 객체 $staticHint$fpsStr' : '대기$fpsStr');
       final tp = TextPainter(
         text: TextSpan(text: summary,
           style: TextStyle(
@@ -2496,10 +2538,10 @@ class _Bev3DVoxelPainter extends CustomPainter {
       )..layout(maxWidth: size.width - 16);
       tp2.paint(canvas, const Offset(8, 6));
       // 검출 0개 또는 카메라 shake 시 화면 안내
-      if (totalDetect == 0 || isCameraShake) {
+      if ((totalDetect == 0 && staticHint == 0) || isCameraShake) {
         final msg = isCameraShake
             ? '📱 카메라 흔들림 감지 (${(cameraShakeRatio*100).toStringAsFixed(0)}%)\n폰 고정 시 객체 검출 재개'
-            : '카메라 시야에 움직이는 객체 없음\n(정지 객체는 표시 안 됨 — false positive 방지)';
+            : '카메라 시야에 객체 없음';
         final tp3 = TextPainter(
           text: TextSpan(text: msg,
             style: TextStyle(color: isCameraShake ? _warn : _muted, fontSize: 11, fontWeight: FontWeight.w700, height: 1.4)),

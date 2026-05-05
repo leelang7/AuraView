@@ -85,9 +85,12 @@
 
 | 지표 | 측정값 | 출처 |
 |---|---:|---|
-| Risk Transformer **AUC** | **0.938** | `models/risk_transformer_metric.json` |
-| F1 @ 0.5 | 0.905 | 상동 (n=1000, 라벨 노이즈 6%) |
-| 사고 재현 영상 평균 **선행 경고 시간** | **5.72s** | 합성 시나리오 3종 |
+| Risk Transformer **AUC** (trained PyTorch) | **0.9403** | `models/risk_transformer_trained_metric.json` |
+| F1 @ 0.5 | **0.9412** | 상동 (n=10,000 train+val, 4종 시나리오) |
+| Precision @ 0.5 | 0.9441 | mixed/rush_hour/night/rainy 평가 |
+| Recall @ 0.5 | 0.9384 | 분리도 +0.39 ~ +0.45 (시나리오별) |
+| 추론 latency **p99** | **1.04ms** | `/benchmark/all` · CPU 단일 코어 100회 측정 |
+| 평균 선행 경고 시간 | **3.38s** | 트레인드 모델 평균 (회피율 84.5%) |
 | 협업 인지 lift (단독 vs Fused) | **+10~31%p** | TAB ⑨ 실시간 시연 |
 | 통합 테스트 | **38 / 38 PASS** | `backend/tests/` (18 endpoint + 12 collab unit + 8 impact/positioning) |
 

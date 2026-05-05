@@ -116,11 +116,42 @@ function captureFrame() {
   return { entropy, motion };
 }
 
+/// AuraView 컨셉 시나리오 — voxel grid 기반 occlusion 감지 (네이티브 동일).
 function reasonFor(entropy, motion) {
-  if (entropy >= 0.75) return 'high_entropy';
-  if (motion >= 0.7)   return 'motion_spike';
+  // bevData 가 있으면 voxel 분석으로 occlusion 시나리오 우선
+  if (bevData && Array.isArray(bevData.grid_flat) && bevData.grid_flat.length === 1600) {
+    const flat = bevData.grid_flat;
+    const COLS = 40;
+    let upperCenter = 0, leftEdge = 0, rightEdge = 0, bigBlobCenter = 0;
+    for (let r = 25; r < 38; r++) {
+      for (let c = 14; c < 26; c++) upperCenter += flat[r * COLS + c];
+    }
+    for (let r = 5; r < 25; r++) {
+      for (let c = 0; c < 8; c++) leftEdge += flat[r * COLS + c];
+      for (let c = 32; c < 40; c++) rightEdge += flat[r * COLS + c];
+    }
+    for (let r = 8; r < 22; r++) {
+      for (let c = 12; c < 28; c++) bigBlobCenter += flat[r * COLS + c];
+    }
+    if (upperCenter >= 30)   return 'signal_occluded';
+    if (bigBlobCenter >= 60) return 'crosswalk_blocked';
+    if (leftEdge >= 25)      return 'blind_spot_left';
+    if (rightEdge >= 25)     return 'blind_spot_right';
+  }
+  if (entropy >= 0.75 || motion >= 0.7) return 'high_uncertainty';
   if (entropy >= ENTROPY_THRESHOLD) return 'low_confidence';
   return null;
+}
+
+function reasonKo(r) {
+  return ({
+    'signal_occluded':    '🚦 신호등 가림',
+    'crosswalk_blocked':  '🚛 횡단보도 가림',
+    'blind_spot_left':    '◀ 좌측 사각지대',
+    'blind_spot_right':   '▶ 우측 사각지대',
+    'high_uncertainty':   '⚠ 시야 불확실',
+    'low_confidence':     '· 시야 흐림',
+  })[r] || ('· ' + r);
 }
 
 async function uploadFrame(entropy, reason) {
@@ -149,17 +180,18 @@ async function uploadFrame(entropy, reason) {
   }
 }
 
-/* ── Shadow Mode ── */
+/* ── Auto Capture (Shadow Mode) ── */
 async function shadowTick() {
   const feat = captureFrame();
   if (!feat) return;
   const reason = reasonFor(feat.entropy, feat.motion);
   if (reason) {
-    chip.reason.textContent = 'contributing';
-    chip.reason.classList.remove('ok', 'alert');
+    chip.reason.textContent = reasonKo(reason) + ' 기록';
+    chip.reason.classList.remove('ok');
+    chip.reason.classList.add('alert');
     await uploadFrame(feat.entropy, reason);
   } else {
-    chip.reason.textContent = 'ok';
+    chip.reason.textContent = '· 주행 중';
     chip.reason.classList.remove('alert');
     chip.reason.classList.add('ok');
   }
@@ -169,15 +201,19 @@ function startShadow() {
   if (shadowTimer) return;
   shadowTimer = setInterval(shadowTick, SHADOW_INTERVAL_MS);
   shadowTick();
-  $('startBtn').textContent = 'Shadow Mode 중지';
+  $('startBtn').innerHTML = '⏹ 주행 중지';
+  $('startBtn').style.background = 'linear-gradient(135deg,#005580,#003344)';
   $('startBtn').onclick = stopShadow;
   $('capBtn').disabled = false;
+  $('serverStatus').innerHTML = '<span style="color:var(--safe);">● 주행 중</span> — 위험 순간만 자동 기록 (PII 마스킹)';
 }
 function stopShadow() {
   clearInterval(shadowTimer);
   shadowTimer = null;
-  $('startBtn').textContent = 'Shadow Mode 시작';
+  $('startBtn').innerHTML = '🚗 주행 시작';
+  $('startBtn').style.background = 'linear-gradient(135deg,#00C8FF,#0078A8)';
   $('startBtn').onclick = startShadow;
+  $('serverStatus').innerHTML = '주행 시작 누르면 — 카메라가 자동으로 위험 순간만 기록 (PII 자동 마스킹).';
 }
 
 /* ── 수동 기여 ── */

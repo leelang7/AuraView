@@ -2996,37 +2996,43 @@ def prototype_ui():
                 camera.lookAt(0, 2, 18);
               }
 
-              // ★ 우회전 시나리오 — 보행자 안전 동작:
-              //   접근 → 정지 (보행자 대기) → 회전 → 진입 (8초 cycle)
+              // ★ 우회전 시나리오 — 10초 cycle:
+              //   접근 → 정지 → 회전 → 동쪽 진행 → 화면 밖 사라짐 → 재등장
+              //   텔레포트 방지: 마지막 가속해서 화면 밖, 그 후 invisible
               if (threeCtx.scenarioId === 'right_turn_pedestrian') {
-                const cycle = (threeCtx.t % 8.0) / 8.0;
+                const cycle = (threeCtx.t % 10.0) / 10.0;
                 let egoX, egoZ, egoYawRad;
-                if (cycle < 0.20) {
-                  // 정지선 접근
-                  const p = cycle / 0.20;
+                let egoVisible = true;
+                if (cycle < 0.16) {
+                  const p = cycle / 0.16;
                   egoX = 0; egoZ = p * 22; egoYawRad = 0;
-                } else if (cycle < 0.55) {
-                  // ★ 정지선 직전 정지 — 보행자 통과 대기
+                } else if (cycle < 0.44) {
                   egoX = 0; egoZ = 22; egoYawRad = 0;
-                } else if (cycle < 0.85) {
-                  // 보행자 통과 → 우회전 곡선
-                  const p = (cycle - 0.55) / 0.30;
+                } else if (cycle < 0.68) {
+                  const p = (cycle - 0.44) / 0.24;
                   egoX = 18 * p * p;
                   egoZ = 22 + 10 * p;
                   egoYawRad = -(Math.PI / 2) * p;
-                } else {
-                  // 가로 도로 동쪽 진입
-                  const p = (cycle - 0.85) / 0.15;
-                  egoX = 18 + p * 4;
+                } else if (cycle < 0.88) {
+                  // 동쪽 가속해서 화면 밖
+                  const p = (cycle - 0.68) / 0.20;
+                  egoX = 18 + p * 32;  // 18→50
                   egoZ = 32;
                   egoYawRad = -Math.PI / 2;
+                  if (p > 0.7) egoVisible = false;
+                } else {
+                  // 사라진 상태 (텔레포트 안 보임)
+                  egoVisible = false;
+                  egoX = 0; egoZ = 0; egoYawRad = 0;
                 }
                 egoGroup.position.set(egoX, 0, egoZ);
                 egoGroup.rotation.y = egoYawRad;
+                egoGroup.visible = egoVisible;
               } else {
                 // 정지 (원점)
                 egoGroup.position.set(0, 0, 0);
                 egoGroup.rotation.y = 0;
+                egoGroup.visible = true;
               }
 
               renderer.render(scene, camera);

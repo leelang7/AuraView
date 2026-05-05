@@ -2383,37 +2383,45 @@ class _Bev3DVoxelPainter extends CustomPainter {
       // 다른 시나리오: 원점 정지
       final scnIdForEgo = bev?['scenario_id'] as String?;
       if (scnIdForEgo == 'right_turn_pedestrian') {
-        // 8초 cycle: 접근 → 정지(보행자 대기) → 회전 → 진입 → 리셋
-        // 보행자 안전 우선 동작 시연
-        final cycle = (t % 8.0) / 8.0;
+        // 10초 cycle: 접근 → 정지(보행자 대기) → 회전 → 동쪽 진행 → 화면 밖 사라짐 → 재등장
+        // ★ 텔레포트 방지: 마지막에 가속해서 화면 밖으로 빠지고 일시적으로 invisible
+        final cycle = (t % 10.0) / 10.0;
         double egoX, egoZ, egoYawDeg;
         bool isStopped = false;
-        if (cycle < 0.20) {
+        bool egoVisible = true;
+        if (cycle < 0.16) {
           // 정지선 접근 (z=0→22m)
-          final p = cycle / 0.20;
+          final p = cycle / 0.16;
           egoX = 0;
           egoZ = p * 22;
           egoYawDeg = 0;
-        } else if (cycle < 0.55) {
-          // ★ 정지선 직전 정지 — 보행자 횡단 대기
+        } else if (cycle < 0.44) {
+          // ★ 정지선 직전 정지 — 보행자 횡단 대기 (2.8초)
           egoX = 0;
           egoZ = 22;
           egoYawDeg = 0;
           isStopped = true;
-        } else if (cycle < 0.85) {
+        } else if (cycle < 0.68) {
           // 보행자 통과 → 우회전 곡선
-          final p = (cycle - 0.55) / 0.30;
+          final p = (cycle - 0.44) / 0.24;
           egoX = 18 * p * p;
           egoZ = 22 + 10 * p;
           egoYawDeg = 90 * p;
-        } else {
-          // 가로 도로 동쪽 진입
-          final p = (cycle - 0.85) / 0.15;
-          egoX = 18 + p * 4;
+        } else if (cycle < 0.88) {
+          // 가로 도로 동쪽 가속 진행 → 화면 밖 (x 18→50)
+          final p = (cycle - 0.68) / 0.20;
+          egoX = 18 + p * 32;  // 18→50 (화면 밖)
           egoZ = 32;
           egoYawDeg = 90;
+          if (p > 0.7) egoVisible = false;  // 거의 화면 밖이면 숨김
+        } else {
+          // ★ 사라진 상태 — 다음 cycle 시작 대기 (텔레포트 안 보임)
+          egoVisible = false;
+          egoX = 0; egoZ = 0; egoYawDeg = 0;
         }
-        _drawEgoAtAngle(canvas, size, egoX, egoZ, egoYawDeg, cx, cz, brakeOn: isStopped);
+        if (egoVisible) {
+          _drawEgoAtAngle(canvas, size, egoX, egoZ, egoYawDeg, cx, cz, brakeOn: isStopped);
+        }
       } else {
         // 정지 (원점)
         _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);

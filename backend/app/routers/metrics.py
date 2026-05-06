@@ -133,6 +133,105 @@ def competition_kpis():
     }
 
 
+@router.get("/data-attribution")
+def data_attribution():
+    """공공데이터 출처·라이센스 명시 — 경진대회 제출 의무 항목.
+
+    각 데이터 출처마다 어떤 endpoint 에 결합되는지 + 라이센스 + URL 링크 노출.
+    """
+    return {
+        "as_of": datetime.utcnow().isoformat() + "Z",
+        "license_self": "MIT — github.com/leelang7/AuraView",
+        "data_sources": [
+            {
+                "id": "signal",
+                "name": "교통안전 실시간 신호정보",
+                "provider": "도로교통공단",
+                "origin": "apis.data.go.kr/B551982/rti",
+                "license": "공공데이터 이용약관 — 제3자 활용 가능",
+                "used_in": ["/fusion/intersection/{id}", "scenario:signal_occlusion"],
+            },
+            {
+                "id": "vds",
+                "name": "VDS 실시간 소통",
+                "provider": "한국도로공사",
+                "origin": "data.ex.co.kr/openapi",
+                "license": "한국도로공사 공공데이터 약관",
+                "used_in": ["/fusion/intersection/{id}", "services/bidirectional.py"],
+            },
+            {
+                "id": "incidents",
+                "name": "한국도로공사 돌발상황",
+                "provider": "한국도로공사",
+                "origin": "data.ex.co.kr/openapi",
+                "license": "한국도로공사 공공데이터 약관",
+                "used_in": ["/fusion/intersection/{id}"],
+            },
+            {
+                "id": "taas",
+                "name": "TAAS 교통사고분석",
+                "provider": "도로교통공단",
+                "origin": "taas.koroad.or.kr/openapi",
+                "license": "공공데이터 이용약관 (TAAS 별도 활용 신청)",
+                "used_in": ["/heatmap/taas", "/impact baseline (2024)", "scenario:night_pedestrian"],
+            },
+            {
+                "id": "its",
+                "name": "ITS 국가교통정보센터",
+                "provider": "국토교통부",
+                "origin": "openapi.its.go.kr:9443",
+                "license": "공공데이터 이용약관",
+                "used_in": ["/fusion/intersection/{id}", "scenario:motorcycle_blindspot"],
+            },
+            {
+                "id": "dsz",
+                "name": "데이터안심구역 결합결과",
+                "provider": "국토교통부",
+                "origin": "dta.molit.go.kr",
+                "license": "데이터안심구역 운영지침 — 가명결합 k=5 익명",
+                "used_in": ["/dsz/verify", "/dsz/join/taas-vds", "scenario:school_zone"],
+            },
+        ],
+        "static_datasets": [
+            {
+                "name": "AIHub 도로장애물·돌발상황",
+                "provider": "한국지능정보사회진흥원 (AIHub)",
+                "license": "AIHub 데이터 이용약관 — 비상업·연구",
+                "used_in": ["YOLOv8 detection 학습", "scenario:truck_occlusion"],
+            },
+            {
+                "name": "AIHub 이륜·보행자 위험상황",
+                "provider": "AIHub",
+                "license": "AIHub 데이터 이용약관",
+                "used_in": ["VRU intent prediction", "scenario:motorcycle_blindspot"],
+            },
+            {
+                "name": "Roboflow K-LISA traffic-light",
+                "provider": "Roboflow Universe (CC-BY-4.0)",
+                "license": "Creative Commons BY 4.0",
+                "used_in": ["신호등 분류"],
+            },
+            {
+                "name": "nuScenes BEV subset",
+                "provider": "Motional / Aptiv",
+                "license": "nuScenes Non-Commercial",
+                "used_in": ["BEV occupancy 평가"],
+            },
+        ],
+        "third_party_libs": {
+            "PyTorch": "BSD-3 (Meta AI)",
+            "FastAPI": "MIT (Sebastián Ramírez)",
+            "Three.js": "MIT (mrdoob et al.)",
+            "Flutter": "BSD-3 (Google)",
+            "matplotlib": "PSF/Matplotlib license",
+            "OpenCV": "Apache 2.0",
+            "Ultralytics YOLO": "AGPL-3.0",
+        },
+        "verification_endpoint": "/fusion/sources",
+        "note": "stub fallback 응답인 경우 mode='stub' 으로 명시 — judge 가 즉시 식별 가능. ALLOW_FALLBACK=0 으로 설정 시 fallback 비활성.",
+    }
+
+
 @router.get("/scoreboard")
 def scoreboard():
     """경진대회 평가 항목별 자체 채점 — 심사위원 가독성."""

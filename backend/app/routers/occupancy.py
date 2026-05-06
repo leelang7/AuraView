@@ -527,6 +527,32 @@ def _build_scene(name: str, phase: float):
     return grid, cls, hotspots
 
 
+@router.get("/compare")
+def occupancy_compare():
+    """8 시나리오 메타 정보 한 응답 — 심사위원 매트릭스 시각화용.
+
+    각 시나리오의 title/risk/lead_time/primary_threat 만 추려서 반환 (voxel 데이터 X).
+    /occupancy/demo?scenario={id} 로 개별 voxel 그리드 호출 가능.
+    """
+    return {
+        "scenarios": [
+            {
+                "id": sid,
+                "title": meta.get("title"),
+                "p_collision": meta.get("p_collision"),
+                "lead_time_s": meta.get("lead_time_s"),
+                "ego_speed_kmh": meta.get("ego_speed_kmh"),
+                "primary_threat": meta.get("primary_threat"),
+                "advantage": meta.get("advantage"),
+                "alert_text": meta.get("alert_text"),
+                "demo_url": f"/occupancy/demo?scenario={sid}",
+            }
+            for sid, meta in _SCENARIOS.items()
+        ],
+        "count": len(_SCENARIOS),
+    }
+
+
 @router.get("/demo")
 def occupancy_demo(scenario: str = "truck_occlusion"):
     """BEV occupancy 데모 — 시나리오별 객체별 클래스 라벨 grid 반환.

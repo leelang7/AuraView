@@ -2644,6 +2644,7 @@ def prototype_ui():
           let occMode = '2d';
           let lastOccData = null;
           let threeCtx = null;   // { renderer, scene, camera, voxels }
+          let threeCtxLights = null;   // 시나리오별 조명 dynamic 조정
 
           function setOccMode(mode) {
             occMode = mode;
@@ -2817,11 +2818,13 @@ def prototype_ui():
             camera.position.set(0, 28, -22);
             camera.lookAt(0, 0, 20);
 
-            // Lighting
-            scene.add(new THREE.AmbientLight(0x88aacc, 0.6));
+            // Lighting — 시나리오에 따라 동적 조정 (night_pedestrian 시 dim)
+            const ambientLight = new THREE.AmbientLight(0x88aacc, 0.6);
+            scene.add(ambientLight);
             const dir = new THREE.DirectionalLight(0xffffff, 0.9);
             dir.position.set(30, 50, 10);
             scene.add(dir);
+            threeCtxLights = {ambient: ambientLight, dir};
 
             // ─────── 도심 4지 교차로 (Korean urban intersection) ───────
             // 좌표: ego 진행 방향 +Z, 좌우 X. 자차 차로 ego→교차로 (z=24m 정지선)
@@ -3119,6 +3122,37 @@ def prototype_ui():
             const ctx = ensureThree();
             // ★ 시나리오 ID 저장 — animate() 가 ego 애니메이션 결정
             ctx.scenarioId = data.scenario_id || null;
+
+            // ★ 시나리오별 환경 큐 — 조명/배경 dynamic 조정
+            //   night_pedestrian: 어둡게 (헤드라이트 한계 시각화)
+            //   rainy_intersection: 푸른 회색 톤
+            //   school_zone: 노란빛 (안전 표지 분위기)
+            if (threeCtxLights && ctx.scene) {
+              const sid = ctx.scenarioId;
+              if (sid === 'night_pedestrian') {
+                threeCtxLights.ambient.color.setHex(0x223344);
+                threeCtxLights.ambient.intensity = 0.20;
+                threeCtxLights.dir.intensity = 0.25;
+                ctx.scene.background = new THREE.Color(0x010205);
+              } else if (sid === 'rainy_intersection') {
+                threeCtxLights.ambient.color.setHex(0x6688aa);
+                threeCtxLights.ambient.intensity = 0.45;
+                threeCtxLights.dir.intensity = 0.55;
+                ctx.scene.background = new THREE.Color(0x0a1218);
+              } else if (sid === 'school_zone') {
+                threeCtxLights.ambient.color.setHex(0xaacc88);
+                threeCtxLights.ambient.intensity = 0.65;
+                threeCtxLights.dir.intensity = 1.0;
+                ctx.scene.background = new THREE.Color(0x080c0a);
+              } else {
+                // 기본 (기타 시나리오)
+                threeCtxLights.ambient.color.setHex(0x88aacc);
+                threeCtxLights.ambient.intensity = 0.6;
+                threeCtxLights.dir.intensity = 0.9;
+                ctx.scene.background = new THREE.Color(0x04080e);
+              }
+            }
+
             // Clear previous voxels
             while (ctx.voxelGroup.children.length) {
               const m = ctx.voxelGroup.children.pop();

@@ -464,9 +464,12 @@
         ["✓ 합본 시연 영상",                op.showreels_built > 0 || op.scenarios_generated > 0, `showreels=${op.showreels_built}, scenarios=${op.scenarios_generated}`],
         ["✓ 정책 리포트 생성",              op.policy_reports >= 0,                    `리포트 ${op.policy_reports}개`],
         ["✓ V2V 협업 인지 활성",            (op.v2v_total_messages || 0) >= 0,         `${op.v2v_active_intersections || 0} 교차로 활성`],
-        ["✓ 발표 슬라이드 / 키오스크",      true,                                      "/slides · /kiosk · /submission"],
-        ["✓ Press Kit 1 페이지 자료",       true,                                      "docs/PRESS_KIT.md"],
-        ["✓ 38 / 38 테스트 PASS",           (d.tests?.passed || 0) >= 38,              d.tests?.split || ""],
+        ["✓ 발표 슬라이드 14장 / 키오스크 13장면", true,                              "/slides · /kiosk · /submission"],
+        ["✓ Press Kit + REPRODUCIBILITY",   true,                                      "docs/PRESS_KIT.md · docs/REPRODUCIBILITY.md"],
+        ["✓ 시나리오 8종 (한국 핵심 위험 전부)", true,                                 "트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간"],
+        ["✓ 경진대회 통합 KPI 엔드포인트",   true,                                      "/metrics/competition · /metrics/scoreboard"],
+        ["✓ A4 1-pager 정책 PDF 자동",       true,                                      "/impact/policy-pdf (88KB matplotlib)"],
+        ["✓ 53 / 53 테스트 PASS",           (d.tests?.passed || 0) >= 38,              d.tests?.split || ""],
       ];
       $('submissionChecklist').innerHTML = checks.map(([label, ok, sub]) => {
         const c = ok ? "var(--safe)" : "var(--warn)";

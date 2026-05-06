@@ -176,3 +176,52 @@ def test_healthz_details_has_scenarios_and_competition_endpoints():
     assert "metrics_kpi" in ce
     assert "policy_pdf" in ce
     assert ce["metrics_kpi"].startswith("/metrics")
+
+
+# ─── /metrics/data-attribution ────────────────────────────────────────
+def test_data_attribution_lists_6_public_sources():
+    """경진대회 출처 명시 의무 — 6종 공공데이터 + 정적 데이터셋 + 라이브러리."""
+    r = client.get("/metrics/data-attribution")
+    assert r.status_code == 200
+    j = r.json()
+    sources = j.get("data_sources", [])
+    assert len(sources) == 6
+    ids = {s["id"] for s in sources}
+    assert ids >= {"signal", "vds", "incidents", "taas", "its", "dsz"}
+    for s in sources:
+        assert "license" in s
+        assert "provider" in s
+        assert "used_in" in s and isinstance(s["used_in"], list)
+
+
+def test_data_attribution_includes_static_datasets_and_libs():
+    r = client.get("/metrics/data-attribution")
+    j = r.json()
+    assert isinstance(j.get("static_datasets", []), list)
+    assert len(j["static_datasets"]) >= 3
+    libs = j.get("third_party_libs", {})
+    assert "PyTorch" in libs and "FastAPI" in libs and "Three.js" in libs
+
+
+# ─── /occupancy/compare ───────────────────────────────────────────────
+def test_occupancy_compare_returns_8_scenarios():
+    r = client.get("/occupancy/compare")
+    assert r.status_code == 200
+    j = r.json()
+    assert j["count"] == 8
+    ids = {s["id"] for s in j["scenarios"]}
+    expected = {
+        "truck_occlusion", "motorcycle_blindspot", "signal_occlusion",
+        "rainy_intersection", "right_turn_pedestrian",
+        "school_zone", "bicycle_lane", "night_pedestrian",
+    }
+    assert ids == expected
+
+
+def test_occupancy_compare_has_demo_url_per_scenario():
+    r = client.get("/occupancy/compare")
+    for s in r.json()["scenarios"]:
+        assert s["demo_url"].startswith("/occupancy/demo")
+        assert s["id"] in s["demo_url"]
+        assert isinstance(s["p_collision"], (int, float))
+        assert 0.0 <= s["p_collision"] <= 1.0

@@ -21,6 +21,9 @@ def test_metrics_competition_has_all_axes():
     # 4 main axes for judges
     for k in ("model_performance", "impact_estimate", "public_data_fusion", "verification"):
         assert k in j, f"missing axis: {k}"
+    # Build traceability
+    assert "git_sha" in j
+    assert "version" in j
     # KPI numerical sanity
     mp = j["model_performance"]
     assert mp["auc"] is not None
@@ -158,3 +161,18 @@ def test_night_pedestrian_has_oncoming_vehicle_hotspot():
     labels = " ".join(h.get("label", "") for h in body.get("hotspots", []))
     # 마주오는 차량 하트스팟은 항상 있어야 (V2V headlight share 시연)
     assert "마주오는" in labels or "헤드라이트" in labels
+
+
+# ─── /healthz/details enhancements ────────────────────────────────────
+def test_healthz_details_has_scenarios_and_competition_endpoints():
+    """심사위원이 한 번의 healthz 호출로 신규 기능 위치 파악 가능."""
+    r = client.get("/healthz/details")
+    assert r.status_code == 200
+    j = r.json()
+    scns = j.get("scenarios_supported", [])
+    for s in ("school_zone", "bicycle_lane", "night_pedestrian"):
+        assert s in scns, f"healthz missing scenario {s}"
+    ce = j.get("competition_endpoints", {})
+    assert "metrics_kpi" in ce
+    assert "policy_pdf" in ce
+    assert ce["metrics_kpi"].startswith("/metrics")

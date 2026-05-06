@@ -30,6 +30,22 @@ def _read_json(rel: str) -> Dict[str, Any]:
         return {}
 
 
+def _git_sha() -> str:
+    """검증 가능한 빌드 식별자 — README/WHITEPAPER 의 숫자가 어떤 commit 의 결과인지 명시."""
+    try:
+        head = Path(__file__).resolve().parents[3] / ".git" / "HEAD"
+        if not head.exists():
+            return "unknown"
+        ref = head.read_text(encoding="utf-8").strip()
+        if ref.startswith("ref: "):
+            ref_path = Path(__file__).resolve().parents[3] / ".git" / ref[5:]
+            if ref_path.exists():
+                return ref_path.read_text(encoding="utf-8").strip()[:12]
+        return ref[:12]
+    except Exception:
+        return "unknown"
+
+
 @router.get("/competition")
 def competition_kpis():
     """경진대회 헤드라인 KPI — 한 응답에 모두."""
@@ -73,7 +89,8 @@ def competition_kpis():
     return {
         "as_of": datetime.utcnow().isoformat() + "Z",
         "service": "AuraView K-Perception",
-        "version": "0.5-quantified-impact",
+        "version": "0.6-competition-ready",
+        "git_sha": _git_sha(),
         "model_performance": {
             "auc": model_metric.get("auc", 0.9403),
             "f1": model_metric.get("f1", 0.9412),

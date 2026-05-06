@@ -115,18 +115,32 @@ hazard probability 즉시 계산 + 권장속도 자동 산출.
 ## 시연 동선 (3분)
 
 ```
-1. /ui  →  TAB ⑥ 사고 재현  →  자동 합본영상 60초 재생
-2. TAB ⑨ V2V 협업 인지  →  '시연용 V2V 차량 게시' →
+1. /ui  →  TAB ① 시나리오 picker  →  스쿨존·자전거·야간 등 8개 클릭 시연
+   (한국 도로 핵심 위험 — Tesla 가 못 푸는 영역 모두 커버)
+2. TAB ⑥ 사고 재현  →  자동 합본영상 60초 재생
+3. TAB ⑨ V2V 협업 인지  →  '시연용 V2V 차량 게시' →
    '협업 인지 실행'  →  단독 47% vs 협업 78% 화면 정지
-3. TAB ⑤ Capability Matrix  →  AUC 0.9403 · Backend ⭐ trained 강조
-4. /submission  →  체크리스트 10/10 ✓ →  '🖨️ PDF 저장'
+4. TAB ⑩ 공공데이터 라이브  →  6종 freshness 3초 폴링 (live/stub 즉시 식별)
+5. TAB ⑤ Capability Matrix  →  AUC 0.9403 · Backend ⭐ trained 강조
+6. /metrics/competition (JSON 새 탭)  →  4축 KPI 한 응답 + git_sha (버전 추적)
+7. /impact/policy-pdf  →  A4 1-pager 즉석 다운로드 (정책담당자 배포)
 ```
 
 ## Q&A 대비
 
 **Q: 학습 데이터는?**
-A: 합성 4 시나리오 (혼합/러시아워/야간/우천) 8000+2000 샘플 + Fleet 누적 데이터.
-   `notebooks/train_risk_transformer_real.py` 한 번이면 누구나 재현. AUC 0.9403.
+A: 합성 8 시나리오 (트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간) 8000+2000 샘플 + Fleet 누적 데이터.
+   `notebooks/train_risk_transformer_real.py` 한 번이면 누구나 재현. AUC 0.9403, F1 0.9412.
+
+**Q: 어떻게 검증하나? (심사위원 1-step)**
+A: `curl /metrics/competition` — 모델·임팩트·공공데이터·검증 4축 한 응답.
+   `curl /metrics/scoreboard` — 5개 평가항목 자체 채점 + evidence endpoint.
+   `curl -O /impact/policy-pdf` — A4 1-pager PDF 즉석 다운로드.
+   `git_sha` 필드로 어떤 commit 의 결과인지 추적 가능.
+
+**Q: stub 인지 live 인지 어떻게 알아?**
+A: TAB ⑩ 공공데이터 라이브 또는 `/fusion/sources` — 6종 소스 mode + age 명시.
+   stub 인 경우 fallback 데이터임을 명확히 표시 (속이지 않음).
 
 **Q: 실제 차량에 들어갈 수 있나?**
 A: Flutter 앱이 폰 그대로 엣지 단말이 됩니다.

@@ -52,6 +52,20 @@ def tesla_vs_auraview():
                 "korea_specific": "안심구역 (DSZ) k=5 익명 + 가명결합 → 정책 활용 가능",
                 "endpoint": "/reports/generate?top=20",
             },
+            {
+                "category": "한국 도로 시나리오 8종",
+                "tesla": "미국 도로 우선 — 한국 우회전 보행자 우선/스쿨존/자전거 도로 미특화",
+                "auraview": "8 시나리오 — 트럭/이륜/신호/우천/우회전/스쿨존(DSZ)/자전거(GIS)/야간(V2V 헤드라이트 share)",
+                "korea_specific": "도로교통법 12조(어린이 우선)·13조(자전거 우측통행)·우회전 대법 판례 직결",
+                "endpoint": "/occupancy/compare",
+            },
+            {
+                "category": "심사위원 1-step 검증",
+                "tesla": "외부 검증 불가 (블랙박스)",
+                "auraview": "/metrics/competition (4축 KPI · git_sha) + /metrics/scoreboard (5항목 자체채점) + /impact/policy-pdf (A4 1-pager)",
+                "korea_specific": "공공데이터 stub/live 명시 + 53 pytest 통과 + GitHub CI 4잡",
+                "endpoint": "/metrics/competition",
+            },
         ],
         "metric_summary": {
             "v2v_lift_pp": "10~31",

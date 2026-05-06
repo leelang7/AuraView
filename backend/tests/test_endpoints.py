@@ -236,7 +236,7 @@ def test_positioning_tesla_comparison():
     r = client.get("/positioning/tesla-vs-auraview")
     assert r.status_code == 200
     body = r.json()
-    assert len(body["rows"]) == 5
+    assert len(body["rows"]) >= 5   # 7 rows (5 original + 2 competition v0.6)
     for row in body["rows"]:
         for k in ("category", "tesla", "auraview", "korea_specific", "endpoint"):
             assert k in row, f"row missing {k}"

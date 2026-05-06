@@ -33,6 +33,25 @@
 
 ---
 
+## B-2. 시연 시나리오 8종 — 데이터 결합 매핑
+
+각 시나리오가 어떤 공공데이터 + 학습 데이터 + 자체 prior 를 결합하는지 추적표.
+
+| # | 시나리오 | 핵심 결합 데이터 | 차별 prior |
+|---|---|---|---|
+| 1 | `truck_occlusion` | AIHub 도로장애물 + 신호 API | occlusion shadow +0.55 |
+| 2 | `motorcycle_blindspot` | AIHub 이륜 + ITS 차로별 속도 | BEV 사각 sweep |
+| 3 | `signal_occlusion` | Roboflow 신호등 + ITS + V2V 풀 | 신호 API 결합 |
+| 4 | `rainy_intersection` | 기상청 RDR + AIHub 우천 | rainy/night 가중치 +0.45 |
+| 5 | `right_turn_pedestrian` | 도로교통공단 우회전 사고 + V2V | 회전 sweep zone |
+| 6 | `school_zone` | **DSZ (국토부 데이터안심구역)** + 학교 위치 GIS | 등하교 시간대 +0.62 |
+| 7 | `bicycle_lane` | 도로 GIS 자전거 레이어 + V2V 후방 | 자전거 도로 prior +0.40 |
+| 8 | `night_pedestrian` | TAAS 야간 사고 + V2V 마주오는 차 | 헤드라이트 share + 환경 +0.45 |
+
+응답: `GET /occupancy/demo?scenario={name}` → `class_grid_flat` (40×40), `hotspots[]`, `risk_summary`, `available_scenarios`.
+
+---
+
 ## C. 가명정보 결합 (TAAS × VDS 예시)
 
 ### 결합 대상

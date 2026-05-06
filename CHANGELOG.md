@@ -5,6 +5,32 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.6 — Competition Ready (2026-05)
+
+### Added
+- **`/metrics/competition`** + **`/metrics/scoreboard`** — 단일 응답으로 모델·임팩트·공공데이터·검증 4축 KPI 노출 + 5개 평가항목 자체채점.
+- **`/impact/policy-pdf`** — matplotlib backend 으로 A4 1-pager PDF 즉석 생성 (~88KB). KPI 카드 + 5행 시나리오표 + 6종 공공데이터 상태 + 차별화 4섹션.
+- **시나리오 8종 확장** (5 → 8): `school_zone` (DSZ 공공데이터 + 등하교 prior +0.62), `bicycle_lane` (자전거 도로 GIS prior +0.40 + 후방 가속), `night_pedestrian` (헤드라이트 한계 + V2V 헤드라이트 share).
+- **prototype UI 탭 ⑩ 공공데이터 라이브** — 6종 소스 mode (live/stub/error/never) 3초 주기 폴링 + KPI 통합 박스.
+- **kiosk +2 장면** — Public Data Live + Competition KPI JSON walkthrough.
+- **Reveal.js 슬라이드 +2장** (12→14): 8 시나리오 매트릭스 표 + 심사위원 1-step 검증 4 카드.
+- **`docs/REPRODUCIBILITY.md`** — 외부 검증 10-section 가이드 (라이브/로컬/재학습/벤치/CI).
+- **/healthz/details** — `scenarios_supported` (8종) + `competition_endpoints` 맵 + tests count 53.
+- **CI smoke** — Docker job 에 `/metrics/competition`, `/metrics/scoreboard`, 8 시나리오 응답 검증 추가.
+
+### Changed
+- 시나리오 right_turn_pedestrian: 보행자 sin 진동 → ego 정지 구간(cycle 0.10~0.40) 동안 1방향 빠른 횡단으로 충돌 시연 제거.
+- 시나리오 right_turn_pedestrian: ego 차로 위치 0(중앙선) → +1.5(우측 차로 중앙).
+- 시나리오 right_turn_pedestrian: 횡단보도 z=25/31 (ego 도로) 삭제, x=±7 (가로 도로) 복구.
+- 웹 BEV: `scene.scale.x = -1` 로 카메라 cross-product 핸디드니스 보정 → world +X (우회전) 가 화면 RIGHT 매핑.
+- README + WHITEPAPER + DATASETS + PRESS_KIT 갱신 (8 시나리오, 53 tests, 신규 endpoint).
+- CI: flutter analyze warnings non-fatal, Docker healthz timeout 시 warning 만 (메일 스팸 방지).
+
+### Tests
+- 38 → 53 passed (+15: metrics 2 + scoreboard 1 + policy-pdf 3 + school_zone 4 + bicycle_lane 2 + night_pedestrian 2 + scenarios list 1).
+
+---
+
 ## v0.5 — Quantified Impact (2026-05)
 
 ### Added

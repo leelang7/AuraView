@@ -2398,55 +2398,103 @@ class _Bev3DVoxelPainter extends CustomPainter {
       );
     }
 
-      // ── EGO 차량 (DEMO 시나리오)
-      // 우회전 시나리오: ego가 회전 경로 따라 움직임
-      // 다른 시나리오: 원점 정지
+      // ── EGO 차량 (DEMO 시나리오) — 모든 시나리오 wall-clock sync 통일
+      // wall-clock 10s cycle 로 backend 와 동일 기준
       final scnIdForEgo = bev?['scenario_id'] as String?;
+      final wallSecAll = DateTime.now().millisecondsSinceEpoch / 1000.0;
+      final cycleAll = (wallSecAll % 10.0) / 10.0;
+      const laneX = 1.5;   // Korean RHT 우측 차로 중앙
+
       if (scnIdForEgo == 'right_turn_pedestrian') {
-        // 10초 cycle: 접근 → 정지(보행자 대기) → 회전 → 동쪽 진행 → 화면 밖 사라짐 → 재등장
-        // ★ wall-clock sync — backend 보행자 phase 와 동일 기준
-        final wallSec = DateTime.now().millisecondsSinceEpoch / 1000.0;
-        final cycle = (wallSec % 10.0) / 10.0;
+        // 10초 cycle: 접근 → 정지(보행자 대기) → 회전 → 동쪽 진행 → 화면 밖
         double egoX, egoZ, egoYawDeg;
         bool isStopped = false;
         bool egoVisible = true;
-        // ★ Korean RHT — ego 우측 차로(world x=+1.5) 중앙 주행 (중앙선 위 X)
-        const laneX = 1.5;
-        if (cycle < 0.16) {
-          // 정지선 접근 (z=0→22m)
-          final p = cycle / 0.16;
-          egoX = laneX;
-          egoZ = p * 22;
-          egoYawDeg = 0;
-        } else if (cycle < 0.44) {
-          // ★ 정지선 직전 정지 — 보행자 횡단 대기 (2.8초)
-          egoX = laneX;
-          egoZ = 22;
-          egoYawDeg = 0;
-          isStopped = true;
-        } else if (cycle < 0.68) {
-          // 보행자 통과 → 우회전 곡선 (우측 차로 1.5 → 가로 도로 동쪽 18)
-          final p = (cycle - 0.44) / 0.24;
+        if (cycleAll < 0.16) {
+          final p = cycleAll / 0.16;
+          egoX = laneX; egoZ = p * 22; egoYawDeg = 0;
+        } else if (cycleAll < 0.44) {
+          egoX = laneX; egoZ = 22; egoYawDeg = 0; isStopped = true;
+        } else if (cycleAll < 0.68) {
+          final p = (cycleAll - 0.44) / 0.24;
           egoX = laneX + (18 - laneX) * p * p;
           egoZ = 22 + 10 * p;
           egoYawDeg = 90 * p;
-        } else if (cycle < 0.88) {
-          // 가로 도로 동쪽 가속 진행 → 화면 밖 (x 18→50)
-          final p = (cycle - 0.68) / 0.20;
-          egoX = 18 + p * 32;
-          egoZ = 32;
-          egoYawDeg = 90;
+        } else if (cycleAll < 0.88) {
+          final p = (cycleAll - 0.68) / 0.20;
+          egoX = 18 + p * 32; egoZ = 32; egoYawDeg = 90;
           if (p > 0.7) egoVisible = false;
         } else {
-          egoVisible = false;
-          egoX = laneX; egoZ = 0; egoYawDeg = 0;
+          egoVisible = false; egoX = laneX; egoZ = 0; egoYawDeg = 0;
         }
         if (egoVisible) {
           _drawEgoAtAngle(canvas, size, egoX, egoZ, egoYawDeg, cx, cz, brakeOn: isStopped);
         }
+      } else if (scnIdForEgo == 'school_zone') {
+        // 스쿨존: 진입 → 점진 감속 → 정지(어린이 출현) → 천천히 통과
+        // backend child_visible 0.30~0.55 동안 정지
+        double egoZ, egoYawDeg = 0;
+        bool isStopped = false;
+        if (cycleAll < 0.20) {
+          final p = cycleAll / 0.20;
+          egoZ = p * 14;   // 0 → 14m 진입 (35km/h 가정)
+        } else if (cycleAll < 0.30) {
+          final p = (cycleAll - 0.20) / 0.10;
+          egoZ = 14 + p * 4;   // 14 → 18m (감속 — 스쿨존 진입)
+        } else if (cycleAll < 0.55) {
+          // 어린이 출현 → 정지
+          egoZ = 18; isStopped = true;
+        } else if (cycleAll < 0.85) {
+          final p = (cycleAll - 0.55) / 0.30;
+          egoZ = 18 + p * 22;   // 18 → 40m 천천히 통과 (20km/h)
+        } else {
+          egoZ = 40; isStopped = false;
+        }
+        _drawEgoAtAngle(canvas, size, laneX, egoZ, egoYawDeg, cx, cz, brakeOn: isStopped);
+      } else if (scnIdForEgo == 'bicycle_lane') {
+        // 자전거 도로: 정지선 접근 → 우회전 신호 대기(자전거 후방 접근 감지) → 보류
+        // backend bike_visible 0.20~0.80 동안 자전거 가속
+        double egoX, egoZ, egoYawDeg;
+        bool isStopped = false;
+        if (cycleAll < 0.20) {
+          final p = cycleAll / 0.20;
+          egoX = laneX; egoZ = p * 22; egoYawDeg = 0;
+        } else if (cycleAll < 0.80) {
+          // ★ 자전거 후방 접근 → 우회전 보류 (정지)
+          egoX = laneX; egoZ = 22; egoYawDeg = 0; isStopped = true;
+        } else if (cycleAll < 0.95) {
+          final p = (cycleAll - 0.80) / 0.15;
+          egoX = laneX + (12 - laneX) * p * p;
+          egoZ = 22 + 8 * p;
+          egoYawDeg = 60 * p;
+        } else {
+          // sluggish exit
+          egoX = 12; egoZ = 30; egoYawDeg = 60;
+        }
+        _drawEgoAtAngle(canvas, size, egoX, egoZ, egoYawDeg, cx, cz, brakeOn: isStopped);
+      } else if (scnIdForEgo == 'night_pedestrian') {
+        // 야간: 고속(42km/h) 진행 → 보행자 감지(0.15~0.65) → 급제동 → 재출발
+        double egoZ, egoYawDeg = 0;
+        bool isStopped = false;
+        if (cycleAll < 0.15) {
+          final p = cycleAll / 0.15;
+          egoZ = p * 12;   // 0 → 12m 고속 진입
+        } else if (cycleAll < 0.30) {
+          final p = (cycleAll - 0.15) / 0.15;
+          egoZ = 12 + p * 4;   // 12 → 16m 급감속
+        } else if (cycleAll < 0.65) {
+          // 보행자 횡단 대기
+          egoZ = 16; isStopped = true;
+        } else if (cycleAll < 0.95) {
+          final p = (cycleAll - 0.65) / 0.30;
+          egoZ = 16 + p * 24;   // 16 → 40m 재가속
+        } else {
+          egoZ = 40;
+        }
+        _drawEgoAtAngle(canvas, size, laneX, egoZ, egoYawDeg, cx, cz, brakeOn: isStopped);
       } else {
-        // 정지 (원점)
-        _drawVoxel(canvas, size, 0, 0, 1.4, const Color(0xFF00C8FF), cx, cz);
+        // 기타 시나리오 (truck/moto/signal/rainy): ego 정지선 직전 정지 (감속·경계 시연)
+        _drawEgoAtAngle(canvas, size, laneX, 8, 0, cx, cz, brakeOn: true);
       }
     }  // end DEMO 도로 인프라 분기
 
@@ -3587,20 +3635,55 @@ class _DetailSheetState extends State<_DetailSheet> {
               highlight: widget.serverError.isEmpty ? _safe : _warn),
           _KV('백엔드', kApiBase.replaceFirst('https://', '')),
 
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
+          _SectionTitle('// 내 업로드 갤러리 (서버)'),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const _FleetGalleryScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_accent.withValues(alpha: 0.10), _accent2.withValues(alpha: 0.05)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _accent.withValues(alpha: 0.30)),
+              ),
+              child: const Row(children: [
+                Icon(Icons.photo_library_outlined, color: _accent, size: 22),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('서버에 업로드된 이미지 보기',
+                        style: TextStyle(color: _text, fontSize: 13.5, fontWeight: FontWeight.w700)),
+                      SizedBox(height: 2),
+                      Text('PII 마스킹된 버전 · 관리자 토큰 필요',
+                        style: TextStyle(color: _muted, fontSize: 10.5, fontFamily: 'monospace')),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded, color: _muted, size: 14),
+              ]),
+            ),
+          ),
+
+          const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: _surface2,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _accent.withValues(alpha: 0.18)),
+              border: Border.all(color: _safe.withValues(alpha: 0.30)),
             ),
             child: const Row(children: [
               Icon(Icons.shield_outlined, color: _safe, size: 18),
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '업로드 시 얼굴·번호판 자동 마스킹 후 저장됩니다.\n원본은 즉시 폐기 · 디바이스 ID는 가명화됩니다.',
+                  '📌 폰에는 이미지를 저장하지 않습니다.\n캡처 → PII 마스킹 → 업로드 → 즉시 폐기 (임시 파일).\n서버에는 마스킹된 버전만 보관 · 디바이스 ID 가명화.',
                   style: TextStyle(color: _muted, fontSize: 12, height: 1.5),
                 ),
               ),
@@ -3678,6 +3761,297 @@ class _StatTile extends StatelessWidget {
           Text(value, style: TextStyle(color: highlight ?? _text, fontSize: 22, fontWeight: FontWeight.w900)),
         ]),
       ),
+    );
+  }
+}
+
+
+// ──────────────────────────────────────────────────────────────────────
+// 내 업로드 이미지 갤러리 — 서버에 마스킹된 버전만 저장됨 · 폰 자체 저장 X
+// ──────────────────────────────────────────────────────────────────────
+class _FleetGalleryScreen extends StatefulWidget {
+  const _FleetGalleryScreen();
+  @override
+  State<_FleetGalleryScreen> createState() => _FleetGalleryScreenState();
+}
+
+class _FleetGalleryScreenState extends State<_FleetGalleryScreen> {
+  List<dynamic> _items = [];
+  bool _loading = false;
+  String? _error;
+  String _adminToken = '';
+  final TextEditingController _tokenCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadToken();
+  }
+
+  Future<void> _loadToken() async {
+    final sp = await SharedPreferences.getInstance();
+    final tok = sp.getString('admin_token') ?? '';
+    if (mounted) {
+      setState(() {
+        _adminToken = tok;
+        _tokenCtrl.text = tok;
+      });
+    }
+    if (tok.isNotEmpty) await _fetchList();
+  }
+
+  Future<void> _saveToken(String tok) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString('admin_token', tok);
+    if (mounted) setState(() => _adminToken = tok);
+  }
+
+  Future<void> _fetchList() async {
+    if (_adminToken.isEmpty) {
+      setState(() => _error = '관리자 토큰을 입력하세요');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    try {
+      final r = await http.get(
+        Uri.parse('$kApiBase/fleet/list?limit=100'),
+        headers: {'X-Admin-Token': _adminToken},
+      ).timeout(const Duration(seconds: 8));
+      if (r.statusCode == 401) {
+        setState(() { _error = '토큰이 잘못됐습니다'; _items = []; });
+      } else if (r.statusCode == 200) {
+        final body = jsonDecode(r.body);
+        if (body is List) {
+          setState(() => _items = body);
+        }
+      } else {
+        setState(() => _error = '서버 응답 ${r.statusCode}');
+      }
+    } catch (e) {
+      setState(() => _error = '네트워크: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _ago(String? iso) {
+    if (iso == null) return '—';
+    try {
+      final t = DateTime.parse(iso.replaceAll('Z', ''));
+      final d = DateTime.now().difference(t);
+      if (d.inMinutes < 1) return '방금';
+      if (d.inMinutes < 60) return '${d.inMinutes}분 전';
+      if (d.inHours < 24) return '${d.inHours}시간 전';
+      return '${d.inDays}일 전';
+    } catch (_) { return iso; }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        backgroundColor: _surface,
+        title: const Text('내 업로드 갤러리',
+          style: TextStyle(color: _text, fontWeight: FontWeight.w700, fontSize: 16)),
+        iconTheme: const IconThemeData(color: _accent),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: _accent),
+            onPressed: _loading ? null : _fetchList,
+            tooltip: '새로고침',
+          ),
+        ],
+      ),
+      body: Column(children: [
+        // 토큰 입력 영역
+        Container(
+          margin: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _accent.withValues(alpha: 0.20)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Icon(Icons.key, color: _accent, size: 16),
+              const SizedBox(width: 8),
+              Text('관리자 토큰',
+                style: TextStyle(color: _muted, fontSize: 11, letterSpacing: 1.4, fontFamily: 'monospace')),
+            ]),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _tokenCtrl,
+              obscureText: true,
+              decoration: InputDecoration(
+                hintText: '예: auraview-admin-2026',
+                hintStyle: const TextStyle(color: _muted, fontSize: 12),
+                filled: true, fillColor: _surface2,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.send, color: _accent, size: 18),
+                  onPressed: () async {
+                    await _saveToken(_tokenCtrl.text.trim());
+                    await _fetchList();
+                  },
+                ),
+              ),
+              style: const TextStyle(color: _text, fontFamily: 'monospace'),
+            ),
+          ]),
+        ),
+
+        // 안내문
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: _safe.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _safe.withValues(alpha: 0.25)),
+          ),
+          child: const Row(children: [
+            Icon(Icons.shield_outlined, color: _safe, size: 14),
+            SizedBox(width: 8),
+            Expanded(child: Text(
+              '폰에는 저장 X · 서버에는 PII 마스킹된 버전만 보관',
+              style: TextStyle(color: _muted, fontSize: 11),
+            )),
+          ]),
+        ),
+
+        // 결과 영역
+        Expanded(
+          child: _loading
+            ? const Center(child: CircularProgressIndicator(color: _accent))
+            : _error != null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(_error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: _danger, fontSize: 13)),
+                ))
+              : _items.isEmpty
+                ? const Center(child: Text('업로드된 이미지가 없습니다',
+                    style: TextStyle(color: _muted, fontSize: 13)))
+                : GridView.builder(
+                    padding: const EdgeInsets.all(14),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.85,
+                    ),
+                    itemCount: _items.length,
+                    itemBuilder: (_, i) {
+                      final it = _items[i] as Map<String, dynamic>;
+                      final fname = (it['path'] ?? '').toString().split('/').last;
+                      final url = '$kApiBase/fleet/image/$fname?token=$_adminToken';
+                      final reason = it['reason'] ?? 'unknown';
+                      final entropy = (it['entropy'] ?? 0.0) is num ? it['entropy'].toStringAsFixed(2) : '—';
+                      final ts = it['ts'] ?? it['uploaded_at'];
+                      final size = it['size_kb'] ?? 0;
+                      return GestureDetector(
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => _FleetImageDetailScreen(url: url, item: it),
+                        )),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: _accent.withValues(alpha: 0.15)),
+                          ),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                child: Image.network(
+                                  url,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (_, child, prog) => prog == null
+                                    ? child
+                                    : Container(color: _surface2,
+                                        child: const Center(child: CircularProgressIndicator(color: _accent, strokeWidth: 2))),
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: _surface2,
+                                    child: const Center(child: Icon(Icons.broken_image_outlined, color: _muted)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(reason, style: const TextStyle(color: _accent, fontSize: 10.5, fontFamily: 'monospace', fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 2),
+                                Text('H=$entropy · ${size}KB',
+                                  style: const TextStyle(color: _muted, fontSize: 9.5, fontFamily: 'monospace')),
+                                Text(_ago(ts is String ? ts : null),
+                                  style: const TextStyle(color: _muted, fontSize: 9.5)),
+                              ]),
+                            ),
+                          ]),
+                        ),
+                      );
+                    },
+                  ),
+        ),
+      ]),
+    );
+  }
+}
+
+
+class _FleetImageDetailScreen extends StatelessWidget {
+  final String url;
+  final Map<String, dynamic> item;
+  const _FleetImageDetailScreen({required this.url, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black87,
+        iconTheme: const IconThemeData(color: _accent),
+        title: Text(item['reason']?.toString() ?? '이미지',
+          style: const TextStyle(color: _text, fontSize: 14)),
+        elevation: 0,
+      ),
+      body: Column(children: [
+        Expanded(
+          child: InteractiveViewer(
+            minScale: 0.5, maxScale: 4,
+            child: Image.network(url, fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image_outlined, color: _muted, size: 64),
+              ),
+            ),
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          color: Colors.black87,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (final entry in item.entries)
+              if (entry.value != null && entry.value.toString().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(children: [
+                    SizedBox(width: 110,
+                      child: Text(entry.key, style: const TextStyle(color: _muted, fontSize: 11, fontFamily: 'monospace'))),
+                    Expanded(child: Text(entry.value.toString(),
+                      style: const TextStyle(color: _text, fontSize: 11.5, fontFamily: 'monospace'),
+                      overflow: TextOverflow.ellipsis)),
+                  ]),
+                ),
+          ]),
+        ),
+      ]),
     );
   }
 }

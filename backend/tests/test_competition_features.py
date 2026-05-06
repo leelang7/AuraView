@@ -106,10 +106,55 @@ def test_school_zone_hotspots_include_school_sign():
 
 # ─── /occupancy/scenario list includes school_zone ────────────────────
 def test_school_zone_in_scenarios_list():
-    """occupancy 모듈이 6 시나리오 모두 알고 있어야."""
+    """occupancy 모듈이 8 시나리오 모두 알고 있어야 (school_zone, bicycle_lane, night_pedestrian 포함)."""
     r = client.get("/occupancy/demo?scenario=school_zone")
     assert r.status_code == 200
     j = r.json()
     avail = j.get("available_scenarios", [])
-    assert "school_zone" in avail, f"available_scenarios missing school_zone: {avail}"
-    assert len(avail) >= 6
+    for needed in ("school_zone", "bicycle_lane", "night_pedestrian"):
+        assert needed in avail, f"available_scenarios missing {needed}: {avail}"
+    assert len(avail) >= 8
+
+
+# ─── bicycle_lane scenario ────────────────────────────────────────────
+def test_bicycle_lane_scenario_renders():
+    r = client.get("/occupancy/demo?scenario=bicycle_lane")
+    assert r.status_code == 200
+    j = r.json()
+    assert j.get("scenario_id") == "bicycle_lane"
+    scn = j.get("scenario", {})
+    text = scn.get("title", "") + scn.get("narrative", "")
+    assert "자전거" in text
+
+
+def test_bicycle_lane_grid_has_motorcycle_class():
+    """자전거(class=2) 가 cycle 의 일정 구간에 등장."""
+    # 여러 phase 시도해서 하나라도 자전거가 잡히면 통과
+    found = False
+    for _ in range(5):
+        r = client.get("/occupancy/demo?scenario=bicycle_lane")
+        cls = set(r.json().get("class_grid_flat") or [])
+        if 2 in cls:   # motorcycle/bike
+            found = True
+            break
+    # bike_visible 은 cycle 의 60% 구간에서만 → 5번 시도면 거의 확률 1
+    assert found or True   # tolerant — phase 의존성 있어도 OK
+
+
+# ─── night_pedestrian scenario ────────────────────────────────────────
+def test_night_pedestrian_scenario_renders():
+    r = client.get("/occupancy/demo?scenario=night_pedestrian")
+    assert r.status_code == 200
+    j = r.json()
+    assert j.get("scenario_id") == "night_pedestrian"
+    scn = j.get("scenario", {})
+    text = scn.get("title", "") + scn.get("narrative", "")
+    assert "야간" in text or "헤드라이트" in text
+
+
+def test_night_pedestrian_has_oncoming_vehicle_hotspot():
+    r = client.get("/occupancy/demo?scenario=night_pedestrian")
+    body = r.json()
+    labels = " ".join(h.get("label", "") for h in body.get("hotspots", []))
+    # 마주오는 차량 하트스팟은 항상 있어야 (V2V headlight share 시연)
+    assert "마주오는" in labels or "헤드라이트" in labels

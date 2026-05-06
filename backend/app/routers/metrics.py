@@ -49,13 +49,16 @@ def competition_kpis():
     sources_stub = sum(1 for v in fresh.values() if v.get("mode") == "stub")
     sources_error = sum(1 for v in fresh.values() if v.get("mode") == "error")
 
-    # 4) 시나리오 (DEMO 가능 5종)
+    # 4) 시나리오 (DEMO 가능 8종 — 한국 도로 핵심 위험 시나리오 모두)
     scenarios_supported = [
         "truck_occlusion",
         "motorcycle_blindspot",
         "signal_occlusion",
         "rainy_intersection",
         "right_turn_pedestrian",
+        "school_zone",
+        "bicycle_lane",
+        "night_pedestrian",
     ]
 
     # 5) 차별화 포인트 (WHITEPAPER 요약)

@@ -176,7 +176,7 @@ github.com/leelang7/AuraView
 | `GET`  | **`/impact/policy-pdf?coverage=0.05&lead=3.38`** ★ | **A4 1-pager 정책 임팩트 PDF** |
 | `GET`  | `/impact` · `/impact/scenarios` · `/impact/top-intersections` | 정량 임팩트 (TAAS 기반) |
 
-> 시나리오 6종 — `/occupancy/demo?scenario=` 에 `truck_occlusion` · `motorcycle_blindspot` · `signal_occlusion` · `rainy_intersection` · `right_turn_pedestrian` · **`school_zone`** (어린이 보호구역, DSZ 공공데이터 결합)
+> 시나리오 8종 — `/occupancy/demo?scenario=` 에 `truck_occlusion` · `motorcycle_blindspot` · `signal_occlusion` · `rainy_intersection` · `right_turn_pedestrian` · **`school_zone`** (DSZ 공공데이터) · **`bicycle_lane`** (자전거 도로 GIS prior) · **`night_pedestrian`** (야간 V2V 헤드라이트 share)
 
 ---
 

@@ -1338,6 +1338,16 @@ def prototype_ui():
                   <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--warn);margin-top:4px;">스쿨존 · 갑작 어린이</div>
                   <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">DSZ + 등하교 prior · risk 0.74</div>
                 </button>
+                <button data-scn="bicycle_lane" onclick="setOccScenario('bicycle_lane')" class="scn-btn" style="padding:14px;background:rgba(0,224,154,0.08);border:2px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;">
+                  <div style="font-size:24px;">🚴</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--safe);margin-top:4px;">자전거 도로 · 후방 자전거</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">A필러 사각 · risk 0.69</div>
+                </button>
+                <button data-scn="night_pedestrian" onclick="setOccScenario('night_pedestrian')" class="scn-btn" style="padding:14px;background:rgba(124,58,237,0.10);border:2px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;">
+                  <div style="font-size:24px;">🌙</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--accent2);margin-top:4px;">야간 무단횡단</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">헤드라이트 거리 밖 · risk 0.79</div>
+                </button>
               </div>
             </div>
 

@@ -364,6 +364,58 @@
       </div>
     </section>
 
+    <!-- 9b. SCENARIO MATRIX (8종) -->
+    <section>
+      <div class="eyebrow">// SCENARIO COVERAGE</div>
+      <h2>한국 도로 <em>8 시나리오</em> 전부 — Tesla 가 못 푸는 영역</h2>
+      <table style="margin-top:18px;font-size:18px;">
+        <thead>
+          <tr><th>#</th><th>시나리오</th><th>핵심 위험</th><th>AuraView 차별 prior</th><th>risk</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>🚛 트럭 가림</td><td>가려진 보행자</td><td>occlusion shadow +0.55</td><td>0.68</td></tr>
+          <tr><td>2</td><td>◀ 좌측 사각 이륜차</td><td>차선 변경 시 충돌</td><td>BEV 사각지대 sweep</td><td>0.72</td></tr>
+          <tr><td>3</td><td>🚦 버스 뒤 신호</td><td>가려진 신호등</td><td>ITS API + V2V 결합</td><td>0.58</td></tr>
+          <tr><td>4</td><td>🌧️ 우천 우산 보행자</td><td>윤곽 흐림</td><td>rainy/night +0.45</td><td>0.61</td></tr>
+          <tr><td>5</td><td>🚸 우회전 보행자</td><td>A필러 사각</td><td>회전 sweep zone</td><td>0.81</td></tr>
+          <tr><td>6</td><td>🏫 스쿨존 어린이</td><td>주차 차량 occlusion</td><td><em style="color:#00e09a;">DSZ 공공데이터 +0.62</em></td><td>0.74</td></tr>
+          <tr><td>7</td><td>🚴 자전거 도로</td><td>후방 자전거 가속</td><td>자전거 GIS prior +0.40</td><td>0.69</td></tr>
+          <tr><td>8</td><td>🌙 야간 무단횡단</td><td>헤드라이트 거리 밖</td><td>V2V 헤드라이트 share</td><td>0.79</td></tr>
+        </tbody>
+      </table>
+      <p class="lede" style="margin-top:18px;font-size:18px;">
+        모든 시나리오 — <em style="font-style:normal;color:var(--accent);">웹 데모 + 폰 앱 + Flutter PWA</em> 에서 즉시 시연.
+      </p>
+    </section>
+
+    <!-- 9c. JUDGE 1-STEP VERIFY -->
+    <section data-background-color="#04140c">
+      <div class="eyebrow">// VERIFICATION FOR JUDGES</div>
+      <h2>심사위원 <em>1-step 검증</em></h2>
+      <div class="grid2" style="margin-top:24px;">
+        <div class="card">
+          <div class="sub">// SINGLE JSON</div>
+          <h3 style="font-family:'JetBrains Mono',monospace;font-size:18px;color:#00c8ff;">/metrics/competition</h3>
+          <p>모델(AUC 0.94 · F1 0.94 · p99 1.04ms) · 임팩트(TAAS 21명/년) · 공공데이터(6종 live/stub) · 검증(49 pytest) — <em style="font-style:normal;color:var(--accent);">4축 한 응답</em>에.</p>
+        </div>
+        <div class="card">
+          <div class="sub">// SELF-SCORING</div>
+          <h3 style="font-family:'JetBrains Mono',monospace;font-size:18px;color:#00e09a;">/metrics/scoreboard</h3>
+          <p>5개 평가 항목(공공데이터 95 · 정량 92 · 기술 90 · 재현성 88 · 한국특화 93) · 항목별 evidence + endpoint 명시.</p>
+        </div>
+        <div class="card">
+          <div class="sub">// A4 1-PAGER</div>
+          <h3 style="font-family:'JetBrains Mono',monospace;font-size:18px;color:#ffb020;">/impact/policy-pdf</h3>
+          <p>matplotlib 백엔드 → 88KB A4 PDF — KPI 카드 · 5행 시나리오표 · 6종 공공데이터 상태 · 차별화 4섹션. <em style="font-style:normal;color:var(--warn);">정책담당자 즉시 배포</em>.</p>
+        </div>
+        <div class="card">
+          <div class="sub">// LIVE DASHBOARD</div>
+          <h3 style="font-family:'JetBrains Mono',monospace;font-size:18px;color:#a995ff;">/ui · 탭 ⑩ 공공데이터 라이브</h3>
+          <p>3초 주기 폴링 — 신호·VDS·돌발·TAAS·ITS·DSZ 어떤 게 live 인지 stub 인지 즉시 식별 가능. <em style="font-style:normal;color:var(--accent2);">stub 도 명시적</em>으로 노출.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- 10. ROADMAP -->
     <section>
       <div class="eyebrow">// ROADMAP</div>

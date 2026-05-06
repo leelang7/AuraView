@@ -166,6 +166,28 @@ _SCENARIOS = {
         "recommended_action": "즉시 20km/h 이하 감속 + 정지 준비",
         "alert_text": "🏫 스쿨존 — 주차 차량 사이 어린이 가능 · 20km/h 이하",
     },
+    "bicycle_lane": {
+        "title": "우측 자전거 도로 — 후방 자전거 빠르게 접근 + ego 우회전",
+        "narrative": "ego 가 우회전 시도. 후방·우측 자전거 도로(별도 차로)로 자전거가 시속 25km로 접근. 사이드 미러 사각 + 자전거의 가속 감지가 어려워 도로교통법 13조 우측통행 자전거 우선 위반 다발 지점.",
+        "advantage": "자전거 도로 prior(도시 GIS 레이어) + 후방 BEV sweep + 가속도 추정 — 일반 차량보다 +0.40 boost. 우회전 직전 1.5초 추가 선행경고.",
+        "ego_speed_kmh": 18,
+        "p_collision": 0.69,
+        "lead_time_s": 3.1,
+        "primary_threat": "후방 우측 자전거 (사이드 미러 사각 + 가속)",
+        "recommended_action": "우회전 보류 + 사이드 미러 + 후방 BEV 재확인",
+        "alert_text": "🚴 우측 자전거 접근 — 우회전 보류",
+    },
+    "night_pedestrian": {
+        "title": "야간 비신호 횡단 — 헤드라이트 도달 거리 밖 보행자",
+        "narrative": "야간 비신호 구간(가로등 약함). ego 헤드라이트 도달 거리 25m 밖에서 보행자 무단 횡단. vision 만으로는 8m 이내 들어와야 검출 가능 → BEV 적외선 prior + 도로 사용자 분포 + V2V 결합으로 18m 전 사전 경고.",
+        "advantage": "야간 환경 가중치(+0.45) + 가로등 밀도 prior + V2V 마주오는 차 헤드라이트 노출 영역 결합. 일반 vision-only 대비 2.3× 선행경고.",
+        "ego_speed_kmh": 42,
+        "p_collision": 0.79,
+        "lead_time_s": 4.4,
+        "primary_threat": "헤드라이트 거리 밖 무단 횡단 보행자",
+        "recommended_action": "원거리 감속 + 상향등 + 경적 1회 + 정지 준비",
+        "alert_text": "🌙 야간 무단횡단 보행자 — 18m 전방 즉시 감속",
+    },
 }
 
 
@@ -398,6 +420,105 @@ def _build_scene(name: str, phase: float):
                 "class": "pedestrian", "row": child_row, "col": child_col,
                 "kind": "object", "distance_m": child_row * 0.5,
                 "label": "🚸 어린이 (주차 차량 사이 출현)",
+            })
+
+    elif name == "bicycle_lane":
+        # 자전거 도로 후방 접근 시나리오
+        # 1) ego 우측 차로 옆 자전거 도로 (col 56~59) — 별도 표시
+        # 2) 후방에서 빠르게 접근하는 자전거 — sin/cos 으로 phase 변화
+        cycle10 = (_time_mod.time() % 10.0) / 10.0
+
+        # A. 자전거 도로 prior (시각화: 약한 occupancy, 색 구분 필요)
+        grid[0:80, 56:59] = 0.20
+        cls[0:80, 56:59] = 3   # occlusion class for sidewalk-like prior
+
+        # B. 후방 자전거 (cycle 0.20~0.80 동안 row 8 → 60 으로 빠르게 이동)
+        bike_visible = 0.20 <= cycle10 < 0.80
+        if bike_visible:
+            bike_progress = (cycle10 - 0.20) / 0.60
+            bike_row = int(8 + bike_progress * 52)   # 8 → 60
+            grid[bike_row:bike_row + 4, 57:59] = 0.92
+            cls[bike_row:bike_row + 4, 57:59] = 2   # motorcycle/bike class
+        else:
+            bike_row = 8
+
+        # C. ego 전방 정지 차량 (우회전 신호 대기 중인 트럭 — 시야 가림)
+        grid[36:48, 38:43] = 0.85
+        cls[36:48, 38:43] = 1
+
+        # D. ego 우측 A필러 사각지대 (자전거가 들어가는 영역)
+        grid[24:36, 52:58] = 0.30
+        cls[24:36, 52:58] = 3
+
+        hotspots = [
+            {"class": "vehicle", "row": 42, "col": 40, "kind": "object",
+             "distance_m": 21.0, "label": "🚛 전방 정지 차량 (시야 가림)"},
+            {"class": "blindspot_zone", "row": 30, "col": 55, "kind": "blindspot",
+             "distance_m": 15.0, "label": "⚠️ 우측 A필러 사각 (자전거 도로 진입선)"},
+        ]
+        if bike_visible:
+            hotspots.append({
+                "class": "motorcycle", "row": bike_row + 2, "col": 58,
+                "kind": "object", "distance_m": (bike_row + 2) * 0.5,
+                "label": "🚴 후방 자전거 (시속 25km · 가속 중)",
+            })
+
+    elif name == "night_pedestrian":
+        # 야간 비신호 보행자 시나리오
+        # 1) 야간 환경 — 전체 grid 약한 안개 prior (vision 시야 한계 시뮬)
+        # 2) 헤드라이트 cone (row 0~16, col 36~44) — 강한 인지 영역
+        # 3) 헤드라이트 밖 보행자 (row 32~36, 도로 횡단 중) — BEV/IR prior 로 발견
+        cycle10 = (_time_mod.time() % 10.0) / 10.0
+
+        # A. 헤드라이트 cone (강한 인지)
+        for r in range(0, 16):
+            spread = max(2, int(2 + r * 0.3))
+            c0 = max(0, 40 - spread)
+            c1 = min(80, 40 + spread)
+            grid[r, c0:c1] = 0.35
+            cls[r, c0:c1] = 0   # free (well-lit zone)
+
+        # B. 야간 안개 prior (도로 외곽 약하게 — 시야 한계 표현)
+        # (grid 그대로 두고 어둠은 default 0)
+
+        # C. 마주오는 차량 헤드라이트 (V2V — 반대편에서 비추는 영역)
+        oncoming_phase = (phase / (2 * 3.14159)) % 1
+        oncoming_row = int(70 - oncoming_phase * 70)
+        if 0 <= oncoming_row <= 68:
+            r1 = max(0, oncoming_row)
+            r2 = min(80, oncoming_row + 12)
+            grid[r1:r2, 31:35] = 0.92
+            cls[r1:r2, 31:35] = 1
+            # 마주오는 차의 헤드라이트가 ego 쪽 보행자 영역 비춤 (V2V boost 효과 표현)
+            head_r0 = max(0, oncoming_row - 6)
+            head_r1 = max(0, oncoming_row)
+            grid[head_r0:head_r1, 36:48] = 0.18
+            cls[head_r0:head_r1, 36:48] = 0
+
+        # D. 보행자 — 헤드라이트 cone 밖에서 횡단 (cycle 0.15~0.65)
+        ped_visible = 0.15 <= cycle10 < 0.65
+        if ped_visible:
+            ped_progress = (cycle10 - 0.15) / 0.50
+            ped_col = int(30 + ped_progress * 22)   # 30 → 52 (좌→우 횡단)
+            ped_row = 34   # 헤드라이트 cone 끝 너머 — 약 17m
+            grid[ped_row:ped_row + 2, ped_col:ped_col + 2] = 0.88
+            cls[ped_row:ped_row + 2, ped_col:ped_col + 2] = 4
+        else:
+            ped_col = 30
+            ped_row = 34
+
+        hotspots = [
+            {"class": "blindspot_zone", "row": 24, "col": 40, "kind": "blindspot",
+             "distance_m": 12.0, "label": "🌙 헤드라이트 한계 (16m)"},
+            {"class": "vehicle", "row": oncoming_row + 6, "col": 33, "kind": "object",
+             "distance_m": max(0, (oncoming_row + 6) * 0.5),
+             "label": "🚗 마주오는 차량 (헤드라이트 share)"},
+        ]
+        if ped_visible:
+            hotspots.append({
+                "class": "pedestrian", "row": ped_row, "col": ped_col,
+                "kind": "object", "distance_m": ped_row * 0.5,
+                "label": "🚶 야간 보행자 (헤드라이트 밖 횡단)",
             })
 
     else:

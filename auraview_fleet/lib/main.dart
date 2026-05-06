@@ -150,7 +150,7 @@ class _FleetHomeState extends State<FleetHome>
   // OFF: LIVE 모드 — 카메라 frame → 클라이언트 voxel (실제 환경)
   // ON:  DEMO 모드 — 서버 4 시나리오 자동 순환 (실내 시연용)
   bool _demoScenarioOn = false;
-  static const _scnList = ['truck_occlusion', 'motorcycle_blindspot', 'signal_occlusion', 'rainy_intersection', 'right_turn_pedestrian', 'school_zone'];
+  static const _scnList = ['truck_occlusion', 'motorcycle_blindspot', 'signal_occlusion', 'rainy_intersection', 'right_turn_pedestrian', 'school_zone', 'bicycle_lane', 'night_pedestrian'];
   static const _scnLabels = {
     'truck_occlusion': '🚛 트럭 가림',
     'motorcycle_blindspot': '◀ 사각지대 이륜',
@@ -158,6 +158,8 @@ class _FleetHomeState extends State<FleetHome>
     'rainy_intersection': '🌧️ 우천',
     'right_turn_pedestrian': '🚸 우회전 보행자',
     'school_zone': '🏫 스쿨존',
+    'bicycle_lane': '🚴 자전거 도로',
+    'night_pedestrian': '🌙 야간 보행자',
   };
   int _scnIdx = 0;
 

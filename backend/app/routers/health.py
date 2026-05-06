@@ -99,7 +99,7 @@ def healthz_details():
     return {
         "status": "ok",
         "service": "AuraView K-Perception",
-        "version": "0.5-quantified-impact",
+        "version": "0.6-competition-ready",
         "git": _read_git_sha(),
         "boot_at": _BOOT_AT.isoformat() + "Z",
         "uptime_s": round((datetime.utcnow() - _BOOT_AT).total_seconds(), 1),
@@ -115,5 +115,16 @@ def healthz_details():
         "features": feature_flags,
         "model_metric": metric,
         "trained_model_metric": _read_trained_metric(),
-        "tests": "38 passed (18 endpoint + 12 collab unit + 8 impact/positioning)",
+        "tests": "53 passed (18 endpoint + 12 collab + 8 impact + 15 competition features)",
+        "scenarios_supported": [
+            "truck_occlusion", "motorcycle_blindspot", "signal_occlusion",
+            "rainy_intersection", "right_turn_pedestrian",
+            "school_zone", "bicycle_lane", "night_pedestrian",
+        ],
+        "competition_endpoints": {
+            "metrics_kpi": "/metrics/competition",
+            "metrics_scoreboard": "/metrics/scoreboard",
+            "policy_pdf": "/impact/policy-pdf",
+            "live_dashboard": "/ui#tab10",
+        },
     }

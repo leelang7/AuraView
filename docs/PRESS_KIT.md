@@ -68,12 +68,12 @@
 |---|---|---|
 | Trained Risk Transformer AUC | **0.9403** | `models/risk_transformer_trained_metric.json` |
 | F1 @ 0.5 | **0.9412** | 학습 결과 |
-| 평균 선행 경고 | **3.38초** | 4 시나리오 × 2,000 샘플 평가 |
+| 평균 선행 경고 | **3.38초** | 8 시나리오 × 2,000 샘플 평가 |
 | 추론 지연 (p99) | **1.04 ms** | `/benchmark/risk` 실측 100회 |
 | V2V merge 지연 (p99) | **0.03 ms** | `/benchmark/v2v-merge` |
 | 모델 크기 | **278 KB** (67,970 params) | 가중치 published |
-| 라우트 수 | **66** (62 + impact + positioning) | `/healthz/details` |
-| 테스트 | **36 / 36 PASS** (30 + 6 회귀) | `pytest tests/` |
+| 라우트 수 | **80+** (impact + metrics + positioning) | `/healthz/details` |
+| 테스트 | **53 / 53 PASS** (38 + 15 경진대회 features) | `pytest tests/` |
 
 ---
 
@@ -86,6 +86,9 @@
 | Reveal.js 발표 슬라이드 | https://auraview.allthatai.kr/slides/ |
 | 무인 자동 시연 키오스크 | https://auraview.allthatai.kr/kiosk/ |
 | 합본 시연 영상 | https://auraview.allthatai.kr/showreel/latest.mp4 |
+| **경진대회 통합 KPI** | https://auraview.allthatai.kr/metrics/competition |
+| **5개 평가항목 자체채점** | https://auraview.allthatai.kr/metrics/scoreboard |
+| **A4 1-pager 정책 PDF** | https://auraview.allthatai.kr/impact/policy-pdf |
 | 임팩트 (TAAS 결합) | https://auraview.allthatai.kr/impact |
 | 임팩트 시나리오 | https://auraview.allthatai.kr/impact/scenarios |
 | Tesla 비교 5종 | https://auraview.allthatai.kr/positioning/tesla-vs-auraview |
@@ -98,11 +101,20 @@
 ## 🚀 30초 데모 시나리오
 
 1. **5초**: https://auraview.allthatai.kr/ → 자동 /ui 이동
-2. **10초**: TAB ⑤ Capability Matrix → 임팩트 카드 + 데이터 freshness 즉시 노출
-3. **10초**: TAB ⑥ 사고 재현 → 합본 시연 영상 자동 재생
-4. **5초**: TAB ⑨ V2V → 협업 인지 단독 vs 협업 비교
+2. **8초**: TAB ① 시나리오 8종 picker → 트럭/이륜/우회전/스쿨존/자전거/야간 클릭만으로 전환
+3. **7초**: TAB ⑤ Capability Matrix → 임팩트 카드 + 인터랙티브 시뮬레이터
+4. **5초**: TAB ⑨ V2V → 단독 vs 협업 인지 비교
+5. **5초**: TAB ⑩ 공공데이터 라이브 → 6종 freshness 실시간 모니터
 
 키오스크 모드 (10장면 자동 순환): https://auraview.allthatai.kr/kiosk/
+
+## 🔍 심사위원 1-step 검증
+
+```bash
+curl https://auraview.allthatai.kr/metrics/competition  # 4축 KPI 한 응답
+curl https://auraview.allthatai.kr/metrics/scoreboard   # 5항목 자체 채점
+curl -O https://auraview.allthatai.kr/impact/policy-pdf # A4 PDF 자동 다운로드
+```
 
 ---
 

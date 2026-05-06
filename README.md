@@ -50,6 +50,7 @@
 
 > 📄 **A4 1-pager PDF 자동 생성** — `GET /impact/policy-pdf?coverage=0.05&lead=3.38` 으로 즉시 다운로드 (정책담당자·심사위원 배포용, 88KB).
 > 📊 **경진대회 통합 KPI** — `GET /metrics/competition` (모델 성능·임팩트·공공데이터 freshness·검증 4축을 한 응답에).
+> 🔍 **재현 가이드** — [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) — 외부 검증 1-step 명령 모음.
 
 ---
 

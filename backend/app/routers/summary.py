@@ -166,6 +166,11 @@ def summary_json(db: Session = Depends(get_db)):
             "showreel_latest_mp4": "https://auraview.allthatai.kr/showreel/latest.mp4",
             "swagger": "https://auraview.allthatai.kr/docs",
             "healthz": "https://auraview.allthatai.kr/healthz/details",
+            "competition_kpi": "https://auraview.allthatai.kr/metrics/competition",
+            "competition_scoreboard": "https://auraview.allthatai.kr/metrics/scoreboard",
+            "data_attribution": "https://auraview.allthatai.kr/metrics/data-attribution",
+            "policy_pdf": "https://auraview.allthatai.kr/impact/policy-pdf",
+            "scenario_compare": "https://auraview.allthatai.kr/occupancy/compare",
         },
 
         "impact": {

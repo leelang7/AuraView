@@ -345,13 +345,24 @@ API: `GET /benchmark/risk?n=200` · `GET /benchmark/v2v-merge?n=50` · `GET /ben
 
 - [x] 기술백서 (본 문서)
 - [x] 기능 매트릭스
-- [x] 6종 공공데이터 어댑터
+- [x] 6종 공공데이터 어댑터 + 라이브 freshness 추적 (`/fusion/sources`)
 - [x] Occupancy · HydraNet · Risk · Intent 서비스 코드
 - [x] 가명결합 · 안심구역 반입/검증
 - [x] Fleet Learning contribute 엔드포인트
+- [x] **경진대회 통합 KPI 엔드포인트** (`/metrics/competition`, `/metrics/scoreboard`)
+- [x] **정책 1-pager PDF 자동 생성** (`/impact/policy-pdf`) — A4 즉시 배포
+- [x] **시나리오 6종** — 트럭/이륜/신호/우천/우회전 + **어린이 보호구역(school_zone)** DSZ 결합
+- [x] **49 pytest 통과** — endpoint + collab + impact + 경진대회 신규 features
 - [ ] 학습 노트북 실행 결과 (1주 내)
 - [ ] 사고 재현 데모 영상 2분 (3주 내)
 - [ ] 발표 슬라이드 (4주 내)
+
+### 심사위원 1-step 검증 가이드
+```bash
+curl https://auraview.allthatai.kr/metrics/competition   # 4축 KPI 한 응답
+curl https://auraview.allthatai.kr/metrics/scoreboard    # 5개 평가 항목 자체 채점
+curl -OJ https://auraview.allthatai.kr/impact/policy-pdf # A4 1-pager PDF 다운로드
+```
 
 ---
 

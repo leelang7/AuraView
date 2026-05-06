@@ -155,6 +155,17 @@ _SCENARIOS = {
         "recommended_action": "즉시 정지 + 보행자 통과 후 진행",
         "alert_text": "🚸 우회전 보행자 발견 — 즉시 정지",
     },
+    "school_zone": {
+        "title": "어린이 보호구역(스쿨존) 진입 — 차량 사이 갑작스런 어린이",
+        "narrative": "ego 가 30km/h 제한 스쿨존 진입. 좌·우 주차 차량 사이로 어린이가 갑자기 나옴 (도로교통법 12조 어린이 우선). DSZ 공공데이터 + 시간대(등하교) 가중치로 prior 부여.",
+        "advantage": "DSZ + 학교 위치 + 등하교 시간대 결합 prior — 주차 차량 사이 occlusion 영역에 +0.62 boost. 일반 도로보다 4× 강한 감속 권고.",
+        "ego_speed_kmh": 28,
+        "p_collision": 0.74,
+        "lead_time_s": 3.9,
+        "primary_threat": "주차 차량 사이 어린이 (낮은 신장 = 차에 가려짐)",
+        "recommended_action": "즉시 20km/h 이하 감속 + 정지 준비",
+        "alert_text": "🏫 스쿨존 — 주차 차량 사이 어린이 가능 · 20km/h 이하",
+    },
 }
 
 
@@ -332,6 +343,62 @@ def _build_scene(name: str, phase: float):
             {"class": "vehicle", "row": oncoming_row + 6, "col": 33, "kind": "object",
              "distance_m": max(0, (oncoming_row + 6) * 0.5), "label": "🚗 마주오는 차량 (북→남)"},
         ]
+
+    elif name == "school_zone":
+        # 어린이 보호구역 시나리오 — 좌·우 주차 차량 사이 어린이 갑작스런 출현
+        # 1) 양쪽 갓길 주차 차량 라인 (보행자 occlusion 발생원)
+        # 2) DSZ 공공데이터 + 학교 prior → 가려진 영역에 +0.62 boost 표시
+        # 3) 등하교 시간대 어린이 등장 시뮬레이션
+        cycle10 = (_time_mod.time() % 10.0) / 10.0
+
+        # A. 좌측 갓길 주차 차량 라인 (col 31~34, 차량 4대 일정 간격)
+        for k in range(4):
+            r0 = 14 + k * 14   # 14, 28, 42, 56
+            grid[r0:r0 + 9, 31:34] = 0.85
+            cls[r0:r0 + 9, 31:34] = 1
+
+        # B. 우측 갓길 주차 차량 라인 (col 46~49)
+        for k in range(4):
+            r0 = 18 + k * 14   # 18, 32, 46, 60
+            grid[r0:r0 + 9, 46:49] = 0.85
+            cls[r0:r0 + 9, 46:49] = 1
+
+        # C. 주차 차량 사이 occlusion shadow — 어린이 가능 영역 (DSZ prior +0.62)
+        #    좌측 차량 사이 (row 23~28, col 30~35), 우측 (row 27~32, col 45~50)
+        grid[23:28, 30:35] = 0.62; cls[23:28, 30:35] = 3   # occlusion (보호구역 prior)
+        grid[27:32, 45:50] = 0.62; cls[27:32, 45:50] = 3
+
+        # D. 어린이 출현 (cycle 0.30~0.55): 우측 주차 차량 사이로 갑자기 도로 진입
+        child_visible = 0.30 <= cycle10 < 0.55
+        if child_visible:
+            child_progress = (cycle10 - 0.30) / 0.25
+            # 우측 갓길(col 47) → 도로 중앙(col 40) 으로 이동
+            child_col = int(47 - child_progress * 7)
+            child_row = 30
+            grid[child_row:child_row + 2, child_col:child_col + 2] = 0.95
+            cls[child_row:child_row + 2, child_col:child_col + 2] = 4   # pedestrian
+        else:
+            child_col = 47
+            child_row = 30
+
+        # E. 스쿨존 표지판 (신호등 클래스 5 로 시각화 — col 38~41 의 row 8)
+        grid[6:9, 38:42] = 0.70
+        cls[6:9, 38:42] = 5
+
+        hotspots = [
+            {"class": "blindspot_zone", "row": 25, "col": 33, "kind": "blindspot",
+             "distance_m": 12.5, "label": "⚠️ 좌측 주차 차량 사이 occlusion"},
+            {"class": "blindspot_zone", "row": 29, "col": 47, "kind": "blindspot",
+             "distance_m": 14.5, "label": "⚠️ 우측 주차 차량 사이 occlusion (스쿨존 +0.62)"},
+            {"class": "signal", "row": 7, "col": 40, "kind": "signal",
+             "distance_m": 3.5, "label": "🏫 스쿨존 표지판 (30km/h 제한)"},
+        ]
+        if child_visible:
+            hotspots.append({
+                "class": "pedestrian", "row": child_row, "col": child_col,
+                "kind": "object", "distance_m": child_row * 0.5,
+                "label": "🚸 어린이 (주차 차량 사이 출현)",
+            })
 
     else:
         raise ValueError(f"unknown scenario: {name}")

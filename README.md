@@ -48,6 +48,9 @@
 **산출 근거**: TAAS 2024 (전체 사고 207,535 / 사망 2,581 / 부상 290,400) × 도시교차로 비중 46% × AuraView 적용 시나리오 42% × 회피율 `min(0.85, 0.25 × lead_time_s)` (KOTI ITS 효과 분석).
 선행경고 시간 = 트레인드 모델 평균 **3.38s** → 회피율 **84.5%**. 모든 가정 라이브 검증: <https://auraview.allthatai.kr/impact>
 
+> 📄 **A4 1-pager PDF 자동 생성** — `GET /impact/policy-pdf?coverage=0.05&lead=3.38` 으로 즉시 다운로드 (정책담당자·심사위원 배포용, 88KB).
+> 📊 **경진대회 통합 KPI** — `GET /metrics/competition` (모델 성능·임팩트·공공데이터 freshness·검증 4축을 한 응답에).
+
 ---
 
 ## 🎯 Positioning — Tesla FSD 만으로는 부족하다
@@ -168,6 +171,12 @@ github.com/leelang7/AuraView
 | `POST` | **`/collab/v2v/seed-demo`** | 시연 시드 |
 | `POST` | **`/collab/bus-context`** · **`/collab/bidirectional`** | 버스/상행하행 분석 |
 | `POST` | **`/collab/fused-occupancy`** ★ | **단독 vs 협업 결합 비교** |
+| `GET`  | **`/metrics/competition`** ★ | **경진대회 통합 KPI (모델·임팩트·공공데이터·검증)** |
+| `GET`  | **`/metrics/scoreboard`** ★ | **5개 평가 항목 자체 채점** |
+| `GET`  | **`/impact/policy-pdf?coverage=0.05&lead=3.38`** ★ | **A4 1-pager 정책 임팩트 PDF** |
+| `GET`  | `/impact` · `/impact/scenarios` · `/impact/top-intersections` | 정량 임팩트 (TAAS 기반) |
+
+> 시나리오 6종 — `/occupancy/demo?scenario=` 에 `truck_occlusion` · `motorcycle_blindspot` · `signal_occlusion` · `rainy_intersection` · `right_turn_pedestrian` · **`school_zone`** (어린이 보호구역, DSZ 공공데이터 결합)
 
 ---
 

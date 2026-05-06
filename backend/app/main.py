@@ -9,7 +9,7 @@ from .database import Base, engine
 from .routers import (
     intersections, signals, events, risk, detect,
     occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab, health, summary, benchmark,
-    impact, positioning,
+    impact, positioning, metrics,
 )
 
 # scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
@@ -83,6 +83,7 @@ app.include_router(summary.router, prefix="/summary", tags=["summary"])
 app.include_router(benchmark.router, prefix="/benchmark", tags=["benchmark"])
 app.include_router(impact.router, prefix="/impact", tags=["impact"])
 app.include_router(positioning.router, prefix="/positioning", tags=["positioning"])
+app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
 if _SHOWREEL_OK:
@@ -1086,6 +1087,7 @@ def prototype_ui():
             <div class="tab" data-tab="tab7">⑦ K-MaaS 연계</div>
             <div class="tab" data-tab="tab8">⑧ 정책 리포트</div>
             <div class="tab" data-tab="tab9">⑨ V2V 협업 인지</div>
+            <div class="tab" data-tab="tab10">⑩ 공공데이터 라이브</div>
           </div>
         </div>
 
@@ -1330,6 +1332,11 @@ def prototype_ui():
                   <div style="font-size:24px;">🚸</div>
                   <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--danger);margin-top:4px;">우회전 보행자</div>
                   <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">A필러 사각 · risk 0.78</div>
+                </button>
+                <button data-scn="school_zone" onclick="setOccScenario('school_zone')" class="scn-btn" style="padding:14px;background:rgba(255,176,32,0.10);border:2px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;">
+                  <div style="font-size:24px;">🏫</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:14px;color:var(--warn);margin-top:4px;">스쿨존 · 갑작 어린이</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;">DSZ + 등하교 prior · risk 0.74</div>
                 </button>
               </div>
             </div>
@@ -1779,6 +1786,33 @@ def prototype_ui():
                   <div id="cvBreakdown" class="rank-body" style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);"></div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- TAB 10 : 공공데이터 라이브 — judge-검증용 실시간 6종 소스 상태 -->
+          <div class="tab-panel" id="tab10">
+            <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,200,255,0.08),rgba(0,224,154,0.04));border:1px solid rgba(0,200,255,0.30);">
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--accent),var(--safe));">PUBLIC DATA · LIVE</div>
+              <div class="section-label">// 6종 공공데이터 어댑터 실시간 상태 — 자동 새로고침 3초 주기</div>
+              <div style="margin-top:10px;font-family:'Black Han Sans',sans-serif;font-size:22px;line-height:1.3;">
+                심사 검증용 — 폴링 모드(live/stub/error) · 마지막 호출 시각 · age 그대로 노출.
+              </div>
+              <div id="pdLiveSummary" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-label">// 6종 공공데이터 어댑터</div>
+              <div id="pdSourceList" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+                <div class="placeholder">로딩 중…</div>
+              </div>
+              <div style="margin-top:14px;font-size:11px;color:var(--muted);">
+                JSON 직접 호출 · <a href="/fusion/sources" target="_blank" style="color:var(--accent);">/fusion/sources</a> · <a href="/metrics/competition" target="_blank" style="color:var(--accent);">/metrics/competition</a> · <a href="/metrics/scoreboard" target="_blank" style="color:var(--accent);">/metrics/scoreboard</a>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:14px;">
+              <div class="section-label">// KPI 통합 (모델 성능 · 임팩트 · 공공데이터 · 검증)</div>
+              <div id="pdMetricsBox" style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;color:var(--muted);">로딩 중…</div>
             </div>
           </div>
 
@@ -4637,6 +4671,118 @@ def prototype_ui():
           refreshImpactAndFreshness();
           setInterval(refreshScorecard, 15000);
           setInterval(refreshImpactAndFreshness, 30000);
+
+          // ─── TAB 10 : 공공데이터 라이브 — 3초 폴링 ───
+          async function pdRefreshLive() {
+            const summaryEl = document.getElementById('pdLiveSummary');
+            const listEl = document.getElementById('pdSourceList');
+            if (!summaryEl || !listEl) return;
+            try {
+              const r = await fetch('/fusion/sources');
+              const j = await r.json();
+              const sources = j.sources || [];
+              let live = 0, stub = 0, err = 0, never = 0;
+              for (const s of sources) {
+                if (s.mode === 'live') live++;
+                else if (s.mode === 'stub') stub++;
+                else if (s.mode === 'error') err++;
+                else never++;
+              }
+              const colorBadge = (mode) => {
+                const map = {
+                  'live':  ['LIVE',  '#00e09a', 'rgba(0,224,154,0.16)'],
+                  'stub':  ['STUB',  '#ffb020', 'rgba(255,176,32,0.16)'],
+                  'error': ['ERROR', '#ff3b3b', 'rgba(255,59,59,0.16)'],
+                  'cached':['CACHE', '#00c8ff', 'rgba(0,200,255,0.16)'],
+                };
+                const [label, fg, bg] = map[mode] || ['NEVER', '#7a8794', 'rgba(120,135,148,0.16)'];
+                return `<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:${bg};color:${fg};font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.2px;">${label}</span>`;
+              };
+              summaryEl.innerHTML = `
+                <div style="padding:14px;background:rgba(0,224,154,0.10);border:1px solid rgba(0,224,154,0.30);border-radius:10px;text-align:center;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--safe);">LIVE</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:32px;color:var(--safe);">${live}</div>
+                </div>
+                <div style="padding:14px;background:rgba(255,176,32,0.10);border:1px solid rgba(255,176,32,0.30);border-radius:10px;text-align:center;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--warn);">STUB</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:32px;color:var(--warn);">${stub}</div>
+                </div>
+                <div style="padding:14px;background:rgba(255,59,59,0.08);border:1px solid rgba(255,59,59,0.25);border-radius:10px;text-align:center;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--danger);">ERROR</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:32px;color:var(--danger);">${err}</div>
+                </div>
+                <div style="padding:14px;background:rgba(120,135,148,0.10);border:1px solid var(--border);border-radius:10px;text-align:center;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);">NOT YET</div>
+                  <div style="font-family:'Black Han Sans',sans-serif;font-size:32px;color:var(--muted);">${never}</div>
+                </div>
+              `;
+              listEl.innerHTML = sources.map(s => {
+                const age = (s.age_s == null) ? '—' : `${s.age_s}s ago`;
+                const last = s.last_fetched_at || '미호출';
+                return `
+                  <div style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                      <div style="font-weight:600;font-size:13px;">${s.name}</div>
+                      ${colorBadge(s.mode)}
+                    </div>
+                    <div style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);">
+                      <div>id: <span style="color:var(--text);">${s.id}</span></div>
+                      <div>origin: <span style="color:var(--accent);">${s.origin}</span></div>
+                      <div>last: <span style="color:var(--text);">${last}</span> <span style="color:var(--muted);">(${age})</span></div>
+                    </div>
+                  </div>
+                `;
+              }).join('');
+            } catch(e) {
+              listEl.innerHTML = `<div class="placeholder" style="color:var(--danger);">로드 실패: ${e.message}</div>`;
+            }
+          }
+          async function pdRefreshMetrics() {
+            const box = document.getElementById('pdMetricsBox');
+            if (!box) return;
+            try {
+              const r = await fetch('/metrics/competition');
+              const m = await r.json();
+              const mp = m.model_performance || {};
+              const pf = m.public_data_fusion || {};
+              const ie = m.impact_estimate || {};
+              const headline = ie.headline_pilot_5pct || {};
+              box.innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+                  <div>
+                    <div style="color:var(--accent);letter-spacing:1.5px;font-size:9px;">MODEL</div>
+                    <div style="color:var(--text);">AUC: <strong>${mp.auc ?? '—'}</strong></div>
+                    <div style="color:var(--text);">F1: <strong>${mp.f1 ?? '—'}</strong></div>
+                    <div style="color:var(--text);">p99 추론: <strong>${mp.p99_inference_ms ?? '—'} ms</strong></div>
+                    <div>backend: ${mp.backend ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div style="color:var(--safe);letter-spacing:1.5px;font-size:9px;">IMPACT (Pilot 5%)</div>
+                    <div style="color:var(--text);">사고 예방: <strong>${(headline.prevented_incidents_yr ?? 0).toLocaleString()}</strong> 건/년</div>
+                    <div style="color:var(--text);">사망 예방: <strong>${headline.prevented_deaths_yr ?? '—'}</strong> 명/년</div>
+                    <div style="color:var(--text);">부상 예방: <strong>${(headline.prevented_injuries_yr ?? 0).toLocaleString()}</strong> 명/년</div>
+                    <div>출처: ${ie.source ?? 'TAAS'}</div>
+                  </div>
+                  <div>
+                    <div style="color:var(--warn);letter-spacing:1.5px;font-size:9px;">PUBLIC DATA</div>
+                    <div style="color:var(--text);">총 ${pf.sources_total ?? 6}종 · live <strong style="color:var(--safe);">${pf.sources_live ?? 0}</strong> / stub <strong style="color:var(--warn);">${pf.sources_stub ?? 0}</strong> / error <strong style="color:var(--danger);">${pf.sources_error ?? 0}</strong></div>
+                    <div>fallback: ${(m.verification || {}).fallback_mode ? 'on' : 'off'}</div>
+                  </div>
+                  <div>
+                    <div style="color:var(--accent);letter-spacing:1.5px;font-size:9px;">VERIFICATION</div>
+                    <div style="color:var(--text);">${(m.verification || {}).tests || '—'}</div>
+                    <div>${(m.verification || {}).ci || '—'}</div>
+                    <div>버전 ${m.version ?? '—'}</div>
+                  </div>
+                </div>
+              `;
+            } catch(e) {
+              box.innerHTML = `<div style="color:var(--danger);">/metrics/competition 호출 실패: ${e.message}</div>`;
+            }
+          }
+          pdRefreshLive(); pdRefreshMetrics();
+          setInterval(pdRefreshLive, 3000);
+          setInterval(pdRefreshMetrics, 30000);
         </script>
     </body>
     </html>

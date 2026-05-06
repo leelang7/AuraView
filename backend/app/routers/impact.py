@@ -4,11 +4,13 @@ Impact Calculator — 정량적 사고 예방 효과 (수상용 헤드라인 숫
   GET  /impact                          기본 가정 (lead_time=3.38s, coverage=10%)
   GET  /impact?lead=2.5&coverage=0.05   파라미터 조정
   GET  /impact/scenarios                Pilot 5% / 확산 25% / 전국 100% 표
+  GET  /impact/policy-pdf               정책 1-pager PDF (심사·정책담당자 배포용)
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
+from fastapi.responses import Response
 
 from ..services import impact as impact_service
 
@@ -36,6 +38,22 @@ def scenarios(lead: float = Query(3.38)):
         "lead_time_s": lead,
         "scenarios": impact_service.scenarios(lead_time_s=lead),
     }
+
+
+@router.get("/policy-pdf")
+def policy_pdf(
+    coverage: float = Query(0.05, ge=0.0, le=1.0, description="도입 비율 (5% pilot 기본)"),
+    lead: float = Query(3.38, ge=0.5, le=8.0, description="선행경고 시간 (초)"),
+):
+    """A4 1-pager 정책 임팩트 보고서 PDF — 심사·정책담당자 배포용."""
+    from ..services import policy_pdf as pdf_service
+    pdf_bytes = pdf_service.render_policy_pdf(coverage=coverage, lead_time_s=lead)
+    fname = f"AuraView_Policy_Impact_{int(coverage*100)}pct_{lead:.2f}s.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{fname}"'},
+    )
 
 
 @router.get("/top-intersections")

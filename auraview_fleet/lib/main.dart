@@ -3636,6 +3636,41 @@ class _DetailSheetState extends State<_DetailSheet> {
           _KV('백엔드', kApiBase.replaceFirst('https://', '')),
 
           const SizedBox(height: 18),
+          _SectionTitle('// 경진대회 KPI · 심사 검증용'),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const _CompetitionKpiScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_safe.withValues(alpha: 0.14), _accent.withValues(alpha: 0.06)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _safe.withValues(alpha: 0.30)),
+              ),
+              child: const Row(children: [
+                Icon(Icons.workspace_premium, color: _safe, size: 22),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('통합 KPI 4축 한 화면',
+                        style: TextStyle(color: _text, fontSize: 13.5, fontWeight: FontWeight.w700)),
+                      SizedBox(height: 2),
+                      Text('AUC · 임팩트 · 공공데이터 · 검증 · git_sha',
+                        style: TextStyle(color: _muted, fontSize: 10.5, fontFamily: 'monospace')),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded, color: _muted, size: 14),
+              ]),
+            ),
+          ),
+
+          const SizedBox(height: 18),
           _SectionTitle('// 내 업로드 갤러리 (서버)'),
           GestureDetector(
             onTap: () => Navigator.of(context).push(
@@ -3781,6 +3816,10 @@ class _FleetGalleryScreenState extends State<_FleetGalleryScreen> {
   String? _error;
   String _adminToken = '';
   final TextEditingController _tokenCtrl = TextEditingController();
+  // 일괄 선택 모드
+  bool _selectMode = false;
+  final Set<String> _selected = {};   // 파일명 set
+  bool _deleting = false;
 
   @override
   void initState() {
@@ -3846,22 +3885,140 @@ class _FleetGalleryScreenState extends State<_FleetGalleryScreen> {
     } catch (_) { return iso; }
   }
 
+  void _toggleSelect(String fname) {
+    setState(() {
+      if (_selected.contains(fname)) {
+        _selected.remove(fname);
+      } else {
+        _selected.add(fname);
+      }
+    });
+  }
+
+  void _selectAll() {
+    setState(() {
+      if (_selected.length == _items.length) {
+        _selected.clear();
+      } else {
+        _selected
+          ..clear()
+          ..addAll(_items.map((it) => (it['path'] ?? '').toString().split('/').last)
+              .where((s) => s.isNotEmpty));
+      }
+    });
+  }
+
+  Future<void> _confirmAndDelete() async {
+    if (_selected.isEmpty) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _surface,
+        title: Text('${_selected.length}개 이미지 삭제',
+          style: const TextStyle(color: _text, fontSize: 16, fontWeight: FontWeight.w700)),
+        content: const Text(
+          '서버에서 영구 삭제됩니다. 되돌릴 수 없습니다.\n'
+          'manifest 에서도 제거 · 폰에는 원래 저장 안됨.',
+          style: TextStyle(color: _muted, fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('취소', style: TextStyle(color: _muted))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('삭제', style: TextStyle(color: _danger, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _deleting = true);
+    try {
+      final r = await http.post(
+        Uri.parse('$kApiBase/fleet/delete-batch'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Token': _adminToken,
+        },
+        body: jsonEncode({'filenames': _selected.toList()}),
+      ).timeout(const Duration(seconds: 12));
+      if (r.statusCode == 200) {
+        final body = jsonDecode(r.body) as Map<String, dynamic>;
+        final deleted = (body['deleted'] as List?)?.length ?? 0;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('$deleted개 삭제 완료'),
+            backgroundColor: _safe,
+            duration: const Duration(seconds: 2),
+          ));
+          _selected.clear();
+          _selectMode = false;
+        }
+        await _fetchList();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('삭제 실패 ${r.statusCode}'),
+            backgroundColor: _danger,
+          ));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('네트워크: $e'),
+          backgroundColor: _danger,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
         backgroundColor: _surface,
-        title: const Text('내 업로드 갤러리',
-          style: TextStyle(color: _text, fontWeight: FontWeight.w700, fontSize: 16)),
+        title: Text(
+          _selectMode ? '${_selected.length}개 선택' : '내 업로드 갤러리',
+          style: const TextStyle(color: _text, fontWeight: FontWeight.w700, fontSize: 16),
+        ),
         iconTheme: const IconThemeData(color: _accent),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: _accent),
-            onPressed: _loading ? null : _fetchList,
-            tooltip: '새로고침',
-          ),
+          if (_selectMode) ...[
+            IconButton(
+              icon: const Icon(Icons.select_all, color: _accent),
+              onPressed: _items.isEmpty ? null : _selectAll,
+              tooltip: '전체 선택',
+            ),
+            IconButton(
+              icon: _deleting
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: _danger, strokeWidth: 2))
+                : const Icon(Icons.delete_forever, color: _danger),
+              onPressed: (_selected.isEmpty || _deleting) ? null : _confirmAndDelete,
+              tooltip: '선택 삭제',
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, color: _muted),
+              onPressed: () => setState(() {
+                _selectMode = false;
+                _selected.clear();
+              }),
+              tooltip: '취소',
+            ),
+          ] else ...[
+            IconButton(
+              icon: const Icon(Icons.checklist_rounded, color: _accent),
+              onPressed: _items.isEmpty ? null : () => setState(() => _selectMode = true),
+              tooltip: '일괄 선택',
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh, color: _accent),
+              onPressed: _loading ? null : _fetchList,
+              tooltip: '새로고침',
+            ),
+          ],
         ],
       ),
       body: Column(children: [
@@ -3954,47 +4111,81 @@ class _FleetGalleryScreenState extends State<_FleetGalleryScreen> {
                       final entropy = (it['entropy'] ?? 0.0) is num ? it['entropy'].toStringAsFixed(2) : '—';
                       final ts = it['ts'] ?? it['uploaded_at'];
                       final size = it['size_kb'] ?? 0;
+                      final isSelected = _selected.contains(fname);
                       return GestureDetector(
-                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => _FleetImageDetailScreen(url: url, item: it),
-                        )),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: _surface,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: _accent.withValues(alpha: 0.15)),
-                          ),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                                child: Image.network(
-                                  url,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (_, child, prog) => prog == null
-                                    ? child
-                                    : Container(color: _surface2,
-                                        child: const Center(child: CircularProgressIndicator(color: _accent, strokeWidth: 2))),
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: _surface2,
-                                    child: const Center(child: Icon(Icons.broken_image_outlined, color: _muted)),
+                        onTap: () {
+                          if (_selectMode) {
+                            _toggleSelect(fname);
+                          } else {
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => _FleetImageDetailScreen(url: url, item: it),
+                            ));
+                          }
+                        },
+                        onLongPress: () {
+                          if (!_selectMode) {
+                            setState(() => _selectMode = true);
+                          }
+                          _toggleSelect(fname);
+                        },
+                        child: Stack(children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: _surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected ? _accent : _accent.withValues(alpha: 0.15),
+                                width: isSelected ? 2.4 : 1,
+                              ),
+                            ),
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                  child: Image.network(
+                                    url,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (_, child, prog) => prog == null
+                                      ? child
+                                      : Container(color: _surface2,
+                                          child: const Center(child: CircularProgressIndicator(color: _accent, strokeWidth: 2))),
+                                    errorBuilder: (_, _, _) => Container(
+                                      color: _surface2,
+                                      child: const Center(child: Icon(Icons.broken_image_outlined, color: _muted)),
+                                    ),
                                   ),
                                 ),
                               ),
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Text(reason, style: const TextStyle(color: _accent, fontSize: 10.5, fontFamily: 'monospace', fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 2),
+                                  Text('H=$entropy · ${size}KB',
+                                    style: const TextStyle(color: _muted, fontSize: 9.5, fontFamily: 'monospace')),
+                                  Text(_ago(ts is String ? ts : null),
+                                    style: const TextStyle(color: _muted, fontSize: 9.5)),
+                                ]),
+                              ),
+                            ]),
+                          ),
+                          if (_selectMode)
+                            Positioned(top: 6, right: 6,
+                              child: Container(
+                                width: 24, height: 24,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isSelected ? _accent : Colors.black.withValues(alpha: 0.55),
+                                  border: Border.all(color: Colors.white, width: 1.5),
+                                ),
+                                child: Icon(
+                                  isSelected ? Icons.check : Icons.circle_outlined,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text(reason, style: const TextStyle(color: _accent, fontSize: 10.5, fontFamily: 'monospace', fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 2),
-                                Text('H=$entropy · ${size}KB',
-                                  style: const TextStyle(color: _muted, fontSize: 9.5, fontFamily: 'monospace')),
-                                Text(_ago(ts is String ? ts : null),
-                                  style: const TextStyle(color: _muted, fontSize: 9.5)),
-                              ]),
-                            ),
-                          ]),
-                        ),
+                        ]),
                       );
                     },
                   ),
@@ -4053,5 +4244,234 @@ class _FleetImageDetailScreen extends StatelessWidget {
         ),
       ]),
     );
+  }
+}
+
+
+// ──────────────────────────────────────────────────────────────────────
+// 경진대회 KPI 패널 — 심사위원 1-step 검증용 폰 화면
+// /metrics/competition 응답 → 4 축 (모델·임팩트·공공데이터·검증) 한 화면에
+// ──────────────────────────────────────────────────────────────────────
+class _CompetitionKpiScreen extends StatefulWidget {
+  const _CompetitionKpiScreen();
+  @override
+  State<_CompetitionKpiScreen> createState() => _CompetitionKpiScreenState();
+}
+
+class _CompetitionKpiScreenState extends State<_CompetitionKpiScreen> {
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final r = await http.get(Uri.parse('$kApiBase/metrics/competition'))
+          .timeout(const Duration(seconds: 8));
+      if (r.statusCode == 200) {
+        setState(() => _data = jsonDecode(r.body) as Map<String, dynamic>);
+      } else {
+        setState(() => _error = '서버 ${r.statusCode}');
+      }
+    } catch (e) {
+      setState(() => _error = '네트워크: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Widget _kpiCard(String label, String value, {Color? color, String? sub}) {
+    final c = color ?? _accent;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.withValues(alpha: 0.30)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: TextStyle(color: c, fontSize: 9.5, letterSpacing: 1.5, fontFamily: 'monospace', fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Text(value, style: TextStyle(color: c, fontSize: 26, fontWeight: FontWeight.w900, height: 1)),
+        if (sub != null) ...[
+          const SizedBox(height: 4),
+          Text(sub, style: const TextStyle(color: _muted, fontSize: 10.5, fontFamily: 'monospace')),
+        ],
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mp = _data?['model_performance'] as Map<String, dynamic>?;
+    final ie = _data?['impact_estimate'] as Map<String, dynamic>?;
+    final headline = ie?['headline_pilot_5pct'] as Map<String, dynamic>?;
+    final pf = _data?['public_data_fusion'] as Map<String, dynamic>?;
+    final ver = _data?['verification'] as Map<String, dynamic>?;
+
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        backgroundColor: _surface,
+        title: const Text('경진대회 KPI',
+          style: TextStyle(color: _text, fontWeight: FontWeight.w700, fontSize: 16)),
+        iconTheme: const IconThemeData(color: _accent),
+        elevation: 0,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh, color: _accent), onPressed: _fetch),
+        ],
+      ),
+      body: _loading
+        ? const Center(child: CircularProgressIndicator(color: _accent))
+        : _error != null
+          ? Center(child: Padding(padding: const EdgeInsets.all(20),
+              child: Text(_error!, textAlign: TextAlign.center,
+                style: const TextStyle(color: _danger, fontSize: 13))))
+          : ListView(
+              padding: const EdgeInsets.all(14),
+              children: [
+                // 헤더
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_accent.withValues(alpha: 0.16), _accent2.withValues(alpha: 0.08)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _accent.withValues(alpha: 0.30)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('AuraView K-Perception',
+                      style: TextStyle(color: _text, fontSize: 18, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 4),
+                    Text('${_data?['version'] ?? '—'}  ·  git ${_data?['git_sha'] ?? 'unknown'}',
+                      style: const TextStyle(color: _muted, fontSize: 11, fontFamily: 'monospace')),
+                    const SizedBox(height: 4),
+                    Text('2026 국토교통 데이터활용 경진대회',
+                      style: TextStyle(color: _accent, fontSize: 11, fontFamily: 'monospace', letterSpacing: 1.2)),
+                  ]),
+                ),
+                const SizedBox(height: 16),
+
+                // 1) 모델 성능
+                _SectionTitle('// 1. MODEL PERFORMANCE'),
+                Row(children: [
+                  Expanded(child: _kpiCard('AUC', '${mp?['auc'] ?? '—'}',
+                    color: _accent, sub: 'Risk Transformer trained')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _kpiCard('F1@0.5', '${mp?['f1'] ?? '—'}',
+                    color: _safe, sub: 'Backend ${mp?['backend'] ?? '—'}')),
+                ]),
+                const SizedBox(height: 8),
+                _kpiCard('p99 추론 지연', '${mp?['p99_inference_ms'] ?? '—'} ms',
+                  color: _accent2, sub: 'CPU 단일 코어 100회 측정'),
+
+                const SizedBox(height: 18),
+
+                // 2) 임팩트
+                _SectionTitle('// 2. PROJECTED IMPACT (TAAS 2024)'),
+                _kpiCard('연간 사망 예방 (5% pilot)',
+                  '${headline?['prevented_deaths_yr'] ?? '—'}명',
+                  color: _safe, sub: 'avg lead time 3.38s · preventability 84.5%'),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: _kpiCard('사고 예방',
+                    _formatNum(headline?['prevented_incidents_yr']),
+                    color: _accent, sub: '건/년')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _kpiCard('부상 예방',
+                    _formatNum(headline?['prevented_injuries_yr']),
+                    color: _warn, sub: '명/년')),
+                ]),
+
+                const SizedBox(height: 18),
+
+                // 3) 공공데이터
+                _SectionTitle('// 3. PUBLIC DATA FUSION'),
+                Row(children: [
+                  Expanded(child: _kpiCard('LIVE', '${pf?['sources_live'] ?? 0}',
+                    color: _safe, sub: '실시간 폴링')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _kpiCard('STUB', '${pf?['sources_stub'] ?? 0}',
+                    color: _warn, sub: 'fallback 명시적')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _kpiCard('TOTAL', '${pf?['sources_total'] ?? 6}',
+                    color: _accent, sub: '신호·VDS·돌발·TAAS·ITS·DSZ')),
+                ]),
+
+                const SizedBox(height: 18),
+
+                // 4) 검증
+                _SectionTitle('// 4. VERIFICATION'),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _safe.withValues(alpha: 0.30)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(ver?['tests'] ?? '—',
+                      style: const TextStyle(color: _safe, fontSize: 14, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(ver?['ci'] ?? '—',
+                      style: const TextStyle(color: _muted, fontSize: 11, fontFamily: 'monospace')),
+                    const SizedBox(height: 4),
+                    Text('Fallback mode: ${ver?['fallback_mode'] == true ? 'ON (시연용)' : 'OFF'}',
+                      style: const TextStyle(color: _muted, fontSize: 11, fontFamily: 'monospace')),
+                  ]),
+                ),
+
+                const SizedBox(height: 18),
+
+                // 시나리오
+                _SectionTitle('// SCENARIOS SUPPORTED'),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (final s in (_data?['scenarios_supported'] as List? ?? []))
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _surface,
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: _accent.withValues(alpha: 0.30)),
+                      ),
+                      child: Text(s.toString(),
+                        style: const TextStyle(color: _text, fontSize: 11, fontFamily: 'monospace')),
+                    ),
+                ]),
+
+                const SizedBox(height: 24),
+                Text('생성: ${_data?['as_of'] ?? '—'}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: _muted, fontSize: 10, fontFamily: 'monospace')),
+                const SizedBox(height: 4),
+                Text('GET /metrics/competition',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: _muted.withValues(alpha: 0.6), fontSize: 9.5, fontFamily: 'monospace')),
+                const SizedBox(height: 24),
+              ],
+            ),
+    );
+  }
+
+  String _formatNum(dynamic v) {
+    if (v == null) return '—';
+    if (v is num) {
+      final s = v.round().toString();
+      // thousand separator
+      final buf = StringBuffer();
+      for (int i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+        buf.write(s[i]);
+      }
+      return buf.toString();
+    }
+    return v.toString();
   }
 }

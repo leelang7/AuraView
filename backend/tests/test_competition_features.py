@@ -246,6 +246,25 @@ def test_policy_laws_maps_8_scenarios():
 
 
 # ─── /metrics/manifest ────────────────────────────────────────────────
+def test_metrics_api_directory_groups_routes():
+    """/metrics/api-directory — 모든 라우트를 prefix 별로 그룹화."""
+    r = client.get("/metrics/api-directory")
+    assert r.status_code == 200
+    j = r.json()
+    assert j["total_routes"] >= 50
+    groups = j.get("groups", [])
+    assert len(groups) >= 10
+    # Competition-relevant groups present and flagged
+    by_prefix = {g["prefix"]: g for g in groups}
+    for needed in ("metrics", "policy", "impact", "occupancy"):
+        assert needed in by_prefix, f"missing group {needed}"
+        assert by_prefix[needed]["is_competition"] is True
+    # Every group has at least one route
+    for g in groups:
+        assert g["count"] >= 1
+        assert isinstance(g["routes"], list)
+
+
 def test_metrics_manifest_lists_all_artifacts():
     """심사위원 single-source-of-truth — 모든 검증 URL 한 응답."""
     r = client.get("/metrics/manifest")

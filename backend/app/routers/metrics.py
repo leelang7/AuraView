@@ -281,6 +281,7 @@ def competition_manifest():
             {"label": "Top-N 위험 교차로", "url": "/impact/top-intersections"},
             {"label": "Tesla vs AuraView", "url": "/positioning/tesla-vs-auraview"},
             {"label": "Health + git_sha", "url": "/healthz/details"},
+            {"label": "API 디렉토리 (그룹별 라우트)", "url": "/metrics/api-directory"},
         ],
         "live_demo": [
             {"label": "메인 대시보드 (10탭)", "url": "/ui"},

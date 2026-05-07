@@ -1086,6 +1086,7 @@ def prototype_ui():
               <div class="subtitle">보이지 않는 신호를 대신 보여주는 시야 차단 대응형 안전 주행 보조 시스템</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
+              <a href="/competition/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#fff;padding:7px 14px;background:linear-gradient(135deg,rgba(0,224,154,0.30),rgba(0,200,255,0.20));border:1px solid rgba(0,224,154,0.55);border-radius:99px;font-weight:700;">🏆 JUDGE HUB</a>
               <a href="/submission/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--safe);padding:7px 14px;border:1px solid rgba(0,224,154,0.4);border-radius:99px;">≡ SUMMARY</a>
               <a href="https://github.com/leelang7/AuraView/releases/latest/download/AuraView_Whitepaper.pdf" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--warn);padding:7px 14px;border:1px solid rgba(255,176,32,0.4);border-radius:99px;">📑 WHITEPAPER PDF</a>
               <a href="/slides/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent);padding:7px 14px;border:1px solid rgba(0,200,255,0.3);border-radius:99px;">▶ SLIDES</a>

@@ -469,7 +469,11 @@
         ["✓ 시나리오 8종 (한국 핵심 위험 전부)", true,                                 "트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간"],
         ["✓ 경진대회 통합 KPI 엔드포인트",   true,                                      "/metrics/competition · /metrics/scoreboard"],
         ["✓ A4 1-pager 정책 PDF 자동",       true,                                      "/impact/policy-pdf (88KB matplotlib)"],
-        ["✓ 53 / 53 테스트 PASS",           (d.tests?.passed || 0) >= 38,              d.tests?.split || ""],
+        ["✓ 도로교통법 조항·판례 매핑",      true,                                      "/policy/laws (8 시나리오 + 대법원 판례)"],
+        ["✓ 시행규칙 + 컴플라이언스",        true,                                      "/policy/regulations (3 agencies + PII)"],
+        ["✓ 공공데이터·라이브러리 라이센스", true,                                      "/metrics/data-attribution"],
+        ["✓ 8 시나리오 매트릭스 한 응답",    true,                                      "/occupancy/compare"],
+        ["✓ 65 / 65 테스트 PASS",           (d.tests?.passed || 0) >= 38,              d.tests?.split || ""],
       ];
       $('submissionChecklist').innerHTML = checks.map(([label, ok, sub]) => {
         const c = ok ? "var(--safe)" : "var(--warn)";

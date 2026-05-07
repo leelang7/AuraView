@@ -38,8 +38,9 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ## v0.6 — Competition Ready (2026-05)
 
-### Added (Phase 7-11 누적)
-- **`/metrics/manifest`** ⭐ — 11 검증 URL + 5 라이브 데모 + git_sha + 시나리오 8종 + 65 tests (judge single-source-of-truth).
+### Added (Phase 7-14 누적)
+- **`/competition/`** 🏆 — 정적 HTML 심사위원 허브: 4 KPI hero + 11 검증 URL + 5 데모 + 5 문서 + 8 시나리오 한 페이지 (Phase 14, ~10.7KB, print-friendly).
+- **`/metrics/manifest`** ⭐ — 11 검증 URL + 5 라이브 데모 + git_sha + 시나리오 8종 + 66 tests (judge single-source-of-truth, JSON, Phase 11).
 - **`/policy/laws`** + **`/policy/regulations`** — 8 시나리오 도로교통법 조항·대법원 판례·민식이법·헌재 판례 + 3 agencies 시행규칙·PII 컴플라이언스.
 - **`/metrics/data-attribution`** — 6 공공데이터 + 4 정적 데이터셋 + 7 라이브러리 라이센스 명시.
 - **`/occupancy/compare`** — 8 시나리오 메타 한 응답 (judge 매트릭스 시각화).

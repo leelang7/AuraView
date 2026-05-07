@@ -245,6 +245,24 @@ def test_policy_laws_maps_8_scenarios():
     assert "common_basis" in j
 
 
+# ─── /metrics/manifest ────────────────────────────────────────────────
+def test_metrics_manifest_lists_all_artifacts():
+    """심사위원 single-source-of-truth — 모든 검증 URL 한 응답."""
+    r = client.get("/metrics/manifest")
+    assert r.status_code == 200
+    j = r.json()
+    assert j["competition"].startswith("2026")
+    assert j["tests_passed"] >= 38
+    verify = j.get("verification_in_one_step", [])
+    assert len(verify) >= 8
+    urls = {v["url"] for v in verify}
+    for needed in ("/metrics/competition", "/policy/laws", "/impact/policy-pdf",
+                   "/occupancy/compare", "/metrics/data-attribution"):
+        assert needed in urls, f"manifest missing {needed}"
+    assert len(j["scenarios"]) == 8
+    assert "git_sha" in j
+
+
 def test_policy_regulations_lists_3_agencies():
     r = client.get("/policy/regulations")
     assert r.status_code == 200

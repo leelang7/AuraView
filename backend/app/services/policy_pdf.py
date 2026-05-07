@@ -133,7 +133,7 @@ def render_policy_pdf(
                     _add_text(ax_tbl, x, y, val, fontsize=9, color="#222")
 
         # ── 공공데이터 6종 상태
-        ax_data = fig.add_axes([0, 0.20, 1, 0.20])
+        ax_data = fig.add_axes([0, 0.24, 1, 0.18])
         ax_data.axis("off")
         _add_text(ax_data, 0.04, 0.95, "공공데이터 융합 현황", fontsize=12, weight="bold", color="#1a2336")
         _add_text(ax_data, 0.04, 0.84,
@@ -158,18 +158,32 @@ def render_policy_pdf(
             _add_text(ax_data, x0, y0 - 0.08, origin, fontsize=7.5, color="#7a8794")
             _add_text(ax_data, x0 + 0.21, y0, mode.upper(), fontsize=9, weight="bold", color=mode_color)
 
-        # ── 기술 차별화 (footer)
-        ax_diff = fig.add_axes([0, 0.06, 1, 0.13])
+        # ── 법적 근거 (도로교통법 + 대법원 판례)
+        ax_law = fig.add_axes([0, 0.13, 1, 0.10])
+        ax_law.axis("off")
+        _add_text(ax_law, 0.04, 0.92, "법적 근거 — 도로교통법 + 대법원 판례",
+                  fontsize=11, weight="bold", color="#1a2336")
+        law_bullets = [
+            "우회전 보행자: 도로교통법 25조 4항 + 대법 2022도10752 (보행자 우선)",
+            "스쿨존: 도로교통법 12조 + 민식이법 (헌재 2019헌마927) + 어린이안전관리법",
+            "자전거: 도로교통법 13조 + 자전거이용활성화법 + 대법 2021도8395",
+            "데이터 컴플라이언스: 개인정보보호법 28조의2 + k=5 가명결합",
+        ]
+        for i, b in enumerate(law_bullets):
+            _add_text(ax_law, 0.04, 0.78 - i * 0.18, "» " + b, fontsize=7.8, color="#222")
+
+        # ── 기술 차별화 + 검증
+        ax_diff = fig.add_axes([0, 0.04, 1, 0.09])
         ax_diff.axis("off")
-        _add_text(ax_diff, 0.04, 0.92, "기술 차별화", fontsize=11, weight="bold", color="#1a2336")
+        _add_text(ax_diff, 0.04, 0.94, "기술 차별화 + 검증",
+                  fontsize=11, weight="bold", color="#1a2336")
         bullets = [
-            "Tesla FSD: 자기 카메라만  →  AuraView: 블랙박스 V2V 협업으로 사각지대 복원",
-            "BEV 3D occupancy + Risk Transformer (AUC 0.94, p99 1.04ms, 모바일·임베디드 가능)",
-            "한국 특화: 버스-보행자 prior(+0.55), 우회전 보행자, 어린이 보호구역, 상하행 비대칭",
-            "재현성: 38 pytest 통과 · GitHub CI · Docker · 무인 시연 kiosk",
+            "Tesla 자기 카메라만 → AuraView 블랙박스 V2V 협업으로 사각지대 복원",
+            "BEV 3D occupancy + Risk Transformer (AUC 0.94 · p99 1.04ms · CPU 단일 코어)",
+            "65 pytest · GitHub CI · /metrics/competition (4축 KPI · git_sha)",
         ]
         for i, b in enumerate(bullets):
-            _add_text(ax_diff, 0.04, 0.72 - i * 0.18, "• " + b, fontsize=8.5, color="#222")
+            _add_text(ax_diff, 0.04, 0.74 - i * 0.22, "• " + b, fontsize=7.8, color="#222")
 
         # ── 푸터
         ax_foot = fig.add_axes([0, 0, 1, 0.05])

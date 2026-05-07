@@ -123,7 +123,8 @@ hazard probability 즉시 계산 + 권장속도 자동 산출.
 4. TAB ⑩ 공공데이터 라이브  →  6종 freshness 3초 폴링 (live/stub 즉시 식별)
 5. TAB ⑤ Capability Matrix  →  AUC 0.9403 · Backend ⭐ trained 강조
 6. /metrics/competition (JSON 새 탭)  →  4축 KPI 한 응답 + git_sha (버전 추적)
-7. /impact/policy-pdf  →  A4 1-pager 즉석 다운로드 (정책담당자 배포)
+7. /policy/laws  →  8 시나리오 도로교통법 조항·대법원 판례 매핑 (법적 정당성)
+8. /impact/policy-pdf  →  A4 1-pager 즉석 다운로드 (정책담당자 배포)
 ```
 
 ## Q&A 대비
@@ -137,6 +138,12 @@ A: `curl /metrics/competition` — 모델·임팩트·공공데이터·검증 4�
    `curl /metrics/scoreboard` — 5개 평가항목 자체 채점 + evidence endpoint.
    `curl -O /impact/policy-pdf` — A4 1-pager PDF 즉석 다운로드.
    `git_sha` 필드로 어떤 commit 의 결과인지 추적 가능.
+
+**Q: 법적 근거는?**
+A: `curl /policy/laws` — 8 시나리오 모두 도로교통법 조항·대법원 판례 매핑.
+   - 우회전 보행자 (대법 2022도10752) · 스쿨존 (민식이법) · 자전거 (2021도8395) 등.
+   - 각 항목 국가법령정보센터(law.go.kr) URL + AuraView 의 정량 기여 명시.
+   `curl /policy/regulations` — 국토부·경찰청·도로공사 시행규칙 + PII/가명결합 컴플라이언스.
 
 **Q: stub 인지 live 인지 어떻게 알아?**
 A: TAB ⑩ 공공데이터 라이브 또는 `/fusion/sources` — 6종 소스 mode + age 명시.

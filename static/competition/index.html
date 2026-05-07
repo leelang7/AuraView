@@ -190,8 +190,25 @@
   <h2>④ <em>8 시나리오</em> 매트릭스 (한국 도로 핵심 위험)</h2>
   <div class="scenarios" id="scenarios-grid"></div>
 
+  <!-- TOP INTERSECTIONS -->
+  <h2>⑤ <em>위험 교차로 Top-10</em> · 도입 우선순위 (서울)</h2>
+  <table id="topinx-table" style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;">
+    <thead><tr style="background:var(--surface);">
+      <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">#</th>
+      <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">교차로</th>
+      <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">자치구</th>
+      <th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);">연 사망·중상</th>
+      <th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);">예방</th>
+    </tr></thead>
+    <tbody id="topinx-body"><tr><td colspan="5" style="padding:18px;color:var(--muted);text-align:center;">로딩 중…</td></tr></tbody>
+  </table>
+  <p style="margin-top:8px;color:var(--muted);font-size:11px;">
+    JSON 직접: <a href="/impact/top-intersections" target="_blank" style="color:var(--accent);">/impact/top-intersections</a> ·
+    국가 단위(22 교차로): <a href="/impact/top-intersections?scope=national" target="_blank" style="color:var(--accent);">scope=national</a>
+  </p>
+
   <!-- LAW CITATIONS -->
-  <h2>⑤ <em>법적 근거</em> · 도로교통법 + 대법원 판례</h2>
+  <h2>⑥ <em>법적 근거</em> · 도로교통법 + 대법원 판례</h2>
   <table id="laws-table" style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;">
     <thead><tr style="background:var(--surface);">
       <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">시나리오</th>
@@ -322,6 +339,33 @@ function actionCard(badge, color, title, url, desc){
       <div class="id">${s}</div>
     </a>
   `).join('');
+
+  // Top-N 위험 교차로 (서울)
+  try {
+    const r = await fetch('/impact/top-intersections?top_n=10&scope=seoul');
+    const tj = await r.json();
+    const inx = tj.intersections || [];
+    const rows = inx.slice(0, 10).map((it) => `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">${it.rank || '—'}</td>
+        <td style="padding:10px;font-weight:600;">${it.name}<div style="color:var(--muted);font-size:10px;font-weight:400;margin-top:2px;">${it.category || ''}</div></td>
+        <td style="padding:10px;color:var(--muted);">${it.district || '—'}</td>
+        <td style="padding:10px;text-align:right;font-family:'JetBrains Mono',monospace;color:var(--danger);">${it.annual_kis_baseline}</td>
+        <td style="padding:10px;text-align:right;font-family:'JetBrains Mono',monospace;color:var(--safe);">
+          <strong>${(it.prevented_kis_yearly ?? 0).toFixed(1)}명</strong>
+        </td>
+      </tr>
+    `).join('');
+    const headline = tj.headline ? `<div style="margin-top:10px;padding:10px;background:rgba(0,224,154,0.10);border-left:3px solid var(--safe);font-size:13px;color:var(--safe);font-weight:700;">${tj.headline}</div>` : '';
+    document.getElementById('topinx-body').innerHTML = rows ||
+      '<tr><td colspan="5" style="padding:18px;color:var(--muted);text-align:center;">데이터 없음</td></tr>';
+    if (headline) {
+      document.getElementById('topinx-table').insertAdjacentHTML('afterend', headline);
+    }
+  } catch(e) {
+    document.getElementById('topinx-body').innerHTML =
+      `<tr><td colspan="5" style="padding:18px;color:var(--danger);">/impact/top-intersections 응답 실패: ${e.message}</td></tr>`;
+  }
 
   // Laws (도로교통법 + 대법원 판례)
   try {

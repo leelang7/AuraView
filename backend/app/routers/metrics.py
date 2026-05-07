@@ -13,7 +13,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from fastapi import APIRouter
 
@@ -312,6 +312,52 @@ def competition_manifest():
             "school_zone", "bicycle_lane", "night_pedestrian",
         ],
         "tests_passed": 65,
+    }
+
+
+@router.get("/api-directory")
+def api_directory():
+    """경진대회 평가용 — 전체 엔드포인트 그룹별 디렉토리 (judge friendly).
+
+    /healthz/details 와 비슷하지만 prefix(group)별로 묶어 한눈에 검토 가능.
+    """
+    from .. import main as main_mod
+    by_prefix: Dict[str, List[Dict[str, Any]]] = {}
+    for r in main_mod.app.routes:
+        path = getattr(r, "path", None)
+        if not path or not path.startswith("/"):
+            continue
+        if path.startswith(("/openapi", "/redoc", "/static")):
+            continue
+        # group by first segment
+        seg = path.split("/")[1] or "root"
+        methods = sorted(getattr(r, "methods", set()) or set())
+        if not methods or "HEAD" in methods and len(methods) <= 2:
+            continue   # skip pure HEAD/OPTIONS
+        by_prefix.setdefault(seg, []).append({
+            "path": path,
+            "methods": [m for m in methods if m not in ("HEAD", "OPTIONS")],
+        })
+
+    # Highlight competition-relevant groups
+    competition_groups = ["metrics", "policy", "impact", "occupancy", "fusion",
+                          "positioning", "collab", "healthz"]
+    sorted_groups = sorted(
+        by_prefix.keys(),
+        key=lambda g: (0 if g in competition_groups else 1, g),
+    )
+    return {
+        "as_of": datetime.utcnow().isoformat() + "Z",
+        "total_routes": sum(len(v) for v in by_prefix.values()),
+        "groups": [
+            {
+                "prefix": g,
+                "is_competition": g in competition_groups,
+                "count": len(by_prefix[g]),
+                "routes": sorted(by_prefix[g], key=lambda r: r["path"]),
+            }
+            for g in sorted_groups
+        ],
     }
 
 

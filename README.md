@@ -124,7 +124,67 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 
 ## 📐 시스템 아키텍처
 
-![architecture](docs/architecture.svg)
+```mermaid
+flowchart LR
+    subgraph Edge[Edge · 차량·블랙박스·Flutter 앱]
+        CAM[📹 영상 캡처<br/>JPEG @ 4s tick]
+        BEV[BEV Occupancy<br/>40×40 voxel]
+        INT[Intent · 보행자 의도]
+        E2E[E2E Risk Transformer<br/>AUC 0.94 · p99 1.04ms]
+        CAM --> BEV --> INT --> E2E
+    end
+
+    subgraph Cloud[Cloud · auraview.allthatai.kr]
+        V2V[⭐ V2V 풀<br/>마주오는 차 시점]
+        BUS[버스 정류장 prior<br/>+0.55 boost]
+        BIDIR[VDS 상하행 비대칭]
+        FUSE[Fused Occupancy + Risk<br/>lift +10~31%p]
+        V2V --> FUSE
+        BUS --> FUSE
+        BIDIR --> FUSE
+
+        SIG[신호 API<br/>apis.data.go.kr]
+        VDS[VDS 소통<br/>data.ex.co.kr]
+        TAAS[TAAS 사고이력<br/>taas.koroad.or.kr]
+        ITS[ITS 국가교통정보<br/>openapi.its.go.kr]
+        DSZ[데이터안심구역<br/>dta.molit.go.kr]
+        INC[돌발상황<br/>data.ex.co.kr]
+        SIG & VDS & TAAS & ITS & DSZ & INC -.-> FUSE
+
+        FLEET[Fleet 학습<br/>PII 마스킹 + OTA]
+        DSZJOIN[TAAS × VDS<br/>k=5 가명결합]
+        TOPN[Top-N 정책 리포트]
+        KMAAS[K-MaaS 환원]
+
+        FLEET --> TOPN
+        DSZJOIN --> TOPN
+        TOPN --> KMAAS
+    end
+
+    Edge -- V2V broadcast --> V2V
+    FUSE -- HUD 경고 --> Edge
+    Edge -- 하드샘플 업로드 --> FLEET
+
+    subgraph Judge[심사위원 검증]
+        MANIFEST[/metrics/manifest<br/>11 verify URLs/]
+        COMP[/competition/<br/>판정 Hub HTML/]
+        PDF[/impact/policy-pdf<br/>A4 1-pager/]
+        LAW[/policy/laws<br/>도로교통법 매핑/]
+        E2E -.-> MANIFEST
+        FUSE -.-> MANIFEST
+        TOPN -.-> MANIFEST
+    end
+
+    style Edge fill:#0a1f2e,color:#fff,stroke:#00c8ff
+    style Cloud fill:#0d1a14,color:#fff,stroke:#00e09a
+    style Judge fill:#1a0a2e,color:#fff,stroke:#7c3aed
+    style FUSE fill:#0a3a30,color:#fff
+    style E2E fill:#1a2845,color:#fff
+    style MANIFEST fill:#2a0a3a,color:#fff
+    style COMP fill:#2a0a3a,color:#fff
+```
+
+> SVG 버전: ![architecture](docs/architecture.svg)
 
 ```
 ┌──────────── Edge (차량·블랙박스·Flutter 앱) ────────────┐

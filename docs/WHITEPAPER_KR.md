@@ -352,7 +352,9 @@ API: `GET /benchmark/risk?n=200` · `GET /benchmark/v2v-merge?n=50` · `GET /ben
 - [x] **경진대회 통합 KPI 엔드포인트** (`/metrics/competition`, `/metrics/scoreboard`)
 - [x] **정책 1-pager PDF 자동 생성** (`/impact/policy-pdf`) — A4 즉시 배포
 - [x] **시나리오 8종** — 트럭/이륜/신호/우천/우회전 + **school_zone (DSZ)** + **bicycle_lane (자전거 GIS)** + **night_pedestrian (V2V 헤드라이트 share)**
-- [x] **53 pytest 통과** — endpoint + collab + impact + 경진대회 신규 features (5 scenario 신규 포함)
+- [x] **65 pytest 통과** — endpoint + collab + impact + 경진대회 신규 features
+- [x] **법적·정책적 근거** — `/policy/laws` (8 시나리오별 도로교통법 조항·대법원 판례·시행규칙)
+- [x] **공공데이터 출처 명시** — `/metrics/data-attribution` (6 소스 + 4 정적 + 7 라이브러리 라이센스)
 - [ ] 학습 노트북 실행 결과 (1주 내)
 - [ ] 사고 재현 데모 영상 2분 (3주 내)
 - [ ] 발표 슬라이드 (4주 내)

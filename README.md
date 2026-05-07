@@ -175,6 +175,10 @@ github.com/leelang7/AuraView
 | `GET`  | **`/metrics/competition`** ★ | **경진대회 통합 KPI (모델·임팩트·공공데이터·검증·RAG)** |
 | `GET`  | **`/metrics/scoreboard`** ★ | **5개 평가 항목 자체 채점** |
 | `GET`  | **`/impact/policy-pdf?coverage=0.05&lead=3.38`** ★ | **A4 1-pager 정책 임팩트 PDF** |
+| `GET`  | **`/policy/laws`** ★ | **8 시나리오별 도로교통법 조항·판례 매핑** |
+| `GET`  | **`/policy/regulations`** ★ | **국토부·경찰청·도로공사 시행규칙 + 개인정보 컴플라이언스** |
+| `GET`  | **`/metrics/data-attribution`** ★ | **공공데이터·정적 데이터셋·라이브러리 라이센스 명시** |
+| `GET`  | **`/occupancy/compare`** ★ | **8 시나리오 메타 한 응답 (matrix)** |
 | `POST` | **`/qa/ask`** ★ RAG | **질의 → 5 chunk_id + 근거 답변 (BM25+bge-m3+reranker+Qwen2.5-7B)** |
 | `GET`  | **`/qa/info`** · **`/qa/health`** ★ RAG | RAG 스택 구성 + 인덱스/CUDA 상태 |
 | `POST` | **`/qa/index`** · **`/qa/index-docs`** ★ RAG (admin) | corpus 인덱싱 / 자체 docs 자동 시드 |

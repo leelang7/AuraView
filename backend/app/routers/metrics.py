@@ -149,6 +149,11 @@ def competition_kpis():
             "roadmap": "/docs/ROADMAP.md",
             "prototype_ui": "/",
             "api_docs": "/docs",
+            "korean_traffic_laws": "/policy/laws",
+            "regulations": "/policy/regulations",
+            "data_attribution": "/metrics/data-attribution",
+            "scenario_compare": "/occupancy/compare",
+            "policy_pdf": "/impact/policy-pdf",
         },
     }
 

@@ -9,7 +9,7 @@ from .database import Base, engine
 from .routers import (
     intersections, signals, events, risk, detect,
     occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab, health, summary, benchmark,
-    impact, positioning, metrics, qa,
+    impact, positioning, metrics, qa, policy,
 )
 
 # scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
@@ -84,6 +84,7 @@ app.include_router(benchmark.router, prefix="/benchmark", tags=["benchmark"])
 app.include_router(impact.router, prefix="/impact", tags=["impact"])
 app.include_router(positioning.router, prefix="/positioning", tags=["positioning"])
 app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
+app.include_router(policy.router, prefix="/policy", tags=["policy"])
 app.include_router(qa.router, prefix="/qa", tags=["qa-rag"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])

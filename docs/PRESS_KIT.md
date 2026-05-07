@@ -89,6 +89,10 @@
 | **경진대회 통합 KPI** | https://auraview.allthatai.kr/metrics/competition |
 | **5개 평가항목 자체채점** | https://auraview.allthatai.kr/metrics/scoreboard |
 | **A4 1-pager 정책 PDF** | https://auraview.allthatai.kr/impact/policy-pdf |
+| **도로교통법 조항 매핑** | https://auraview.allthatai.kr/policy/laws |
+| **시행규칙 + 컴플라이언스** | https://auraview.allthatai.kr/policy/regulations |
+| **데이터 출처 명시** | https://auraview.allthatai.kr/metrics/data-attribution |
+| **8 시나리오 매트릭스** | https://auraview.allthatai.kr/occupancy/compare |
 | 임팩트 (TAAS 결합) | https://auraview.allthatai.kr/impact |
 | 임팩트 시나리오 | https://auraview.allthatai.kr/impact/scenarios |
 | Tesla 비교 5종 | https://auraview.allthatai.kr/positioning/tesla-vs-auraview |

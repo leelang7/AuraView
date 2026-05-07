@@ -225,3 +225,33 @@ def test_occupancy_compare_has_demo_url_per_scenario():
         assert s["id"] in s["demo_url"]
         assert isinstance(s["p_collision"], (int, float))
         assert 0.0 <= s["p_collision"] <= 1.0
+
+
+# ─── /policy/laws + /policy/regulations ───────────────────────────────
+def test_policy_laws_maps_8_scenarios():
+    """경진대회 — 각 시나리오 도로교통법 조항 명시."""
+    r = client.get("/policy/laws")
+    assert r.status_code == 200
+    j = r.json()
+    scns = j.get("scenarios", [])
+    assert len(scns) == 8
+    ids = {s["scenario_id"] for s in scns}
+    assert {"right_turn_pedestrian", "school_zone", "bicycle_lane",
+            "night_pedestrian"} <= ids
+    for s in scns:
+        assert "primary_law" in s
+        assert "도로교통법" in s["primary_law"] or "특별법" in s["primary_law"] or "법률" in s["primary_law"]
+        assert "auraview_role" in s
+    assert "common_basis" in j
+
+
+def test_policy_regulations_lists_3_agencies():
+    r = client.get("/policy/regulations")
+    assert r.status_code == 200
+    j = r.json()
+    agencies = j.get("agencies", [])
+    assert len(agencies) == 3
+    names = {a["agency"] for a in agencies}
+    assert "국토교통부" in names
+    assert "auraview_compliance" in j
+    assert any("개인정보보호법" in c for c in j["auraview_compliance"])

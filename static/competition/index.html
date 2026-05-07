@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AuraView · 2026 국토교통 데이터활용 경진대회 · 심사 허브</title>
+<style>
+  :root {
+    --bg:#04080e; --surface:#0a0f17; --surface2:#101822; --text:#e6edf3;
+    --muted:#7a8794; --accent:#00c8ff; --accent2:#7c3aed; --safe:#00e09a;
+    --warn:#ffb020; --danger:#ff3b3b; --border:rgba(120,135,148,0.25);
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,'Segoe UI','Noto Sans KR',sans-serif; line-height:1.55;
+  }
+  .container { max-width:1180px; margin:0 auto; padding:32px 24px 56px; }
+  .eyebrow {
+    color:var(--accent); letter-spacing:3px; font-size:11px;
+    font-family:'JetBrains Mono',monospace; font-weight:700;
+  }
+  h1 {
+    font-size:38px; font-weight:900; margin:8px 0 14px; line-height:1.15;
+  }
+  h1 em { color:var(--safe); font-style:normal; }
+  .tagline { color:var(--muted); font-size:15px; margin-bottom:18px; }
+  .meta {
+    display:flex; gap:16px; flex-wrap:wrap; font-family:'JetBrains Mono',monospace;
+    font-size:11px; color:var(--muted); margin-bottom:24px;
+  }
+  .meta span strong { color:var(--text); }
+  .pulse {
+    display:inline-block; width:8px; height:8px; border-radius:99px;
+    background:var(--safe); box-shadow:0 0 12px var(--safe);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity:0.4; transform:scale(0.85); } }
+
+  /* KPI hero */
+  .hero {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px; margin:24px 0 32px;
+  }
+  .kpi {
+    padding:18px 16px; border-radius:14px;
+    background:linear-gradient(135deg,rgba(0,200,255,0.12),rgba(0,224,154,0.04));
+    border:1px solid rgba(0,200,255,0.25);
+  }
+  .kpi .l {
+    font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:2px;
+    color:var(--accent);
+  }
+  .kpi .v { font-size:30px; font-weight:900; margin:6px 0 2px; line-height:1; }
+  .kpi .s { color:var(--muted); font-size:11px; }
+  .kpi.safe { background:linear-gradient(135deg,rgba(0,224,154,0.15),rgba(0,200,255,0.04)); border-color:rgba(0,224,154,0.30); }
+  .kpi.safe .l { color:var(--safe); }
+  .kpi.warn { background:linear-gradient(135deg,rgba(255,176,32,0.13),rgba(255,90,90,0.04)); border-color:rgba(255,176,32,0.30); }
+  .kpi.warn .l { color:var(--warn); }
+  .kpi.purple { background:linear-gradient(135deg,rgba(124,58,237,0.13),rgba(255,90,90,0.04)); border-color:rgba(124,58,237,0.30); }
+  .kpi.purple .l { color:#a995ff; }
+
+  h2 { font-size:22px; margin:28px 0 14px; }
+  h2 em { color:var(--accent); font-style:normal; }
+
+  .actions {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:12px;
+  }
+  .action {
+    display:flex; gap:12px; align-items:flex-start; padding:14px;
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    text-decoration:none; color:inherit; transition:transform 0.12s, border-color 0.12s;
+  }
+  .action:hover { transform:translateY(-2px); border-color:var(--accent); }
+  .action .badge {
+    flex-shrink:0; width:36px; height:36px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+    background:rgba(0,200,255,0.15); color:var(--accent);
+  }
+  .action.safe .badge { background:rgba(0,224,154,0.15); color:var(--safe); }
+  .action.warn .badge { background:rgba(255,176,32,0.15); color:var(--warn); }
+  .action.purple .badge { background:rgba(124,58,237,0.15); color:#a995ff; }
+  .action .body { flex:1; min-width:0; }
+  .action .title { font-weight:700; font-size:14px; margin-bottom:3px; }
+  .action .url {
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted);
+    word-break:break-all;
+  }
+  .action .desc { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.5; }
+
+  .scenarios {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:8px;
+  }
+  .scen {
+    padding:10px 12px; background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; text-decoration:none; color:var(--text); font-size:12px;
+    transition:all 0.12s;
+  }
+  .scen:hover { border-color:var(--safe); transform:translateY(-1px); }
+  .scen .em { font-size:18px; }
+  .scen .id {
+    font-family:'JetBrains Mono',monospace; font-size:9.5px;
+    color:var(--muted); margin-top:2px;
+  }
+
+  footer {
+    margin-top:48px; padding-top:24px; border-top:1px solid var(--border);
+    text-align:center; color:var(--muted); font-size:11px;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  @media print {
+    body { background:#fff; color:#111; }
+    .action { background:#f8f9fb; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="eyebrow">// 2026 국토교통 데이터활용 경진대회 · JUDGE HUB</div>
+  <h1>심사위원 <em>1-step 검증</em> 허브</h1>
+  <p class="tagline">
+    AuraView 의 모든 검증 가능한 artifact 를 한 페이지에. 모델 성능·임팩트·공공데이터·법적 근거를 즉시 확인하세요.
+  </p>
+  <div class="meta">
+    <span><span class="pulse"></span> SYSTEM ONLINE</span>
+    <span>version <strong id="meta-version">…</strong></span>
+    <span>git <strong id="meta-git">…</strong></span>
+    <span>tests <strong id="meta-tests">…</strong></span>
+    <span id="meta-asof"></span>
+  </div>
+
+  <!-- HERO KPI -->
+  <div class="hero">
+    <div class="kpi safe">
+      <div class="l">CONNECTIVITY MODELS · TRAINED</div>
+      <div class="v" id="kpi-auc">…</div>
+      <div class="s">Risk Transformer AUC · F1 <span id="kpi-f1">—</span></div>
+    </div>
+    <div class="kpi">
+      <div class="l">P99 INFERENCE</div>
+      <div class="v" id="kpi-p99">…</div>
+      <div class="s">CPU 단일 코어 · 100회</div>
+    </div>
+    <div class="kpi warn">
+      <div class="l">ANNUAL DEATHS PREVENTED</div>
+      <div class="v" id="kpi-deaths">…</div>
+      <div class="s">5% pilot · TAAS 2024 baseline</div>
+    </div>
+    <div class="kpi purple">
+      <div class="l">PUBLIC DATA · FUSED</div>
+      <div class="v" id="kpi-data">…</div>
+      <div class="s">신호·VDS·돌발·TAAS·ITS·DSZ</div>
+    </div>
+  </div>
+
+  <!-- VERIFY URLS -->
+  <h2>① <em>1-step 검증</em> · JSON 응답</h2>
+  <div class="actions" id="verify-grid"></div>
+
+  <!-- LIVE DEMO -->
+  <h2>② <em>라이브 데모</em></h2>
+  <div class="actions" id="demo-grid"></div>
+
+  <!-- DOCUMENTATION -->
+  <h2>③ <em>문서</em></h2>
+  <div class="actions" id="docs-grid"></div>
+
+  <!-- 8 SCENARIOS -->
+  <h2>④ <em>8 시나리오</em> 매트릭스 (한국 도로 핵심 위험)</h2>
+  <div class="scenarios" id="scenarios-grid"></div>
+
+  <footer>
+    AuraView K-Perception © 2026 · MIT License · <a href="https://github.com/leelang7/AuraView" style="color:var(--accent);">github.com/leelang7/AuraView</a>
+  </footer>
+</div>
+
+<script>
+const SCN_EMOJI = {
+  truck_occlusion:'🚛', motorcycle_blindspot:'◀', signal_occlusion:'🚦',
+  rainy_intersection:'🌧️', right_turn_pedestrian:'🚸',
+  school_zone:'🏫', bicycle_lane:'🚴', night_pedestrian:'🌙',
+};
+const SCN_LABEL = {
+  truck_occlusion:'트럭 가림', motorcycle_blindspot:'좌측 사각',
+  signal_occlusion:'신호 가림', rainy_intersection:'우천',
+  right_turn_pedestrian:'우회전', school_zone:'스쿨존',
+  bicycle_lane:'자전거', night_pedestrian:'야간',
+};
+const VERIFY_BADGES = {
+  '/metrics/competition':['🎯','safe'], '/metrics/scoreboard':['📊','safe'],
+  '/occupancy/compare':['📐','warn'], '/policy/laws':['⚖️','purple'],
+  '/policy/regulations':['📜','purple'], '/metrics/data-attribution':['🏷️','warn'],
+  '/fusion/sources':['📡',''], '/impact/policy-pdf':['📄','warn'],
+  '/impact/top-intersections':['📍',''], '/positioning/tesla-vs-auraview':['🥊','purple'],
+  '/healthz/details':['🩺','safe'],
+};
+const DEMO_BADGES = {
+  '/ui':['🎬',''], '/slides/':['🎞️','purple'], '/kiosk/':['📺',''],
+  '/submission/':['📋','safe'], '/docs':['🔧',''],
+};
+const DOC_BADGES = {
+  whitepaper:['📖',''], 'Press Kit 1-pager':['📰','warn'],
+  'Reproducibility 가이드':['🔁','safe'], Roadmap:['🗺️',''],
+  'Datasets 결합 매핑':['🗄️','purple'],
+};
+
+function actionCard(badge, color, title, url, desc){
+  return `<a class="action ${color}" href="${url}" target="_blank">
+    <div class="badge">${badge}</div>
+    <div class="body">
+      <div class="title">${title}</div>
+      <div class="url">${url}</div>
+      ${desc?`<div class="desc">${desc}</div>`:''}
+    </div>
+  </a>`;
+}
+
+(async function(){
+  let m;
+  try {
+    const r = await fetch('/metrics/manifest');
+    m = await r.json();
+  } catch(e) {
+    document.querySelector('.tagline').textContent = '백엔드 응답 실패 — /metrics/manifest 확인 필요.';
+    return;
+  }
+
+  document.getElementById('meta-version').textContent = m.version || '—';
+  document.getElementById('meta-git').textContent = m.git_sha || 'unknown';
+  document.getElementById('meta-tests').textContent = `${m.tests_passed || 0} pytest`;
+  document.getElementById('meta-asof').textContent = (m.as_of || '').replace('T',' ').replace('Z',' UTC');
+
+  // KPI hero — fetch /metrics/competition for full numbers
+  try {
+    const r = await fetch('/metrics/competition');
+    const c = await r.json();
+    const mp = c.model_performance || {};
+    const ie = (c.impact_estimate || {}).headline_pilot_5pct || {};
+    const pf = c.public_data_fusion || {};
+    document.getElementById('kpi-auc').textContent = mp.auc ?? '—';
+    document.getElementById('kpi-f1').textContent = mp.f1 ?? '—';
+    document.getElementById('kpi-p99').textContent = (mp.p99_inference_ms ?? '—') + ' ms';
+    document.getElementById('kpi-deaths').textContent = (ie.prevented_deaths_yr ?? '—') + '명';
+    document.getElementById('kpi-data').textContent = `${pf.sources_total || 6}종`;
+  } catch(_) {}
+
+  // Verify URLs
+  const v = m.verification_in_one_step || [];
+  document.getElementById('verify-grid').innerHTML = v.map(item => {
+    const [badge='🔗', color=''] = VERIFY_BADGES[item.url] || ['🔗',''];
+    return actionCard(badge, color, item.label, item.url);
+  }).join('');
+
+  // Live demo
+  const d = m.live_demo || [];
+  document.getElementById('demo-grid').innerHTML = d.map(item => {
+    const [badge='▶', color=''] = DEMO_BADGES[item.url] || ['▶',''];
+    return actionCard(badge, color, item.label, item.url);
+  }).join('');
+
+  // Docs
+  const docs = m.documentation || [];
+  document.getElementById('docs-grid').innerHTML = docs.map(item => {
+    const [badge='📚', color=''] = DOC_BADGES[item.label] || ['📚',''];
+    return actionCard(badge, color, item.label, item.url);
+  }).join('');
+
+  // Scenarios
+  const scns = m.scenarios || [];
+  document.getElementById('scenarios-grid').innerHTML = scns.map(s => `
+    <a class="scen" href="/occupancy/demo?scenario=${s}" target="_blank">
+      <div class="em">${SCN_EMOJI[s] || '🎯'}</div>
+      <div>${SCN_LABEL[s] || s}</div>
+      <div class="id">${s}</div>
+    </a>
+  `).join('');
+})();
+</script>
+</body>
+</html>

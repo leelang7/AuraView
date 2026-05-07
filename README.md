@@ -13,6 +13,10 @@
 
 > 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
+## 🏆 Judge Hub (심사위원 전용 한 페이지)
+
+> **<https://auraview.allthatai.kr/competition/>** — KPI 4종 + 검증 URL 11개 + 라이브 데모 5종 + 8 시나리오 + 문서 5종 한 화면. JSON 직접 호출 없이 시각적으로 모두 가능.
+
 ## 🏆 Quick Verify (심사위원 1-step)
 
 ```bash

@@ -189,6 +189,7 @@ def _mount_static(app, paths_relative_to_repo, mount_url):
 _mount_static(app, ["static", "slides"], "/slides")
 _mount_static(app, ["static", "kiosk"], "/kiosk")
 _mount_static(app, ["static", "summary"], "/submission")
+_mount_static(app, ["static", "competition"], "/competition")
 _mount_static(app, ["static"], "/static")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)

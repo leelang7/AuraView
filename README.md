@@ -172,6 +172,7 @@ github.com/leelang7/AuraView
 | `POST` | **`/collab/v2v/seed-demo`** | 시연 시드 |
 | `POST` | **`/collab/bus-context`** · **`/collab/bidirectional`** | 버스/상행하행 분석 |
 | `POST` | **`/collab/fused-occupancy`** ★ | **단독 vs 협업 결합 비교** |
+| `GET`  | **`/metrics/manifest`** ⭐ | **🏆 심사용 single-source-of-truth — 11 검증 URL + 5 데모 + git_sha** |
 | `GET`  | **`/metrics/competition`** ★ | **경진대회 통합 KPI (모델·임팩트·공공데이터·검증·RAG)** |
 | `GET`  | **`/metrics/scoreboard`** ★ | **5개 평가 항목 자체 채점** |
 | `GET`  | **`/impact/policy-pdf?coverage=0.05&lead=3.38`** ★ | **A4 1-pager 정책 임팩트 PDF** |

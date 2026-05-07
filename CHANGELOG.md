@@ -38,7 +38,19 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ## v0.6 — Competition Ready (2026-05)
 
-### Added
+### Added (Phase 7-11 누적)
+- **`/metrics/manifest`** ⭐ — 11 검증 URL + 5 라이브 데모 + git_sha + 시나리오 8종 + 65 tests (judge single-source-of-truth).
+- **`/policy/laws`** + **`/policy/regulations`** — 8 시나리오 도로교통법 조항·대법원 판례·민식이법·헌재 판례 + 3 agencies 시행규칙·PII 컴플라이언스.
+- **`/metrics/data-attribution`** — 6 공공데이터 + 4 정적 데이터셋 + 7 라이브러리 라이센스 명시.
+- **`/occupancy/compare`** — 8 시나리오 메타 한 응답 (judge 매트릭스 시각화).
+- **Native (Flutter) 강화**:
+   - 4 시나리오 ego 애니메이션 (school_zone/bicycle_lane/night_pedestrian/right_turn) wall-clock sync.
+   - `_FleetGalleryScreen` — 서버 업로드 이미지 그리드 + 일괄선택 + 일괄삭제 (long-press 모드).
+   - `_CompetitionKpiScreen` — 폰에서 4축 KPI 한 화면 + git_sha + 시나리오 chip.
+   - 프라이버시 강화 — '폰에는 이미지 저장 X' 명시.
+- **Reveal 슬라이드 12 → 15장** — 8 시나리오 매트릭스 + 1-step 검증 + 도로교통법 조항·판례.
+- **키오스크 11 → 14장면** — Public Data Live + 8 시나리오 + Korean Traffic Laws + Competition KPI.
+- **Three.js 시나리오별 환경** — night/rainy/school 각각 ambient + bg 색.
 - **`/metrics/competition`** + **`/metrics/scoreboard`** — 단일 응답으로 모델·임팩트·공공데이터·검증 4축 KPI 노출 + 5개 평가항목 자체채점.
 - **`/impact/policy-pdf`** — matplotlib backend 으로 A4 1-pager PDF 즉석 생성 (~88KB). KPI 카드 + 5행 시나리오표 + 6종 공공데이터 상태 + 차별화 4섹션.
 - **시나리오 8종 확장** (5 → 8): `school_zone` (DSZ 공공데이터 + 등하교 prior +0.62), `bicycle_lane` (자전거 도로 GIS prior +0.40 + 후방 가속), `night_pedestrian` (헤드라이트 한계 + V2V 헤드라이트 share).

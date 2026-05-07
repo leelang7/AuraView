@@ -25,3 +25,15 @@ psycopg2-binary
 
 # ffmpeg binary for video transcode — system 패키지 우선, 없을 때 pip
 imageio-ffmpeg
+
+# RAG 스택 (정보검색 경진대회 — 5개 chunk_id 정확도 우선 · GPU 필수)
+# BM25 + dense embedding + reranker + Qwen2.5-7B-Instruct LLM
+rank-bm25                         # BM25 sparse retrieval (CPU)
+sentence-transformers             # dense embedding (bge-m3) + cross-encoder reranker (bge-reranker-v2-m3)
+faiss-cpu                         # dense vector index (FAISS)
+torch>=2.1                        # GPU tensor (CUDA 필수)
+transformers>=4.45                # Qwen2.5-7B-Instruct
+accelerate>=0.30                  # device_map="auto" + offload
+bitsandbytes>=0.43                # 4bit quantization → 7B → ~5GB VRAM
+# Korean tokenizer (kiwipiepy 한국어 형태소 — BM25 정확도 향상)
+kiwipiepy

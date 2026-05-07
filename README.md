@@ -172,12 +172,30 @@ github.com/leelang7/AuraView
 | `POST` | **`/collab/v2v/seed-demo`** | 시연 시드 |
 | `POST` | **`/collab/bus-context`** · **`/collab/bidirectional`** | 버스/상행하행 분석 |
 | `POST` | **`/collab/fused-occupancy`** ★ | **단독 vs 협업 결합 비교** |
-| `GET`  | **`/metrics/competition`** ★ | **경진대회 통합 KPI (모델·임팩트·공공데이터·검증)** |
+| `GET`  | **`/metrics/competition`** ★ | **경진대회 통합 KPI (모델·임팩트·공공데이터·검증·RAG)** |
 | `GET`  | **`/metrics/scoreboard`** ★ | **5개 평가 항목 자체 채점** |
 | `GET`  | **`/impact/policy-pdf?coverage=0.05&lead=3.38`** ★ | **A4 1-pager 정책 임팩트 PDF** |
+| `POST` | **`/qa/ask`** ★ RAG | **질의 → 5 chunk_id + 근거 답변 (BM25+bge-m3+reranker+Qwen2.5-7B)** |
+| `GET`  | **`/qa/info`** · **`/qa/health`** ★ RAG | RAG 스택 구성 + 인덱스/CUDA 상태 |
+| `POST` | **`/qa/index`** · **`/qa/index-docs`** ★ RAG (admin) | corpus 인덱싱 / 자체 docs 자동 시드 |
 | `GET`  | `/impact` · `/impact/scenarios` · `/impact/top-intersections` | 정량 임팩트 (TAAS 기반) |
 
 > 시나리오 8종 — `/occupancy/demo?scenario=` 에 `truck_occlusion` · `motorcycle_blindspot` · `signal_occlusion` · `rainy_intersection` · `right_turn_pedestrian` · **`school_zone`** (DSZ 공공데이터) · **`bicycle_lane`** (자전거 도로 GIS prior) · **`night_pedestrian`** (야간 V2V 헤드라이트 share)
+
+### 🧠 RAG 정보검색 스택 (정보검색 경진대회 수상형 구조)
+
+| 단계 | 모델 / 라이브러리 | 비고 |
+|---|---|---|
+| Sparse | **BM25 (rank_bm25)** | Kiwi 한국어 형태소 토크나이저 |
+| Dense | **`BAAI/bge-m3`** (sentence-transformers) | 1024-dim · 다국어 (한국어 우수) |
+| Fusion | **Reciprocal Rank Fusion (k=60)** | BM25 + dense 점수 스케일 무관 결합 |
+| Rerank | **`BAAI/bge-reranker-v2-m3`** (CrossEncoder) | top-20 → top-5 정밀 정렬 |
+| LLM | **`Qwen/Qwen2.5-7B-Instruct`** (8B 이하) | bitsandbytes nf4 4bit · GPU 필수 |
+| 출력 | **정확히 5개 chunk_id + 근거 답변** | 모르면 "모르겠습니다" |
+
+★ 점수 구조: **chunk_id 5개 정확도 > LLM 품질**. 그래서 dense+rerank 정밀도가 핵심.
+★ GPU 빌드: `docker compose --profile gpu up -d auraview-gpu` (NVIDIA Container Toolkit 필요).
+★ 모델 캐시 volume: `_data/hf-cache` · 인덱스: `_data/qa-index` (재시작 후 자동 복원).
 
 ---
 

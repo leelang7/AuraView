@@ -1,13 +1,21 @@
-# AuraView K-Perception backend — single-stage minimal image.
-# 시연·심사 환경에서 `docker compose up` 한 줄로 백엔드 + 정적 자산 즉시 가동.
-# 모델/검출 무거운 의존성(ultralytics, torch)은 빌드 시 옵션 — ENABLE_ML=true 이면 포함.
+# AuraView K-Perception backend — single-stage image with optional GPU LLM stack.
+# 시연·심사: `docker compose up` 한 줄로 백엔드 + 정적 자산 가동.
+# RAG (Qwen2.5-7B + bge-m3 + bge-reranker-v2-m3): GPU 필수 (CUDA 12+), 4bit 양자화 ~5GB VRAM.
+# 빌드 모드:
+#   ARG ENABLE_LLM=false    (기본 — 가벼움, RAG 엔드포인트는 /qa/health 만 동작)
+#   ARG ENABLE_LLM=true     (GPU 운영 — torch+transformers+bitsandbytes 추가 설치)
+
+ARG ENABLE_LLM=false
 
 FROM python:3.11-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HOME=/models/hf-cache \
+    TRANSFORMERS_CACHE=/models/hf-cache \
+    QA_INDEX_DIR=/models/qa
 
 # 시연 영상 트랜스코드 + 한글 폰트
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,6 +28,17 @@ WORKDIR /app
 # 의존성 — ML 무거운 패키지 우선 설치 (캐시 활용)
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+
+# ── GPU LLM 스택 옵션 (Qwen2.5-7B-Instruct + 4bit) ──
+# 빌드: docker build --build-arg ENABLE_LLM=true -t auraview/qa:gpu .
+# 런: docker run --gpus all -v hf_cache:/models/hf-cache -v qa_index:/models/qa ...
+ARG ENABLE_LLM
+RUN if [ "$ENABLE_LLM" = "true" ]; then \
+      pip install --no-cache-dir torch>=2.1 transformers>=4.45 accelerate>=0.30 bitsandbytes>=0.43 ; \
+    fi
+
+# 모델/인덱스 mount 포인트 (volume 권장)
+RUN mkdir -p /models/hf-cache /models/qa
 
 # 코드 복사
 COPY backend ./backend

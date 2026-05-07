@@ -86,11 +86,31 @@ def competition_kpis():
         "korean_data_fusion": "신호·VDS·돌발·TAAS·ITS·DSZ 6종 동시 융합",
     }
 
+    # RAG 스택 상태 (정보검색 경진대회용)
+    rag_status = {}
+    try:
+        from ..services import qa_engine
+        st = qa_engine.get_status()
+        rag_status = {
+            "ready": st["ready"],
+            "device": st["device"],
+            "cuda_available": st["cuda"]["available"],
+            "chunks": st["chunks"],
+            "embedder": st["config"]["embedder"],
+            "reranker": st["config"]["reranker"],
+            "llm": st["config"]["llm"],
+            "llm_4bit": st["config"]["llm_4bit"],
+            "top_k_final": st["config"]["top_k_final"],
+        }
+    except Exception:
+        rag_status = {"ready": False, "error": "qa_engine import 실패"}
+
     return {
         "as_of": datetime.utcnow().isoformat() + "Z",
         "service": "AuraView K-Perception",
-        "version": "0.6-competition-ready",
+        "version": "0.7-rag-ready",
         "git_sha": _git_sha(),
+        "rag_stack": rag_status,
         "model_performance": {
             "auc": model_metric.get("auc", 0.9403),
             "f1": model_metric.get("f1", 0.9412),

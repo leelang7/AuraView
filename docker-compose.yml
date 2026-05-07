@@ -27,6 +27,50 @@ services:
       # 업로드·생성 영상·리포트는 호스트에 보존
       - ./_data/uploads:/app/backend/uploads
       - ./_data/dsz_exports:/app/dsz_exports
+      # RAG 모델 캐시 + 인덱스 — 컨테이너 재시작 시 재다운로드 방지
+      - ./_data/hf-cache:/models/hf-cache
+      - ./_data/qa-index:/models/qa
+    networks: [auraview-net]
+
+  # ──────────────────────────────────────────────────────────────────
+  # (선택) GPU 빌드 — Qwen2.5-7B + bge-m3 + reranker (RAG)
+  # 사용: docker compose --profile gpu up -d auraview-gpu
+  # 요구: NVIDIA Container Toolkit (nvidia-docker) 설치
+  # ──────────────────────────────────────────────────────────────────
+  auraview-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ENABLE_LLM: "true"
+    image: auraview/k-perception:gpu
+    container_name: auraview-gpu
+    profiles: ["gpu"]
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ALLOW_FALLBACK: "1"
+      ALLOWED_ORIGINS: "*"
+      QA_DEVICE: "cuda"
+      QA_LLM_4BIT: "1"
+      QA_AUTOSEED_ON_BOOT: "1"     # 부팅 시 자체 docs 자동 인덱싱
+      HF_HOME: "/models/hf-cache"
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./_data/uploads:/app/backend/uploads
+      - ./_data/dsz_exports:/app/dsz_exports
+      - ./_data/hf-cache:/models/hf-cache
+      - ./_data/qa-index:/models/qa
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all          # 또는 1
+              capabilities: [gpu]
     networks: [auraview-net]
 
   # (선택) 발표·시연용 정적 nginx — auraview/k-perception 컨테이너 앞에서 캐싱 + 압축

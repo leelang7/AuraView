@@ -9,7 +9,7 @@ from .database import Base, engine
 from .routers import (
     intersections, signals, events, risk, detect,
     occupancy, fleet, fusion, dsz, kmaas, reports, heatmap, collab, health, summary, benchmark,
-    impact, positioning, metrics,
+    impact, positioning, metrics, qa,
 )
 
 # scenario / showreel 은 opencv 의존 — 없을 때 다른 탭까지 죽지 않도록 방어적 import
@@ -84,10 +84,30 @@ app.include_router(benchmark.router, prefix="/benchmark", tags=["benchmark"])
 app.include_router(impact.router, prefix="/impact", tags=["impact"])
 app.include_router(positioning.router, prefix="/positioning", tags=["positioning"])
 app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
+app.include_router(qa.router, prefix="/qa", tags=["qa-rag"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
 if _SHOWREEL_OK:
     app.include_router(showreel.router, prefix="/showreel", tags=["showreel"])
+
+
+# RAG 인덱스 자동 복구 — 재시작 후 chunks.jsonl + embeddings.npy 디스크에서 복원
+@app.on_event("startup")
+def _qa_restore_index():
+    """QA 인덱스 디스크 복구 (가벼움). 모델은 첫 /qa/ask 시 lazy load."""
+    import logging as _log
+    log = _log.getLogger("auraview.qa.startup")
+    try:
+        from .services import qa_engine
+        if qa_engine.restore_index():
+            log.info("qa: index restored from disk (%d chunks)", len(qa_engine._state["chunks"]))
+        elif os.getenv("QA_AUTOSEED_ON_BOOT", "0") == "1":
+            n = qa_engine.autoseed_from_project_docs()
+            log.info("qa: autoseed indexed %d chunks", n)
+        else:
+            log.info("qa: no index — POST /qa/index-docs to seed (admin)")
+    except Exception as exc:
+        log.warning("qa: startup skip (%s)", exc)
 
 
 # 데모 데이터 자동 시드 — 재배포 후 빈 DB 인 경우만 (idempotent)

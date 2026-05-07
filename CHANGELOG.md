@@ -5,6 +5,37 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.7 — RAG Ready (2026-05)
+
+### Added
+- **RAG 정보검색 스택** — 한국어 정보검색 경진대회 수상 구조
+  - Sparse: **BM25 (rank_bm25)** + Kiwi 한국어 형태소 토크나이저
+  - Dense: **`BAAI/bge-m3`** (sentence-transformers) 1024-dim 다국어
+  - Fusion: **Reciprocal Rank Fusion (k=60)** — 점수 스케일 무관 결합
+  - Reranker: **`BAAI/bge-reranker-v2-m3`** (CrossEncoder) top-20 → top-5
+  - LLM: **`Qwen/Qwen2.5-7B-Instruct`** (8B 이하) bitsandbytes nf4 4bit, GPU 필수
+  - 출력 계약: 정확히 5개 chunk_id + 근거 답변 / "모르겠습니다"
+- **`POST /qa/ask`** — query → answer + chunk_ids[5] + evidence + confidence + timing
+- **`POST /qa/index`** (admin) — chunks 업로드 + BM25/dense 인덱스 빌드
+- **`POST /qa/index-docs`** (admin) — 프로젝트 자체 docs 자동 시드
+- **`GET /qa/health`** — 인덱스/모델/CUDA 상태
+- **`GET /qa/info`** — 스택 구성 + 출력 계약 명시 (심사용)
+- **`backend/app/services/qa_engine.py`** — 핵심 엔진 (lazy load, GPU 강제, 디스크 복원)
+- **Dockerfile**: `ARG ENABLE_LLM=true` 빌드 + `/models/hf-cache` + `/models/qa` volume
+- **docker-compose**: `--profile gpu` 로 NVIDIA GPU 활성화 (auraview-gpu 서비스)
+- **/metrics/competition** 응답에 `rag_stack` 필드 추가 (model/device/chunks 즉시 노출)
+
+### Tests
+- 58 → 63 passed (+5: qa health, info, ask not-ready, index admin, query validation).
+
+### Notes
+- **점수 구조 핵심**: chunk_id 5개 정확도 > LLM 품질 → dense+rerank 정밀도 우선.
+- LLM 미로드 시 추출형 fallback (가장 score 높은 chunk 의 첫 문장).
+- 환경변수: `QA_DEVICE=cuda`, `QA_LLM_4BIT=1`, `QA_AUTOSEED_ON_BOOT=1` (compose 기본 활성).
+- GPU VRAM: Qwen2.5-7B 4bit ~5GB + bge-m3 fp16 ~1.2GB + reranker ~1.2GB ≈ **8GB VRAM**.
+
+---
+
 ## v0.6 — Competition Ready (2026-05)
 
 ### Added

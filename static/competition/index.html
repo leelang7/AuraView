@@ -173,6 +173,21 @@
   <h2>④ <em>8 시나리오</em> 매트릭스 (한국 도로 핵심 위험)</h2>
   <div class="scenarios" id="scenarios-grid"></div>
 
+  <!-- LAW CITATIONS -->
+  <h2>⑤ <em>법적 근거</em> · 도로교통법 + 대법원 판례</h2>
+  <table id="laws-table" style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;">
+    <thead><tr style="background:var(--surface);">
+      <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">시나리오</th>
+      <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">도로교통법 조항</th>
+      <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">대법원 판례</th>
+    </tr></thead>
+    <tbody id="laws-body"><tr><td colspan="3" style="padding:18px;color:var(--muted);text-align:center;">로딩 중…</td></tr></tbody>
+  </table>
+  <p style="margin-top:8px;color:var(--muted);font-size:11px;">
+    → JSON 직접: <a href="/policy/laws" target="_blank" style="color:var(--accent);">/policy/laws</a> ·
+    시행규칙: <a href="/policy/regulations" target="_blank" style="color:var(--accent);">/policy/regulations</a>
+  </p>
+
   <footer>
     AuraView K-Perception © 2026 · MIT License · <a href="https://github.com/leelang7/AuraView" style="color:var(--accent);">github.com/leelang7/AuraView</a>
   </footer>
@@ -278,6 +293,30 @@ function actionCard(badge, color, title, url, desc){
       <div class="id">${s}</div>
     </a>
   `).join('');
+
+  // Laws (도로교통법 + 대법원 판례)
+  try {
+    const r = await fetch('/policy/laws');
+    const lj = await r.json();
+    const rows = (lj.scenarios || []).map(s => {
+      const emo = SCN_EMOJI[s.scenario_id] || '⚖️';
+      const lbl = SCN_LABEL[s.scenario_id] || s.scenario_id;
+      const law = (s.primary_law || '').replace('도로교통법 ', '');
+      const sub = s.subarticle || '';
+      const caseLaw = s.case_law || '—';
+      const url = s.law_url ? `<a href="${s.law_url}" target="_blank" style="color:var(--accent);">${law}</a>` : law;
+      return `<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px;"><span style="font-size:18px;">${emo}</span> <strong>${lbl}</strong></td>
+        <td style="padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;">${url}<div style="color:var(--muted);font-size:10px;margin-top:2px;">${sub}</div></td>
+        <td style="padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#a995ff;">${caseLaw}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('laws-body').innerHTML = rows
+      || '<tr><td colspan="3" style="padding:18px;color:var(--muted);">데이터 없음</td></tr>';
+  } catch(e) {
+    document.getElementById('laws-body').innerHTML =
+      `<tr><td colspan="3" style="padding:18px;color:var(--danger);">/policy/laws 응답 실패: ${e.message}</td></tr>`;
+  }
 })();
 </script>
 </body>

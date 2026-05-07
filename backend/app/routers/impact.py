@@ -60,7 +60,7 @@ def policy_pdf(
 def top_intersections(
     lead: float = Query(3.38, description="평균 선행경고 시간 (초)"),
     top_n: int = Query(10, ge=1, le=22, description="반환할 Top-N 교차로 수"),
-    scope: str = Query("seoul", regex="^(seoul|national)$", description="seoul (12) | national (22, 5대 광역)"),
+    scope: str = Query("seoul", pattern="^(seoul|national)$", description="seoul (12) | national (22, 5대 광역)"),
 ):
     """위험 교차로 Top-N 랭킹 + 교차로별 예방 효과 (사망·중상 기준)."""
     return impact_service.top_intersections(lead_time_s=lead, top_n=top_n, scope=scope)

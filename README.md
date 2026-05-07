@@ -1,7 +1,8 @@
 # AuraView
 
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-38%2F38%20passed-brightgreen)](backend/tests/)
+[![tests](https://img.shields.io/badge/tests-66%2F66%20passed-brightgreen)](backend/tests/)
+[![scenarios](https://img.shields.io/badge/scenarios-8-00e09a)](https://auraview.allthatai.kr/occupancy/compare)
 [![model AUC](https://img.shields.io/badge/Risk%20Transformer%20AUC-0.9403-00c8ff)](models/risk_transformer_trained_metric.json)
 [![inference p99](https://img.shields.io/badge/inference%20p99-1.04ms-7c3aed)](https://auraview.allthatai.kr/benchmark/all)
 [![license](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
@@ -11,6 +12,22 @@
 > Tesla-style occupancy · fleet-learning · end-to-end risk prediction 에 **Tesla 도 못 하는 한국 도로 협업 인지(V2V + Bus + Bidirectional)** 까지 결합한 안전 주행 지원 시스템.
 
 > 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
+
+## 🏆 Quick Verify (심사위원 1-step)
+
+```bash
+# 모든 검증 URL 한 응답 (master index)
+curl https://auraview.allthatai.kr/metrics/manifest
+
+# 4축 KPI (모델·임팩트·공공데이터·검증) + git_sha
+curl https://auraview.allthatai.kr/metrics/competition
+
+# 8 시나리오 도로교통법 조항·대법원 판례 매핑
+curl https://auraview.allthatai.kr/policy/laws
+
+# A4 1-pager 정책 PDF 다운로드 (88KB, 법적 근거 포함)
+curl -O https://auraview.allthatai.kr/impact/policy-pdf
+```
 
 ## ⏱️ 30초 시연 가이드
 

@@ -38,7 +38,9 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ## v0.6 — Competition Ready (2026-05)
 
-### Added (Phase 7-28 누적)
+### Added (Phase 7-30 누적)
+- **/competition SERVER specs panel + /healthz/details.resources** (Phase 30) — CPU 코어 + RAM + loadavg + uptime 라이브 노출. SUBMISSION.md 검증·재현 표에 'AWS EC2 t3.small (2 vCPU · 1.87 GB)' 명시.
+- **PRESS_KIT 마지막 stale ref 정리** (Phase 29) — 53/53 → 67/67. 모든 67 references 코드/문서/UI 일관.
 - **WHITEPAPER 7.2 평가표 8 시나리오 확장** (Phase 28) — +우회전 2.60s · +스쿨존 3.90s · +자전거 3.10s · 평균 (8 voxel + V2V) 3.81s 96.2%.
 - **Stale 일관성 정리** (Phase 27) — 38/53 → 67 일괄 갱신 across metrics.py, health.py, positioning.py, README, REPRODUCIBILITY, PRESENTATION_SCRIPT, PRESS_KIT.
 - **WHITEPAPER 6-A** Benchmark 표 라이브 측정값 (Phase 26) — 0.67ms mean / 1.44ms p99.

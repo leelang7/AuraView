@@ -178,6 +178,23 @@ def test_healthz_details_has_scenarios_and_competition_endpoints():
     assert ce["metrics_kpi"].startswith("/metrics")
 
 
+def test_healthz_details_has_resources_field():
+    """Phase 30 — /healthz/details.resources (CPU + RAM + loadavg) 노출."""
+    r = client.get("/healthz/details")
+    assert r.status_code == 200
+    j = r.json()
+    assert "resources" in j, "healthz/details missing 'resources' field"
+    res = j["resources"]
+    # cpu_count 는 stdlib 으로 거의 항상 가능
+    assert "cpu_count" in res
+    assert isinstance(res["cpu_count"], int) and res["cpu_count"] >= 1
+    # Linux production 환경에선 mem_total 도 있어야 함 (CI 도 Linux)
+    if j.get("platform", {}).get("system") == "Linux":
+        assert "mem_total_mb" in res
+        assert res["mem_total_mb"] > 0
+        assert "loadavg_1m" in res
+
+
 # ─── /metrics/data-attribution ────────────────────────────────────────
 def test_data_attribution_lists_6_public_sources():
     """경진대회 출처 명시 의무 — 6종 공공데이터 + 정적 데이터셋 + 라이브러리."""

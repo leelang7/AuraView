@@ -144,6 +144,16 @@
     <span data-endpoint="/impact" class="status-dot">impact <span class="dot">●</span></span>
     <span data-endpoint="/positioning/tesla-vs-auraview" class="status-dot">positioning <span class="dot">●</span></span>
   </div>
+
+  <!-- SERVER SPECS (transparency) -->
+  <div id="server-specs" style="margin:0 0 18px;padding:12px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10.5px;">
+    <span style="color:var(--muted);letter-spacing:1.5px;">// SERVER:</span>
+    <span id="srv-platform" style="color:var(--text);">…</span>
+    <span id="srv-cpu" style="color:var(--accent);">…</span>
+    <span id="srv-mem" style="color:var(--accent);">…</span>
+    <span id="srv-load" style="color:var(--muted);">…</span>
+    <span id="srv-uptime" style="color:var(--muted);">…</span>
+  </div>
   <style>
     .status-dot .dot { color:var(--muted); transition:color 0.3s; }
     .status-dot.ok .dot { color:var(--safe); text-shadow:0 0 8px var(--safe); }
@@ -297,6 +307,39 @@ function actionCard(badge, color, title, url, desc){
       el.classList.add(r.ok ? 'ok' : 'fail');
     } catch(_) { el.classList.add('fail'); }
   }));
+})();
+
+// Server specs (CPU + RAM + loadavg + uptime) from /healthz/details
+(async function loadServerSpecs(){
+  try {
+    const r = await fetch('/healthz/details');
+    const d = await r.json();
+    const p = d.platform || {};
+    const res = d.resources || {};
+    const fmtUp = (s) => {
+      if (!s) return '—';
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
+    document.getElementById('srv-platform').textContent =
+      `${p.system || '?'} ${p.release || ''} · py ${p.python || '?'}`;
+    if (res.cpu_count) {
+      document.getElementById('srv-cpu').textContent = `🖥️ ${res.cpu_count} vCPU`;
+    }
+    if (res.mem_total_gb) {
+      document.getElementById('srv-mem').textContent =
+        `💾 ${res.mem_total_gb} GB (${res.mem_used_pct}% used)`;
+    }
+    if (res.loadavg_1m != null) {
+      document.getElementById('srv-load').textContent =
+        `loadavg ${res.loadavg_1m} / ${res.loadavg_5m} / ${res.loadavg_15m}`;
+    }
+    if (d.uptime_s) {
+      document.getElementById('srv-uptime').textContent = `uptime ${fmtUp(d.uptime_s)}`;
+    }
+  } catch(_) {
+    document.getElementById('srv-platform').textContent = '서버 정보 응답 실패';
+  }
 })();
 
 (async function(){

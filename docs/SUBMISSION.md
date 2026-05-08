@@ -121,6 +121,8 @@ curl https://auraview.allthatai.kr/metrics/api-directory
 | **테스트** | 67 / 67 PASS — `pytest tests/` |
 | **CI** | GitHub Actions 4 jobs (Python / Flutter / Docker / Docs) |
 | **Docker** | 한 줄 가동 — `docker compose up` |
+| **서버 (현재)** | AWS EC2 t3.small (2 vCPU · 1.87 GB RAM · Ubuntu Linux 6.8) — `/healthz/details.resources` 라이브 |
+| **추론 (실측)** | Risk Transformer p99 1.04~1.44 ms · V2V Merge p99 0.01 ms (CPU 단일 코어) |
 | **재학습** | `notebooks/train_risk_transformer.ipynb` (CPU 8분) |
 | **재현 가이드** | `docs/REPRODUCIBILITY.md` (10 sections) |
 | **Press Kit** | `docs/PRESS_KIT.md` (1-pager) |

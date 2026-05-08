@@ -1628,7 +1628,7 @@ def prototype_ui():
                   <div class="section-label">// AuraView 가 자동으로 만든 합본 시연 영상 (위에서 재생 중)</div>
                   <div class="hero-copy">
                     <div class="hero-title">AuraView 였다면 몇 초 먼저 경고할 수 있었을까?</div>
-                    <div class="hero-desc">상단의 합본 영상은 6 시나리오 (횡단보도/사각지대/신호가림/V2V/우천/야간) 자동 생성. 평균 선행 경고 <strong style="color:var(--accent);">3.38초</strong>.</div>
+                    <div class="hero-desc">상단의 합본 영상은 8 시나리오 voxel(트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간) + V2V 협업 인지. 평균 선행 경고 <strong style="color:var(--accent);">3.38초</strong>.</div>
                   </div>
 
                   <div id="scnStatus" class="status" style="margin-top:14px;">

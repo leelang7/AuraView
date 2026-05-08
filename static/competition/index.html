@@ -207,8 +207,26 @@
     국가 단위(22 교차로): <a href="/impact/top-intersections?scope=national" target="_blank" style="color:var(--accent);">scope=national</a>
   </p>
 
+  <!-- PERFORMANCE BENCHMARK -->
+  <h2>⑥ <em>실측 성능</em> · 추론 지연 (CPU 단일 코어)</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;">
+    <thead><tr style="background:var(--surface);">
+      <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">component</th>
+      <th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);">n</th>
+      <th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);">mean</th>
+      <th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);">p95</th>
+      <th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);">p99</th>
+      <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">backend</th>
+    </tr></thead>
+    <tbody id="bench-body"><tr><td colspan="6" style="padding:18px;color:var(--muted);text-align:center;">측정 중… (warmup 후 100회 실행)</td></tr></tbody>
+  </table>
+  <p style="margin-top:8px;color:var(--muted);font-size:11px;">
+    JSON 직접: <a href="/benchmark/all" target="_blank" style="color:var(--accent);">/benchmark/all</a> ·
+    Risk Transformer 단독: <a href="/benchmark/risk?n=200" target="_blank" style="color:var(--accent);">/benchmark/risk?n=200</a>
+  </p>
+
   <!-- LAW CITATIONS -->
-  <h2>⑥ <em>법적 근거</em> · 도로교통법 + 대법원 판례</h2>
+  <h2>⑦ <em>법적 근거</em> · 도로교통법 + 대법원 판례</h2>
   <table id="laws-table" style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;">
     <thead><tr style="background:var(--surface);">
       <th style="padding:10px;text-align:left;border-bottom:1px solid var(--border);">시나리오</th>
@@ -366,6 +384,33 @@ function actionCard(badge, color, title, url, desc){
   } catch(e) {
     document.getElementById('topinx-body').innerHTML =
       `<tr><td colspan="5" style="padding:18px;color:var(--danger);">/impact/top-intersections 응답 실패: ${e.message}</td></tr>`;
+  }
+
+  // Performance Benchmark
+  try {
+    const r = await fetch('/benchmark/all');
+    const bj = await r.json();
+    const rt = bj.risk_transformer || {};
+    const v2v = bj.v2v_merge || {};
+    const fmt = (x) => x != null ? `${x} ms` : '—';
+    const bgGood = (ms) => ms != null && ms < 5 ? 'color:var(--safe);font-weight:700;' : '';
+    const rows = [
+      {label: 'Risk Transformer (predict)', d: rt, badge: rt.backend || 'unknown'},
+      {label: 'V2V Merge (peer 3대 → grid)', d: v2v, badge: 'numpy'},
+    ].map(({label, d, badge}) => `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px;font-weight:600;">${label}</td>
+        <td style="padding:10px;text-align:right;font-family:'JetBrains Mono',monospace;color:var(--muted);">${d.n ?? '—'}</td>
+        <td style="padding:10px;text-align:right;font-family:'JetBrains Mono',monospace;${bgGood(d.mean_ms)}">${fmt(d.mean_ms)}</td>
+        <td style="padding:10px;text-align:right;font-family:'JetBrains Mono',monospace;${bgGood(d.p95_ms)}">${fmt(d.p95_ms)}</td>
+        <td style="padding:10px;text-align:right;font-family:'JetBrains Mono',monospace;${bgGood(d.p99_ms)}">${fmt(d.p99_ms)}</td>
+        <td style="padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);">${badge}</td>
+      </tr>
+    `).join('');
+    document.getElementById('bench-body').innerHTML = rows;
+  } catch(e) {
+    document.getElementById('bench-body').innerHTML =
+      `<tr><td colspan="6" style="padding:18px;color:var(--danger);">/benchmark/all 응답 실패: ${e.message}</td></tr>`;
   }
 
   // Laws (도로교통법 + 대법원 판례)

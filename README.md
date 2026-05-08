@@ -120,7 +120,7 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 | 추론 latency **p99** | **1.04ms** | `/benchmark/all` · CPU 단일 코어 100회 측정 |
 | 평균 선행 경고 시간 | **3.38s** | 트레인드 모델 평균 (회피율 84.5%) |
 | 협업 인지 lift (단독 vs Fused) | **+10~31%p** | TAB ⑨ 실시간 시연 |
-| 통합 테스트 | **38 / 38 PASS** | `backend/tests/` (18 endpoint + 12 collab unit + 8 impact/positioning) |
+| 통합 테스트 | **67 / 67 PASS** | `backend/tests/` (18 endpoint + 12 collab + 8 impact + 29 경진대회 features incl. policy/manifest) |
 
 ---
 
@@ -211,7 +211,7 @@ flowchart LR
 
 ```
 github.com/leelang7/AuraView
-├── backend/                    FastAPI + 9 라우터 + 38 pytest
+├── backend/                    FastAPI + 17 라우터 + 67 pytest
 │   └── app/
 │       ├── routers/            occupancy · fleet · fusion · dsz · kmaas ·
 │       │                       reports · scenario · showreel · heatmap · collab

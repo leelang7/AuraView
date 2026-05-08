@@ -22,7 +22,7 @@ docker compose up -d && curl http://localhost:8000/metrics/competition
 - `impact_estimate.headline_pilot_5pct.prevented_deaths_yr` = **21**
 - `impact_estimate.headline_pilot_5pct.prevented_incidents_yr` = **1,694**
 - `public_data_fusion.sources_total` = **6** · `sources_live` / `sources_stub` / `sources_error` 카운트
-- `verification.tests` = **53 passed**
+- `verification.tests` = **67 passed**
 
 ---
 
@@ -130,14 +130,14 @@ pip install -r ../requirements.txt pytest httpx
 ALLOW_FALLBACK=1 SERVICE_KEY=test-stub pytest tests/ -v
 ```
 
-기대 결과: `53 passed` (38 baseline + 15 경진대회 features).
+기대 결과: `67 passed` (38 baseline + 29 경진대회 features incl. policy/manifest/api-directory).
 
 ---
 
 ## 8. CI / GitHub Actions
 
 GitHub Actions 가 매 push 마다 4잡 실행:
-- **Python · syntax + import smoke** — 53 pytest
+- **Python · syntax + import smoke** — 67 pytest
 - **Flutter · analyze** — Dart linter (warnings non-fatal for prototype)
 - **Docs · presence check** — README, WHITEPAPER, ROADMAP, DATASETS, architecture.svg
 - **Docker · build + smoke** — Dockerfile 빌드 + healthz + 8 시나리오 응답 검증

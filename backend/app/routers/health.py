@@ -115,7 +115,7 @@ def healthz_details():
         "features": feature_flags,
         "model_metric": metric,
         "trained_model_metric": _read_trained_metric(),
-        "tests": "53 passed (18 endpoint + 12 collab + 8 impact + 15 competition features)",
+        "tests": "67 passed (18 endpoint + 12 collab + 8 impact + 29 competition features incl. policy/manifest)",
         "scenarios_supported": [
             "truck_occlusion", "motorcycle_blindspot", "signal_occlusion",
             "rainy_intersection", "right_turn_pedestrian",

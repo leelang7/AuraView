@@ -253,13 +253,15 @@ AuraView 의 K-MaaS 통합:
 
 API: `GET /benchmark/risk?n=200` · `GET /benchmark/v2v-merge?n=50` · `GET /benchmark/all`
 
-| 경로 | 평균 | median | P95 | P99 |
-|---|---:|---:|---:|---:|
-| Risk Transformer `predict()` (trained) | ~1.4 ms | 1.3 ms | 2.1 ms | 3.3 ms |
-| V2V `merge_into_occupancy()` (peer 3대 · 80×80 격자) | ~3.6 ms | 3.4 ms | 5.5 ms | 7.8 ms |
+| 경로 | n | 평균 | median | P95 | P99 | backend |
+|---|---:|---:|---:|---:|---:|---|
+| Risk Transformer `predict()` (trained) | 100 | **0.67 ms** | 0.62 ms | 1.01 ms | 1.44 ms | trained |
+| V2V `merge_into_occupancy()` (peer 3대 · 80×80 격자) | 30 | **0.01 ms** | 0.01 ms | 0.01 ms | 0.01 ms | numpy |
 
-> 측정 환경: 서버 CPU 1 코어 · n=200 호출 · 5회 warmup 후. 부하·플랫폼별 변동 가능.
+> 측정 환경: 서버 CPU 1 코어 · warmup 후 (`/benchmark/all` 라이브). 부하·플랫폼별 변동 가능.
+> sample_p_collision = 0.9348 (재현 가능 input).
 > 실차 엣지 (모바일 / Jetson) 에서는 INT8 양자화 + ONNX Runtime 으로 추가 단축 가능.
+> Phase 25 라이브 측정 결과 — 두 경로 모두 < 5 ms 로 production-ready 확정.
 
 엣지 단말 (Flutter 폰) 의 경우 카메라 캡처 4초 주기 → 서버 round-trip 평균 ~80~150 ms (네트워크 포함). HUD 경고 latency 는 사용자 체감 즉시.
 

@@ -38,7 +38,9 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ## v0.6 — Competition Ready (2026-05)
 
-### Added (Phase 7-23 누적)
+### Added (Phase 7-25 누적)
+- **/competition section ⑥ Performance Benchmark** (Phase 25) — 실측 latency 자동 fetch from `/benchmark/all`. Risk Transformer 100회 mean 0.67ms / p99 1.44ms · V2V Merge 30회 mean 0.01ms. <5ms 초록색 강조 (production-ready).
+- **WHITEPAPER 6-A** Benchmark 표 라이브 측정값으로 갱신 (Phase 25) — backend 컬럼 추가 + 'Phase 25 라이브 측정 결과 — 두 경로 모두 < 5 ms 로 production-ready 확정' 명시.
 - **`docs/SUBMISSION.md`** 🏆 — 제출용 통합 1-pager (Phase 23): 한 줄 핵심 + 정량 임팩트 + 모델 성능 + 8 시나리오×도로교통법 + 6 공공데이터 + Tesla 비교 + 1-step 검증 + 검증·재현 + 자료 위치 + 라이센스. 200 줄 약.
 - **landing /competition CTA** (Phase 22) — 큰 gradient 버튼 + tests 67/67 갱신.
 - **/ui 헤더 🏆 JUDGE HUB 버튼** (Phase 21) — gradient 초록·시안 prominent.

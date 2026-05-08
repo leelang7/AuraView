@@ -199,5 +199,5 @@ A: 모델 278 KB · 67,970 params · CPU 1코어 추론 **p99 = 1.04 ms**.
 
 **Q: 재현 가능한가?**
 A: `git clone && docker compose up -d` 로 5분 안에 로컬 동작.
-   67/67 테스트 + CI green 확인 (`pytest backend/tests/`).
+   68/68 테스트 + CI green 확인 (`pytest backend/tests/`).
    별도 GPU/특수 하드웨어 필요 없음.

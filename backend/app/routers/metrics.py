@@ -140,7 +140,7 @@ def competition_kpis():
         "scenarios_supported": scenarios_supported,
         "differentiation": differentiation,
         "verification": {
-            "tests": "67 passed (18 endpoint + 12 collab + 8 impact/positioning + 21 경진대회 features + 8 정책/매니페스트)",
+            "tests": "68 passed (18 endpoint + 12 collab + 8 impact/positioning + 22 경진대회 features + 8 정책/매니페스트)",
             "ci": ".github/workflows/ci.yml — 4 jobs (Python/Flutter/Docker/Docs)",
             "fallback_mode": os.getenv("ALLOW_FALLBACK", "1") == "1",
         },
@@ -313,7 +313,7 @@ def competition_manifest():
             "rainy_intersection", "right_turn_pedestrian",
             "school_zone", "bicycle_lane", "night_pedestrian",
         ],
-        "tests_passed": 65,
+        "tests_passed": 68,
     }
 
 
@@ -391,7 +391,7 @@ def scoreboard():
             {
                 "criterion": "재현성·검증",
                 "score_self": 88,
-                "evidence": "67 pytest 통과 + GitHub CI 4 jobs + Docker 빌드 + 무인 시연 kiosk + /metrics/manifest",
+                "evidence": "68 pytest 통과 + GitHub CI 4 jobs + Docker 빌드 + 무인 시연 kiosk + /metrics/manifest",
                 "endpoints": ["/healthz/details", "/metrics/competition"],
             },
             {

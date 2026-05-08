@@ -1,7 +1,7 @@
 # AuraView
 
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-67%2F67%20passed-brightgreen)](backend/tests/)
+[![tests](https://img.shields.io/badge/tests-68%2F68%20passed-brightgreen)](backend/tests/)
 [![endpoints](https://img.shields.io/badge/API_endpoints-86-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
 [![judge hub](https://img.shields.io/badge/JUDGE_HUB-/competition/-00e09a)](https://auraview.allthatai.kr/competition/)
 [![scenarios](https://img.shields.io/badge/scenarios-8-00e09a)](https://auraview.allthatai.kr/occupancy/compare)
@@ -120,7 +120,7 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 | 추론 latency **p99** | **1.04ms** | `/benchmark/all` · CPU 단일 코어 100회 측정 |
 | 평균 선행 경고 시간 | **3.38s** | 트레인드 모델 평균 (회피율 84.5%) |
 | 협업 인지 lift (단독 vs Fused) | **+10~31%p** | TAB ⑨ 실시간 시연 |
-| 통합 테스트 | **67 / 67 PASS** | `backend/tests/` (18 endpoint + 12 collab + 8 impact + 29 경진대회 features incl. policy/manifest) |
+| 통합 테스트 | **68 / 68 PASS** | `backend/tests/` (18 endpoint + 12 collab + 8 impact + 30 경진대회 features incl. policy/manifest/resources) |
 
 ---
 
@@ -211,7 +211,7 @@ flowchart LR
 
 ```
 github.com/leelang7/AuraView
-├── backend/                    FastAPI + 17 라우터 + 67 pytest
+├── backend/                    FastAPI + 17 라우터 + 68 pytest
 │   └── app/
 │       ├── routers/            occupancy · fleet · fusion · dsz · kmaas ·
 │       │                       reports · scenario · showreel · heatmap · collab

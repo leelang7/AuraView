@@ -118,7 +118,7 @@ curl https://auraview.allthatai.kr/metrics/api-directory
 
 | 항목 | 값 |
 |---|---|
-| **테스트** | 67 / 67 PASS — `pytest tests/` |
+| **테스트** | 68 / 68 PASS — `pytest tests/` |
 | **CI** | GitHub Actions 4 jobs (Python / Flutter / Docker / Docs) |
 | **Docker** | 한 줄 가동 — `docker compose up` |
 | **서버 (현재)** | AWS EC2 t3.small (2 vCPU · 1.87 GB RAM · Ubuntu Linux 6.8) — `/healthz/details.resources` 라이브 |

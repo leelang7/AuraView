@@ -276,10 +276,16 @@ def test_metrics_manifest_lists_all_artifacts():
     assert len(verify) >= 8
     urls = {v["url"] for v in verify}
     for needed in ("/metrics/competition", "/policy/laws", "/impact/policy-pdf",
-                   "/occupancy/compare", "/metrics/data-attribution"):
+                   "/occupancy/compare", "/metrics/data-attribution",
+                   "/metrics/api-directory"):
         assert needed in urls, f"manifest missing {needed}"
     assert len(j["scenarios"]) == 8
     assert "git_sha" in j
+
+    # Documentation includes SUBMISSION 1-pager (Phase 23)
+    docs = j.get("documentation", [])
+    doc_urls = " ".join(d["url"] for d in docs)
+    assert "SUBMISSION" in doc_urls, "manifest documentation missing SUBMISSION.md"
 
 
 def test_policy_regulations_lists_3_agencies():

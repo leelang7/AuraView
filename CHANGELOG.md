@@ -38,8 +38,12 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ## v0.6 — Competition Ready (2026-05)
 
-### Added (Phase 7-18 누적)
-- **`/metrics/api-directory`** — 전체 라우트 prefix 별 그룹화 (Phase 18). competition 그룹 highlight + 81 routes / 26 groups.
+### Added (Phase 7-23 누적)
+- **`docs/SUBMISSION.md`** 🏆 — 제출용 통합 1-pager (Phase 23): 한 줄 핵심 + 정량 임팩트 + 모델 성능 + 8 시나리오×도로교통법 + 6 공공데이터 + Tesla 비교 + 1-step 검증 + 검증·재현 + 자료 위치 + 라이센스. 200 줄 약.
+- **landing /competition CTA** (Phase 22) — 큰 gradient 버튼 + tests 67/67 갱신.
+- **/ui 헤더 🏆 JUDGE HUB 버튼** (Phase 21) — gradient 초록·시안 prominent.
+- **/competition section ⑤ Top-10 위험 교차로** (Phase 20) — 강남역·잠실역·광화문 등 자동 fetch + headline 표시.
+- **/metrics/api-directory** — 전체 라우트 prefix 별 그룹화 (Phase 18). competition 그룹 highlight + 81 routes / 26 groups.
 - **`/competition/`** 🏆 — 정적 HTML 심사위원 허브: 4 KPI hero + 11 검증 URL + 5 데모 + 5 문서 + 8 시나리오 한 페이지 (Phase 14, ~10.7KB, print-friendly). Phase 17 에 LIVE STATUS panel + 도로교통법 섹션 ⑤ 추가.
 - **README Mermaid 아키텍처 다이어그램** (Phase 17) — Edge / Cloud / Judge 3-subgraph GitHub 자동 렌더링.
 - **ROADMAP** Week 1-4 거의 모든 항목 ✓ (Phase 18) — D-22 to 2026-05-29 제출.

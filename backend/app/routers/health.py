@@ -42,6 +42,53 @@ def _read_trained_metric() -> Dict[str, Any]:
         return {}
 
 
+def _read_system_resources() -> Dict[str, Any]:
+    """Linux /proc 기반 (stdlib only) — CPU 코어 + RAM 총량/사용량 노출."""
+    out: Dict[str, Any] = {}
+    try:
+        import os as _os
+        out["cpu_count"] = _os.cpu_count()
+    except Exception:
+        pass
+    try:
+        # /proc/meminfo: MemTotal, MemFree, MemAvailable (kB 단위)
+        with open("/proc/meminfo", "r", encoding="utf-8") as f:
+            mem: Dict[str, int] = {}
+            for line in f:
+                parts = line.split(":")
+                if len(parts) != 2:
+                    continue
+                k = parts[0].strip()
+                if k in ("MemTotal", "MemFree", "MemAvailable", "SwapTotal"):
+                    val_str = parts[1].strip().split()[0]
+                    mem[k] = int(val_str)
+        if "MemTotal" in mem:
+            out["mem_total_mb"] = round(mem["MemTotal"] / 1024, 0)
+            out["mem_total_gb"] = round(mem["MemTotal"] / 1024 / 1024, 2)
+        if "MemAvailable" in mem:
+            out["mem_available_mb"] = round(mem["MemAvailable"] / 1024, 0)
+            if "MemTotal" in mem and mem["MemTotal"] > 0:
+                out["mem_used_pct"] = round(
+                    (mem["MemTotal"] - mem["MemAvailable"]) / mem["MemTotal"] * 100, 1
+                )
+        if "SwapTotal" in mem:
+            out["swap_total_mb"] = round(mem["SwapTotal"] / 1024, 0)
+    except Exception:
+        # non-Linux 또는 /proc 접근 불가
+        pass
+    try:
+        # /proc/loadavg: 1/5/15 minute averages
+        with open("/proc/loadavg", "r", encoding="utf-8") as f:
+            parts = f.read().split()
+        if len(parts) >= 3:
+            out["loadavg_1m"] = float(parts[0])
+            out["loadavg_5m"] = float(parts[1])
+            out["loadavg_15m"] = float(parts[2])
+    except Exception:
+        pass
+    return out
+
+
 def _read_git_sha() -> str:
     try:
         head = Path(__file__).resolve().parents[3] / ".git" / "HEAD"
@@ -108,6 +155,7 @@ def healthz_details():
             "system": platform.system(),
             "release": platform.release(),
         },
+        "resources": _read_system_resources(),
         "routes": {
             "count": len(routes),
             "list": routes[:200],   # 너무 길어지지 않도록 cap

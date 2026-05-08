@@ -296,6 +296,7 @@ def competition_manifest():
             "model_checkpoint": "models/risk_transformer.pt",
         },
         "documentation": [
+            {"label": "🏆 제출용 1-pager (SUBMISSION)", "url": "https://github.com/leelang7/AuraView/blob/main/docs/SUBMISSION.md"},
             {"label": "기술백서 (한국어)", "url": "/docs/WHITEPAPER_KR.md"},
             {"label": "Press Kit 1-pager", "url": "https://github.com/leelang7/AuraView/blob/main/docs/PRESS_KIT.md"},
             {"label": "Reproducibility 가이드", "url": "https://github.com/leelang7/AuraView/blob/main/docs/REPRODUCIBILITY.md"},

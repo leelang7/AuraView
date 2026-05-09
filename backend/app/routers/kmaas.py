@@ -24,11 +24,11 @@ router = APIRouter()
 
 @router.get("/alternatives")
 def alternatives(
-    origin_lat: float = Query(...),
-    origin_lon: float = Query(...),
-    dest_lat: float = Query(...),
-    dest_lon: float = Query(...),
-    risk: float = Query(0.0, description="현재 교차로 위험 점수 (0~15+ 권고)"),
+    origin_lat: float = Query(37.5172, description="출발지 위도 (기본: 강남역)"),
+    origin_lon: float = Query(127.0473, description="출발지 경도"),
+    dest_lat: float = Query(37.5045, description="목적지 위도 (기본: 잠실역)"),
+    dest_lon: float = Query(127.0490, description="목적지 경도"),
+    risk: float = Query(8.5, description="현재 교차로 위험 점수 (0~15+ 권고)"),
 ):
     alts = kmaas.fetch_alternatives(origin_lat, origin_lon, dest_lat, dest_lon, risk_score=risk)
     return {

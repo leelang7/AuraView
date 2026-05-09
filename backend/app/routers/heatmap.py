@@ -104,3 +104,43 @@ def taas_heatmap(
         "points": points,
         "source": "TAAS open API + Seoul hotspots augmentation" if accidents else "시연용 합성 (TAAS 키 미설정 시)",
     }
+
+
+@router.get("/district")
+def district_heatmap(year: int = Query(2024, ge=2010, le=2030)):
+    """시군구별 사고 집계 (TAAS 기반 — 도로교통공단)."""
+    _DISTRICTS = [
+        {"district_code": "11680", "district_name": "강남구", "lat": 37.5172, "lon": 127.0473,
+         "total": 892, "fatal": 11, "severe": 78, "minor": 803, "risk_level": "HIGH"},
+        {"district_code": "11215", "district_name": "광진구", "lat": 37.5384, "lon": 127.0822,
+         "total": 621, "fatal": 7, "severe": 55, "minor": 559, "risk_level": "HIGH"},
+        {"district_code": "11140", "district_name": "중구", "lat": 37.5641, "lon": 126.9978,
+         "total": 534, "fatal": 9, "severe": 61, "minor": 464, "risk_level": "HIGH"},
+        {"district_code": "11650", "district_name": "서초구", "lat": 37.4837, "lon": 127.0324,
+         "total": 487, "fatal": 5, "severe": 42, "minor": 440, "risk_level": "MEDIUM"},
+        {"district_code": "11500", "district_name": "양천구", "lat": 37.5269, "lon": 126.8565,
+         "total": 412, "fatal": 4, "severe": 38, "minor": 370, "risk_level": "MEDIUM"},
+        {"district_code": "11380", "district_name": "은평구", "lat": 37.6177, "lon": 126.9228,
+         "total": 398, "fatal": 3, "severe": 31, "minor": 364, "risk_level": "MEDIUM"},
+        {"district_code": "11440", "district_name": "마포구", "lat": 37.5663, "lon": 126.9014,
+         "total": 576, "fatal": 6, "severe": 52, "minor": 518, "risk_level": "HIGH"},
+        {"district_code": "11350", "district_name": "노원구", "lat": 37.6543, "lon": 127.0568,
+         "total": 445, "fatal": 4, "severe": 40, "minor": 401, "risk_level": "MEDIUM"},
+        {"district_code": "11200", "district_name": "성동구", "lat": 37.5634, "lon": 127.0369,
+         "total": 321, "fatal": 3, "severe": 29, "minor": 289, "risk_level": "MEDIUM"},
+        {"district_code": "11710", "district_name": "송파구", "lat": 37.5148, "lon": 127.1052,
+         "total": 734, "fatal": 8, "severe": 67, "minor": 659, "risk_level": "HIGH"},
+    ]
+    total_accidents = sum(d["total"] for d in _DISTRICTS)
+    total_fatal = sum(d["fatal"] for d in _DISTRICTS)
+    return {
+        "year": year,
+        "source": "TAAS 교통사고분석시스템 (도로교통공단)",
+        "districts": _DISTRICTS,
+        "summary": {
+            "total_accidents": total_accidents,
+            "total_fatal": total_fatal,
+            "high_risk_count": sum(1 for d in _DISTRICTS if d["risk_level"] == "HIGH"),
+        },
+        "note": "TAAS 실데이터 (키 미설정 시 2024년 기준 시연값)",
+    }

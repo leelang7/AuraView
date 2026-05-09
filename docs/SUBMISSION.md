@@ -87,6 +87,21 @@
 
 ---
 
+## 🏅 경진대회 가점 25점 — 항목별 증빙 엔드포인트
+
+| 가점 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
+|---|:---:|---|---|
+| **AI 학습** | 5점 | `GET /ai/model-card` · `GET /ai/training-history` · `GET /ai/roc-curve` | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10,000 샘플, 15 epoch) |
+| **AI 분석** | 5점 | `GET /ai/scenario-analysis` · `GET /ai/feature-importance` · `GET /ai/confusion-matrix` | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt + 혼동행렬 |
+| **데이터융합** | 5점 | `GET /fusion/sources` · `GET /fusion/intersection/{id}` | 신호·VDS·돌발·TAAS·ITS·DSZ 6종 실시간 융합 |
+| **가명정보결합** | 5점 | `GET /privacy/pipeline-spec` · `POST /privacy/demo-join` · `GET /privacy/evidence-report` | HMAC-SHA256 가명화 + k-익명성(k≥5) + TAAS×VDS 결합 전 과정 |
+| **안심구역** | 5점 | `GET /dsz/pipeline-report` · `POST /dsz/seed-demo` · `GET /dsz/compliance-status` | dsz.ex.co.kr 반입→결합→반출 전 과정 (SHA-256 해시 검증 + 감사 로그) |
+| **종합 스코어카드** | — | `GET /competition/scorecard` | 25점 항목별 달성 현황 + 증거 링크 원스톱 |
+
+> **통합 AI 증빙:** `GET /ai/evidence-report` | **가명정보 증빙:** `GET /privacy/evidence-report` | **안심구역 증빙:** `GET /dsz/pipeline-report`
+
+---
+
 ## 심사위원 1-step 검증 (curl)
 
 ```bash

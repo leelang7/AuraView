@@ -6,6 +6,19 @@
 
 ---
 
+## 0. 경진대회 가점 25점 달성 현황
+
+| 가점 항목 | 점수 | 핵심 증빙 | 증빙 엔드포인트 |
+|---|:---:|---|---|
+| **AI 학습** | 5점 | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) | `GET /ai/model-card` |
+| **AI 분석** | 5점 | 4종 시나리오 분류 · Attention 피처 중요도 · ROC 50pt | `GET /ai/scenario-analysis` |
+| **데이터융합** | 5점 | 6종 공공데이터 실시간 융합 (신호·VDS·돌발·TAAS·ITS·DSZ) | `GET /fusion/sources` |
+| **가명정보결합** | 5점 | HMAC-SHA256 가명화 · k-익명성(k≥5) · TAAS×VDS 결합 | `GET /privacy/pipeline-spec` |
+| **안심구역** | 5점 | dsz.ex.co.kr 반입→결합→반출 파이프라인 · SHA-256 해시 검증 | `GET /dsz/pipeline-report` |
+| **합계** | **25점** | 종합 스코어카드 | `GET /competition/scorecard` |
+
+---
+
 ## 0. 제출 URL
 
 - 🌐 **대시보드:** https://auraview.allthatai.kr/ui

@@ -73,7 +73,7 @@
 | V2V merge 지연 (p99) | **0.03 ms** | `/benchmark/v2v-merge` |
 | 모델 크기 | **278 KB** (67,970 params) | 가중치 published |
 | 라우트 수 | **80+** (impact + metrics + positioning) | `/healthz/details` |
-| 테스트 | **68 / 68 PASS** (38 baseline + 30 경진대회 features incl. policy/manifest/api-directory/resources) | `pytest tests/` |
+| 테스트 | **90 / 90 PASS** (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 가점 25점 증빙) | `pytest tests/` |
 
 ---
 

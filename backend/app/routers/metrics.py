@@ -140,7 +140,7 @@ def competition_kpis():
         "scenarios_supported": scenarios_supported,
         "differentiation": differentiation,
         "verification": {
-            "tests": "68 passed (18 endpoint + 12 collab + 8 impact/positioning + 22 경진대회 features + 8 정책/매니페스트)",
+            "tests": "90 passed (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 가점 25점 증빙)",
             "ci": ".github/workflows/ci.yml — 4 jobs (Python/Flutter/Docker/Docs)",
             "fallback_mode": os.getenv("ALLOW_FALLBACK", "1") == "1",
         },
@@ -324,8 +324,8 @@ def competition_manifest():
             "rainy_intersection", "right_turn_pedestrian",
             "school_zone", "bicycle_lane", "night_pedestrian",
         ],
-        "tests_passed": 99,
-        "tests_breakdown": "68 기존 + 31 신규 (privacy·ai·competition·dsz 신규 router)",
+        "tests_passed": 90,
+        "tests_breakdown": "68 기존 + 22 신규 (privacy·ai·competition·dsz 가점 25점 router)",
     }
 
 

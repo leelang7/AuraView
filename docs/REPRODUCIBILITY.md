@@ -22,7 +22,7 @@ docker compose up -d && curl http://localhost:8000/metrics/competition
 - `impact_estimate.headline_pilot_5pct.prevented_deaths_yr` = **21**
 - `impact_estimate.headline_pilot_5pct.prevented_incidents_yr` = **1,694**
 - `public_data_fusion.sources_total` = **6** · `sources_live` / `sources_stub` / `sources_error` 카운트
-- `verification.tests` = **68 passed**
+- `verification.tests` = **90 passed**
 
 ---
 
@@ -130,7 +130,7 @@ pip install -r ../requirements.txt pytest httpx
 ALLOW_FALLBACK=1 SERVICE_KEY=test-stub pytest tests/ -v
 ```
 
-기대 결과: `68 passed` (38 baseline + 29 경진대회 features incl. policy/manifest/api-directory).
+기대 결과: `90 passed` (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 가점 25점 증빙 router).
 
 ---
 

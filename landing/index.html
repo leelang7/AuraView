@@ -306,6 +306,64 @@
 
     </div>
 
+    <!-- 경진대회 가점 25점 증빙 테이블 -->
+    <div style="margin:48px 0 0;padding:28px 32px;background:var(--surface);border:1px solid var(--border2);border-radius:18px;">
+      <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin-bottom:12px;">2026 국토교통 데이터활용 경진대회 — 가점 달성 현황</div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border2);">
+              <th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;">항목</th>
+              <th style="text-align:center;padding:8px 12px;color:var(--muted);font-weight:500;">점수</th>
+              <th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;">핵심 증빙</th>
+              <th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;">엔드포인트</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px 12px;color:var(--accent);">🤖 AI 학습</td>
+              <td style="padding:10px 12px;text-align:center;font-weight:700;color:var(--safe);">5점</td>
+              <td style="padding:10px 12px;color:var(--text);">PyTorch Transformer 실학습 · AUC 0.9403 · F1 0.9412</td>
+              <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;"><a href="https://auraview.allthatai.kr/ai/model-card" style="color:var(--accent);text-decoration:none;">/ai/model-card</a></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px 12px;color:var(--accent);">📊 AI 분석</td>
+              <td style="padding:10px 12px;text-align:center;font-weight:700;color:var(--safe);">5점</td>
+              <td style="padding:10px 12px;color:var(--text);">4종 시나리오 분류 · Attention 피처 중요도 · ROC 곡선</td>
+              <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;"><a href="https://auraview.allthatai.kr/ai/scenario-analysis" style="color:var(--accent);text-decoration:none;">/ai/scenario-analysis</a></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px 12px;color:var(--accent2);">🔗 데이터융합</td>
+              <td style="padding:10px 12px;text-align:center;font-weight:700;color:var(--safe);">5점</td>
+              <td style="padding:10px 12px;color:var(--text);">신호·VDS·돌발·TAAS·ITS·DSZ 6종 실시간 융합</td>
+              <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;"><a href="https://auraview.allthatai.kr/fusion/sources" style="color:var(--accent2);text-decoration:none;">/fusion/sources</a></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px 12px;color:var(--warn);">🔒 가명정보결합</td>
+              <td style="padding:10px 12px;text-align:center;font-weight:700;color:var(--safe);">5점</td>
+              <td style="padding:10px 12px;color:var(--text);">HMAC-SHA256 가명화 · k-익명성(k≥5) · TAAS×VDS 결합</td>
+              <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;"><a href="https://auraview.allthatai.kr/privacy/pipeline-spec" style="color:var(--warn);text-decoration:none;">/privacy/pipeline-spec</a></td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;color:var(--safe);">🏛️ 안심구역</td>
+              <td style="padding:10px 12px;text-align:center;font-weight:700;color:var(--safe);">5점</td>
+              <td style="padding:10px 12px;color:var(--text);">dsz.ex.co.kr 반입→결합→반출 파이프라인 전 과정</td>
+              <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;"><a href="https://auraview.allthatai.kr/dsz/pipeline-report" style="color:var(--safe);text-decoration:none;">/dsz/pipeline-report</a></td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr style="border-top:2px solid var(--border2);background:rgba(0,224,154,0.04);">
+              <td style="padding:10px 12px;font-weight:700;color:var(--safe);">합계</td>
+              <td style="padding:10px 12px;text-align:center;font-weight:900;color:var(--safe);font-size:16px;">25점</td>
+              <td colspan="2" style="padding:10px 12px;font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
+                전체 스코어카드: <a href="https://auraview.allthatai.kr/competition/scorecard" style="color:var(--safe);text-decoration:none;">GET /competition/scorecard</a>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
     <div class="stats">
       <div class="stat"><div class="n" id="liveFleet">…</div><div class="l">fleet contributions</div></div>
       <div class="stat"><div class="n" id="liveScenarios">…</div><div class="l">accident reenactments</div></div>

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/badge/tests-68%2F68%20passed-brightgreen)](backend/tests/)
-[![endpoints](https://img.shields.io/badge/API_endpoints-86-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
+[![endpoints](https://img.shields.io/badge/API_endpoints-90-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
 [![judge hub](https://img.shields.io/badge/JUDGE_HUB-/competition/-00e09a)](https://auraview.allthatai.kr/competition/)
 [![scenarios](https://img.shields.io/badge/scenarios-8-00e09a)](https://auraview.allthatai.kr/occupancy/compare)
 [![model AUC](https://img.shields.io/badge/Risk%20Transformer%20AUC-0.9403-00c8ff)](models/risk_transformer_trained_metric.json)
@@ -18,6 +18,21 @@
 ## 🏆 Judge Hub (심사위원 전용 한 페이지)
 
 > **<https://auraview.allthatai.kr/competition/>** — KPI 4종 + 검증 URL 11개 + 라이브 데모 5종 + 8 시나리오 + 문서 5종 한 화면. JSON 직접 호출 없이 시각적으로 모두 가능.
+
+## 🏅 경진대회 가점 25점 — 항목별 증빙 엔드포인트
+
+| 가점 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
+|---|:---:|---|---|
+| **AI 학습** | 5점 | [`GET /ai/model-card`](https://auraview.allthatai.kr/ai/model-card) · [`GET /ai/training-history`](https://auraview.allthatai.kr/ai/training-history) | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) |
+| **AI 분석** | 5점 | [`GET /ai/scenario-analysis`](https://auraview.allthatai.kr/ai/scenario-analysis) · [`GET /ai/feature-importance`](https://auraview.allthatai.kr/ai/feature-importance) · [`GET /ai/roc-curve`](https://auraview.allthatai.kr/ai/roc-curve) | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt |
+| **데이터융합** | 5점 | [`GET /fusion/sources`](https://auraview.allthatai.kr/fusion/sources) · [`GET /fusion/intersection/{id}`](https://auraview.allthatai.kr/fusion/sources) | 신호·VDS·돌발·TAAS·ITS·DSZ 6종 실시간 융합 |
+| **가명정보결합** | 5점 | [`GET /privacy/pipeline-spec`](https://auraview.allthatai.kr/privacy/pipeline-spec) · [`POST /privacy/demo-join`](https://auraview.allthatai.kr/docs#/privacy) | HMAC-SHA256 가명화 + k-익명성(k≥5) + TAAS×VDS 결합 |
+| **안심구역** | 5점 | [`GET /dsz/pipeline-report`](https://auraview.allthatai.kr/dsz/pipeline-report) · [`POST /dsz/seed-demo`](https://auraview.allthatai.kr/docs#/dsz) | dsz.ex.co.kr 표준 반입→결합→반출 파이프라인 |
+| **종합 스코어카드** | — | [`GET /competition/scorecard`](https://auraview.allthatai.kr/competition/scorecard) | 25점 항목별 달성 현황 + 증거 링크 원스톱 |
+
+> 전체 AI 증빙 보고서: `GET /ai/evidence-report` · 가명정보결합 보고서: `GET /privacy/evidence-report` · 안심구역 파이프라인: `GET /dsz/pipeline-report`
+
+---
 
 ## 🏆 Quick Verify (심사위원 1-step)
 

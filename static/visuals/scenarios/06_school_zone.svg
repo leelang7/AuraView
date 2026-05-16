@@ -48,64 +48,61 @@
   <text x="345" y="234" font-size="11" font-weight="900" fill="#5A6C8C" opacity="0.85">⟵</text>
   <text x="355" y="304" font-size="11" font-weight="900" fill="#7CC8FF" opacity="0.95">내 차 ⟶</text>
 
-  <!-- 횡단보도 보행자 신호등 (위쪽 인도 끝, 한국 표준) -->
-  <rect x="240" y="100" width="6" height="105" fill="#555"/>
-  <rect x="223" y="60" width="40" height="50" rx="4" fill="#1A1A1A" stroke="#444" stroke-width="1.2"/>
+  <!-- 횡단보도 보행자 신호등 (위쪽 인도 — 횡단보도 옆 우측) -->
+  <rect x="475" y="100" width="6" height="105" fill="#555"/>
+  <rect x="458" y="60" width="40" height="50" rx="4" fill="#1A1A1A" stroke="#444" stroke-width="1.2"/>
   <!-- 빨강 (서있는 사람 — 정지) -->
-  <rect x="226" y="63" width="34" height="22" rx="2.5" fill="#220A0A"/>
+  <rect x="461" y="63" width="34" height="22" rx="2.5" fill="#220A0A"/>
   <g fill="#FF4040">
-    <circle cx="243" cy="69" r="2.5"/>
-    <rect x="241.5" y="72" width="3" height="7" rx="0.5"/>
-    <rect x="239" y="73" width="2.3" height="5"/>
-    <rect x="246" y="73" width="2.3" height="5"/>
-    <rect x="240.5" y="79" width="2" height="5"/>
-    <rect x="244.5" y="79" width="2" height="5"/>
+    <circle cx="478" cy="69" r="2.5"/>
+    <rect x="476.5" y="72" width="3" height="7" rx="0.5"/>
+    <rect x="474" y="73" width="2.3" height="5"/>
+    <rect x="481" y="73" width="2.3" height="5"/>
+    <rect x="475.5" y="79" width="2" height="5"/>
+    <rect x="479.5" y="79" width="2" height="5"/>
   </g>
   <!-- 녹색 (걷는 사람 — 비활성) -->
-  <rect x="226" y="87" width="34" height="22" rx="2.5" fill="#0A1A12"/>
+  <rect x="461" y="87" width="34" height="22" rx="2.5" fill="#0A1A12"/>
   <g fill="#888" opacity="0.35">
-    <circle cx="243" cy="93" r="2.5"/>
-    <rect x="241.5" y="96" width="3" height="7" rx="0.5"/>
-    <rect x="237.5" y="97" width="2.5" height="5" transform="rotate(-15, 238.7, 99.5)"/>
-    <rect x="247" y="98" width="2.3" height="5"/>
-    <rect x="238" y="103" width="2.3" height="5" transform="rotate(20, 239, 105.5)"/>
-    <rect x="247" y="103" width="2.3" height="5"/>
+    <circle cx="478" cy="93" r="2.5"/>
+    <rect x="476.5" y="96" width="3" height="7" rx="0.5"/>
+    <rect x="472.5" y="97" width="2.5" height="5" transform="rotate(-15, 473.7, 99.5)"/>
+    <rect x="482" y="98" width="2.3" height="5"/>
+    <rect x="473" y="103" width="2.3" height="5" transform="rotate(20, 474, 105.5)"/>
+    <rect x="482" y="103" width="2.3" height="5"/>
   </g>
-  <text x="243" y="56" text-anchor="middle" font-size="8" fill="#FF6B6B" font-weight="700">보행자 신호</text>
+  <text x="478" y="56" text-anchor="middle" font-size="8" fill="#FF6B6B" font-weight="700">보행자 신호</text>
 
   <!-- 스쿨존 표지 -->
   <rect x="240" y="195" width="120" height="20" rx="4" fill="#A095FF" opacity="0.8"/>
   <text x="300" y="210" text-anchor="middle" font-size="11" fill="white" font-weight="700">어린이 보호구역</text>
 
-  <!-- 횡단보도 (한국 표준: 차량 진행방향과 평행한 가로 stripe 가 세로로 반복) -->
-  <rect x="220" y="214" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="220" y="229" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="220" y="244" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="220" y="259" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="220" y="274" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="220" y="289" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="220" y="299" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
+  <!-- 횡단보도 (한국 표준 + 화면 우측 배치) -->
+  <rect x="370" y="214" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="229" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="244" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="259" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="274" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="289" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="299" width="100" height="10" fill="#E8E8E8" opacity="0.92"/>
 
-  <!-- 어린이들 -->
+  <!-- 어린이들 (횡단보도 위 — 우측으로 이동) -->
   <g fill="#FFD5A0">
-    <!-- 어린이 1 -->
-    <circle cx="250" cy="222" r="7"/>
-    <rect x="246" y="229" width="8" height="14" rx="2"/>
-    <!-- 어린이 2 -->
-    <circle cx="270" cy="225" r="7"/>
-    <rect x="266" y="232" width="8" height="14" rx="2"/>
-    <!-- 어린이 3 -->
-    <circle cx="260" cy="232" r="6" opacity="0.7"/>
-    <rect x="257" y="238" width="7" height="12" rx="2" opacity="0.7"/>
+    <circle cx="400" cy="222" r="7"/>
+    <rect x="396" y="229" width="8" height="14" rx="2"/>
+    <circle cx="420" cy="225" r="7"/>
+    <rect x="416" y="232" width="8" height="14" rx="2"/>
+    <circle cx="410" cy="232" r="6" opacity="0.7"/>
+    <rect x="407" y="238" width="7" height="12" rx="2" opacity="0.7"/>
   </g>
 
-  <!-- 내 차 (횡단보도 앞 정지 · 아래 차로 안) -->
-  <rect x="115" y="271" width="74" height="38" rx="5" fill="#3A6FD8"/>
-  <text x="152" y="294" text-anchor="middle" font-size="10" fill="white" font-weight="800">내 차</text>
+  <!-- 내 차 (횡단보도 앞 정지 · 화면 우측 절반 + 횡단보도 좌측) -->
+  <rect x="265" y="271" width="74" height="38" rx="5" fill="#3A6FD8"/>
+  <text x="302" y="294" text-anchor="middle" font-size="10" fill="white" font-weight="800">내 차</text>
   <!-- 진행 방향 화살표 (정지 의도) -->
-  <polygon points="195,287 207,287 207,283 215,290 207,297 207,293 195,293" fill="#FF6B6B" opacity="0.7"/>
+  <polygon points="345,287 357,287 357,283 365,290 357,297 357,293 345,293" fill="#FF6B6B" opacity="0.7"/>
   <!-- 정지 표시 -->
-  <text x="152" y="316" text-anchor="middle" font-size="9" fill="#FF6B6B" font-weight="700">정지 권고</text>
+  <text x="302" y="316" text-anchor="middle" font-size="9" fill="#FF6B6B" font-weight="700">정지 권고</text>
 
   <!-- vworld GIS 패널 -->
   <rect x="380" y="110" width="155" height="75" rx="8" fill="#150E2A" stroke="#A095FF" stroke-width="1.5"/>
@@ -115,7 +112,7 @@
   <text x="458" y="176" text-anchor="middle" font-size="9" fill="#C8C0FF">현재: 활성 구역</text>
 
   <!-- 어린이 펄스 애니메이션 -->
-  <circle cx="260" cy="230" r="20" fill="none" stroke="#A095FF" stroke-width="2.5" opacity="0">
+  <circle cx="410" cy="230" r="20" fill="none" stroke="#A095FF" stroke-width="2.5" opacity="0">
     <animate attributeName="r" values="20;45;20" dur="2s" repeatCount="indefinite"/>
     <animate attributeName="opacity" values="0.9;0;0.9" dur="2s" repeatCount="indefinite"/>
   </circle>

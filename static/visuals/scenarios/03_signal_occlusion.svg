@@ -45,14 +45,14 @@
   <circle cx="414" cy="122" r="8" fill="#333"/>
   <circle cx="440" cy="122" r="8" fill="#00CC44" opacity="0.9"/>
 
-  <!-- 대형 버스 (아래 차로 안, 내 차 앞쪽 — 신호등 가림) -->
-  <rect x="320" y="266" width="135" height="46" rx="5" fill="#2E4A80"/>
-  <rect x="328" y="272" width="42" height="20" rx="2" fill="#1A2840" opacity="0.85"/>
-  <rect x="376" y="272" width="38" height="20" rx="2" fill="#1A2840" opacity="0.85"/>
-  <rect x="420" y="272" width="28" height="20" rx="2" fill="#1A2840" opacity="0.85"/>
-  <circle cx="340" cy="312" r="6" fill="#111" stroke="#555" stroke-width="1.5"/>
-  <circle cx="435" cy="312" r="6" fill="#111" stroke="#555" stroke-width="1.5"/>
-  <text x="388" y="293" text-anchor="middle" font-size="10" fill="#9AB5DD" font-weight="700">버스</text>
+  <!-- 대형 버스 (아래 차로 안, 내 차 앞쪽 — 신호등 가림) — 우측통행 적용 우측 배치 -->
+  <rect x="380" y="266" width="115" height="46" rx="5" fill="#2E4A80"/>
+  <rect x="388" y="272" width="36" height="20" rx="2" fill="#1A2840" opacity="0.85"/>
+  <rect x="430" y="272" width="32" height="20" rx="2" fill="#1A2840" opacity="0.85"/>
+  <rect x="468" y="272" width="22" height="20" rx="2" fill="#1A2840" opacity="0.85"/>
+  <circle cx="397" cy="312" r="6" fill="#111" stroke="#555" stroke-width="1.5"/>
+  <circle cx="478" cy="312" r="6" fill="#111" stroke="#555" stroke-width="1.5"/>
+  <text x="437" y="293" text-anchor="middle" font-size="10" fill="#9AB5DD" font-weight="700">버스</text>
 
   <!-- 신호등 가림 표시 -->
   <path d="M 398 108 L 470 108 L 470 165 L 398 165" fill="none" stroke="#FFD93D" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.8"/>
@@ -67,11 +67,11 @@
   <!-- 연결선 -->
   <line x1="230" y1="157" x2="374" y2="122" stroke="#FFD93D" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
 
-  <!-- 내 차 (아래 차로 안, 버스 뒤) -->
-  <rect x="160" y="269" width="74" height="42" rx="5" fill="#3A6FD8"/>
-  <text x="197" y="295" text-anchor="middle" font-size="10" fill="white" font-weight="800">내 차</text>
+  <!-- 내 차 (아래 차로, 화면 우측 — 한국 우측통행 + 버스 뒤) -->
+  <rect x="290" y="269" width="74" height="42" rx="5" fill="#3A6FD8"/>
+  <text x="327" y="295" text-anchor="middle" font-size="10" fill="white" font-weight="800">내 차</text>
   <!-- 진행 방향 화살표 -->
-  <polygon points="240,287 252,287 252,283 260,290 252,296 252,292 240,292" fill="#7CC8FF" opacity="0.85"/>
+  <polygon points="368,287 380,287 380,283 388,290 380,296 380,292 368,292" fill="#7CC8FF" opacity="0.85"/>
 
   <!-- 신호 복구 애니메이션 (녹색 위치 cx=440 맞춤) -->
   <circle cx="440" cy="122" r="8" fill="#00CC44" opacity="0.9">

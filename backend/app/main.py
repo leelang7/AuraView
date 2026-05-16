@@ -212,9 +212,13 @@ for cand in _PWA_DIR_CANDIDATES:
 
 @app.get("/")
 def root():
-    """루트 → /ui 자동 이동 (브라우저 접속자가 JSON 만 보고 영상 없다고 착각하는 문제 회피)."""
+    """루트 → /story (일반인용 30초 스토리 페이지) 자동 이동.
+
+    2026-05-16 v0.10: 일반 방문자가 첫 화면에서 무엇이고 왜 중요한지 즉시 이해하도록.
+    심사위원·개발자는 /story 안에서 /competition, /ui, /docs 로 1-tap 이동 가능.
+    """
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/ui", status_code=302)
+    return RedirectResponse(url="/story/", status_code=302)
 
 
 @app.get("/api")
@@ -1090,7 +1094,8 @@ def prototype_ui():
               <h1><em>AuraView</em> Dashboard</h1>
               <div class="subtitle">보이지 않는 신호를 대신 보여주는 시야 차단 대응형 안전 주행 보조 시스템</div>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <a href="/story/" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1.5px;color:#0a0e18;padding:9px 16px;background:linear-gradient(135deg,#FFB020,#FF6B6B);border:1px solid rgba(255,176,32,0.7);border-radius:99px;font-weight:900;box-shadow:0 0 18px rgba(255,176,32,0.45);">📖 일반인용 30초 스토리</a>
               <a href="/competition/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#fff;padding:7px 14px;background:linear-gradient(135deg,rgba(0,224,154,0.30),rgba(0,200,255,0.20));border:1px solid rgba(0,224,154,0.55);border-radius:99px;font-weight:700;">🏆 JUDGE HUB</a>
               <a href="/submission/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--safe);padding:7px 14px;border:1px solid rgba(0,224,154,0.4);border-radius:99px;">≡ SUMMARY</a>
               <a href="https://github.com/leelang7/AuraView/releases/latest/download/AuraView_Whitepaper.pdf" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--warn);padding:7px 14px;border:1px solid rgba(255,176,32,0.4);border-radius:99px;">📑 WHITEPAPER PDF</a>

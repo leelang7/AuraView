@@ -32,11 +32,12 @@
   <rect x="135" y="259" width="30" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
   <rect x="205" y="259" width="30" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
 
-  <!-- 횡단보도 -->
-  <rect x="300" y="215" width="15" height="105" fill="#2A3A5A"/>
-  <rect x="320" y="215" width="15" height="105" fill="#2A3A5A"/>
-  <rect x="340" y="215" width="15" height="105" fill="#2A3A5A"/>
-  <rect x="360" y="215" width="15" height="105" fill="#2A3A5A"/>
+  <!-- 횡단보도 (도로 가로지름 = 차로 진행방향과 직각, 흰색 stripe) -->
+  <rect x="300" y="215" width="13" height="105" fill="#E8E8E8" opacity="0.90"/>
+  <rect x="318" y="215" width="13" height="105" fill="#E8E8E8" opacity="0.90"/>
+  <rect x="336" y="215" width="13" height="105" fill="#E8E8E8" opacity="0.90"/>
+  <rect x="354" y="215" width="13" height="105" fill="#E8E8E8" opacity="0.90"/>
+  <rect x="372" y="215" width="13" height="105" fill="#E8E8E8" opacity="0.90"/>
 
   <!-- 우회전 차량 -->
   <g>

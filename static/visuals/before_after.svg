@@ -86,19 +86,14 @@
     <line x1="0" y1="200" x2="600" y2="200" stroke="#444" stroke-width="1"/>
     <line x1="0" y1="320" x2="600" y2="320" stroke="#444" stroke-width="1"/>
 
-    <!-- 횡단보도 -->
-    <g fill="#E8E8E8" opacity="0.7">
-      <rect x="260" y="290" width="20" height="30"/>
-      <rect x="285" y="290" width="20" height="30"/>
-      <rect x="310" y="290" width="20" height="30"/>
-      <rect x="335" y="290" width="20" height="30"/>
-    </g>
-    <!-- 하단 횡단보도 -->
-    <g fill="#E8E8E8" opacity="0.7">
-      <rect x="260" y="510" width="20" height="30"/>
-      <rect x="285" y="510" width="20" height="30"/>
-      <rect x="310" y="510" width="20" height="30"/>
-      <rect x="335" y="510" width="20" height="30"/>
+    <!-- 횡단보도 (도로를 세로로 가로지름 — 중앙선과 직각) -->
+    <g fill="#E8E8E8" opacity="0.85">
+      <rect x="240" y="325" width="14" height="190"/>
+      <rect x="262" y="325" width="14" height="190"/>
+      <rect x="284" y="325" width="14" height="190"/>
+      <rect x="306" y="325" width="14" height="190"/>
+      <rect x="328" y="325" width="14" height="190"/>
+      <rect x="350" y="325" width="14" height="190"/>
     </g>
 
     <!-- 신호등 기둥 -->
@@ -226,18 +221,14 @@
     <line x1="600" y1="200" x2="1200" y2="200" stroke="#1A4A30" stroke-width="1"/>
     <line x1="600" y1="320" x2="1200" y2="320" stroke="#1A4A30" stroke-width="1"/>
 
-    <!-- 횡단보도 -->
-    <g fill="#2A5A42" opacity="0.8">
-      <rect x="860" y="290" width="20" height="30"/>
-      <rect x="885" y="290" width="20" height="30"/>
-      <rect x="910" y="290" width="20" height="30"/>
-      <rect x="935" y="290" width="20" height="30"/>
-    </g>
-    <g fill="#2A5A42" opacity="0.8">
-      <rect x="860" y="510" width="20" height="30"/>
-      <rect x="885" y="510" width="20" height="30"/>
-      <rect x="910" y="510" width="20" height="30"/>
-      <rect x="935" y="510" width="20" height="30"/>
+    <!-- 횡단보도 (도로를 세로로 가로지름 — 중앙선과 직각) -->
+    <g fill="#A8D8C0" opacity="0.92">
+      <rect x="840" y="325" width="14" height="190"/>
+      <rect x="862" y="325" width="14" height="190"/>
+      <rect x="884" y="325" width="14" height="190"/>
+      <rect x="906" y="325" width="14" height="190"/>
+      <rect x="928" y="325" width="14" height="190"/>
+      <rect x="950" y="325" width="14" height="190"/>
     </g>
 
     <!-- 신호등 기둥 -->

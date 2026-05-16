@@ -43,10 +43,12 @@
   <rect x="240" y="195" width="120" height="20" rx="4" fill="#A095FF" opacity="0.8"/>
   <text x="300" y="210" text-anchor="middle" font-size="11" fill="white" font-weight="700">어린이 보호구역</text>
 
-  <!-- 횡단보도 -->
-  <rect x="230" y="210" width="14" height="100" fill="#2A3A5A"/>
-  <rect x="250" y="210" width="14" height="100" fill="#2A3A5A"/>
-  <rect x="270" y="210" width="14" height="100" fill="#2A3A5A"/>
+  <!-- 횡단보도 (도로 가로지름 = 차로 진행방향과 직각, 흰색 stripe) -->
+  <rect x="225" y="210" width="13" height="100" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="243" y="210" width="13" height="100" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="261" y="210" width="13" height="100" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="279" y="210" width="13" height="100" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="297" y="210" width="13" height="100" fill="#E8E8E8" opacity="0.92"/>
 
   <!-- 어린이들 -->
   <g fill="#FFD5A0">

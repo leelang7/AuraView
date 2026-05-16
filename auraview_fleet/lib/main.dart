@@ -1806,6 +1806,29 @@ class _CityInfoLine extends StatelessWidget {
     final showER = erLoad >= 0.6;            // 응급실 포화 60%↑ 이상일 때 노출
     final showBike = bikeBoost > 0.05;
 
+    // ── v3 2026-05-16: 12-source (스쿨존/결빙/보행자 다발) ──
+    final bool inSchoolZone = (summary?['in_school_zone'] == true);
+    final double szMul = (summary?['school_zone_multiplier'] is num) ? (summary!['school_zone_multiplier'] as num).toDouble() : 1.0;
+    final bool blackIce = (summary?['black_ice_risk'] == true);
+    final double freezeBoost = (summary?['freeze_risk_boost'] is num) ? (summary!['freeze_risk_boost'] as num).toDouble() : 0.0;
+    final bool inPedHotspot = (summary?['in_pedestrian_hotspot'] == true);
+    final double pedBoost = (summary?['ped_hotspot_boost'] is num) ? (summary!['ped_hotspot_boost'] as num).toDouble() : 0.0;
+
+    // ── v4 2026-05-16: 15-source (미세먼지/통학로/EV) ──
+    final double pm10 = (summary?['pm10_avg'] is num) ? (summary!['pm10_avg'] as num).toDouble() : 0.0;
+    final double airBoost = (summary?['air_quality_risk_boost'] is num) ? (summary!['air_quality_risk_boost'] as num).toDouble() : 0.0;
+    final bool onSchoolRoute = (summary?['on_school_route'] == true);
+    final double walkBoost = (summary?['walk_route_boost'] is num) ? (summary!['walk_route_boost'] as num).toDouble() : 0.0;
+    final bool nearEv = (summary?['near_ev_station'] == true);
+    final double evDwelling = (summary?['ev_dwelling_likelihood'] is num) ? (summary!['ev_dwelling_likelihood'] as num).toDouble() : 0.0;
+
+    final showSchoolZone = inSchoolZone && szMul > 1.0;
+    final showBlackIce = blackIce || freezeBoost > 0.05;
+    final showPedHotspot = inPedHotspot && pedBoost > 0.05;
+    final showAir = pm10 >= 80 || airBoost > 0.04;
+    final showWalkRoute = onSchoolRoute && walkBoost > 0.05;
+    final showEv = nearEv && evDwelling >= 0.7;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Wrap(
@@ -1844,7 +1867,49 @@ class _CityInfoLine extends StatelessWidget {
               Text('자전거 +${(bikeBoost*100).toStringAsFixed(0)}%',
                 style: const TextStyle(color: Color(0xFFFFB020), fontSize: 10, fontWeight: FontWeight.w700)),
             ]),
-          // v2 배지: N종 융합
+          // v3: 스쿨존 multiplier (등하교 시 ×1.5)
+          if (showSchoolZone)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.school, size: 11, color: const Color(0xFFA095FF)), const SizedBox(width: 3),
+              Text('스쿨존 ×${szMul.toStringAsFixed(1)}',
+                style: const TextStyle(color: Color(0xFFA095FF), fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v3: 블랙아이스/결빙
+          if (showBlackIce)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.ac_unit, size: 11, color: const Color(0xFF6BE3FF)), const SizedBox(width: 3),
+              Text('${blackIce ? "결빙" : "노면"} +${(freezeBoost*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFF6BE3FF), fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v3: 보행자 다발지역
+          if (showPedHotspot)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.directions_walk, size: 11, color: const Color(0xFFFF8866)), const SizedBox(width: 3),
+              Text('보행다발 +${(pedBoost*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFFFF8866), fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          // v4: 미세먼지
+          if (showAir)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.air, size: 11, color: const Color(0xFFAAB0BC)), const SizedBox(width: 3),
+              Text('PM10 ${pm10.toStringAsFixed(0)}',
+                style: const TextStyle(color: Color(0xFFAAB0BC), fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          // v4: 어린이 통학로
+          if (showWalkRoute)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.backpack, size: 11, color: const Color(0xFFFFCB6B)), const SizedBox(width: 3),
+              Text('통학로 +${(walkBoost*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFFFFCB6B), fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v4: EV 충전소 정차 가능성
+          if (showEv)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.ev_station, size: 11, color: const Color(0xFF7CE4B0)), const SizedBox(width: 3),
+              Text('EV ${(evDwelling*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFF7CE4B0), fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          // v4 배지: N종 융합 (15까지 확장)
           if (sourcesFused >= 7)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -1853,7 +1918,7 @@ class _CityInfoLine extends StatelessWidget {
                 border: Border.all(color: _safe.withValues(alpha: 0.45), width: 0.8),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text('${sourcesFused}src v2',
+              child: Text('${sourcesFused}src v${sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2")}',
                 style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
             ),
           // v2: BIS 실시간 버스 표시 (반경 150m 내 차량 수)
@@ -3682,6 +3747,69 @@ class _DetailSheetState extends State<_DetailSheet> {
             child: Container(
               width: 42, height: 4,
               decoration: BoxDecoration(color: _muted.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(99)),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── v4 2026-05-16: 'AuraView가 뭐예요?' 카드 (처음 보는 사람용) ──
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0x33FFB020), Color(0x22FF6B6B)],
+              ),
+              border: Border.all(color: const Color(0xFFFFB020).withValues(alpha: 0.55), width: 1.2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Text('📖', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text(
+                    'AuraView가 뭐예요?',
+                    style: TextStyle(color: Color(0xFFFFD78A), fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.3),
+                  )),
+                ]),
+                const SizedBox(height: 6),
+                const Text(
+                  '운전자가 못 보는 곳을 15종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI. 평균 3.38초 먼저 위험 감지, 매년 21명 보호.',
+                  style: TextStyle(color: _text, fontSize: 12, height: 1.55),
+                ),
+                const SizedBox(height: 10),
+                Row(children: [
+                  const Expanded(child: Text(
+                    'auraview.allthatai.kr/story',
+                    style: TextStyle(color: Color(0xFFFFB020), fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w700),
+                  )),
+                  GestureDetector(
+                    onTap: () async {
+                      await Clipboard.setData(const ClipboardData(text: 'https://auraview.allthatai.kr/story/'));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('링크 복사됨 — 브라우저로 열어보세요'),
+                          backgroundColor: Color(0xFF003E5C),
+                          duration: Duration(seconds: 2),
+                        ));
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFB020),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.copy, size: 12, color: Color(0xFF0A0E18)),
+                        SizedBox(width: 4),
+                        Text('링크 복사', style: TextStyle(color: Color(0xFF0A0E18), fontSize: 11, fontWeight: FontWeight.w900)),
+                      ]),
+                    ),
+                  ),
+                ]),
+              ],
             ),
           ),
           const SizedBox(height: 16),

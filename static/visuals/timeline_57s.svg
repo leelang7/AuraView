@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500">
+  <defs>
+    <!-- 글로우 필터: AuraView 마커 -->
+    <filter id="glowGreen" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- 글로우 필터: 충돌 마커 -->
+    <filter id="glowRed" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- 글로우 필터: 위험 마커 -->
+    <filter id="glowOrange" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- 진행선 클립 -->
+    <clipPath id="lineClip">
+      <rect id="clipRect" x="120" y="240" width="0" height="20"/>
+    </clipPath>
+    <!-- 배경 그라디언트 -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B0E1A"/>
+      <stop offset="100%" stop-color="#0F1525"/>
+    </linearGradient>
+    <!-- 진행선 그라디언트 -->
+    <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E09A" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#FFB020" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#FF4444"/>
+    </linearGradient>
+    <!-- 좌 박스 그라디언트 -->
+    <linearGradient id="leftBoxGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2A0F12"/>
+      <stop offset="100%" stop-color="#1A0808"/>
+    </linearGradient>
+    <!-- 우 박스 그라디언트 -->
+    <linearGradient id="rightBoxGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0F2520"/>
+      <stop offset="100%" stop-color="#081510"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 배경 -->
+  <rect width="1200" height="500" fill="url(#bgGrad)"/>
+
+  <!-- 미세 격자 패턴 -->
+  <line x1="0" y1="100" x2="1200" y2="100" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+  <line x1="0" y1="200" x2="1200" y2="200" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+  <line x1="0" y1="300" x2="1200" y2="300" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+  <line x1="0" y1="400" x2="1200" y2="400" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+  <line x1="200" y1="0" x2="200" y2="500" stroke="#ffffff" stroke-opacity="0.02" stroke-width="1"/>
+  <line x1="400" y1="0" x2="400" y2="500" stroke="#ffffff" stroke-opacity="0.02" stroke-width="1"/>
+  <line x1="600" y1="0" x2="600" y2="500" stroke="#ffffff" stroke-opacity="0.02" stroke-width="1"/>
+  <line x1="800" y1="0" x2="800" y2="500" stroke="#ffffff" stroke-opacity="0.02" stroke-width="1"/>
+  <line x1="1000" y1="0" x2="1000" y2="500" stroke="#ffffff" stroke-opacity="0.02" stroke-width="1"/>
+
+  <!-- ===== 제목 영역 ===== -->
+  <text x="600" y="52" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="32" font-weight="bold" fill="#FFFFFF">
+    <tspan fill="#00E09A">AuraView</tspan>
+    <tspan fill="#FFFFFF"> 는 3.38초 먼저 본다</tspan>
+  </text>
+  <text x="600" y="82" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="15" fill="#8899BB">
+    AI 도로 안전 시스템 · 실시간 위험 예측 타임라인
+  </text>
+
+  <!-- 제목 하단 구분선 -->
+  <line x1="400" y1="96" x2="800" y2="96" stroke="#00E09A" stroke-opacity="0.3" stroke-width="1"/>
+
+  <!-- ===== 타임라인 기반 ===== -->
+  <!--
+    전체 시간 범위: T-3.38s ~ T+2.5s = 5.88초
+    픽셀 범위: x=120 ~ x=1080 (폭 960px)
+    1초 = 960 / 5.88 = 163.27px
+    T-3.38s → x = 120
+    T0      → x = 120 + 3.38 * 163.27 = 120 + 551.85 = 671.85 ≈ 672
+    T+1.5s  → x = 120 + 4.88 * 163.27 = 120 + 797.16 = 917.16 ≈ 917
+    T+2.0s  → x = 120 + 5.38 * 163.27 = 120 + 878.79 = 998.79 ≈ 999
+    T+2.5s  → x = 120 + 5.88 * 163.27 = 120 + 960 = 1080
+    T-1.5s  → x = 120 + 1.88 * 163.27 = 120 + 306.95 = 427 (보조, 표시만)
+  -->
+
+  <!-- 기본 타임라인 수평선 -->
+  <rect x="120" y="247" width="960" height="4" rx="2" fill="#555555"/>
+
+  <!-- 진행 애니메이션 오버레이 선 (클립 적용) -->
+  <rect x="120" y="247" width="960" height="4" rx="2" fill="url(#lineGrad)" clip-path="url(#lineClip)">
+  </rect>
+  <!-- 클립 너비 애니메이션 -->
+  <animateTransform xlink:href="#clipRect" attributeName="" type="translate" dur="0s"/>
+
+  <!-- 진행선 애니메이션 (clipRect width 0→960 반복) -->
+  <rect x="120" y="247" width="4" height="4" rx="2" fill="url(#lineGrad)">
+    <animate attributeName="x" from="120" to="1080" dur="4s" repeatCount="indefinite" calcMode="linear"/>
+    <animate attributeName="opacity" from="1" to="0.3" dur="4s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- 진행 흐름선 (메인) -->
+  <rect x="120" y="247" height="4" rx="2" fill="url(#lineGrad)">
+    <animate attributeName="width" from="0" to="960" dur="4s" repeatCount="indefinite" calcMode="linear"/>
+  </rect>
+
+  <!-- ===== 마커 1: T-3.38s — AuraView 경고 (x=120) ===== -->
+  <!-- 글로우 원 (항상 슬로우 글로우) -->
+  <circle cx="120" cy="249" r="20" fill="#00E09A" fill-opacity="0.15" filter="url(#glowGreen)">
+    <animate attributeName="r" values="20;30;20" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="fill-opacity" values="0.15;0.3;0.15" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <!-- 마커 본체 -->
+  <circle id="m1" cx="120" cy="249" r="14" fill="#00E09A" filter="url(#glowGreen)">
+    <animate attributeName="r" values="14;19;14" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="120" cy="249" r="7" fill="#FFFFFF" fill-opacity="0.9"/>
+  <!-- 세로 기준선 -->
+  <line x1="120" y1="130" x2="120" y2="235" stroke="#00E09A" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <!-- 라벨 박스 -->
+  <rect x="20" y="100" width="200" height="62" rx="8" fill="#001F15" stroke="#00E09A" stroke-width="1.5" stroke-opacity="0.8"/>
+  <text x="120" y="122" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="18" fill="#00E09A" font-weight="bold">&#x1F6A8; AuraView 알림</text>
+  <text x="120" y="143" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="13" fill="#00C882">충돌 3.38초 전 경고</text>
+  <text x="120" y="160" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="12" fill="#667799">T - 3.38s</text>
+
+  <!-- ===== 마커 2: T-1.5s — 보조 마커 (x=427) ===== -->
+  <circle cx="427" cy="249" r="6" fill="#44AACC" fill-opacity="0.7"/>
+  <line x1="427" y1="256" x2="427" y2="290" stroke="#44AACC" stroke-opacity="0.4" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="427" y="305" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="11" fill="#44AACC" fill-opacity="0.7">T - 1.5s</text>
+  <text x="427" y="320" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="10" fill="#445566">사람: 인지 시작 전</text>
+
+  <!-- ===== 마커 3: T0 — 사고 위험 발생 (x=672) ===== -->
+  <!-- 글로우 -->
+  <circle cx="672" cy="249" r="18" fill="#FFB020" fill-opacity="0.12" filter="url(#glowOrange)">
+    <animate attributeName="r" values="18;25;18" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+  </circle>
+  <circle id="m3" cx="672" cy="249" r="12" fill="#FFB020" filter="url(#glowOrange)">
+    <animate attributeName="r" begin="1.63s;m3.endEvent+1.63s" values="12;17;12" dur="0.5s"/>
+  </circle>
+  <circle cx="672" cy="249" r="6" fill="#FFFFFF" fill-opacity="0.85"/>
+  <!-- 세로선 -->
+  <line x1="672" y1="130" x2="672" y2="235" stroke="#FFB020" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <!-- 라벨 박스 -->
+  <rect x="572" y="100" width="200" height="62" rx="8" fill="#1F1500" stroke="#FFB020" stroke-width="1.5" stroke-opacity="0.8"/>
+  <text x="672" y="122" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="18" fill="#FFB020" font-weight="bold">&#x26A0;&#xFE0F; 위험 상황 발생</text>
+  <text x="672" y="143" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="13" fill="#FFAA00">AuraView는 이미 경고 완료</text>
+  <text x="672" y="160" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="12" fill="#667799">T = 0s</text>
+
+  <!-- ===== 마커 4: T+1.5s — 운전자 인지 (x=917) ===== -->
+  <circle id="m4" cx="917" cy="249" r="10" fill="#888888">
+    <animate attributeName="r" begin="2.37s;m4.endEvent+2.37s" values="10;15;10" dur="0.5s"/>
+  </circle>
+  <circle cx="917" cy="249" r="5" fill="#CCCCCC"/>
+  <!-- 세로선 -->
+  <line x1="917" y1="263" x2="917" y2="310" stroke="#888888" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <!-- 라벨 -->
+  <text x="917" y="325" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="14" fill="#AAAAAA">&#x1F464; 운전자 인지</text>
+  <text x="917" y="342" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="11" fill="#667799">T + 1.5s</text>
+
+  <!-- ===== 마커 5: T+2.0s — 브레이크 (x=999) ===== -->
+  <circle id="m5" cx="999" cy="249" r="9" fill="#777777">
+    <animate attributeName="r" begin="2.87s;m5.endEvent+2.87s" values="9;14;9" dur="0.5s"/>
+  </circle>
+  <circle cx="999" cy="249" r="4.5" fill="#BBBBBB"/>
+  <!-- 세로선 -->
+  <line x1="999" y1="263" x2="999" y2="295" stroke="#777777" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <!-- 라벨 -->
+  <text x="999" y="310" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="14" fill="#999999">&#x1F9B6; 브레이크</text>
+  <text x="999" y="327" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="11" fill="#667799">T + 2.0s</text>
+
+  <!-- ===== 마커 6: T+2.5s — 충돌 (x=1080) ===== -->
+  <!-- 폭발 글로우 -->
+  <circle cx="1080" cy="249" r="22" fill="#FF4444" fill-opacity="0.1" filter="url(#glowRed)">
+    <animate attributeName="r" begin="3.37s;m6.endEvent+3.37s" values="22;35;22" dur="0.6s"/>
+    <animate attributeName="fill-opacity" begin="3.37s;m6.endEvent+3.37s" values="0.1;0.35;0.1" dur="0.6s"/>
+  </circle>
+  <circle id="m6" cx="1080" cy="249" r="13" fill="#FF4444" filter="url(#glowRed)">
+    <animate attributeName="r" begin="3.37s;m6.endEvent+3.37s" values="13;20;13" dur="0.6s"/>
+  </circle>
+  <circle cx="1080" cy="249" r="6" fill="#FFFFFF" fill-opacity="0.9"/>
+  <!-- 세로선 -->
+  <line x1="1080" y1="130" x2="1080" y2="235" stroke="#FF4444" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <!-- 라벨 박스 -->
+  <rect x="980" y="100" width="200" height="62" rx="8" fill="#1F0000" stroke="#FF4444" stroke-width="1.5" stroke-opacity="0.8"/>
+  <text x="1080" y="122" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="18" fill="#FF4444" font-weight="bold">&#x1F4A5; 충돌</text>
+  <text x="1080" y="143" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="13" fill="#FF6666">회피 불가 (사람 단독)</text>
+  <text x="1080" y="160" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="12" fill="#667799">T + 2.5s</text>
+
+  <!-- ===== 시간 축 범례 ===== -->
+  <!-- 3.38초 구간 표시 (T-3.38 ~ T0) -->
+  <rect x="120" y="220" width="552" height="3" rx="1.5" fill="#00E09A" fill-opacity="0.25"/>
+  <line x1="120" y1="215" x2="120" y2="228" stroke="#00E09A" stroke-opacity="0.5" stroke-width="1.5"/>
+  <line x1="672" y1="215" x2="672" y2="228" stroke="#00E09A" stroke-opacity="0.5" stroke-width="1.5"/>
+  <text x="396" y="212" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="12" fill="#00E09A" fill-opacity="0.8">← 3.38초 선제 경고 구간 →</text>
+
+  <!-- ===== 하단 요약 박스 ===== -->
+  <!-- 좌: 사람만 -->
+  <rect x="80" y="370" width="460" height="100" rx="12" fill="url(#leftBoxGrad)" stroke="#FF4444" stroke-width="1.5" stroke-opacity="0.6"/>
+  <text x="310" y="400" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="16" font-weight="bold" fill="#FF6666">사람만 있을 때</text>
+  <text x="310" y="428" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="22" font-weight="bold" fill="#FF4444">충돌 회피 불가능</text>
+  <text x="310" y="454" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="13" fill="#AA4444">인지 → 반응까지 2.5초, 이미 충돌 후</text>
+
+  <!-- 우: AuraView + 사람 -->
+  <rect x="660" y="370" width="460" height="100" rx="12" fill="url(#rightBoxGrad)" stroke="#00E09A" stroke-width="1.5" stroke-opacity="0.6"/>
+  <text x="890" y="400" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="16" font-weight="bold" fill="#00C882">AuraView + 사람</text>
+  <text x="890" y="428" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="22" font-weight="bold" fill="#00E09A">84.5% 회피 성공</text>
+  <text x="890" y="454" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="13" fill="#00AA66">3.38초 조기 경고로 충분한 회피 시간 확보</text>
+
+  <!-- 중앙 VS 배지 -->
+  <circle cx="580" cy="420" r="28" fill="#0B0E1A" stroke="#555555" stroke-width="2"/>
+  <text x="580" y="427" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="16" font-weight="bold" fill="#AAAAAA">VS</text>
+
+  <!-- ===== 하단 푸터 ===== -->
+  <text x="600" y="492" text-anchor="middle" font-family="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+        font-size="11" fill="#445566">
+    AuraView · 2026 국토교통 데이터활용 경진대회 · AI 도로안전 시스템
+  </text>
+
+</svg>

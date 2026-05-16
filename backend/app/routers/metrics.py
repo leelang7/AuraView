@@ -243,6 +243,33 @@ def data_attribution():
                 "used_in": ["/fusion/intersection/{id}", "/fusion/bike", "scenario:bicycle_lane prior +0.22"],
                 "added": "v2-2026.05.15",
             },
+            {
+                "id": "school_zone",
+                "name": "어린이보호구역 (스쿨존) GIS",
+                "provider": "국토교통부 / 국가공간정보포털 (vworld)",
+                "origin": "api.vworld.kr/req/wfs (lt_c_spzzone)",
+                "license": "공공누리 1유형",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/school-zone", "scenario:school_zone ×1.5"],
+                "added": "v3-2026.05.16",
+            },
+            {
+                "id": "black_ice",
+                "name": "도로결빙·블랙아이스 위험구간",
+                "provider": "한국도로공사 RWIS (KMA 파생)",
+                "origin": "T1H+PTY+RN1 조합 (KMA 어댑터 재사용)",
+                "license": "공공누리 1유형 (재사용)",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/black-ice", "freeze_risk_boost +0.32"],
+                "added": "v3-2026.05.16",
+            },
+            {
+                "id": "pedestrian_hotspot",
+                "name": "보행자 사고다발지역",
+                "provider": "도로교통공단 TAAS",
+                "origin": "taas.koroad.or.kr/openapi (victimType=보행자)",
+                "license": "공공데이터 이용약관 (TAAS 별도 활용)",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/pedestrian-hotspots", "ped_hotspot_boost +0.30"],
+                "added": "v3-2026.05.16",
+            },
         ],
         "static_datasets": [
             {

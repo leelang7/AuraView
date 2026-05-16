@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1200 600"
+     width="1200" height="600"
+     font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+
+  <defs>
+    <!-- 좌측 격자 패턴 -->
+    <pattern id="gridL" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M30 0L0 0 0 30" fill="none" stroke="#2A2A35" stroke-width="0.5"/>
+    </pattern>
+    <!-- 우측 격자 패턴 -->
+    <pattern id="gridR" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M30 0L0 0 0 30" fill="none" stroke="#0D2D22" stroke-width="0.5"/>
+    </pattern>
+    <!-- 좌측 도로 그라디언트 -->
+    <linearGradient id="roadL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2C2C2C"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </linearGradient>
+    <!-- 우측 도로 그라디언트 -->
+    <linearGradient id="roadR" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1A2E25"/>
+      <stop offset="100%" stop-color="#0F1F18"/>
+    </linearGradient>
+    <!-- 사각지대 그라디언트 -->
+    <linearGradient id="blindZone" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#555555" stop-opacity="0.0"/>
+      <stop offset="60%" stop-color="#555555" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#888888" stop-opacity="0.7"/>
+    </linearGradient>
+    <!-- 어린이 글로우 (우측) -->
+    <filter id="childGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.5 0" result="redGlow"/>
+      <feMerge>
+        <feMergeNode in="redGlow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- 경고 알림 글로우 -->
+    <filter id="alertGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- 클리핑: 좌측 패널 -->
+    <clipPath id="clipL">
+      <rect x="0" y="0" width="600" height="600"/>
+    </clipPath>
+    <!-- 클리핑: 우측 패널 -->
+    <clipPath id="clipR">
+      <rect x="600" y="0" width="600" height="600"/>
+    </clipPath>
+    <!-- V2V 점선 마커 -->
+    <marker id="arrowTeal" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto">
+      <path d="M0 0 L8 3 L0 6 Z" fill="#00E09A"/>
+    </marker>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  좌측 패널: AuraView 없으면                                -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <g clip-path="url(#clipL)">
+    <!-- 배경 -->
+    <rect x="0" y="0" width="600" height="600" fill="#1A1A1F"/>
+    <rect x="0" y="0" width="600" height="600" fill="url(#gridL)"/>
+
+    <!-- 하늘 영역 -->
+    <rect x="0" y="0" width="600" height="220" fill="#14141A"/>
+
+    <!-- 도로 -->
+    <rect x="0" y="320" width="600" height="200" fill="url(#roadL)"/>
+    <!-- 도로 중앙선 -->
+    <line x1="0" y1="420" x2="600" y2="420" stroke="#FFB020" stroke-width="2" stroke-dasharray="30,20"/>
+    <!-- 도로 가장자리선 -->
+    <line x1="0" y1="325" x2="600" y2="325" stroke="#555" stroke-width="1.5"/>
+    <line x1="0" y1="515" x2="600" y2="515" stroke="#555" stroke-width="1.5"/>
+
+    <!-- 인도 (상단) -->
+    <rect x="0" y="200" width="600" height="120" fill="#222228"/>
+    <line x1="0" y1="200" x2="600" y2="200" stroke="#444" stroke-width="1"/>
+    <line x1="0" y1="320" x2="600" y2="320" stroke="#444" stroke-width="1"/>
+
+    <!-- 횡단보도 -->
+    <g fill="#E8E8E8" opacity="0.7">
+      <rect x="260" y="290" width="20" height="30"/>
+      <rect x="285" y="290" width="20" height="30"/>
+      <rect x="310" y="290" width="20" height="30"/>
+      <rect x="335" y="290" width="20" height="30"/>
+    </g>
+    <!-- 하단 횡단보도 -->
+    <g fill="#E8E8E8" opacity="0.7">
+      <rect x="260" y="510" width="20" height="30"/>
+      <rect x="285" y="510" width="20" height="30"/>
+      <rect x="310" y="510" width="20" height="30"/>
+      <rect x="335" y="510" width="20" height="30"/>
+    </g>
+
+    <!-- 신호등 기둥 -->
+    <rect x="338" y="130" width="8" height="90" fill="#555"/>
+    <!-- 신호등 박스 -->
+    <rect x="320" y="100" width="44" height="32" rx="5" fill="#333"/>
+    <circle cx="333" cy="116" r="8" fill="#CC4444"/>
+    <circle cx="342" cy="116" r="8" fill="#888" opacity="0.4"/>
+    <circle cx="351" cy="116" r="8" fill="#888" opacity="0.4"/>
+    <!-- 신호등 라벨 -->
+    <text x="342" y="95" text-anchor="middle" font-size="10" fill="#888">신호등</text>
+
+    <!-- 트럭 — 애니메이션 포함 -->
+    <g id="truckL">
+      <!-- 트럭 본체 -->
+      <rect x="80" y="330" width="160" height="90" rx="6" fill="#5A5A6A"/>
+      <!-- 트럭 캐빈 -->
+      <rect x="200" y="340" width="55" height="80" rx="4" fill="#6A6A7A"/>
+      <!-- 캐빈 창문 -->
+      <rect x="208" y="347" width="38" height="28" rx="3" fill="#8ACDDF" opacity="0.6"/>
+      <!-- 트럭 바퀴 -->
+      <circle cx="115" cy="422" r="14" fill="#2A2A2A" stroke="#444" stroke-width="2"/>
+      <circle cx="115" cy="422" r="6" fill="#555"/>
+      <circle cx="215" cy="422" r="14" fill="#2A2A2A" stroke="#444" stroke-width="2"/>
+      <circle cx="215" cy="422" r="6" fill="#555"/>
+      <circle cx="245" cy="422" r="14" fill="#2A2A2A" stroke="#444" stroke-width="2"/>
+      <circle cx="245" cy="422" r="6" fill="#555"/>
+      <!-- 트럭 라벨 -->
+      <text x="160" y="382" text-anchor="middle" font-size="13" fill="#999" font-weight="bold">TRUCK</text>
+      <!-- 트럭 슬라이드 애니메이션 -->
+      <animateTransform attributeName="transform" type="translate"
+        values="-60,0; 60,0; -60,0" dur="4s" repeatCount="indefinite" calcMode="spline"
+        keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"/>
+    </g>
+
+    <!-- 사각지대 영역 (트럭 뒤) -->
+    <g clip-path="url(#clipL)">
+      <rect x="70" y="195" width="180" height="335" fill="url(#blindZone)" opacity="0.55"/>
+      <!-- 사각지대 라벨 -->
+      <text x="120" y="265" text-anchor="middle" font-size="11" fill="#AAAAAA" opacity="0.8">보이지</text>
+      <text x="120" y="280" text-anchor="middle" font-size="11" fill="#AAAAAA" opacity="0.8">않는 영역</text>
+      <!-- 사각지대 빗금 -->
+      <g stroke="#777" stroke-width="1" opacity="0.25">
+        <line x1="70" y1="195" x2="250" y2="530"/>
+        <line x1="90" y1="195" x2="250" y2="488"/>
+        <line x1="120" y1="195" x2="250" y2="438"/>
+        <line x1="150" y1="195" x2="250" y2="388"/>
+        <line x1="180" y1="195" x2="250" y2="338"/>
+        <line x1="210" y1="195" x2="250" y2="298"/>
+        <line x1="240" y1="195" x2="250" y2="253"/>
+      </g>
+    </g>
+
+    <!-- 어린이 (좌측 — 희미, 회색) 트럭 뒤에서 등장 -->
+    <g id="childL" opacity="0.0">
+      <!-- 머리 -->
+      <circle cx="130" cy="455" r="12" fill="#666" opacity="0.6"/>
+      <!-- 몸 -->
+      <rect x="122" y="467" width="16" height="22" rx="3" fill="#555" opacity="0.6"/>
+      <!-- 다리 -->
+      <rect x="122" y="488" width="6" height="16" rx="2" fill="#555" opacity="0.6"/>
+      <rect x="132" y="488" width="6" height="16" rx="2" fill="#555" opacity="0.6"/>
+      <!-- 팔 -->
+      <rect x="112" y="468" width="10" height="5" rx="2" fill="#555" opacity="0.6"/>
+      <rect x="138" y="468" width="10" height="5" rx="2" fill="#555" opacity="0.6"/>
+      <!-- 어린이 등장 애니메이션 -->
+      <animate attributeName="opacity" values="0;0;0.4;0.4;0" dur="4s" repeatCount="indefinite"
+        keyTimes="0;0.35;0.55;0.75;1"/>
+    </g>
+
+    <!-- 자아(ego) 차량 — 운전자 시점 표시 -->
+    <g>
+      <polygon points="490,490 540,460 590,490 590,530 490,530" fill="#3A4A8A" opacity="0.9"/>
+      <rect x="505" y="465" width="50" height="20" rx="2" fill="#6A8ADA" opacity="0.6"/>
+      <circle cx="510" cy="530" r="10" fill="#1A1A1A" stroke="#555" stroke-width="2"/>
+      <circle cx="570" cy="530" r="10" fill="#1A1A1A" stroke="#555" stroke-width="2"/>
+      <text x="530" y="510" text-anchor="middle" font-size="10" fill="#AAA">나(운전자)</text>
+      <!-- 시야선 — 트럭에 막힘 -->
+      <line x1="490" y1="480" x2="255" y2="380" stroke="#4466FF" stroke-width="1.5"
+            stroke-dasharray="6,4" opacity="0.5"/>
+      <line x1="490" y1="480" x2="255" y2="460" stroke="#4466FF" stroke-width="1.5"
+            stroke-dasharray="6,4" opacity="0.5"/>
+    </g>
+
+    <!-- 상단 라벨 -->
+    <rect x="0" y="0" width="600" height="70" fill="#FF4444" opacity="0.12"/>
+    <text x="300" y="42" text-anchor="middle" font-size="36" font-weight="bold" fill="#FF4444"
+          letter-spacing="2">지금</text>
+    <text x="300" y="62" text-anchor="middle" font-size="13" fill="#CC4444" opacity="0.8">
+      AuraView 없으면
+    </text>
+
+    <!-- 하단 카피 -->
+    <rect x="0" y="540" width="600" height="60" fill="#110000" opacity="0.6"/>
+    <text x="300" y="565" text-anchor="middle" font-size="18" fill="#FFFFFF">
+      트럭 뒤 사각지대 — 보행자 못 봄
+    </text>
+    <!-- 위험 경고 -->
+    <text x="300" y="589" text-anchor="middle" font-size="13" fill="#FF6666">
+      ⚠ 사고 위험 높음
+    </text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  우측 패널: AuraView 있으면                                -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <g clip-path="url(#clipR)">
+    <!-- 배경 -->
+    <rect x="600" y="0" width="600" height="600" fill="#0B1F1A"/>
+    <rect x="600" y="0" width="600" height="600" fill="url(#gridR)"/>
+
+    <!-- 하늘 영역 -->
+    <rect x="600" y="0" width="600" height="220" fill="#091812"/>
+
+    <!-- 도로 -->
+    <rect x="600" y="320" width="600" height="200" fill="url(#roadR)"/>
+    <!-- 도로 중앙선 -->
+    <line x1="600" y1="420" x2="1200" y2="420" stroke="#FFB020" stroke-width="2" stroke-dasharray="30,20"/>
+    <!-- 도로 가장자리선 -->
+    <line x1="600" y1="325" x2="1200" y2="325" stroke="#1E4A38" stroke-width="1.5"/>
+    <line x1="600" y1="515" x2="1200" y2="515" stroke="#1E4A38" stroke-width="1.5"/>
+
+    <!-- 인도 (상단) -->
+    <rect x="600" y="200" width="600" height="120" fill="#0D2218"/>
+    <line x1="600" y1="200" x2="1200" y2="200" stroke="#1A4A30" stroke-width="1"/>
+    <line x1="600" y1="320" x2="1200" y2="320" stroke="#1A4A30" stroke-width="1"/>
+
+    <!-- 횡단보도 -->
+    <g fill="#2A5A42" opacity="0.8">
+      <rect x="860" y="290" width="20" height="30"/>
+      <rect x="885" y="290" width="20" height="30"/>
+      <rect x="910" y="290" width="20" height="30"/>
+      <rect x="935" y="290" width="20" height="30"/>
+    </g>
+    <g fill="#2A5A42" opacity="0.8">
+      <rect x="860" y="510" width="20" height="30"/>
+      <rect x="885" y="510" width="20" height="30"/>
+      <rect x="910" y="510" width="20" height="30"/>
+      <rect x="935" y="510" width="20" height="30"/>
+    </g>
+
+    <!-- 신호등 기둥 -->
+    <rect x="938" y="130" width="8" height="90" fill="#1A4A30"/>
+    <!-- 신호등 박스 -->
+    <rect x="920" y="100" width="44" height="32" rx="5" fill="#0D2218"/>
+    <circle cx="933" cy="116" r="8" fill="#CC4444"/>
+    <circle cx="942" cy="116" r="8" fill="#333" opacity="0.4"/>
+    <circle cx="951" cy="116" r="8" fill="#333" opacity="0.4"/>
+    <text x="942" y="95" text-anchor="middle" font-size="10" fill="#00A070">신호등</text>
+
+    <!-- 트럭 (우측 패널) — 동일 애니메이션 -->
+    <g id="truckR">
+      <rect x="680" y="330" width="160" height="90" rx="6" fill="#2A4A3A"/>
+      <rect x="800" y="340" width="55" height="80" rx="4" fill="#305A45"/>
+      <rect x="808" y="347" width="38" height="28" rx="3" fill="#4AADCF" opacity="0.6"/>
+      <circle cx="715" cy="422" r="14" fill="#0D1F16" stroke="#1E4A30" stroke-width="2"/>
+      <circle cx="715" cy="422" r="6" fill="#1A3A28"/>
+      <circle cx="815" cy="422" r="14" fill="#0D1F16" stroke="#1E4A30" stroke-width="2"/>
+      <circle cx="815" cy="422" r="6" fill="#1A3A28"/>
+      <circle cx="845" cy="422" r="14" fill="#0D1F16" stroke="#1E4A30" stroke-width="2"/>
+      <circle cx="845" cy="422" r="6" fill="#1A3A28"/>
+      <text x="760" y="382" text-anchor="middle" font-size="13" fill="#00A070" font-weight="bold">TRUCK</text>
+      <animateTransform attributeName="transform" type="translate"
+        values="-60,0; 60,0; -60,0" dur="4s" repeatCount="indefinite" calcMode="spline"
+        keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"/>
+    </g>
+
+    <!-- V2V 데이터 연결선 (트럭 → 어린이 탐지) -->
+    <g id="v2vLines" opacity="0">
+      <line x1="855" y1="375" x2="730" y2="455" stroke="#00E09A" stroke-width="1.5"
+            stroke-dasharray="5,4" marker-end="url(#arrowTeal)"/>
+      <line x1="1080" y1="490" x2="745" y2="455" stroke="#00E09A" stroke-width="1.5"
+            stroke-dasharray="5,4" marker-end="url(#arrowTeal)"/>
+      <text x="870" y="415" font-size="10" fill="#00E09A" opacity="0.9">V2V 신호</text>
+      <animate attributeName="opacity" values="0;0;1;1;0" dur="4s" repeatCount="indefinite"
+        keyTimes="0;0.35;0.55;0.75;1"/>
+    </g>
+
+    <!-- 어린이 (우측 — 강조, 빨간 하이라이트) -->
+    <g id="childR" filter="url(#childGlow)" opacity="0">
+      <!-- 하이라이트 박스 -->
+      <rect x="716" y="440" width="52" height="72" rx="4"
+            fill="none" stroke="#FF4444" stroke-width="2.5" stroke-dasharray="6,3"/>
+      <!-- 머리 -->
+      <circle cx="730" cy="455" r="12" fill="#FF6644"/>
+      <!-- 몸 -->
+      <rect x="722" y="467" width="16" height="22" rx="3" fill="#FF5533"/>
+      <!-- 다리 -->
+      <rect x="722" y="488" width="6" height="16" rx="2" fill="#FF5533"/>
+      <rect x="732" y="488" width="6" height="16" rx="2" fill="#FF5533"/>
+      <!-- 팔 -->
+      <rect x="712" y="468" width="10" height="5" rx="2" fill="#FF5533"/>
+      <rect x="738" y="468" width="10" height="5" rx="2" fill="#FF5533"/>
+      <!-- 어린이 등장 애니메이션 -->
+      <animate attributeName="opacity" values="0;0;1;1;0" dur="4s" repeatCount="indefinite"
+        keyTimes="0;0.35;0.55;0.75;1"/>
+    </g>
+
+    <!-- 자아(ego) 차량 우측 -->
+    <g>
+      <polygon points="1090,490 1140,460 1190,490 1190,530 1090,530" fill="#1A3A5A" opacity="0.9"/>
+      <rect x="1105" y="465" width="50" height="20" rx="2" fill="#2A6AAA" opacity="0.6"/>
+      <circle cx="1110" cy="530" r="10" fill="#0D1F16" stroke="#1E4A30" stroke-width="2"/>
+      <circle cx="1170" cy="530" r="10" fill="#0D1F16" stroke="#1E4A30" stroke-width="2"/>
+      <text x="1130" y="510" text-anchor="middle" font-size="10" fill="#00E09A">나(운전자)</text>
+    </g>
+
+    <!-- HUD 충돌 경고 알림 -->
+    <g id="hudAlert" filter="url(#alertGlow)">
+      <rect x="635" y="140" width="530" height="70" rx="8"
+            fill="#1A0A0A" stroke="#FF4444" stroke-width="2.5"/>
+      <text x="900" y="168" text-anchor="middle" font-size="15" fill="#FF4444" font-weight="bold">
+        ⚠ 5.7초 안에 충돌 위험 — 즉시 정지!
+      </text>
+      <text x="900" y="192" text-anchor="middle" font-size="12" fill="#FF9999">
+        보행자(어린이) 탐지됨 · AuraView HUD 경보
+      </text>
+      <!-- 깜빡임 애니메이션 -->
+      <animate attributeName="opacity" values="0;0;1;0.2;1;0.2;1;0" dur="4s" repeatCount="indefinite"
+        keyTimes="0;0.35;0.50;0.58;0.65;0.73;0.80;1"/>
+    </g>
+
+    <!-- 9종 공공데이터 뱃지 -->
+    <g id="dataBadge" opacity="0">
+      <rect x="635" y="225" width="250" height="26" rx="4" fill="#003322" stroke="#00604A" stroke-width="1"/>
+      <text x="760" y="242" text-anchor="middle" font-size="11" fill="#00E09A">
+        CCTV · V2V · 교통신호 · 보행자센서 ···
+      </text>
+      <animate attributeName="opacity" values="0;0;0.9;0.9;0" dur="4s" repeatCount="indefinite"
+        keyTimes="0;0.35;0.55;0.75;1"/>
+    </g>
+
+    <!-- 상단 라벨 -->
+    <rect x="600" y="0" width="600" height="70" fill="#00E09A" opacity="0.08"/>
+    <text x="900" y="42" text-anchor="middle" font-size="36" font-weight="bold" fill="#00E09A"
+          letter-spacing="2">AuraView</text>
+    <text x="900" y="62" text-anchor="middle" font-size="13" fill="#00A878" opacity="0.9">
+      AI 도로안전 시스템 적용 시
+    </text>
+
+    <!-- 하단 카피 -->
+    <rect x="600" y="540" width="600" height="60" fill="#001810" opacity="0.7"/>
+    <text x="900" y="565" text-anchor="middle" font-size="18" fill="#00E09A">
+      9종 공공데이터 + V2V로 사각지대 복원
+    </text>
+    <text x="900" y="589" text-anchor="middle" font-size="13" fill="#00C880">
+      실시간 AI 경보 · 사고 예방
+    </text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  중앙 분할선 + VS 텍스트                                   -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <line x1="600" y1="0" x2="600" y2="600" stroke="#FFB020" stroke-width="1.5" opacity="0.85"/>
+  <!-- VS 배경 원 -->
+  <circle cx="600" cy="300" r="24" fill="#1A1A1F" stroke="#FFB020" stroke-width="1.5"/>
+  <text x="600" y="307" text-anchor="middle" font-size="16" font-weight="bold" fill="#FFB020"
+        letter-spacing="1">vs</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  하단 브랜드 워터마크                                      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <text x="10" y="595" font-size="10" fill="#444" opacity="0.7">
+    © 2026 AuraView · 2026 국토교통 데이터활용 경진대회
+  </text>
+  <text x="1190" y="595" text-anchor="end" font-size="10" fill="#444" opacity="0.7">
+    SVG 1.1 · Pure SMIL Animation
+  </text>
+
+</svg>

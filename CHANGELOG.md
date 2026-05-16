@@ -5,6 +5,48 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.9 — 12-source 융합 + 일반인용 스토리 페이지 + 시각자료 3종 (2026-05-16)
+
+### Added — 9 → 12종 공공데이터 확장
+- **어린이보호구역 (스쿨존) GIS** — `vworld lt_c_spzzone` 어댑터. 등하교 시간대 자동 인식 → 위험 multiplier ×1.5. fallback 5개 서울 fixture.
+- **도로결빙·블랙아이스 위험** — KMA 기상 (T1H + PTY + RN1) 결합 파생. 영하+강수 시 `freeze_risk_boost +0.32` 자동. **신규 API 키 불필요** (KMA 재사용).
+- **보행자 사고다발지역** — TAAS_KEY 재사용. 광화문·강남역·홍대입구 등 5 hotspot fixture. `ped_hotspot_boost +0.30`.
+- **신규 엔드포인트 3개**: `GET /fusion/school-zone`, `/fusion/black-ice`, `/fusion/pedestrian-hotspots`.
+- **fusion_summary 신규 필드 6**: `in_school_zone`, `school_zone_multiplier`, `black_ice_risk`, `freeze_risk_boost`, `in_pedestrian_hotspot`, `ped_hotspot_boost`.
+- **위험 점수 재가중**: 12-source 균형 (속도0.20+돌발0.15+TAAS0.15+기상0.12+ER0.08+자전거0.08+결빙0.10+보행자0.07+스쿨존×).
+- `schema_version: fusion.v3-12src-2026.05.16`.
+
+### Added — 일반인용 30초 스토리 페이지 (`/story/`)
+- **`static/story/index.html`** 신규 — 처음 보는 사람도 30초에 이해.
+  - Hero: 12종 + 3.38초 + 84.5% + 21명 4-stat
+  - Section 1: BEFORE/AFTER SVG (트럭 사각지대 시나리오)
+  - Section 2: 3.38초 타임라인 SVG
+  - Section 3: 매년 21명 waffle chart SVG
+  - Section 4: 12종 데이터 카드 그리드 (v1/v2/v3 NEW 배지)
+  - Section 5: 6 CTA (라이브 대시보드·심사허브·12종 JSON·슬라이드·GitHub·API)
+  - IntersectionObserver 스크롤 페이드인, 반응형 디자인
+- main.py `_mount_static(["static", "story"], "/story")` 마운트
+
+### Added — 시각자료 3종 SVG (sonnet Agent 병렬 제작)
+- **`static/visuals/before_after.svg`** (19KB) — 트럭이 가린 사각지대 좌우 비교, SMIL 4초 루프, V2V 시점 복원
+- **`static/visuals/timeline_57s.svg`** (15KB) — T-3.38s ~ T+2.5s 마커 6개, 진행선 4초 반복, AuraView vs 사람 회피율 비교
+- **`static/visuals/impact_waffle.svg`** (31KB) — 100명 사람 격자 + 21명 순차 점등, 큰 "21" 카운트업, 3-tier 표
+
+### Tests (95 → 98 → 101)
+- `test_fusion_sources_lists_twelve` (전 _nine 교체)
+- `test_fusion_intersection_returns_twelve_sources_v3` (전 _nine_v2 교체)
+- `test_fusion_school_zone_endpoint`
+- `test_fusion_black_ice_derives_from_weather`
+- `test_fusion_pedestrian_hotspots_endpoint`
+- `test_data_attribution_lists_12_public_sources` (전 _9_ 교체)
+
+### Why
+- "12종 융합" 슬로건 + 일반인용 직관 페이지 = 심사위원·관람객·시민 3 청중 모두 30초 안에 가치 전달.
+- 스쿨존/결빙/보행자다발은 가점 카테고리 "데이터융합" + "AI분석" 동시 보강. API 키 추가 없음 (3종 모두 기존 키 재사용 또는 GIS fallback).
+- SVG 시각자료는 백엔드 오프라인 상태에서도 작동 — 시연 안정성 ↑.
+
+---
+
 ## v0.8.3 — AI v2 비교 엔드포인트 + 키오스크 9-source 시연 + BEV BIS 마커 (2026-05-16)
 
 ### Added — Cycle 9 (AI v2 비교 엔드포인트)

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AuraView — 보이지 않는 위험을 본다</title>
+<meta name="description" content="트럭 뒤에 가려진 어린이, 신호등 너머 보행자 — AuraView는 9종 공공데이터와 V2V로 사각지대까지 계산해 평균 3.38초 먼저 위험을 알려줍니다."/>
+
+<style>
+  :root {
+    --bg: #0A0E18;
+    --bg2: #0F1525;
+    --text: #E8F0FF;
+    --muted: #8896B0;
+    --safe: #00E09A;
+    --accent: #00C8FF;
+    --warn: #FFB020;
+    --danger: #FF4444;
+    --purple: #A095FF;
+    --border: rgba(120, 140, 180, 0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 24px;
+    background:
+      radial-gradient(ellipse at top, rgba(0, 200, 255, 0.10) 0%, transparent 60%),
+      radial-gradient(ellipse at bottom, rgba(0, 224, 154, 0.08) 0%, transparent 60%),
+      var(--bg);
+  }
+  .eyebrow {
+    font-size: 12px; letter-spacing: 3px; color: var(--accent);
+    font-weight: 700; margin-bottom: 24px;
+  }
+  h1 {
+    font-size: clamp(36px, 6vw, 78px);
+    font-weight: 900;
+    line-height: 1.15;
+    letter-spacing: -1px;
+    margin-bottom: 28px;
+  }
+  h1 em { color: var(--safe); font-style: normal; }
+  .hero-sub {
+    font-size: clamp(16px, 2vw, 22px);
+    color: var(--muted);
+    max-width: 720px;
+    margin: 0 auto 40px;
+  }
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    max-width: 920px;
+    margin: 0 auto 40px;
+  }
+  .stat {
+    padding: 20px;
+    background: rgba(0, 200, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .stat .n {
+    font-size: 38px; font-weight: 900; color: var(--safe);
+    line-height: 1;
+  }
+  .stat .l {
+    font-size: 11px; letter-spacing: 1.5px;
+    color: var(--muted); margin-top: 6px;
+    text-transform: uppercase;
+  }
+  .scroll-hint {
+    color: var(--muted); font-size: 12px;
+    margin-top: 30px;
+    animation: bounce 1.8s infinite;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(8px); }
+  }
+
+  /* ── Section ── */
+  section {
+    padding: 80px 24px;
+    border-top: 1px solid var(--border);
+  }
+  section.alt {
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+  }
+  h2 {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 900;
+    margin-bottom: 16px;
+    line-height: 1.2;
+    text-align: center;
+  }
+  h2 em { color: var(--safe); font-style: normal; }
+  .section-sub {
+    text-align: center;
+    color: var(--muted);
+    font-size: 16px;
+    max-width: 700px;
+    margin: 0 auto 40px;
+  }
+  .visual-wrap {
+    max-width: 1100px; margin: 0 auto;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 60px rgba(0, 200, 255, 0.10);
+  }
+  .visual-wrap img, .visual-wrap object {
+    width: 100%; height: auto; display: block;
+  }
+  .caption {
+    text-align: center; color: var(--muted);
+    font-size: 13px; margin-top: 14px; font-family: monospace;
+  }
+
+  /* ── Sources grid (12종) ── */
+  .sources {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    max-width: 1100px; margin: 0 auto;
+  }
+  .src-card {
+    padding: 16px;
+    background: rgba(0, 200, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .src-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--safe);
+  }
+  .src-card .emoji {
+    font-size: 26px; margin-bottom: 8px;
+  }
+  .src-card .name {
+    font-weight: 800; font-size: 14px;
+    color: var(--text); margin-bottom: 4px;
+  }
+  .src-card .desc {
+    font-size: 12px; color: var(--muted);
+    line-height: 1.5;
+  }
+  .src-card .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+  .badge-v3 {
+    background: rgba(0, 224, 154, 0.15);
+    color: var(--safe);
+  }
+  .badge-v2 {
+    background: rgba(0, 200, 255, 0.15);
+    color: var(--accent);
+  }
+  .badge-v1 {
+    background: rgba(136, 150, 176, 0.15);
+    color: var(--muted);
+  }
+
+  /* ── CTA ── */
+  .cta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    max-width: 1000px; margin: 30px auto 0;
+  }
+  .cta {
+    display: block;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(0, 224, 154, 0.08), rgba(0, 200, 255, 0.04));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    text-decoration: none;
+    color: var(--text);
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .cta:hover {
+    transform: translateY(-3px);
+    border-color: var(--safe);
+  }
+  .cta .icon { font-size: 32px; margin-bottom: 10px; }
+  .cta .title { font-weight: 800; font-size: 17px; margin-bottom: 6px; }
+  .cta .desc { color: var(--muted); font-size: 13px; }
+
+  footer {
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* fade-in on scroll */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s, transform 0.8s;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<!-- ─────────────────────────  HERO  ───────────────────────── -->
+<div class="hero">
+  <div class="eyebrow">// 2026 국토교통 데이터활용 경진대회</div>
+  <h1>운전자가 못 보는 곳을<br/><em>AuraView</em> 가 본다.</h1>
+  <p class="hero-sub">
+    트럭이 신호등을 가렸을 때. 좌측 사각지대에 이륜차가 있을 때. 어린이가 버스 뒤에서 길을 건널 때.
+    AuraView는 <b>12종 공공데이터</b>와 <b>V2V 협업 인지</b>로 사각지대까지 계산해
+    <b style="color:var(--safe);">평균 3.38초 먼저</b> 위험을 알려줍니다.
+  </p>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="n">3.38s</div>
+      <div class="l">평균 선행 경고</div>
+    </div>
+    <div class="stat">
+      <div class="n">84.5%</div>
+      <div class="l">회피 성공률</div>
+    </div>
+    <div class="stat">
+      <div class="n">21명</div>
+      <div class="l">매년 살릴 수 있는 생명</div>
+    </div>
+    <div class="stat">
+      <div class="n">12종</div>
+      <div class="l">실시간 공공데이터 융합</div>
+    </div>
+  </div>
+  <div class="scroll-hint">↓ 어떻게 작동하는지 보세요</div>
+</div>
+
+<!-- ─────────────────────────  STORY 1 : BEFORE/AFTER  ───────────────────────── -->
+<section class="alt">
+  <div class="wrap reveal">
+    <h2><em>이런 상황</em>, 운전 중 실제로 일어납니다.</h2>
+    <p class="section-sub">
+      트럭이 횡단보도 앞에 멈춰 신호등과 보행자를 가립니다. 그 뒤에서 어린이가 길을 건너고 있다면?
+      운전자는 트럭을 지나가는 순간에야 어린이를 발견합니다 — 이미 너무 늦습니다.
+    </p>
+    <div class="visual-wrap">
+      <object data="/static/visuals/before_after.svg" type="image/svg+xml" aria-label="BEFORE/AFTER 비교"></object>
+    </div>
+    <div class="caption">왼쪽: AuraView 없을 때 · 오른쪽: 9종 데이터 + V2V 협업 인지로 사각지대 복원</div>
+  </div>
+</section>
+
+<!-- ─────────────────────────  STORY 2 : TIMELINE  ───────────────────────── -->
+<section>
+  <div class="wrap reveal">
+    <h2><em>3.38초</em> — 생명을 가르는 시간.</h2>
+    <p class="section-sub">
+      사람은 위험을 발견하고 브레이크를 밟기까지 평균 1.5초가 걸립니다. AuraView는 위험이 일어나기 <b>3.38초 전</b>에 미리 경고해
+      운전자가 차분히 대응할 수 있는 시간을 만들어 줍니다.
+    </p>
+    <div class="visual-wrap">
+      <object data="/static/visuals/timeline_57s.svg" type="image/svg+xml" aria-label="3.38초 선행 경고 타임라인"></object>
+    </div>
+    <div class="caption">학습된 PyTorch Risk Transformer · AUC 0.9403 · CPU 추론 p99 1.04ms</div>
+  </div>
+</section>
+
+<!-- ─────────────────────────  STORY 3 : IMPACT  ───────────────────────── -->
+<section class="alt">
+  <div class="wrap reveal">
+    <h2><em>21명</em>의 생명, 매년 구해집니다.</h2>
+    <p class="section-sub">
+      도시 교차로 5%에 AuraView 가 도입되면 회피율 84.5% × TAAS 2024 통계 기준으로 연간 사망자 21명을 줄일 수 있습니다.
+      전국 100% 적용 시 연간 <b>421명</b>의 생명이 보호됩니다.
+    </p>
+    <div class="visual-wrap">
+      <object data="/static/visuals/impact_waffle.svg" type="image/svg+xml" aria-label="연간 21명 생명 보호 임팩트"></object>
+    </div>
+    <div class="caption">TAAS 2024 (사망 2,581명) × 도시교차로 46% × 회피율 min(0.85, 0.25 × lead_time_s)</div>
+  </div>
+</section>
+
+<!-- ─────────────────────────  12 SOURCES  ───────────────────────── -->
+<section>
+  <div class="wrap reveal">
+    <h2><em>12종 공공데이터</em>가 한 번에 결합됩니다.</h2>
+    <p class="section-sub">
+      어떤 단일 모델도 못 보는 정보를 — 한국 도로 인프라가 이미 측정 중인 모든 신호를 — 한 응답으로 결합합니다.
+      카메라가 보지 못해도, 다른 데이터가 위험을 알려줍니다.
+    </p>
+    <div class="sources">
+      <div class="src-card"><div class="emoji">🚦</div><div class="name">실시간 신호 정보</div><div class="desc">도로교통공단 · 교차로 신호 위상</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card"><div class="emoji">🚗</div><div class="name">VDS 실시간 소통</div><div class="desc">한국도로공사 · 속도·교통량·점유율</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card"><div class="emoji">⚠️</div><div class="name">돌발상황</div><div class="desc">한국도로공사 · 사고·낙하물·공사</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card"><div class="emoji">📊</div><div class="name">TAAS 사고이력</div><div class="desc">도로교통공단 · 과거 사고 prior</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card"><div class="emoji">🛣️</div><div class="name">ITS 국가교통정보</div><div class="desc">국토교통부 · 표준링크 속도</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card"><div class="emoji">🔒</div><div class="name">데이터안심구역</div><div class="desc">국토부 · TAAS×VDS k-익명 결합</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card"><div class="emoji">🌧️</div><div class="name">기상청 동네예보</div><div class="desc">KMA · 강수·시정·노면 위험</div><span class="badge badge-v2">v2</span></div>
+      <div class="src-card"><div class="emoji">🏥</div><div class="name">응급실 가용병상</div><div class="desc">NEDIS · 사고 심각도 보정</div><span class="badge badge-v2">v2</span></div>
+      <div class="src-card"><div class="emoji">🚴</div><div class="name">공공자전거 따릉이</div><div class="desc">서울시 · 자전거도로 prior</div><span class="badge badge-v2">v2</span></div>
+      <div class="src-card"><div class="emoji">🏫</div><div class="name">어린이보호구역</div><div class="desc">vworld · 등하교 시 위험 ×1.5</div><span class="badge badge-v3">v3 NEW</span></div>
+      <div class="src-card"><div class="emoji">❄️</div><div class="name">도로결빙 위험</div><div class="desc">RWIS · 블랙아이스 자동 추론</div><span class="badge badge-v3">v3 NEW</span></div>
+      <div class="src-card"><div class="emoji">🚶</div><div class="name">보행자 사고다발</div><div class="desc">TAAS · 광화문·강남역 등 hotspot</div><span class="badge badge-v3">v3 NEW</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────  CTA  ───────────────────────── -->
+<section class="alt">
+  <div class="wrap reveal">
+    <h2>직접 확인해 보세요.</h2>
+    <p class="section-sub">기술 세부사항부터 실시간 데모까지 — 모두 라이브로 공개되어 있습니다.</p>
+    <div class="cta-grid">
+      <a class="cta" href="/ui">
+        <div class="icon">🎬</div>
+        <div class="title">라이브 대시보드</div>
+        <div class="desc">9탭 풀 데모 · BEV 3D · 사고 재현 · K-MaaS 우회 추천</div>
+      </a>
+      <a class="cta" href="/competition/">
+        <div class="icon">🏆</div>
+        <div class="title">심사위원 검증 허브</div>
+        <div class="desc">11 검증 URL + 5 라이브 데모 + 8 시나리오 한 화면</div>
+      </a>
+      <a class="cta" href="/fusion/intersection/1007">
+        <div class="icon">🔗</div>
+        <div class="title">12종 융합 JSON</div>
+        <div class="desc">한 번의 호출로 12개 공공데이터 결합 결과 (라이브)</div>
+      </a>
+      <a class="cta" href="/slides/">
+        <div class="icon">🎞️</div>
+        <div class="title">발표 슬라이드</div>
+        <div class="desc">Reveal.js 12장 · 화살표/스페이스로 이동</div>
+      </a>
+      <a class="cta" href="https://github.com/leelang7/AuraView" target="_blank" rel="noopener">
+        <div class="icon">🐙</div>
+        <div class="title">GitHub 오픈소스</div>
+        <div class="desc">MIT 라이센스 · CI 90+ 테스트 · 재현 가이드</div>
+      </a>
+      <a class="cta" href="/docs">
+        <div class="icon">🔧</div>
+        <div class="title">API 문서 (Swagger)</div>
+        <div class="desc">90+ 엔드포인트 라이브 호출 가능</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>AuraView K-Perception © 2026 · MIT License</div>
+  <div style="margin-top:6px;">2026 국토교통 데이터활용 경진대회 출품작 · <a href="https://github.com/leelang7/AuraView">github.com/leelang7/AuraView</a></div>
+</footer>
+
+<script>
+  // 스크롤 페이드인
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>

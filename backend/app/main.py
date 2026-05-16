@@ -194,6 +194,7 @@ _mount_static(app, ["static", "slides"], "/slides")
 _mount_static(app, ["static", "kiosk"], "/kiosk")
 _mount_static(app, ["static", "summary"], "/submission")
 _mount_static(app, ["static", "competition"], "/competition")
+_mount_static(app, ["static", "story"], "/story")        # v3 2026-05-16: 일반인용 30초 스토리 페이지
 _mount_static(app, ["static"], "/static")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)

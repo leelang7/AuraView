@@ -426,7 +426,195 @@ def fetch_bike_stations(num_of_rows: int = 50) -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (9-source)
+# 10. 어린이보호구역 (스쿨존) GIS — vworld lt_c_spzzone (v3 2026-05-16)
+# ──────────────────────────────────────────────────────────────────────
+
+SCHOOL_ZONE_BASE_URL = os.getenv("SCHOOL_ZONE_BASE_URL", "https://api.vworld.kr/req/wfs")
+SCHOOL_ZONE_KEY = os.getenv("SCHOOL_ZONE_KEY", os.getenv("VWORLD_KEY", ""))
+
+# 서울 강남·송파 대표 스쿨존 5개 (좌표는 중심점 + 반경 m)
+_SCHOOL_ZONE_FALLBACK_POLYGONS = [
+    {"id": "SZ-11680-001", "name": "대도초등학교",       "lat": 37.5081, "lon": 127.0440, "radius_m": 300, "district": "강남구", "school_count": 1, "child_count_estimate": 980},
+    {"id": "SZ-11680-002", "name": "언북초등학교",       "lat": 37.5163, "lon": 127.0398, "radius_m": 300, "district": "강남구", "school_count": 1, "child_count_estimate": 720},
+    {"id": "SZ-11710-007", "name": "잠실초등학교 일대",   "lat": 37.5133, "lon": 127.1000, "radius_m": 350, "district": "송파구", "school_count": 1, "child_count_estimate": 1140},
+    {"id": "SZ-11140-003", "name": "광희초등학교 일대",   "lat": 37.5651, "lon": 127.0073, "radius_m": 250, "district": "중구",   "school_count": 1, "child_count_estimate": 540},
+    {"id": "SZ-11200-005", "name": "성수초등학교 일대",   "lat": 37.5446, "lon": 127.0556, "radius_m": 280, "district": "성동구", "school_count": 1, "child_count_estimate": 680},
+]
+
+
+def _haversine_m_local(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    import math
+    R = 6_371_000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1); dl = math.radians(lon2 - lon1)
+    a = math.sin(dp/2)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+    return 2*R*math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+
+def fetch_school_zone(lat: float = 37.5081, lon: float = 127.0440, radius_m: float = 500.0) -> Dict[str, Any]:
+    """반경 N m 내 어린이보호구역 + 시간대별 위험 multiplier.
+
+    07:30-09:00 등교 / 13:30-15:00 하교 시간대 → multiplier ×1.5
+    그 외 → ×1.2 (스쿨존 진입 시 기본).
+    """
+    from datetime import datetime
+    now = datetime.utcnow()
+    kst_hour = (now.hour + 9) % 24
+    is_school_time = (7 <= kst_hour < 9) or (13 <= kst_hour < 15) or (15 <= kst_hour < 16)
+    multiplier = 1.5 if is_school_time else 1.2
+
+    # 실 API 시도 (vworld WFS GeoJSON) — 키 없으면 즉시 fallback
+    if SCHOOL_ZONE_KEY:
+        try:
+            params = {
+                "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
+                "TYPENAMES": "lt_c_spzzone", "SRSNAME": "EPSG:4326",
+                "OUTPUT": "application/json", "key": SCHOOL_ZONE_KEY,
+                "BBOX": f"{lon-0.01},{lat-0.01},{lon+0.01},{lat+0.01}",
+            }
+            res = requests.get(SCHOOL_ZONE_BASE_URL, params=params, timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("school_zone", "live", True)
+            data = res.json()
+            zones = []
+            for f in (data.get("features") or [])[:20]:
+                props = f.get("properties", {}) or {}
+                zones.append({
+                    "id": props.get("ogc_fid"), "name": props.get("name", "스쿨존"),
+                    "district": props.get("sigungu_nm"),
+                })
+            return {
+                "source": "vworld lt_c_spzzone",
+                "zones": zones, "count": len(zones),
+                "is_school_time_kst": is_school_time, "kst_hour": kst_hour,
+                "derived": {"in_school_zone": len(zones) > 0, "school_zone_multiplier": multiplier if zones else 1.0},
+            }
+        except Exception as exc:
+            log.warning("School zone API failed: %s", exc)
+            _record_fetch("school_zone", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+            if not ALLOW_FALLBACK: raise
+
+    # fallback — 반경 N m 내 fixture
+    nearby = [z for z in _SCHOOL_ZONE_FALLBACK_POLYGONS
+              if _haversine_m_local(lat, lon, z["lat"], z["lon"]) <= radius_m + z.get("radius_m", 0)]
+    _record_fetch("school_zone", "stub", True if nearby else False, f"{len(nearby)} fixture hits")
+    return {
+        "source": "어린이보호구역 GIS (stub — SCHOOL_ZONE_KEY 미설정)",
+        "zones": nearby, "count": len(nearby),
+        "is_school_time_kst": is_school_time, "kst_hour": kst_hour,
+        "derived": {
+            "in_school_zone": len(nearby) > 0,
+            "school_zone_multiplier": multiplier if nearby else 1.0,
+            "child_count_estimate": sum(z.get("child_count_estimate", 0) for z in nearby),
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 11. 도로결빙·블랙아이스 위험구간 (v3 2026-05-16)
+#    KMA 기온+강수형태와 결합 → 영하 강수 시 결빙 의심
+# ──────────────────────────────────────────────────────────────────────
+
+def fetch_black_ice_risk(lat: float = 37.5665, lon: float = 126.9780,
+                        weather_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """결빙 위험구간 — KMA 기온/강수형태 조합으로 자동 추론.
+
+    조건: 기온 ≤ 3°C + (강수형태 PTY=2 진눈깨비 or 3 눈) → 결빙 의심
+        기온 ≤ 0°C + 강수 발생 → 블랙아이스 위험 (severity=high)
+    """
+    # weather_data 주입 받으면 그것 사용 (network 호출 회피)
+    if weather_data is None:
+        weather_data = fetch_weather()
+
+    items = weather_data.get("items", []) if isinstance(weather_data, dict) else []
+    temp_c = next((it["value"] for it in items if it.get("category") == "T1H"), 10.0)
+    pty = next((it["value"] for it in items if it.get("category") == "PTY"), 0)
+    rn1 = next((it["value"] for it in items if it.get("category") == "RN1"), 0.0)
+
+    try:
+        temp_c = float(temp_c); pty = int(pty); rn1 = float(rn1)
+    except Exception:
+        temp_c, pty, rn1 = 10.0, 0, 0.0
+
+    # 결빙 위험 판정
+    is_freezing = temp_c <= 0.0 and (pty in (1, 2, 3) or rn1 > 0)
+    is_snow = pty in (2, 3) and temp_c <= 3.0
+    is_wet_cold = temp_c <= 3.0 and rn1 > 0
+
+    if is_freezing:
+        severity = "high"; risk_boost = 0.32; advice = "블랙아이스 강력 의심 — 권장속도 -30%"
+    elif is_snow:
+        severity = "medium"; risk_boost = 0.22; advice = "눈길 결빙 의심 — 제동거리 1.5배"
+    elif is_wet_cold:
+        severity = "low"; risk_boost = 0.10; advice = "낮은 기온 우천 — 노면 미끄럼 주의"
+    else:
+        severity = "none"; risk_boost = 0.0; advice = "결빙 위험 없음"
+
+    _record_fetch("black_ice", "derived", True, f"T={temp_c}°C PTY={pty} severity={severity}")
+    return {
+        "source": "도로결빙 위험 — KMA 기상 파생 (T1H+PTY+RN1)",
+        "temperature_c": temp_c, "pty_code": pty, "rn1_mm": rn1,
+        "severity": severity,
+        "derived": {
+            "black_ice_risk": severity != "none",
+            "black_ice_severity": severity,
+            "freeze_risk_boost": risk_boost,
+            "advice": advice,
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 12. 보행자 사고다발지역 (TAAS 보행 특화) (v3 2026-05-16)
+# ──────────────────────────────────────────────────────────────────────
+
+_PED_HOTSPOTS_FALLBACK = {
+    "source": "도로교통공단 보행자 사고다발지역 (stub)",
+    "collected_at": "2026-05-16T12:00:00Z",
+    "hotspots": [
+        {"id": "PH-001", "name": "광화문 사거리",     "lat": 37.5720, "lon": 126.9769, "victim_ped_5y": 47, "fatality_5y": 3, "rank_national": 12},
+        {"id": "PH-002", "name": "강남역 11번출구",   "lat": 37.4979, "lon": 127.0276, "victim_ped_5y": 38, "fatality_5y": 2, "rank_national": 24},
+        {"id": "PH-003", "name": "성신여대입구 사거리","lat": 37.5928, "lon": 127.0163, "victim_ped_5y": 31, "fatality_5y": 2, "rank_national": 41},
+        {"id": "PH-004", "name": "잠실역 8번출구",    "lat": 37.5133, "lon": 127.1000, "victim_ped_5y": 28, "fatality_5y": 1, "rank_national": 58},
+        {"id": "PH-005", "name": "홍대입구역",        "lat": 37.5571, "lon": 126.9241, "victim_ped_5y": 35, "fatality_5y": 1, "rank_national": 33},
+    ],
+}
+
+
+def fetch_pedestrian_hotspots(lat: float = 37.5665, lon: float = 126.9780,
+                              radius_m: float = 500.0) -> Dict[str, Any]:
+    """반경 N m 내 보행자 사고다발지역. TAAS_KEY 재사용."""
+    url = f"{TAAS_BASE_URL}/pedestrianHotspots"
+    params = {"serviceKey": TAAS_KEY, "type": "json", "victimType": "보행자",
+              "minLat": lat-0.01, "maxLat": lat+0.01, "minLon": lon-0.01, "maxLon": lon+0.01}
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("pedestrian_hotspots", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("Pedestrian hotspots API failed: %s", exc)
+        _record_fetch("pedestrian_hotspots", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK: raise
+
+    nearby = [h for h in _PED_HOTSPOTS_FALLBACK["hotspots"]
+              if _haversine_m_local(lat, lon, h["lat"], h["lon"]) <= radius_m]
+    nearby.sort(key=lambda x: x["rank_national"])
+    total_victim = sum(h.get("victim_ped_5y", 0) for h in nearby)
+    return {
+        **_PED_HOTSPOTS_FALLBACK,
+        "nearby": nearby, "nearby_count": len(nearby),
+        "derived": {
+            "in_pedestrian_hotspot": len(nearby) > 0,
+            "ped_hotspot_boost": min(0.30, total_victim / 100),
+            "total_victim_5y_within_radius": total_victim,
+            "highest_ranked": nearby[0]["rank_national"] if nearby else None,
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (12-source v3 2026-05-16)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -441,6 +629,10 @@ class IntersectionFusion:
     weather: Dict[str, Any]
     medical: Dict[str, Any]
     bike: Dict[str, Any]
+    # v3 2026-05-16: 12-source 확장
+    school_zone: Dict[str, Any]
+    black_ice: Dict[str, Any]
+    pedestrian_hotspot: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -467,23 +659,40 @@ class IntersectionFusion:
         severity_mul   = float(medical_derived.get("severity_multiplier", 1.0))
         bike_boost     = float(bike_derived.get("bike_lane_risk_boost", 0.0))
 
-        # 9종 통합 위험 점수 (Risk Transformer 외부 입력)
-        # 가중치: 속도(0.25) + 돌발(0.20) + TAAS(0.20) + 기상(0.15) + 응급실(0.10) + 자전거(0.10)
+        # NEW v3 2026-05-16: 스쿨존·결빙·보행자 다발 신호 추출
+        sz_derived  = self.school_zone.get("derived", {})        if isinstance(self.school_zone, dict)        else {}
+        ice_derived = self.black_ice.get("derived", {})          if isinstance(self.black_ice, dict)          else {}
+        ph_derived  = self.pedestrian_hotspot.get("derived", {}) if isinstance(self.pedestrian_hotspot, dict) else {}
+
+        in_school_zone  = bool(sz_derived.get("in_school_zone", False))
+        sz_multiplier   = float(sz_derived.get("school_zone_multiplier", 1.0))
+        ice_risk        = bool(ice_derived.get("black_ice_risk", False))
+        freeze_boost    = float(ice_derived.get("freeze_risk_boost", 0.0))
+        in_ped_hotspot  = bool(ph_derived.get("in_pedestrian_hotspot", False))
+        ped_boost       = float(ph_derived.get("ped_hotspot_boost", 0.0))
+
+        # 12종 통합 위험 점수
+        # 가중치: 속도0.20 + 돌발0.15 + TAAS0.15 + 기상0.12 + ER0.08 + 자전거0.08
+        #         + 결빙0.10 + 보행자다발0.07 + 스쿨존0.05
         base = (
-            (1.0 - min(avg_speed, 80) / 80) * 0.25 +
-            min(incident_count, 3) / 3 * 0.20 +
-            min(taas_count, 7) / 7 * 0.20 +
-            wet_boost * 0.15 +
-            er_load * 0.10 +
-            bike_boost * 0.10
+            (1.0 - min(avg_speed, 80) / 80) * 0.20 +
+            min(incident_count, 3) / 3 * 0.15 +
+            min(taas_count, 7) / 7 * 0.15 +
+            wet_boost * 0.12 +
+            er_load * 0.08 +
+            bike_boost * 0.08 +
+            freeze_boost * 0.10 +
+            ped_boost * 0.07 +
+            (sz_multiplier - 1.0) * 0.10   # 스쿨존(1.5→0.05, 1.2→0.02)
         )
+        base *= sz_multiplier if in_school_zone else 1.0
         risk_score = min(1.0, round(base, 3))
 
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 9,
-                "schema_version": "fusion.v2-9src-2026.05.15",
+                "sources_fused": 12,
+                "schema_version": "fusion.v3-12src-2026.05.16",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
@@ -494,6 +703,13 @@ class IntersectionFusion:
                 "nearest_ER_load": er_load,
                 "severity_multiplier": severity_mul,
                 "bike_lane_risk_boost": bike_boost,
+                # v3 신규 5필드
+                "in_school_zone": in_school_zone,
+                "school_zone_multiplier": sz_multiplier,
+                "black_ice_risk": ice_risk,
+                "freeze_risk_boost": freeze_boost,
+                "in_pedestrian_hotspot": in_ped_hotspot,
+                "ped_hotspot_boost": ped_boost,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",
@@ -508,6 +724,10 @@ class IntersectionFusion:
                 "weather":           {"provider": "기상청 동네예보 (KMA)",       "data": self.weather},
                 "medical":           {"provider": "E-Gen 응급실 실시간 가용병상","data": self.medical},
                 "bike":              {"provider": "서울시 공공자전거 따릉이",    "data": self.bike},
+                # v3 신규 3종
+                "school_zone":         {"provider": "어린이보호구역 GIS (vworld)",     "data": self.school_zone},
+                "black_ice":           {"provider": "도로결빙 위험 (KMA 파생)",        "data": self.black_ice},
+                "pedestrian_hotspot":  {"provider": "TAAS 보행자 사고다발지역",        "data": self.pedestrian_hotspot},
             },
         }
 
@@ -537,21 +757,22 @@ def _build_dsz_summary(intersection_id: str) -> Dict[str, Any]:
 
 def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
                  bbox: Optional[Dict[str, float]] = None) -> IntersectionFusion:
-    """교차로 한 개에 대해 9종 데이터를 한 번에 수집.
+    """교차로 한 개에 대해 12종 데이터를 한 번에 수집 (v3 2026-05-16 9→12 확장).
 
     1.신호 · 2.VDS · 3.돌발 · 4.TAAS · 5.ITS · 6.DSZ · 7.기상(KMA) · 8.응급실(NEDIS) · 9.따릉이
+    10.스쿨존 GIS · 11.결빙위험 (KMA 파생) · 12.보행자 사고다발
     """
-    # 기상 격자 좌표 추정 — bbox 중심으로 KMA nx/ny 근사 (서울 기준값 fallback)
     nx, ny = 60, 127
     if bbox:
         lat_c = (bbox["minLat"] + bbox["maxLat"]) / 2
         lon_c = (bbox["minLon"] + bbox["maxLon"]) / 2
-        # KMA 격자: 서울 중심 (37.5665, 126.9780) ≒ (60, 127), 1격자=5km
         nx = int(round(60 + (lon_c - 126.9780) * 11.0))
         ny = int(round(127 + (lat_c - 37.5665) * 11.0))
 
     lat0 = (bbox["minLat"] + bbox["maxLat"]) / 2 if bbox else 37.5665
     lon0 = (bbox["minLon"] + bbox["maxLon"]) / 2 if bbox else 126.9780
+
+    weather_data = fetch_weather(nx=nx, ny=ny)
 
     return IntersectionFusion(
         intersection_id=intersection_id,
@@ -561,7 +782,11 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         accidents_history=fetch_taas_accidents(bbox=bbox),
         its_link=fetch_its_link(link_id or "1000000100"),
         dsz_summary=_build_dsz_summary(intersection_id),
-        weather=fetch_weather(nx=nx, ny=ny),
+        weather=weather_data,
         medical=fetch_emergency_capacity(lat=lat0, lon=lon0),
         bike=fetch_bike_stations(),
+        # v3 2026-05-16
+        school_zone=fetch_school_zone(lat=lat0, lon=lon0, radius_m=500.0),
+        black_ice=fetch_black_ice_risk(lat=lat0, lon=lon0, weather_data=weather_data),
+        pedestrian_hotspot=fetch_pedestrian_hotspots(lat=lat0, lon=lon0, radius_m=500.0),
     )

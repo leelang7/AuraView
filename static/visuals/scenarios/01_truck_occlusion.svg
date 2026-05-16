@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400" font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
-  <!-- 배경 -->
-  <rect width="600" height="400" fill="#0F1525"/>
-  <!-- 미세 격자 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400"
+     font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
   <defs>
     <pattern id="grid1" width="20" height="20" patternUnits="userSpaceOnUse">
-      <path d="M20 0 L0 0 0 20" fill="none" stroke="#1E2A45" stroke-width="0.5"/>
+      <path d="M20 0 L0 0 0 20" fill="none" stroke="#1E2A45" stroke-width="0.4"/>
     </pattern>
-    <filter id="glow1">
-      <feGaussianBlur stdDeviation="2" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <radialGradient id="redG1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF4040" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#FF4040" stop-opacity="0"/>
+    </radialGradient>
   </defs>
+  <rect width="600" height="400" fill="#0F1525"/>
   <rect width="600" height="400" fill="url(#grid1)"/>
 
   <!-- 좌상단 배지 -->
@@ -21,75 +20,105 @@
 
   <!-- 상단 제목 -->
   <text x="300" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="white">트럭 가림 시나리오</text>
-  <text x="300" y="60" text-anchor="middle" font-size="13" fill="#AABBCC">Truck Occlusion — 전방 시야 차단</text>
+  <text x="300" y="60" text-anchor="middle" font-size="13" fill="#AABBCC">Truck Occlusion — 보행자 사각 · V2V 협업</text>
 
   <!-- 우상단 위험도 -->
   <text x="560" y="30" text-anchor="middle" font-size="18" fill="#FF4444">⚠</text>
   <text x="560" y="48" text-anchor="middle" font-size="11" fill="#FF8888">위험도</text>
   <text x="560" y="62" text-anchor="middle" font-size="12" fill="#FF4444" font-weight="700">높음</text>
 
+  <!-- 위 인도 -->
+  <rect x="80" y="178" width="440" height="24" fill="#080E18"/>
+
   <!-- 도로 -->
-  <rect x="80" y="200" width="440" height="120" rx="4" fill="#1C2340"/>
-  <!-- 차선 -->
-  <rect x="80" y="255" width="440" height="4" fill="#2A3A5A"/>
-  <rect x="130" y="250" width="40" height="6" rx="2" fill="#FFD93D" opacity="0.7"/>
-  <rect x="210" y="250" width="40" height="6" rx="2" fill="#FFD93D" opacity="0.7"/>
-  <rect x="290" y="250" width="40" height="6" rx="2" fill="#FFD93D" opacity="0.7"/>
-  <rect x="370" y="250" width="40" height="6" rx="2" fill="#FFD93D" opacity="0.7"/>
-
-  <!-- 횡단보도 (한국 표준: 차량 진행방향과 평행한 가로 stripe 가 세로로 반복) -->
-  <rect x="370" y="204" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="370" y="220" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="370" y="236" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="370" y="252" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="370" y="268" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="370" y="284" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="370" y="300" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
-
-  <!-- 대형 트럭 -->
-  <rect x="150" y="200" width="160" height="80" rx="6" fill="#3A4A70"/>
-  <rect x="150" y="195" width="160" height="12" rx="3" fill="#FF4444" opacity="0.8"/>
-  <rect x="155" y="210" width="70" height="50" rx="3" fill="#2A3760"/>
-  <rect x="235" y="210" width="70" height="50" rx="3" fill="#2A3760"/>
-  <circle cx="175" cy="285" r="12" fill="#111" stroke="#555" stroke-width="2"/>
-  <circle cx="175" cy="285" r="5" fill="#333"/>
-  <circle cx="290" cy="285" r="12" fill="#111" stroke="#555" stroke-width="2"/>
-  <circle cx="290" cy="285" r="5" fill="#333"/>
-  <!-- 트럭 표시 -->
-  <text x="228" y="248" text-anchor="middle" font-size="11" fill="#8899BB">TRUCK</text>
-
-  <!-- 트럭 뒤 숨겨진 사람 (보이지 않음 표현) -->
-  <g opacity="0.45">
-    <circle cx="430" cy="218" r="10" fill="#FF8888"/>
-    <rect x="425" y="228" width="10" height="20" rx="3" fill="#FF8888"/>
-    <line x1="425" y1="235" x2="418" y2="248" stroke="#FF8888" stroke-width="2"/>
-    <line x1="435" y1="235" x2="442" y2="248" stroke="#FF8888" stroke-width="2"/>
+  <rect x="80" y="202" width="440" height="120" rx="2" fill="#1C2340"/>
+  <!-- 위 차로 음영 (한국 우측통행 = 내 차 진행 방향) -->
+  <rect x="80" y="202" width="440" height="56" fill="#162038" opacity="0.45"/>
+  <!-- 중앙선 -->
+  <g fill="#FFD93D" opacity="0.85">
+    <rect x="100" y="260" width="32" height="4" rx="1"/>
+    <rect x="160" y="260" width="32" height="4" rx="1"/>
+    <rect x="220" y="260" width="32" height="4" rx="1"/>
+    <rect x="280" y="260" width="32" height="4" rx="1"/>
+    <rect x="340" y="260" width="32" height="4" rx="1"/>
+    <rect x="400" y="260" width="32" height="4" rx="1"/>
+    <rect x="460" y="260" width="32" height="4" rx="1"/>
   </g>
-  <!-- 가림 효과 -->
-  <rect x="310" y="190" width="100" height="135" fill="#0F1525" opacity="0.6"/>
-  <text x="355" y="268" text-anchor="middle" font-size="10" fill="#FF4444">?</text>
+  <!-- 아래 차로 음영 (반대 차로) -->
+  <rect x="80" y="266" width="440" height="56" fill="#0F2335" opacity="0.30"/>
+  <!-- 진행 방향 라벨 -->
+  <text x="92" y="223" font-size="11" font-weight="900" fill="#7CC8FF" opacity="0.95">⟵  내 차 (한국 우측통행 = 위 차로)</text>
+  <text x="92" y="313" font-size="11" font-weight="900" fill="#5A6C8C" opacity="0.85">반대 차로  ⟶</text>
 
-  <!-- AuraView 시야 화살표 -->
-  <path d="M 320 160 Q 370 140 420 220" stroke="#FF4444" stroke-width="1.5" fill="none" stroke-dasharray="5,4" opacity="0.8"/>
-  <polygon points="415,220 425,212 428,225" fill="#FF4444" opacity="0.8"/>
-  <text x="360" y="130" text-anchor="middle" font-size="10" fill="#FF6666">V2V 공유 시점</text>
+  <!-- 아래 인도 -->
+  <rect x="80" y="322" width="440" height="24" fill="#080E18"/>
 
-  <!-- 맞은편 AuraView 차 -->
-  <rect x="440" y="260" width="60" height="32" rx="4" fill="#00E09A" opacity="0.7"/>
-  <text x="470" y="281" text-anchor="middle" font-size="9" fill="#003" font-weight="700">AV</text>
+  <!-- 트럭 (위 차로 가운데, 우→좌 진행 — 캐빈 좌측) -->
+  <g id="truck1">
+    <!-- 짐칸 (우측) -->
+    <rect x="295" y="208" width="115" height="50" rx="4" fill="#3A4A70"/>
+    <!-- 캐빈 (좌측 = 진행 방향 앞) -->
+    <rect x="250" y="214" width="48" height="44" rx="3" fill="#2A3760"/>
+    <rect x="256" y="220" width="36" height="20" rx="2" fill="#7CC8FF" opacity="0.4"/>
+    <!-- 바퀴 (도로면 위) -->
+    <circle cx="270" cy="260" r="6" fill="#111"/>
+    <circle cx="320" cy="260" r="6" fill="#111"/>
+    <circle cx="385" cy="260" r="6" fill="#111"/>
+    <text x="352" y="240" text-anchor="middle" font-size="11" fill="#9AB5DD" font-weight="800">TRUCK</text>
+  </g>
 
-  <!-- 펄스 애니메이션 -->
-  <circle cx="430" cy="228" r="15" fill="none" stroke="#FF4444" stroke-width="2" opacity="0">
-    <animate attributeName="r" values="15;35;15" dur="2s" repeatCount="indefinite"/>
-    <animate attributeName="opacity" values="0.8;0;0.8" dur="2s" repeatCount="indefinite"/>
+  <!-- 보행자 (트럭 너머 = 트럭 진행 방향 앞 = 화면 좌측, 인도-도로 경계) -->
+  <!-- 트럭에 가려서 내 차에서는 안 보임 -->
+  <g opacity="0.45">
+    <circle cx="170" cy="206" r="8" fill="#FF8888"/>
+    <rect x="165" y="214" width="10" height="18" rx="2" fill="#FF8888"/>
+    <line x1="165" y1="220" x2="158" y2="232" stroke="#FF8888" stroke-width="2"/>
+    <line x1="175" y1="220" x2="182" y2="232" stroke="#FF8888" stroke-width="2"/>
+  </g>
+  <text x="170" y="198" text-anchor="middle" font-size="8" fill="#888888" opacity="0.7">사각지대</text>
+
+  <!-- 가림 음영 (내 차에서 보행자 방향 차단) -->
+  <path d="M 480 235 L 250 220 L 250 248 L 480 252 Z" fill="#888888" opacity="0.07"/>
+
+  <!-- 내 차 (위 차로 우측 끝, 트럭 뒤) -->
+  <g id="ego1">
+    <rect x="450" y="216" width="60" height="40" rx="4" fill="#3A6FD8"/>
+    <rect x="455" y="220" width="35" height="14" rx="2" fill="#7CC8FF" opacity="0.55"/>
+    <circle cx="463" cy="260" r="5.5" fill="#111"/>
+    <circle cx="500" cy="260" r="5.5" fill="#111"/>
+    <text x="480" y="241" text-anchor="middle" font-size="9" fill="white" font-weight="800">내 차</text>
+  </g>
+
+  <!-- 맞은편 AuraView 차 (아래 차로, 좌→우 진행 — 보행자 정면에서 봄) -->
+  <g id="av1">
+    <rect x="120" y="278" width="60" height="36" rx="4" fill="#00E09A" opacity="0.85"/>
+    <rect x="146" y="282" width="30" height="13" rx="2" fill="#0A2A1A" opacity="0.55"/>
+    <circle cx="132" cy="318" r="5" fill="#0A1F14"/>
+    <circle cx="170" cy="318" r="5" fill="#0A1F14"/>
+    <text x="150" y="302" text-anchor="middle" font-size="9" fill="#0A1F14" font-weight="900">AV</text>
+  </g>
+
+  <!-- V2V 시야 공유 화살표 (AV 차 → 보행자 시각 정보 → 내 차) -->
+  <!-- AV가 보는 시선 -->
+  <line x1="148" y1="278" x2="170" y2="220" stroke="#00E09A" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.55"/>
+  <!-- AV → 내 차 (V2V) -->
+  <path d="M 184 290 Q 320 175 460 230" stroke="#00E09A" stroke-width="2" fill="none" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" values="0;-20" dur="0.9s" repeatCount="indefinite"/>
+  </path>
+  <polygon points="460,230 448,228 452,238" fill="#00E09A"/>
+  <text x="320" y="160" text-anchor="middle" font-size="11" fill="#00E09A" font-weight="700">V2V 시점 공유</text>
+
+  <!-- 보행자 강조 (V2V 정보 기반) -->
+  <circle cx="170" cy="220" r="22" fill="url(#redG1)"/>
+  <circle cx="170" cy="220" r="22" fill="none" stroke="#FF4040" stroke-width="2" stroke-dasharray="5,3" opacity="0.8">
+    <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="1.3s" repeatCount="indefinite"/>
   </circle>
 
-  <!-- 하단 카피 -->
-  <rect x="0" y="355" width="600" height="45" fill="#0A0F1E" opacity="0.9"/>
-  <text x="180" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 V2V로 마주오는 차의 시점을 빌려 위험을 감지합니다</text>
+  <!-- 하단 카피 + 데이터 라벨 -->
+  <rect x="0" y="355" width="430" height="45" fill="#0A0F1E" opacity="0.9"/>
+  <text x="215" y="383" text-anchor="middle" font-size="13" fill="#00E09A" font-weight="700">V2V로 마주오는 차의 시점을 빌려옴</text>
 
-  <!-- 우하단 데이터 라벨 -->
-  <rect x="460" y="358" width="132" height="32" rx="6" fill="#1E2A45"/>
-  <text x="526" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
-  <text x="526" y="383" text-anchor="middle" font-size="11" fill="#00E09A" font-weight="700">V2V + TAAS</text>
+  <rect x="438" y="355" width="162" height="45" fill="#1E2A45" opacity="0.9"/>
+  <text x="519" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="519" y="389" text-anchor="middle" font-size="12" fill="#00E09A" font-weight="800">V2V + TAAS</text>
 </svg>

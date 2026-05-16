@@ -37,11 +37,14 @@
   <rect x="290" y="250" width="40" height="6" rx="2" fill="#FFD93D" opacity="0.7"/>
   <rect x="370" y="250" width="40" height="6" rx="2" fill="#FFD93D" opacity="0.7"/>
 
-  <!-- 횡단보도 (도로를 세로로 가로지름 = 차로 진행방향과 직각) -->
-  <rect x="380" y="200" width="13" height="120" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="398" y="200" width="13" height="120" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="416" y="200" width="13" height="120" fill="#E8E8E8" opacity="0.92"/>
-  <rect x="434" y="200" width="13" height="120" fill="#E8E8E8" opacity="0.92"/>
+  <!-- 횡단보도 (한국 표준: 차량 진행방향과 평행한 가로 stripe 가 세로로 반복) -->
+  <rect x="370" y="204" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="220" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="236" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="252" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="268" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="284" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
+  <rect x="370" y="300" width="80" height="11" fill="#E8E8E8" opacity="0.92"/>
 
   <!-- 대형 트럭 -->
   <rect x="150" y="200" width="160" height="80" rx="6" fill="#3A4A70"/>

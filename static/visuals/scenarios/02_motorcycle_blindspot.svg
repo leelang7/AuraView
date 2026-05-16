@@ -23,62 +23,64 @@
   <text x="560" y="48" text-anchor="middle" font-size="11" fill="#FFCC88">위험도</text>
   <text x="560" y="62" text-anchor="middle" font-size="12" fill="#FFB020" font-weight="700">높음</text>
 
-  <!-- 도로 (탑뷰) -->
+  <!-- 도로 (탑뷰, 2차로 · 한국 우측통행) -->
   <rect x="80" y="130" width="440" height="200" rx="4" fill="#1C2340"/>
-  <!-- 차선 -->
-  <rect x="80" y="225" width="440" height="4" fill="#2A3A5A"/>
-  <rect x="80" y="190" width="440" height="4" fill="#2A3A5A"/>
-  <rect x="120" y="225" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="200" y="225" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="280" y="225" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="360" y="225" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <!-- 중앙선 (노란 dashed, 반대방향 차선 분리) -->
+  <rect x="120" y="228" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
+  <rect x="200" y="228" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
+  <rect x="280" y="228" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
+  <rect x="360" y="228" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
+  <rect x="440" y="228" width="30" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
+  <!-- 도로 가장자리 -->
+  <line x1="80" y1="135" x2="520" y2="135" stroke="#3A4A6A" stroke-width="1.2"/>
+  <line x1="80" y1="325" x2="520" y2="325" stroke="#3A4A6A" stroke-width="1.2"/>
 
-  <!-- 주 차량 (탑뷰) -->
-  <rect x="240" y="205" width="80" height="50" rx="6" fill="#3A6FD8"/>
-  <text x="280" y="235" text-anchor="middle" font-size="10" fill="white" font-weight="700">EGO</text>
+  <!-- 주 차량 (내 차) — 우측통행 → 아래 차로(y=232~325) 안 -->
+  <rect x="290" y="252" width="78" height="48" rx="6" fill="#3A6FD8"/>
+  <text x="329" y="282" text-anchor="middle" font-size="10" fill="white" font-weight="800" letter-spacing="0.5">내 차</text>
+  <!-- 차량 방향 화살표 (진행 방향: 우측) -->
+  <polygon points="375,276 388,276 388,272 396,278 388,284 388,280 375,280" fill="#7CC8FF" opacity="0.85"/>
 
-  <!-- 사각지대 扇형 -->
-  <path d="M 240 205 L 120 140 L 120 210 Z" fill="#FFB020" opacity="0.18"/>
-  <path d="M 240 205 L 120 210 L 120 260 Z" fill="#FFB020" opacity="0.12"/>
-  <text x="175" y="200" text-anchor="middle" font-size="11" fill="#FFB020" opacity="0.9">사각지대</text>
+  <!-- 사각지대 扇형 (내 차 좌측 후방 = 탑뷰 좌측 아래) -->
+  <path d="M 290 252 L 160 305 L 160 325 L 290 300 Z" fill="#FFB020" opacity="0.18"/>
+  <text x="220" y="320" text-anchor="middle" font-size="11" fill="#FFB020" font-weight="700">좌측 후방 사각</text>
 
-  <!-- 이륜차 -->
+  <!-- 이륜차 (사각지대 안, 같은 차로) -->
   <g>
-    <circle cx="165" cy="222" r="8" fill="none" stroke="#FFB020" stroke-width="2"/>
-    <circle cx="185" cy="222" r="8" fill="none" stroke="#FFB020" stroke-width="2"/>
-    <rect x="162" y="218" width="28" height="8" rx="2" fill="#FFB020" opacity="0.8"/>
-    <circle cx="175" cy="213" r="5" fill="#FFD093"/>
-    <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+    <circle cx="195" cy="298" r="7" fill="none" stroke="#FFB020" stroke-width="2"/>
+    <circle cx="215" cy="298" r="7" fill="none" stroke="#FFB020" stroke-width="2"/>
+    <rect x="192" y="294" width="26" height="8" rx="2" fill="#FFB020" opacity="0.9"/>
+    <circle cx="205" cy="289" r="5" fill="#FFD093"/>
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="1.6s" repeatCount="indefinite"/>
   </g>
-  <!-- 이륜차 라벨 -->
-  <text x="175" y="248" text-anchor="middle" font-size="9" fill="#FFB020">이륜차</text>
 
-  <!-- BEV 점유 그리드 -->
-  <g opacity="0.7">
-    <rect x="130" y="195" width="20" height="20" fill="#FFB020" opacity="0.3" rx="1"/>
-    <rect x="150" y="195" width="20" height="20" fill="#FFB020" opacity="0.5" rx="1"/>
-    <rect x="130" y="215" width="20" height="20" fill="#FFB020" opacity="0.6" rx="1"/>
-    <rect x="150" y="215" width="20" height="20" fill="#FFB020" opacity="0.8" rx="1"/>
-  </g>
-  <text x="152" y="192" text-anchor="middle" font-size="9" fill="#FFB020">BEV occupancy</text>
-
-  <!-- HydraNet 아이콘 -->
-  <rect x="430" y="150" width="80" height="30" rx="5" fill="#1E2A45"/>
-  <text x="470" y="161" text-anchor="middle" font-size="9" fill="#7799BB">HydraNet</text>
-  <text x="470" y="174" text-anchor="middle" font-size="10" fill="#FFB020" font-weight="600">점유 추정중</text>
-
-  <!-- 펄스 링 애니메이션 -->
-  <circle cx="175" cy="222" r="20" fill="none" stroke="#FFB020" stroke-width="2" opacity="0">
-    <animate attributeName="r" values="20;45;20" dur="2.2s" repeatCount="indefinite"/>
+  <!-- 펄스 링 (이륜차 강조) -->
+  <circle cx="205" cy="298" r="18" fill="none" stroke="#FFB020" stroke-width="2" opacity="0">
+    <animate attributeName="r" values="18;40;18" dur="2.2s" repeatCount="indefinite"/>
     <animate attributeName="opacity" values="0.7;0;0.7" dur="2.2s" repeatCount="indefinite"/>
   </circle>
 
-  <!-- 하단 카피 -->
-  <rect x="0" y="355" width="600" height="45" fill="#0A0F1E" opacity="0.9"/>
-  <text x="190" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 BEV occupancy 로 사각지대 점유를 추정합니다</text>
+  <!-- BEV 점유 그리드 패널 (좌상단, 라벨과 분리) -->
+  <rect x="98" y="148" width="120" height="58" rx="6" fill="#0D1428" stroke="#FFB020" stroke-width="1.2" opacity="0.85"/>
+  <text x="158" y="166" text-anchor="middle" font-size="10" fill="#FFB020" font-weight="700">BEV occupancy</text>
+  <g opacity="0.85" transform="translate(108, 174)">
+    <rect x="0"  y="0"  width="22" height="22" fill="#FFB020" opacity="0.30" rx="2"/>
+    <rect x="24" y="0"  width="22" height="22" fill="#FFB020" opacity="0.55" rx="2"/>
+    <rect x="48" y="0"  width="22" height="22" fill="#FFB020" opacity="0.75" rx="2"/>
+    <rect x="72" y="0"  width="22" height="22" fill="#FFB020" opacity="0.95" rx="2"/>
+  </g>
 
-  <!-- 우하단 데이터 라벨 -->
-  <rect x="458" y="358" width="134" height="32" rx="6" fill="#1E2A45"/>
-  <text x="525" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
-  <text x="525" y="383" text-anchor="middle" font-size="11" fill="#FFB020" font-weight="700">HydraNet + ITS</text>
+  <!-- HydraNet 패널 (우상단) -->
+  <rect x="406" y="148" width="104" height="50" rx="6" fill="#0D1428" stroke="#7799BB" stroke-width="1" opacity="0.85"/>
+  <text x="458" y="165" text-anchor="middle" font-size="10" fill="#7799BB" font-weight="700">HydraNet</text>
+  <text x="458" y="183" text-anchor="middle" font-size="10" fill="#FFB020" font-weight="600">점유 추정중</text>
+
+  <!-- 하단 카피 (좌측, 우측 데이터 라벨과 분리) -->
+  <rect x="0" y="355" width="430" height="45" fill="#0A0F1E" opacity="0.9"/>
+  <text x="215" y="383" text-anchor="middle" font-size="13" fill="#00E09A" font-weight="700">AuraView 가 BEV 로 사각지대 점유를 추정합니다</text>
+
+  <!-- 우하단 데이터 라벨 (분리) -->
+  <rect x="438" y="355" width="162" height="45" fill="#1E2A45" opacity="0.9"/>
+  <text x="519" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="519" y="389" text-anchor="middle" font-size="12" fill="#FFB020" font-weight="800">HydraNet + ITS</text>
 </svg>

@@ -27,10 +27,14 @@
   <rect x="80" y="215" width="440" height="105" rx="2" fill="#1C2340"/>
   <rect x="310" y="100" width="130" height="120" rx="2" fill="#1C2340"/>
 
-  <!-- 차선 -->
-  <rect x="80" y="262" width="440" height="4" fill="#2A3A5A"/>
-  <rect x="135" y="259" width="30" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
-  <rect x="205" y="259" width="30" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
+  <!-- 가로 도로 중앙선 (노란 dashed, 교차로 영역 제외) -->
+  <rect x="120" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <rect x="180" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <rect x="240" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <rect x="450" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <!-- 세로 도로 중앙선 -->
+  <rect x="373" y="100" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <rect x="373" y="160" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.6"/>
 
   <!-- 횡단보도 (한국 표준: 차량 진행방향과 평행한 가로 stripe 가 세로로 반복) -->
   <rect x="295" y="219" width="90" height="10" fill="#E8E8E8" opacity="0.92"/>
@@ -40,13 +44,13 @@
   <rect x="295" y="284" width="90" height="10" fill="#E8E8E8" opacity="0.92"/>
   <rect x="295" y="299" width="90" height="10" fill="#E8E8E8" opacity="0.92"/>
 
-  <!-- 우회전 차량 -->
+  <!-- 내 차 (세로 도로 우측 차로, 아래로 내려와 우회전) -->
   <g>
-    <rect x="350" y="140" width="70" height="42" rx="5" fill="#3A6FD8" transform="rotate(0,385,161)"/>
-    <text x="385" y="165" text-anchor="middle" font-size="9" fill="white" font-weight="700">EGO</text>
-    <!-- 우회전 화살표 -->
-    <path d="M 385 182 Q 385 220 340 240" stroke="#FF6B6B" stroke-width="2" fill="none" stroke-dasharray="6,3"/>
-    <polygon points="337,237 341,248 348,239" fill="#FF6B6B"/>
+    <rect x="385" y="135" width="42" height="65" rx="5" fill="#3A6FD8"/>
+    <text x="406" y="172" text-anchor="middle" font-size="10" fill="white" font-weight="800">내 차</text>
+    <!-- 우회전 화살표 (세로 도로 → 가로 도로 우측 차로 진입) -->
+    <path d="M 406 205 Q 406 240 460 280" stroke="#FF6B6B" stroke-width="2.5" fill="none" stroke-dasharray="6,3"/>
+    <polygon points="457,277 461,289 469,280" fill="#FF6B6B"/>
   </g>
 
   <!-- 보행자 -->
@@ -85,12 +89,11 @@
     <animate attributeName="opacity" values="0.9;0;0.9" dur="1.6s" repeatCount="indefinite"/>
   </circle>
 
-  <!-- 하단 카피 -->
-  <rect x="0" y="355" width="600" height="45" fill="#0A0F1E" opacity="0.9"/>
-  <text x="205" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 intent 예측 + 도로교통법 25조로 사고를 예방합니다</text>
+  <!-- 하단 카피 (좌측) + 데이터 라벨 (우측) -->
+  <rect x="0" y="355" width="430" height="45" fill="#0A0F1E" opacity="0.9"/>
+  <text x="215" y="383" text-anchor="middle" font-size="13" fill="#00E09A" font-weight="700">Intent 예측 + 도로교통법 25조로 사고 예방</text>
 
-  <!-- 우하단 데이터 라벨 -->
-  <rect x="458" y="358" width="134" height="32" rx="6" fill="#1E2A45"/>
-  <text x="525" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
-  <text x="525" y="383" text-anchor="middle" font-size="11" fill="#FF6B6B" font-weight="700">Intent + 법령</text>
+  <rect x="438" y="355" width="162" height="45" fill="#1E2A45" opacity="0.9"/>
+  <text x="519" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="519" y="389" text-anchor="middle" font-size="12" fill="#FF6B6B" font-weight="800">Intent + 법령</text>
 </svg>

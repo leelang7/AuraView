@@ -48,27 +48,28 @@
   <text x="560" y="48" text-anchor="middle" font-size="11" fill="#99AADD">위험도</text>
   <text x="560" y="62" text-anchor="middle" font-size="12" fill="#5575E5" font-weight="700">높음</text>
 
-  <!-- 도로 (야간) -->
+  <!-- 도로 (야간, 2차로 우측통행) -->
   <rect x="80" y="215" width="440" height="115" rx="2" fill="#0C1220"/>
-  <rect x="80" y="262" width="440" height="3" fill="#1A2440"/>
-  <!-- 차선 반사 -->
-  <rect x="140" y="260" width="35" height="5" rx="1" fill="#3A5080" opacity="0.6"/>
-  <rect x="220" y="260" width="35" height="5" rx="1" fill="#3A5080" opacity="0.6"/>
-  <rect x="350" y="260" width="35" height="5" rx="1" fill="#3A5080" opacity="0.6"/>
-  <rect x="430" y="260" width="35" height="5" rx="1" fill="#3A5080" opacity="0.6"/>
+  <!-- 중앙선 (노란 dashed, 야간 어두운 톤) -->
+  <rect x="120" y="270" width="32" height="4" rx="1" fill="#A89238" opacity="0.6"/>
+  <rect x="180" y="270" width="32" height="4" rx="1" fill="#A89238" opacity="0.6"/>
+  <rect x="240" y="270" width="32" height="4" rx="1" fill="#A89238" opacity="0.6"/>
+  <rect x="300" y="270" width="32" height="4" rx="1" fill="#A89238" opacity="0.6"/>
+  <rect x="360" y="270" width="32" height="4" rx="1" fill="#A89238" opacity="0.6"/>
+  <rect x="420" y="270" width="32" height="4" rx="1" fill="#A89238" opacity="0.6"/>
 
-  <!-- 에고 차량 -->
-  <rect x="100" y="232" width="80" height="48" rx="5" fill="#1E3060"/>
-  <text x="140" y="260" text-anchor="middle" font-size="9" fill="#8899CC" font-weight="700">EGO</text>
-  <!-- 에고 헤드라이트 -->
-  <ellipse cx="220" cy="248" rx="120" ry="30" fill="url(#headlight1)" opacity="0.5"/>
+  <!-- 내 차 (아래 차로, 좌→우 진행) -->
+  <rect x="100" y="282" width="76" height="40" rx="5" fill="#1E3060"/>
+  <text x="138" y="307" text-anchor="middle" font-size="10" fill="#A0BBFF" font-weight="800">내 차</text>
+  <!-- 내 차 헤드라이트 (전방 우측) -->
+  <ellipse cx="220" cy="302" rx="110" ry="22" fill="url(#headlight1)" opacity="0.45"/>
 
-  <!-- 맞은편 AuraView 차 (V2V) -->
-  <rect x="420" y="232" width="80" height="48" rx="5" fill="#1A2A50"/>
-  <text x="460" y="252" text-anchor="middle" font-size="8" fill="#5575E5" font-weight="700">AuraView</text>
-  <text x="460" y="264" text-anchor="middle" font-size="8" fill="#99AADD">V2V</text>
-  <!-- AV 헤드라이트 -->
-  <ellipse cx="380" cy="248" rx="100" ry="28" fill="url(#headlight2)" opacity="0.6"/>
+  <!-- 맞은편 AuraView 차 (위 차로, 우→좌 진행) -->
+  <rect x="420" y="222" width="76" height="40" rx="5" fill="#1A2A50"/>
+  <text x="458" y="241" text-anchor="middle" font-size="8" fill="#A0BBFF" font-weight="700">맞은편</text>
+  <text x="458" y="253" text-anchor="middle" font-size="8" fill="#99AADD">AuraView</text>
+  <!-- 맞은편 헤드라이트 (반대 방향 좌측) -->
+  <ellipse cx="370" cy="242" rx="100" ry="22" fill="url(#headlight2)" opacity="0.55"/>
 
   <!-- 보행자 실루엣 (어둠 속) -->
   <g opacity="0.85">
@@ -82,12 +83,12 @@
   <!-- V2V 조명으로 보행자 밝아짐 -->
   <circle cx="320" cy="248" r="35" fill="#5575E5" opacity="0.12"/>
 
-  <!-- V2V 시야 공유 화살표 -->
-  <path d="M 420 250 L 340 250" stroke="#5575E5" stroke-width="2" fill="none" stroke-dasharray="8,4">
+  <!-- V2V 시야 공유 화살표 (맞은편 → 내 차로 데이터 전송) -->
+  <path d="M 420 250 L 180 290" stroke="#5575E5" stroke-width="2" fill="none" stroke-dasharray="8,4">
     <animate attributeName="stroke-dashoffset" values="0;-24" dur="1s" repeatCount="indefinite"/>
   </path>
-  <polygon points="340,245 328,250 340,255" fill="#5575E5"/>
-  <text x="382" y="240" text-anchor="middle" font-size="9" fill="#5575E5">V2V 시야 공유</text>
+  <polygon points="185,283 174,289 188,295" fill="#5575E5"/>
+  <text x="305" y="270" text-anchor="middle" font-size="9" fill="#5575E5" font-weight="700">V2V 시야 공유</text>
 
   <!-- KMA 시정 패널 -->
   <rect x="90" y="120" width="160" height="70" rx="8" fill="#0A0F20" stroke="#5575E5" stroke-width="1.5"/>
@@ -106,12 +107,11 @@
   <circle cx="540" cy="90" r="18" fill="#1C2A40"/>
   <circle cx="548" cy="84" r="14" fill="#060B14"/>
 
-  <!-- 하단 카피 -->
-  <rect x="0" y="355" width="600" height="45" fill="#060B14" opacity="0.95"/>
-  <text x="200" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 V2V 헤드라이트 공유로 야간 시야를 확장합니다</text>
+  <!-- 하단 카피 (좌측) + 데이터 라벨 (우측) -->
+  <rect x="0" y="355" width="430" height="45" fill="#060B14" opacity="0.95"/>
+  <text x="215" y="383" text-anchor="middle" font-size="13" fill="#00E09A" font-weight="700">V2V 헤드라이트 공유로 야간 시야 확장</text>
 
-  <!-- 우하단 데이터 라벨 -->
-  <rect x="448" y="358" width="144" height="32" rx="6" fill="#1E2A45"/>
-  <text x="520" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
-  <text x="520" y="383" text-anchor="middle" font-size="11" fill="#5575E5" font-weight="700">V2V + KMA 시정</text>
+  <rect x="438" y="355" width="162" height="45" fill="#1E2A45" opacity="0.9"/>
+  <text x="519" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="519" y="389" text-anchor="middle" font-size="12" fill="#5575E5" font-weight="800">V2V + KMA 시정</text>
 </svg>

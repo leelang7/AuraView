@@ -136,6 +136,8 @@ class _FleetHomeState extends State<FleetHome>
   Map<String, dynamic>? _serverBev;    // ★ DEMO: /occupancy/demo class_grid_flat (시나리오 데모)
   Map<String, dynamic>? _fusion;
   Map<String, dynamic>? _altSignal;       // /signals/{iid}/alternate 응답
+  // v2 2026-05-15: BIS 실시간 버스 (반경 150m)
+  Map<String, dynamic>? _busLive;
   String? _autoIntersectionId;            // GPS 기반 자동 감지 교차로
   String? _autoIntersectionName;
   Timer? _bevTimer;
@@ -369,6 +371,20 @@ class _FleetHomeState extends State<FleetHome>
     } else if (_serverBev != null) {
       // 데모 OFF 즉시 서버 BEV 비우기
       if (mounted) setState(() => _serverBev = null);
+    }
+
+    // v2 2026-05-15: BIS 실시간 버스 위치 (반경 150m) — ego GPS 가 있을 때만 5초 1회
+    final p = _pos;
+    if (p != null) {
+      try {
+        final r = await http.get(Uri.parse(
+          '$kApiBase/collab/bus-live?lat=${p.latitude.toStringAsFixed(5)}&lon=${p.longitude.toStringAsFixed(5)}&radius_m=150'
+        )).timeout(const Duration(seconds: 5));
+        if (r.statusCode == 200) {
+          final body = jsonDecode(r.body) as Map<String, dynamic>;
+          if (mounted) setState(() => _busLive = body);
+        }
+      } catch (_) {}
     }
   }
 
@@ -1192,6 +1208,7 @@ class _FleetHomeState extends State<FleetHome>
                       child: _BevPanel(
                         bev: _demoScenarioOn ? (_serverBev ?? _bev) : _bev,
                         fusion: _fusion,
+                        busLive: _busLive,
                         demoMode: _demoScenarioOn,
                         scenarioLabel: _demoScenarioOn
                             ? (_scnLabels[_scnList[_scnIdx % _scnList.length]] ?? '')
@@ -1514,11 +1531,12 @@ class _BevToggleChip extends StatelessWidget {
 class _BevPanel extends StatefulWidget {
   final Map<String, dynamic>? bev;
   final Map<String, dynamic>? fusion;
+  final Map<String, dynamic>? busLive;   // v2 2026-05-15: BIS 실시간 버스
   final bool demoMode;            // ★ true 면 DEMO 시나리오 표시
   final String? scenarioLabel;    // 활성 시나리오 명 (DEMO 모드일 때만)
   final VoidCallback? onToggleDemo;
   final bool fillScreen;          // ★ true: Tesla 모니터 모드 (Expanded 부모, 큰 화면)
-  const _BevPanel({this.bev, this.fusion, this.demoMode = false, this.scenarioLabel, this.onToggleDemo, this.fillScreen = false});
+  const _BevPanel({this.bev, this.fusion, this.busLive, this.demoMode = false, this.scenarioLabel, this.onToggleDemo, this.fillScreen = false});
 
   @override
   State<_BevPanel> createState() => _BevPanelState();
@@ -1595,12 +1613,16 @@ class _BevPanelState extends State<_BevPanel>
         onDoubleTap: _resetView,
         child: ColoredBox(
           color: const Color(0xFF0A1018),
-          child: SizedBox.expand(
-            child: CustomPaint(
+          child: Stack(fit: StackFit.expand, children: [
+            CustomPaint(
               size: Size.infinite,
               painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t, zoom: _zoom, yawDeg: _yawDeg, fps: _fps),
             ),
-          ),
+            // v2 2026-05-15: BIS 라이브 버스 작은 마커 오버레이 (상단 우측)
+            if (widget.busLive != null &&
+                ((widget.busLive!['count'] is num) ? (widget.busLive!['count'] as num).toInt() : 0) > 0)
+              Positioned(top: 8, right: 8, child: _BisBusBadge(busLive: widget.busLive!)),
+          ]),
         ),
       ),
     );
@@ -1692,7 +1714,7 @@ class _BevPanelState extends State<_BevPanel>
             Expanded(child: bevCanvas),
             const SizedBox(height: 6),
             if (widget.bev != null) _BevStatLine(bev: widget.bev!),
-            if (widget.fusion != null) _CityInfoLine(fusion: widget.fusion!),
+            if (widget.fusion != null) _CityInfoLine(fusion: widget.fusion!, busLive: widget.busLive),
           ],
         ),
       );
@@ -1718,7 +1740,7 @@ class _BevPanelState extends State<_BevPanel>
           AspectRatio(aspectRatio: 1.0, child: bevCanvas),
           const SizedBox(height: 6),
           if (widget.bev != null) _BevStatLine(bev: widget.bev!),
-          if (widget.fusion != null) _CityInfoLine(fusion: widget.fusion!),
+          if (widget.fusion != null) _CityInfoLine(fusion: widget.fusion!, busLive: widget.busLive),
         ],
       ),
     );
@@ -1753,10 +1775,12 @@ class _BevStatLine extends StatelessWidget {
 
 class _CityInfoLine extends StatelessWidget {
   final Map<String, dynamic> fusion;
-  const _CityInfoLine({required this.fusion});
+  final Map<String, dynamic>? busLive;   // v2 2026-05-15: BIS 실시간 버스
+  const _CityInfoLine({required this.fusion, this.busLive});
   @override
   Widget build(BuildContext context) {
     final src = fusion['sources'] as Map<String, dynamic>?;
+    final summary = fusion['fusion_summary'] as Map<String, dynamic>?;
     String sigState = '?', vdsKmh = '?', taas = '?';
     try {
       final sig = src?['signal']?['body']?['items']?['item']?['stPdsgSttsNm'];
@@ -1769,20 +1793,139 @@ class _CityInfoLine extends StatelessWidget {
       final acc = src?['accidents_history'];
       if (acc is List) taas = '${acc.length}';
     } catch (_) {}
+
+    // ── v2 2026-05-15: 9-source 신호 (기상/응급실/자전거) ──
+    final bool isRaining = (summary?['weather_raining'] == true);
+    final double wetBoost = (summary?['wet_road_risk_boost'] is num) ? (summary!['wet_road_risk_boost'] as num).toDouble() : 0.0;
+    final double erLoad   = (summary?['nearest_ER_load'] is num) ? (summary!['nearest_ER_load'] as num).toDouble() : 0.0;
+    final double severityMul = (summary?['severity_multiplier'] is num) ? (summary!['severity_multiplier'] as num).toDouble() : 1.0;
+    final double bikeBoost = (summary?['bike_lane_risk_boost'] is num) ? (summary!['bike_lane_risk_boost'] as num).toDouble() : 0.0;
+    final int sourcesFused = (summary?['sources_fused'] is num) ? (summary!['sources_fused'] as num).toInt() : 0;
+
+    final showWeather = isRaining || wetBoost > 0.05;
+    final showER = erLoad >= 0.6;            // 응급실 포화 60%↑ 이상일 때 노출
+    final showBike = bikeBoost > 0.05;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(children: [
-        Icon(Icons.traffic, size: 11, color: _accent),
-        const SizedBox(width: 3),
-        Text(sigState, style: const TextStyle(color: _text, fontSize: 10)),
-        const SizedBox(width: 8),
-        Icon(Icons.speed, size: 11, color: _accent),
-        const SizedBox(width: 3),
-        Text(vdsKmh, style: const TextStyle(color: _text, fontSize: 10)),
-        const SizedBox(width: 8),
-        Icon(Icons.warning_amber, size: 11, color: _warn),
-        const SizedBox(width: 3),
-        Text('TAAS $taas', style: const TextStyle(color: _text, fontSize: 10)),
+      child: Wrap(
+        spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.traffic, size: 11, color: _accent), const SizedBox(width: 3),
+            Text(sigState, style: const TextStyle(color: _text, fontSize: 10)),
+          ]),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.speed, size: 11, color: _accent), const SizedBox(width: 3),
+            Text(vdsKmh, style: const TextStyle(color: _text, fontSize: 10)),
+          ]),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.warning_amber, size: 11, color: _warn), const SizedBox(width: 3),
+            Text('TAAS $taas', style: const TextStyle(color: _text, fontSize: 10)),
+          ]),
+          // v2: 기상 (비/시정)
+          if (showWeather)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.water_drop, size: 11, color: const Color(0xFF6BAEFF)), const SizedBox(width: 3),
+              Text(isRaining ? '우천 +${(wetBoost*100).toStringAsFixed(0)}%' : '시정↓',
+                style: const TextStyle(color: Color(0xFF6BAEFF), fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          // v2: 응급실 포화
+          if (showER)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.local_hospital, size: 11, color: const Color(0xFFFF6B6B)), const SizedBox(width: 3),
+              Text('ER ${(erLoad*100).toStringAsFixed(0)}% ×${severityMul.toStringAsFixed(2)}',
+                style: const TextStyle(color: Color(0xFFFF6B6B), fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          // v2: 자전거도로 prior
+          if (showBike)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.directions_bike, size: 11, color: const Color(0xFFFFB020)), const SizedBox(width: 3),
+              Text('자전거 +${(bikeBoost*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFFFFB020), fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          // v2 배지: N종 융합
+          if (sourcesFused >= 7)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: _safe.withValues(alpha: 0.15),
+                border: Border.all(color: _safe.withValues(alpha: 0.45), width: 0.8),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text('${sourcesFused}src v2',
+                style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            ),
+          // v2: BIS 실시간 버스 표시 (반경 150m 내 차량 수)
+          if (busLive != null && ((busLive!['count'] is num) ? (busLive!['count'] as num).toInt() : 0) > 0)
+            Builder(builder: (_) {
+              final c = (busLive!['count'] as num).toInt();
+              final mode = busLive!['mode']?.toString() ?? 'stub';
+              final firstBus = ((busLive!['buses'] as List?)?.isNotEmpty == true) ? (busLive!['buses'] as List).first as Map : null;
+              final routeName = firstBus?['routeName']?.toString() ?? '';
+              final stopFlag = (firstBus?['stopFlag'] is num) ? (firstBus!['stopFlag'] as num).toInt() : 0;
+              final stateBadge = stopFlag == 1 ? '정차' : '주행';
+              final badgeColor = mode == 'live' ? _safe : const Color(0xFFFFB020);
+              return Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.directions_bus, size: 11, color: badgeColor), const SizedBox(width: 3),
+                Text('BIS ${c}대${routeName.isNotEmpty ? ' · $routeName $stateBadge' : ''}',
+                  style: TextStyle(color: badgeColor, fontSize: 10, fontWeight: FontWeight.w700)),
+              ]);
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+/// v2 2026-05-15: BIS 실시간 버스 작은 배지 위젯 (BEV 우상단).
+/// stopFlag=1 정차 → 안전색, 주행 → 경고색. mode=live 시 글로우 강화.
+class _BisBusBadge extends StatelessWidget {
+  final Map<String, dynamic> busLive;
+  const _BisBusBadge({required this.busLive});
+  @override
+  Widget build(BuildContext context) {
+    final int count = (busLive['count'] is num) ? (busLive['count'] as num).toInt() : 0;
+    final String mode = busLive['mode']?.toString() ?? 'stub';
+    final List buses = (busLive['buses'] as List?) ?? const [];
+    final Map? first = buses.isNotEmpty ? buses.first as Map : null;
+    final String routeName = first?['routeName']?.toString() ?? '';
+    final int stopFlag = (first?['stopFlag'] is num) ? (first!['stopFlag'] as num).toInt() : 0;
+    final double dist = (first?['distance_m'] is num) ? (first!['distance_m'] as num).toDouble() : 0;
+    final isLive = mode == 'live';
+    final isStopped = stopFlag == 1;
+    final main = isStopped ? const Color(0xFFFFB020) : const Color(0xFF00E09A);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 5, 9, 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [
+            const Color(0xEE0D1520),
+            main.withValues(alpha: 0.18),
+          ],
+        ),
+        border: Border.all(color: main.withValues(alpha: isLive ? 0.85 : 0.50), width: 1.0),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: main.withValues(alpha: isLive ? 0.40 : 0.20), blurRadius: 10),
+        ],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.directions_bus, size: 13, color: main),
+        const SizedBox(width: 5),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(
+            'BIS $count대${isLive ? " · LIVE" : ""}',
+            style: TextStyle(color: main, fontSize: 10.5, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+          ),
+          if (routeName.isNotEmpty)
+            Text(
+              '$routeName · ${dist.toStringAsFixed(0)}m · ${isStopped ? "정차" : "주행"}',
+              style: TextStyle(color: main.withValues(alpha: 0.85), fontSize: 8.5,
+                               fontFamily: 'monospace', fontWeight: FontWeight.w700),
+            ),
+        ]),
       ]),
     );
   }

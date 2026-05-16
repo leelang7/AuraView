@@ -241,9 +241,12 @@ def api_map():
             {"endpoint": "GET /ai/evidence-report", "score_item": "AI활용/학습+분석", "desc": "AI활용 10점 통합 증빙"},
             {"endpoint": "GET /impact/calculate", "score_item": "AI활용/분석", "desc": "사고예방 AI 추정 (TAAS 기반)"},
             {"endpoint": "GET /occupancy/grid", "score_item": "AI활용/분석", "desc": "BEV Occupancy Network 분석"},
-            # 데이터융합
-            {"endpoint": "GET /fusion/sources", "score_item": "데이터융합", "desc": "6종 공공데이터 소스 연동 현황"},
-            {"endpoint": "GET /fusion/intersection/{id}", "score_item": "데이터융합", "desc": "교차로별 6종 데이터 융합"},
+            # 데이터융합 (2026-05-15 6종 → 9종 확장)
+            {"endpoint": "GET /fusion/sources", "score_item": "데이터융합", "desc": "9종 공공데이터 소스 연동 현황 (신호·VDS·돌발·TAAS·ITS·DSZ·기상·응급실·따릉이)"},
+            {"endpoint": "GET /fusion/intersection/{id}", "score_item": "데이터융합", "desc": "교차로별 9종 데이터 융합"},
+            {"endpoint": "GET /fusion/weather", "score_item": "데이터융합", "desc": "기상청 동네예보 + 도로 위험 가중치"},
+            {"endpoint": "GET /fusion/medical", "score_item": "데이터융합", "desc": "응급실 실시간 가용병상 + 심각도 보정"},
+            {"endpoint": "GET /fusion/bike", "score_item": "데이터융합", "desc": "공공자전거 실시간 거치 prior"},
             {"endpoint": "GET /heatmap/district", "score_item": "데이터융합", "desc": "시군구별 위험 히트맵 (TAAS+VDS)"},
             {"endpoint": "GET /collab/v2v-bev/{id}", "score_item": "데이터융합", "desc": "V2V 협력인지 BEV 융합"},
             # 가명정보결합
@@ -278,7 +281,7 @@ def checklist():
         {"item": "AI 증빙 엔드포인트 응답 (GET /ai/evidence-report)", "ok": True, "path": None},
         {"item": "가명정보결합 파이프라인 명세 (GET /privacy/pipeline-spec)", "ok": True, "path": None},
         {"item": "안심구역 파이프라인 보고서 (GET /dsz/pipeline-report)", "ok": True, "path": None},
-        {"item": "6종 데이터 융합 소스 목록 (GET /fusion/sources)", "ok": True, "path": None},
+        {"item": "9종 데이터 융합 소스 목록 (GET /fusion/sources)", "ok": True, "path": None},
         {"item": "경진대회 가점 스코어카드 (GET /competition/scorecard)", "ok": True, "path": None},
         {"item": "학습 스크립트 존재", "ok": Path("notebooks/train_risk_transformer_real.py").exists(),
          "path": "notebooks/train_risk_transformer_real.py"},

@@ -194,7 +194,7 @@ def healthz_details():
         "score_25pt_summary": {
             "AI활용_학습_5점": {"endpoint": "/ai/evidence-report", "auc": 0.9403, "f1": 0.9412},
             "AI활용_분석_5점": {"endpoint": "/ai/scenario-analysis", "scenarios": 4, "features": 10},
-            "데이터융합_5점": {"endpoint": "/fusion/sources", "sources": 6},
+            "데이터융합_5점": {"endpoint": "/fusion/sources", "sources": 9, "schema_version": "fusion.v2-9src-2026.05.15"},
             "가명정보결합_5점": {"endpoint": "/privacy/evidence-report", "k_anonymity": 5},
             "안심구역_5점": {"endpoint": "/dsz/pipeline-report", "pipeline_steps": 6},
         },

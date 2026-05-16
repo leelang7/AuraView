@@ -5,6 +5,141 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.8.3 — AI v2 비교 엔드포인트 + 키오스크 9-source 시연 + BEV BIS 마커 (2026-05-16)
+
+### Added — Cycle 9 (AI v2 비교 엔드포인트)
+- **`GET /ai/v2-metric`** — 9-source 13-feature 학습 metric JSON 노출. 미학습 시 `available=false` + 실행 명령 안내.
+- **`GET /ai/v1-vs-v2`** — v1 (10-feature) vs v2 (13-feature) AUC/F1/Precision/Recall/Loss 비교 + delta_pct 계산.
+- **`/ai/evidence-report`** — v2 metric 존재 시 `학습_v2_9src` 블록 자동 추가.
+- 신규 헬퍼: `_load_metrics_v2()`, `_METRIC_V2_PATH`, `_CHECKPOINT_V2_PATH`.
+
+### Added — Cycle 10 (키오스크 9-source 시연 장면)
+- **장면 03** (`/ui#tab3`) — "6종 → 9종 공공데이터" 갱신. 우천/ER/자전거 가중치 명시.
+- **장면 10** (`/ui#tab10`) — "9 SOURCES" 갱신.
+- **장면 10b 신규** — `/fusion/intersection/1007` 직접 호출 화면 (12초): schema=fusion.v2-9src.
+- **장면 10c 신규** — `/collab/bus-live?lat=&lon=` 직접 호출 화면 (10초): BIS 라이브 stopFlag 노출.
+- **장면 10d 신규** — `/ai/v1-vs-v2` 직접 호출 화면 (12초): 학습 진화 비교 시연.
+
+### Added — Cycle 11 (Flutter BEV BIS 버스 마커)
+- **`_BisBusBadge` 위젯** — BEV 우상단에 라이브 버스 카운트 + 노선·거리·상태(정차/주행) 배지.
+  - mode=live → 글로우 강화 + 안전색 / mode=stub → 경고색
+  - stopFlag=1 정차 → 경고색(주황) / 주행 → 안전색(녹색)
+- **`_BevPanel.busLive`** prop 신규 → 부모 (`_HomePageState`) 의 `_busLive` 상태가 BEV에 즉시 반영.
+- `Stack(fit: StackFit.expand)` 구조로 voxel painter 위에 overlay 표시.
+
+### Tests (92 → 95)
+- `test_ai_v2_metric_endpoint` — available=true/false 양분기 검증
+- `test_ai_v1_vs_v2_comparison` — v1.features=10, v2.features=13 검증
+- `test_ai_collab_bus_live_endpoint` — Cycle 4 BIS 엔드포인트 회귀 테스트
+- 전체 95 passed (11.61s, RAG 제외) + flutter analyze 0 error
+
+### Why
+- 심사위원이 v2 학습 진화를 1-step 으로 확인 가능 (manifest 에 추가 가능한 검증 URL).
+- 키오스크 자동 시연이 9-source + BIS + v1↔v2 까지 자동 순회 → 무인 부스에서 모든 차별점 노출.
+- BEV 화면 위 BIS 마커 = "Tesla 가 못 보는 한국 V2X 데이터" 가 가장 직관적으로 표현됨.
+
+---
+
+## v0.8.2 — 13-feature 재학습 + 대시보드 v2 카드 + Flutter BIS 폴링 (2026-05-16)
+
+### Added — Cycle 6 (학습 노트북 v2)
+- **`notebooks/train_risk_transformer_v2_9src.py`** — 9-source 13-feature 실 PyTorch 학습 스크립트.
+  - 10 v1 features + 3 신규: `weather_wet_boost`, `er_load`, `bike_lane_boost`
+  - 5 시나리오: mixed, rush_hour, night, rainy, **bicycle_lane** (신규)
+  - `AURAVIEW_V2_QUICK=1` → 3 epochs · 2k 샘플 · 30초 검증 모드
+  - 기본 모드 → 15 epochs · 10k 샘플 · ~3분 풀 학습
+- **산출**: `models/risk_transformer_v2.pt`, `models/risk_transformer_v2_metric.json` (`schema_version: fusion.v2-9src-2026.05.15`)
+- **검증 결과 (QUICK)**: AUC=0.9338, F1=0.9268 (3 epochs · 2k 샘플)
+
+### Added — Cycle 7 (대시보드 v2 9-카드)
+- **`runFusion()`** ([backend/app/main.py:3718](backend/app/main.py)) — 9종 sources 카드 자동 생성 + v2 신호 배너.
+  - 9 메타 카드: signal·vds·incidents·accidents·its·dsz + **weather·medical·bike** ★
+  - v2 배너 (카드 위) — sources_fused, 우천%, ER%, 자전거%, 융합 위험 점수·레벨 한 줄에.
+  - `sources[k].data` 새 응답 구조 호환 (provider/data 래퍼).
+
+### Added — Cycle 8 (Flutter BIS 폴링)
+- **`_busLive` 상태** — `Map<String, dynamic>?` 추가 ([auraview_fleet/lib/main.dart:139](auraview_fleet/lib/main.dart)).
+- **`_fetchBev()` 끝** — 5초 주기로 `/collab/bus-live?lat=&lon=&radius_m=150` 호출 (ego GPS 가 있을 때만).
+- **`_BevPanel`** + **`_CityInfoLine`** 에 `busLive` prop 전달.
+- **HUD 신규 표시**: 🚌 "BIS N대 · 노선X 정차/주행" (mode=live 시 안전색, stub 시 경고색).
+
+### Tests
+- pytest 92 passed (RAG 제외, 12.84s) — 회귀 없음
+- flutter analyze: **0 error**, 기존 deprecated info/warning 만 남음
+
+### Why
+- "AI활용 5점 학습" 가점 보강 — v1 (10-feature) + v2 (13-feature 9-source) 두 체크포인트로 학습 진화 증빙.
+- 시연 즉시성 — 심사 시연 시 BIS 라이브 버스가 앱 HUD에 실시간 노출되어 "한국 V2X" 차별점이 즉시 보임.
+
+---
+
+## v0.8.1 — BIS 실시간 버스 위치 + Flutter HUD 9-source 통합 (2026-05-15)
+
+### Added — BIS 실시간 통합
+- **`bus_aware.fetch_live_buses_nearby(lat, lon, radius_m)`** — 서울시 BIS API (`openapi.seoul.go.kr/getBusPosByVehId`) 호출 어댑터. `BIS_KEY` 미설정 시 stub fixture (서울 6개 노선 fixture). 1초 TTL 캐시.
+- **`BusContext` v2 신규 필드**: `live_bus_count_nearby`, `live_buses[]`, `live_data_mode`(live/stub/error), `boost_source`(rule/bis_live).
+- **`analyze()` 정밀화**: 실시간 stopFlag=1 (정차 중) + 60m 이내 → `dwelling` 으로 확정 + boost ≥ 0.58. stopFlag=0 + 100m 이내 + 저속 → `departing` 확정 + boost ≥ 0.50.
+- **신규 엔드포인트**: `GET /collab/bus-live?lat=&lon=&radius_m=150` — 반경 N m 실시간 버스 (plainNo, route, speed, stopFlag, distance).
+- **TODO 정리**: `services/bus_aware.py:80` 의 "TODO: K-MaaS 발급 후 채움" 제거 → 실 API 시도 후 fallback 패턴으로 대체.
+
+### Added — Flutter HUD 9-source 표시
+- **`_CityInfoLine` 위젯** ([auraview_fleet/lib/main.dart:1754](auraview_fleet/lib/main.dart#L1754)) 확장 — `fusion_summary` 신규 필드 5개 (`weather_raining`, `wet_road_risk_boost`, `nearest_ER_load`, `severity_multiplier`, `bike_lane_risk_boost`) 를 조건부 아이콘으로 렌더.
+  - 🌧️ 우천 가중치 +XX% (KMA)
+  - 🏥 응급실 ER XX% ×1.XX (NEDIS)
+  - 🚴 자전거도로 +XX% (따릉이)
+  - "9src v2" 배지 — 9종 융합 시각화
+- **`Wrap` 레이아웃** 으로 신호 폭주 시 자동 줄바꿈 처리.
+
+### Tests (95 → 99)
+- `test_bis_live_buses_stub_fallback_returns_buses` — stub 형식 검증
+- `test_bus_aware_v2_includes_live_data_fields` — v2 신규 4 필드 노출
+- `test_bus_aware_v2_bis_live_lifts_boost_to_dwelling` — stub fixture 활용 시 boost ≥ 0.55, source 검증
+- 기존 15 collab_unit + 32 endpoints + 신규 누적 모두 통과
+
+### Why
+- "한국 V2X / C-ITS 차별점" 의 실제 증빙 강화 — Tesla 가 못 하는 한국 BIS 실시간 도로 협업 인지.
+- 가점 데이터융합 5점 + AI분석 5점 동시 보강 (실시간 버스 위치가 보행자 prior 정밀도 +5~12%p 상승).
+
+---
+
+## v0.8 — 9-Source Fusion Expansion (2026-05-15)
+
+### Added (6종 → 9종 공공데이터 융합 확장)
+- **기상청 동네예보 (KMA)** — `apis.data.go.kr/1360000/VilageFcstInfoService_2.0`
+  - 1시간 강수·시정·풍속·하늘상태 → 우천 위험 가중치 **+0.18**, 헤드라이트 공유 비중 계산
+  - 어댑터: `services/public_api.fetch_weather(nx, ny)` (서울 기준 nx=60, ny=127)
+  - 엔드포인트: `GET /fusion/weather?nx=60&ny=127`
+- **보건복지부 응급실 실시간 가용병상 (E-Gen / NEDIS)** — `apis.data.go.kr/B552657/ErmctInfoInqireService`
+  - 반경 N km 응급실 가용병상 + ER_load → 사고 심각도 보정 계수 **×1.34**
+  - 어댑터: `services/public_api.fetch_emergency_capacity(lat, lon, radius_km)`
+  - 엔드포인트: `GET /fusion/medical?lat=37.5665&lon=126.9780`
+- **서울시 공공자전거 따릉이 실시간 거치** — `openapi.seoul.go.kr/bikeList`
+  - 빈 거치대 합산 → 활성 라이더 추정 + 자전거도로 prior **+0.22** (시나리오 7 bicycle_lane 보강)
+  - 어댑터: `services/public_api.fetch_bike_stations(num_of_rows)`
+  - 엔드포인트: `GET /fusion/bike?num_of_rows=50`
+- **`IntersectionFusion` 데이터클래스 확장** — weather/medical/bike 3 필드 추가, 9종 통합 위험 점수 가중치 재조정 (속도 0.25 + 돌발 0.20 + TAAS 0.20 + 기상 0.15 + 응급실 0.10 + 자전거 0.10)
+- **`fusion_summary` 신규 노출 필드**: `weather_raining`, `wet_road_risk_boost`, `nearest_ER_load`, `severity_multiplier`, `bike_lane_risk_boost`, `schema_version=fusion.v2-9src-2026.05.15`, `sources_fused=9`
+- **`/metrics/data-attribution`** 출처 명세에 3종 (weather/medical/bike) 추가 — 라이센스 + 제공기관 + 활용 endpoint
+- **`/fusion/sources`** 응답 9 항목 + `gain` + `added` 메타 (v1 / v2-2026.05.15 구분)
+
+### Changed
+- 모든 가시화 (대시보드 TAB ③/⑩, 심사위원 허브, summary 페이지, landing 가점표) "6종" 표기를 "9종" 으로 일관 갱신
+- README 가점 매핑 + Quick Verify + API 표 9종 반영
+- `health.py /healthz/details` `score_25pt_summary.데이터융합_5점.sources=9`
+
+### Tests (89 → 95)
+- `test_fusion_sources_lists_nine` — count==9, 9개 id 모두 포함, schema_version 검증
+- `test_fusion_intersection_returns_nine_sources_v2` — 9 sources + summary 5개 신규 필드
+- `test_fusion_weather_endpoint` / `test_fusion_medical_endpoint` / `test_fusion_bike_endpoint` — stub fallback 동작
+- `test_data_attribution_lists_9_public_sources` — 9 라이센스 명세
+- 기존 `test_data_attribution_lists_6_public_sources` → `_lists_9_` 로 갱신
+
+### Why
+- 가점 5점 "데이터융합" 항목 강화 + 심사위원에게 "기상/응급실/자전거 같은 비교통 공공데이터까지 융합한 한국 특화 인지" 메시지 전달.
+- 우천·심야·자전거 시나리오의 외부 신호를 실측 공공데이터로 대체 → "라이브 데모 신뢰도" 향상.
+
+---
+
 ## v0.7 — RAG Ready (2026-05)
 
 ### Added

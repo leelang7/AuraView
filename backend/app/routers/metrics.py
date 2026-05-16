@@ -216,6 +216,33 @@ def data_attribution():
                 "license": "데이터안심구역 운영지침 — 가명결합 k=5 익명",
                 "used_in": ["/dsz/verify", "/dsz/join/taas-vds", "scenario:school_zone"],
             },
+            {
+                "id": "weather",
+                "name": "기상청 동네예보 (KMA 초단기실황)",
+                "provider": "기상청",
+                "origin": "apis.data.go.kr/1360000/VilageFcstInfoService_2.0",
+                "license": "공공데이터 이용약관 (기상청 자료개방)",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/weather", "scenario:rainy_intersection", "risk_score wet_road_boost +0.18"],
+                "added": "v2-2026.05.15",
+            },
+            {
+                "id": "medical",
+                "name": "응급실 실시간 가용병상 (E-Gen / NEDIS)",
+                "provider": "보건복지부 중앙응급의료센터",
+                "origin": "apis.data.go.kr/B552657/ErmctInfoInqireService",
+                "license": "공공데이터 이용약관",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/medical", "severity_multiplier (사고 심각도 보정)"],
+                "added": "v2-2026.05.15",
+            },
+            {
+                "id": "bike",
+                "name": "서울시 공공자전거 따릉이 실시간",
+                "provider": "서울특별시",
+                "origin": "openapi.seoul.go.kr — bikeList",
+                "license": "서울 열린데이터광장 이용약관",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/bike", "scenario:bicycle_lane prior +0.22"],
+                "added": "v2-2026.05.15",
+            },
         ],
         "static_datasets": [
             {

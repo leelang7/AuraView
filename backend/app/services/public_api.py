@@ -1,14 +1,17 @@
 """
 Public Open Data adapters.
 
-6종 공공데이터 융합 어댑터.
+9종 공공데이터 융합 어댑터.
 
   1. 교통안전 실시간 신호등 정보 (apis.data.go.kr/B551982/rti)
   2. 한국도로공사 VDS 실시간 소통         (data.ex.co.kr/openapi)
   3. 한국도로공사 돌발상황                (data.ex.co.kr/openapi)
   4. TAAS 교통사고분석시스템              (taas.koroad.or.kr/openapi)
   5. ITS 국가교통정보센터                 (openapi.its.go.kr:9443)
-  6. 지오코딩 / 행정구역                  (VWorld / 국가표준)
+  6. 국토교통 데이터안심구역              (dsz.ex.co.kr)
+  7. 기상청 동네예보 (KMA)                (apis.data.go.kr/1360000/VilageFcstInfoService_2.0)  ★ NEW 2026-05-15
+  8. 보건복지부 응급실 가용병상 (NEDIS)    (apis.data.go.kr/B552657/ErmctInfoInqireService) ★ NEW 2026-05-15
+  9. 서울시 공공자전거 따릉이 실시간 거치  (data.seoul.go.kr/dataList/OA-13252)             ★ NEW 2026-05-15
 
 모든 어댑터는 네트워크 실패 시 **시연용 fallback 샘플**을 반환합니다.
 운영에서는 fallback 대신 예외를 올리고 싶다면 `ALLOW_FALLBACK=False`.
@@ -274,7 +277,156 @@ def fetch_its_link(link_id: str) -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view
+# 6. 기상청 동네예보 (KMA) — 강수·시야·노면 위험 가중치
+# ──────────────────────────────────────────────────────────────────────
+
+KMA_BASE_URL = os.getenv("KMA_BASE_URL", "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0")
+KMA_KEY = os.getenv("KMA_KEY", os.getenv("SERVICE_KEY", ""))
+
+_KMA_FALLBACK = {
+    "source": "기상청 동네예보 (stub — KMA_KEY 미설정)",
+    "base_time": "2026-05-15T12:00:00Z",
+    "nx": 60, "ny": 127,
+    "items": [
+        {"category": "T1H", "name": "기온",       "value": 17.4, "unit": "°C"},
+        {"category": "RN1", "name": "1시간강수",   "value": 4.2,  "unit": "mm"},
+        {"category": "REH", "name": "습도",       "value": 87,   "unit": "%"},
+        {"category": "VEC", "name": "풍향",       "value": 220,  "unit": "deg"},
+        {"category": "WSD", "name": "풍속",       "value": 3.1,  "unit": "m/s"},
+        {"category": "SKY", "name": "하늘상태",   "value": 4,    "unit": "code"},  # 4=흐림
+        {"category": "PTY", "name": "강수형태",   "value": 1,    "unit": "code"},  # 1=비
+        {"category": "VIS", "name": "시정",       "value": 850,  "unit": "m"},
+    ],
+    "derived": {
+        "is_raining": True,
+        "low_visibility": True,
+        "wet_road_risk_boost": 0.18,        # 우천→회피거리 18% 증가
+        "headlight_share_required": 0.62,   # 야간·우천 헤드라이트 공유 비중
+    },
+}
+
+
+def fetch_weather(nx: int = 60, ny: int = 127) -> Dict[str, Any]:
+    """기상청 동네예보 (1시간 강수·시정·풍속). nx/ny=기상청 격자좌표 (서울 시청=60,127)."""
+    url = f"{KMA_BASE_URL}/getUltraSrtNcst"
+    from datetime import datetime, timedelta
+    now = datetime.utcnow() + timedelta(hours=9)  # KST
+    base_date = now.strftime("%Y%m%d")
+    base_time = now.strftime("%H00")
+    params = {
+        "serviceKey": KMA_KEY,
+        "dataType": "JSON",
+        "numOfRows": 60,
+        "pageNo": 1,
+        "base_date": base_date,
+        "base_time": base_time,
+        "nx": nx, "ny": ny,
+    }
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("weather", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("KMA API failed for nx=%s,ny=%s: %s", nx, ny, exc)
+        _record_fetch("weather", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if ALLOW_FALLBACK:
+            return _KMA_FALLBACK
+        raise
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 7. 보건복지부 응급실 가용병상 (NEDIS / E-Gen)
+#    사고 발생 시 응급실 포화도 → 사고 심각도 보정 + K-MaaS 환자이송 라우팅
+# ──────────────────────────────────────────────────────────────────────
+
+NEDIS_BASE_URL = os.getenv("NEDIS_BASE_URL", "https://apis.data.go.kr/B552657/ErmctInfoInqireService")
+NEDIS_KEY = os.getenv("NEDIS_KEY", os.getenv("SERVICE_KEY", ""))
+
+_NEDIS_FALLBACK = {
+    "source": "E-Gen 응급실 실시간 가용병상 (stub — NEDIS_KEY 미설정)",
+    "collected_at": "2026-05-15T12:00:00Z",
+    "hospitals": [
+        {"hpid": "A1100001", "name": "서울대학교병원",  "hvec": 12, "hv1": 2,  "lat": 37.5800, "lon": 126.9991, "ER_load": 0.82, "ambulance_eta_min": 7},
+        {"hpid": "A1100007", "name": "서울아산병원",    "hvec": 28, "hv1": 6,  "lat": 37.5263, "lon": 127.1086, "ER_load": 0.55, "ambulance_eta_min": 11},
+        {"hpid": "A1100012", "name": "삼성서울병원",    "hvec":  4, "hv1": 1,  "lat": 37.4884, "lon": 127.0856, "ER_load": 0.93, "ambulance_eta_min": 14},
+        {"hpid": "A1100018", "name": "세브란스병원",    "hvec": 18, "hv1": 4,  "lat": 37.5621, "lon": 126.9404, "ER_load": 0.68, "ambulance_eta_min": 9},
+        {"hpid": "A1100024", "name": "강북삼성병원",    "hvec":  9, "hv1": 2,  "lat": 37.5687, "lon": 126.9701, "ER_load": 0.74, "ambulance_eta_min": 6},
+    ],
+    "derived": {
+        "nearest_ER_load": 0.82,
+        "nearest_eta_min": 7,
+        "severity_multiplier": 1.34,    # ER 포화 시 결과치사율 보정
+    },
+}
+
+
+def fetch_emergency_capacity(lat: float = 37.5665, lon: float = 126.9780, radius_km: float = 5.0) -> Dict[str, Any]:
+    """반경 N km 내 응급실 실시간 가용병상 + 사고 심각도 보정 계수."""
+    url = f"{NEDIS_BASE_URL}/getEmrrmRltmUsefulSckbdInfoInqire"
+    params = {
+        "serviceKey": NEDIS_KEY,
+        "Q0": "서울특별시",
+        "pageNo": 1,
+        "numOfRows": 20,
+        "_type": "json",
+    }
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("medical", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("NEDIS API failed at (%s, %s): %s", lat, lon, exc)
+        _record_fetch("medical", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if ALLOW_FALLBACK:
+            return _NEDIS_FALLBACK
+        raise
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 8. 서울시 공공자전거 따릉이 실시간 거치 — 자전거도로 시나리오 보강
+# ──────────────────────────────────────────────────────────────────────
+
+BIKE_BASE_URL = os.getenv("BIKE_BASE_URL", "http://openapi.seoul.go.kr:8088")
+BIKE_KEY = os.getenv("BIKE_KEY", "")
+
+_BIKE_FALLBACK = {
+    "source": "서울시 공공자전거 실시간 (stub — BIKE_KEY 미설정)",
+    "collected_at": "2026-05-15T12:00:00Z",
+    "stations": [
+        {"stationId": "ST-00007", "name": "한강대교 남단",     "lat": 37.5170, "lon": 126.9580, "rackTotCnt": 20, "parkingBikeTotCnt":  3, "shared": 0.85},
+        {"stationId": "ST-00042", "name": "여의나루역 1번출구","lat": 37.5276, "lon": 126.9325, "rackTotCnt": 30, "parkingBikeTotCnt":  2, "shared": 0.93},
+        {"stationId": "ST-00118", "name": "광화문역 5번출구",  "lat": 37.5720, "lon": 126.9769, "rackTotCnt": 25, "parkingBikeTotCnt": 18, "shared": 0.28},
+        {"stationId": "ST-00229", "name": "강남역 11번출구",   "lat": 37.4979, "lon": 127.0276, "rackTotCnt": 40, "parkingBikeTotCnt":  4, "shared": 0.90},
+        {"stationId": "ST-00355", "name": "성수동 카페거리",   "lat": 37.5446, "lon": 127.0556, "rackTotCnt": 15, "parkingBikeTotCnt": 12, "shared": 0.20},
+    ],
+    "derived": {
+        "active_riders_estimate": 84,        # 빈 거치대 합산 추정
+        "bike_lane_risk_boost": 0.22,        # 자전거 시나리오 prior +0.22
+        "peak_zone_count": 3,                # shared ≥ 0.8 인 정류장 수
+    },
+}
+
+
+def fetch_bike_stations(num_of_rows: int = 50) -> Dict[str, Any]:
+    """서울시 공공자전거 실시간 거치 → 자전거도로 시나리오 prior 강화."""
+    url = f"{BIKE_BASE_URL}/{BIKE_KEY}/json/bikeList/1/{num_of_rows}/"
+    try:
+        res = requests.get(url, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("bike", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("Bike API failed: %s", exc)
+        _record_fetch("bike", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if ALLOW_FALLBACK:
+            return _BIKE_FALLBACK
+        raise
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (9-source)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -286,6 +438,9 @@ class IntersectionFusion:
     accidents_history: Dict[str, Any]
     its_link: Dict[str, Any]
     dsz_summary: Dict[str, Any]
+    weather: Dict[str, Any]
+    medical: Dict[str, Any]
+    bike: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -301,34 +456,58 @@ class IntersectionFusion:
             signal_item = signal_item[0] if signal_item else {}
         signal_state = signal_item.get("stPdsgSttsNm", "unknown")
 
-        # 단순 위험 점수 (0~1, Risk Transformer 보완용 휴리스틱)
-        risk_score = min(1.0, round(
-            (1.0 - min(avg_speed, 80) / 80) * 0.4 +
-            min(incident_count, 3) / 3 * 0.3 +
-            min(taas_count, 7) / 7 * 0.3,
-            3
-        ))
+        # NEW 2026-05-15: 기상·응급실·자전거 신호 추출
+        weather_derived = self.weather.get("derived", {}) if isinstance(self.weather, dict) else {}
+        medical_derived = self.medical.get("derived", {}) if isinstance(self.medical, dict) else {}
+        bike_derived    = self.bike.get("derived", {})    if isinstance(self.bike, dict)    else {}
+
+        wet_boost      = float(weather_derived.get("wet_road_risk_boost", 0.0))
+        is_raining     = bool(weather_derived.get("is_raining", False))
+        er_load        = float(medical_derived.get("nearest_ER_load", 0.0))
+        severity_mul   = float(medical_derived.get("severity_multiplier", 1.0))
+        bike_boost     = float(bike_derived.get("bike_lane_risk_boost", 0.0))
+
+        # 9종 통합 위험 점수 (Risk Transformer 외부 입력)
+        # 가중치: 속도(0.25) + 돌발(0.20) + TAAS(0.20) + 기상(0.15) + 응급실(0.10) + 자전거(0.10)
+        base = (
+            (1.0 - min(avg_speed, 80) / 80) * 0.25 +
+            min(incident_count, 3) / 3 * 0.20 +
+            min(taas_count, 7) / 7 * 0.20 +
+            wet_boost * 0.15 +
+            er_load * 0.10 +
+            bike_boost * 0.10
+        )
+        risk_score = min(1.0, round(base, 3))
 
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 6,
+                "sources_fused": 9,
+                "schema_version": "fusion.v2-9src-2026.05.15",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
                 "taas_accidents_nearby": taas_count,
                 "signal_state": signal_state,
+                "weather_raining": is_raining,
+                "wet_road_risk_boost": wet_boost,
+                "nearest_ER_load": er_load,
+                "severity_multiplier": severity_mul,
+                "bike_lane_risk_boost": bike_boost,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",
             },
             "sources": {
-                "signal":            {"provider": "도로교통공단 신호 API", "data": self.signal},
-                "vds":               {"provider": "한국도로공사 VDS",      "data": self.vds},
-                "incidents":         {"provider": "한국도로공사 돌발상황", "data": self.incidents},
-                "accidents_history": {"provider": "TAAS 교통사고분석",    "data": self.accidents_history},
-                "its_link":          {"provider": "ITS 국가교통정보",     "data": self.its_link},
-                "dsz_analysis":      {"provider": "국토교통 데이터안심구역", "data": self.dsz_summary},
+                "signal":            {"provider": "도로교통공단 신호 API",       "data": self.signal},
+                "vds":               {"provider": "한국도로공사 VDS",            "data": self.vds},
+                "incidents":         {"provider": "한국도로공사 돌발상황",       "data": self.incidents},
+                "accidents_history": {"provider": "TAAS 교통사고분석",           "data": self.accidents_history},
+                "its_link":          {"provider": "ITS 국가교통정보",            "data": self.its_link},
+                "dsz_analysis":      {"provider": "국토교통 데이터안심구역",     "data": self.dsz_summary},
+                "weather":           {"provider": "기상청 동네예보 (KMA)",       "data": self.weather},
+                "medical":           {"provider": "E-Gen 응급실 실시간 가용병상","data": self.medical},
+                "bike":              {"provider": "서울시 공공자전거 따릉이",    "data": self.bike},
             },
         }
 
@@ -358,7 +537,22 @@ def _build_dsz_summary(intersection_id: str) -> Dict[str, Any]:
 
 def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
                  bbox: Optional[Dict[str, float]] = None) -> IntersectionFusion:
-    """교차로 한 개에 대해 6종 데이터를 한 번에 수집 (신호·VDS·돌발·TAAS·ITS·DSZ)."""
+    """교차로 한 개에 대해 9종 데이터를 한 번에 수집.
+
+    1.신호 · 2.VDS · 3.돌발 · 4.TAAS · 5.ITS · 6.DSZ · 7.기상(KMA) · 8.응급실(NEDIS) · 9.따릉이
+    """
+    # 기상 격자 좌표 추정 — bbox 중심으로 KMA nx/ny 근사 (서울 기준값 fallback)
+    nx, ny = 60, 127
+    if bbox:
+        lat_c = (bbox["minLat"] + bbox["maxLat"]) / 2
+        lon_c = (bbox["minLon"] + bbox["maxLon"]) / 2
+        # KMA 격자: 서울 중심 (37.5665, 126.9780) ≒ (60, 127), 1격자=5km
+        nx = int(round(60 + (lon_c - 126.9780) * 11.0))
+        ny = int(round(127 + (lat_c - 37.5665) * 11.0))
+
+    lat0 = (bbox["minLat"] + bbox["maxLat"]) / 2 if bbox else 37.5665
+    lon0 = (bbox["minLon"] + bbox["maxLon"]) / 2 if bbox else 126.9780
+
     return IntersectionFusion(
         intersection_id=intersection_id,
         signal=fetch_signal_info(intersection_id),
@@ -367,4 +561,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         accidents_history=fetch_taas_accidents(bbox=bbox),
         its_link=fetch_its_link(link_id or "1000000100"),
         dsz_summary=_build_dsz_summary(intersection_id),
+        weather=fetch_weather(nx=nx, ny=ny),
+        medical=fetch_emergency_capacity(lat=lat0, lon=lon0),
+        bike=fetch_bike_stations(),
     )

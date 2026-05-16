@@ -1462,11 +1462,11 @@ def prototype_ui():
           <!-- TAB 3 : Fusion -->
           <div class="tab-panel" id="tab3">
             <div class="card">
-              <div class="card-tag">FUSION · 5점</div>
-              <div class="section-label">// 6종 공공데이터 한 응답 결합</div>
+              <div class="card-tag">FUSION · 5점 · v2 ★</div>
+              <div class="section-label">// 9종 공공데이터 한 응답 결합 (2026-05-15 6→9 확장)</div>
               <div class="hero-copy">
-                <div class="hero-title">교차로 한 곳 = 6종 데이터 한 호출</div>
-                <div class="hero-desc">신호 · VDS · 돌발 · TAAS · ITS · 안심구역 — 각 어댑터가 동일 교차로에 대해 동시 조회 후 단일 JSON 으로 결합 반환합니다.</div>
+                <div class="hero-title">교차로 한 곳 = 9종 데이터 한 호출</div>
+                <div class="hero-desc">신호 · VDS · 돌발 · TAAS · ITS · 안심구역 · <b style="color:var(--accent2);">기상(KMA) · 응급실(NEDIS) · 따릉이</b> — 각 어댑터가 동일 교차로에 대해 동시 조회 후 단일 JSON 으로 결합 반환합니다. 기상 가중치(우천+0.18) · 응급실 심각도 보정 · 자전거도로 prior(+0.22) 가 자동 합산됩니다.</div>
               </div>
               <div class="form-grid">
                 <div class="btn-row">
@@ -1826,19 +1826,20 @@ def prototype_ui():
             </div>
           </div>
 
-          <!-- TAB 10 : 공공데이터 라이브 — judge-검증용 실시간 6종 소스 상태 -->
+          <!-- TAB 10 : 공공데이터 라이브 — judge-검증용 실시간 9종 소스 상태 (v2: 6→9 확장) -->
           <div class="tab-panel" id="tab10">
             <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,200,255,0.08),rgba(0,224,154,0.04));border:1px solid rgba(0,200,255,0.30);">
-              <div class="card-tag" style="background:linear-gradient(135deg,var(--accent),var(--safe));">PUBLIC DATA · LIVE</div>
-              <div class="section-label">// 6종 공공데이터 어댑터 실시간 상태 — 자동 새로고침 3초 주기</div>
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--accent),var(--safe));">PUBLIC DATA · LIVE · 9 SOURCES ★</div>
+              <div class="section-label">// 9종 공공데이터 어댑터 실시간 상태 — 자동 새로고침 3초 주기 · v2-2026.05.15</div>
               <div style="margin-top:10px;font-family:'Black Han Sans',sans-serif;font-size:22px;line-height:1.3;">
                 심사 검증용 — 폴링 모드(live/stub/error) · 마지막 호출 시각 · age 그대로 노출.
+                <span style="font-size:13px;color:var(--accent2);">신호·VDS·돌발·TAAS·ITS·DSZ + <b>기상·응급실·따릉이 ★ NEW</b></span>
               </div>
               <div id="pdLiveSummary" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;"></div>
             </div>
 
             <div class="card">
-              <div class="section-label">// 6종 공공데이터 어댑터</div>
+              <div class="section-label">// 9종 공공데이터 어댑터 (6종 v1 + 기상·응급실·자전거 v2)</div>
               <div id="pdSourceList" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
                 <div class="placeholder">로딩 중…</div>
               </div>
@@ -1906,8 +1907,8 @@ def prototype_ui():
 
             <!-- 데이터 freshness 배지 -->
             <div class="card" style="margin-bottom:14px;">
-              <div class="card-tag">DATA FRESHNESS · LIVE POLLING</div>
-              <div class="section-label">// 6종 공공데이터 마지막 호출 시각 + 응답 모드</div>
+              <div class="card-tag">DATA FRESHNESS · LIVE POLLING · 9src</div>
+              <div class="section-label">// 9종 공공데이터 마지막 호출 시각 + 응답 모드 (v2-2026.05.15)</div>
               <div id="freshGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px;">로딩 중…</div>
             </div>
 
@@ -3616,7 +3617,7 @@ def prototype_ui():
             });
           })();
 
-          // 진입 시 자동 데모 — TAB③ Fusion (6종 결합), TAB④ Fleet, TAB⑦ K-MaaS, TAB⑧ Reports
+          // 진입 시 자동 데모 — TAB③ Fusion (9종 결합 v2), TAB④ Fleet, TAB⑦ K-MaaS, TAB⑧ Reports
           function _autoOnFirstTabClick(tabName, fn) {
             const tab = document.querySelector('[data-tab="' + tabName + '"]');
             if (!tab) return;
@@ -3684,6 +3685,10 @@ def prototype_ui():
               accidents_history: {emoji:'📊', title:'TAAS 사고이력', sub:'taas.koroad.or.kr',         color:'var(--danger)'},
               its_link:  {emoji:'🛣️', title:'ITS 링크 속도',     sub:'openapi.its.go.kr',             color:'var(--accent2)'},
               dsz:       {emoji:'🔒', title:'안심구역 결합분석', sub:'dsz.ex.co.kr',                  color:'#a995ff'},
+              // v2 2026-05-15 신규 3종 카드
+              weather:   {emoji:'🌧️', title:'기상청 동네예보 (KMA) ★ v2', sub:'apis.data.go.kr/1360000', color:'#6BAEFF'},
+              medical:   {emoji:'🏥', title:'응급실 가용병상 (NEDIS) ★ v2', sub:'apis.data.go.kr/B552657', color:'#FF6B6B'},
+              bike:      {emoji:'🚴', title:'서울 공공자전거 (따릉이) ★ v2', sub:'openapi.seoul.go.kr',     color:'#FFB020'},
             };
             const m = meta[name] || {emoji:'📦', title:name, sub:'', color:'var(--muted)'};
             // 첫 의미있는 필드 3~5개 추출
@@ -3717,16 +3722,19 @@ def prototype_ui():
           async function runFusion() {
             const id = document.getElementById('fusion_id').value;
             const link = document.getElementById('fusion_link').value;
-            showLoader('6종 데이터 융합 중...');
+            showLoader('9종 데이터 융합 중... (신호·VDS·돌발·TAAS·ITS·DSZ·기상·응급실·따릉이)');
             try {
               const res = await fetch(window.location.origin + '/fusion/intersection/' + encodeURIComponent(id) + '?link_id=' + encodeURIComponent(link));
               const data = await res.json();
               document.getElementById('fusionOut').textContent = JSON.stringify(data, null, 2);
 
               const sources = data.sources || {};
+              const summary = data.fusion_summary || {};
               const cards = [];
+              // 9-source v2 (각 sources[k]는 {provider, data} 형태이므로 .data 를 사용)
               for (const k of ['signal', 'vds', 'incidents', 'accidents_history', 'its_link']) {
-                cards.push(fusionCardForSource(k, sources[k]));
+                const node = sources[k] && sources[k].data ? sources[k].data : sources[k];
+                cards.push(fusionCardForSource(k, node));
               }
               // DSZ 어댑터 — list_imported() 결과 또는 manifest.jsonl 카운트
               try {
@@ -3734,9 +3742,26 @@ def prototype_ui():
                 const dsz = await dszRes.json();
                 cards.push(fusionCardForSource('dsz', {body: {items: {item: {imported_count: (dsz.artifacts||[]).length, sample_path: 'dsz_exports/sample_taas_vds_join_2024.json'}}}}));
               } catch(e) { cards.push(fusionCardForSource('dsz', null)); }
+              // v2 신규 3종 (사용 데이터: derived 필드를 카드에 노출)
+              for (const k of ['weather', 'medical', 'bike']) {
+                const node = sources[k] && sources[k].data ? sources[k].data : null;
+                cards.push(fusionCardForSource(k, node));
+              }
 
-              document.getElementById('fusionCards').innerHTML = cards.join('');
-              toast(`융합 완료 (${id})`, 'success');
+              // fusion_summary v2 신호 배너 (카드 위에)
+              const v2HtmlParts = [];
+              if (summary.sources_fused) v2HtmlParts.push(`<span style="color:var(--safe);font-weight:900;">${summary.sources_fused}src</span>`);
+              if (summary.weather_raining)   v2HtmlParts.push(`<span style="color:#6BAEFF;">🌧️ 우천 +${(100*(summary.wet_road_risk_boost||0)).toFixed(0)}%</span>`);
+              if ((summary.nearest_ER_load||0) >= 0.6) v2HtmlParts.push(`<span style="color:#FF6B6B;">🏥 ER ${(100*summary.nearest_ER_load).toFixed(0)}% ×${(summary.severity_multiplier||1).toFixed(2)}</span>`);
+              if ((summary.bike_lane_risk_boost||0) > 0.05) v2HtmlParts.push(`<span style="color:#FFB020;">🚴 자전거 +${(100*summary.bike_lane_risk_boost).toFixed(0)}%</span>`);
+              if (summary.fusion_risk_score != null) v2HtmlParts.push(`<span style="color:var(--danger);">융합위험 ${summary.fusion_risk_score} (${summary.risk_level})</span>`);
+
+              const banner = `<div style="grid-column:1/-1;padding:12px 16px;background:linear-gradient(135deg,rgba(0,224,154,0.10),rgba(124,58,237,0.06));border:1px solid rgba(0,224,154,0.30);border-radius:10px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                <span style="font-weight:900;letter-spacing:2px;color:var(--accent2);">FUSION v2 (9-src):</span>
+                ${v2HtmlParts.join('<span style="color:var(--muted);">·</span>')}
+              </div>`;
+              document.getElementById('fusionCards').innerHTML = banner + cards.join('');
+              toast(`9종 융합 완료 (${id})`, 'success');
             } catch(e) {
               toast('융합 실패', 'error');
             } finally {

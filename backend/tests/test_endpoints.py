@@ -28,13 +28,16 @@ def test_root_alive():
     assert "AuraView" in r.text or "message" in r.text
 
 
-def test_fusion_sources_lists_six():
+def test_fusion_sources_lists_nine():
+    """2026-05-15: 6종 → 9종 확장 (KMA 기상·NEDIS 응급실·따릉이 추가)."""
     r = client.get("/fusion/sources")
     assert r.status_code == 200
     body = r.json()
-    assert body.get("count") == 6
+    assert body.get("count") == 9
     ids = {s["id"] for s in body["sources"]}
-    assert {"signal", "vds", "incidents", "taas", "its", "dsz"} <= ids
+    assert {"signal", "vds", "incidents", "taas", "its", "dsz",
+            "weather", "medical", "bike"} <= ids
+    assert body.get("schema_version", "").startswith("fusion.v2-9src")
 
 
 def test_fusion_intersection_returns_six_keys():
@@ -44,6 +47,92 @@ def test_fusion_intersection_returns_six_keys():
     sources = body.get("sources", {})
     for key in ["signal", "vds", "incidents", "accidents_history", "its_link"]:
         assert key in sources, f"missing fusion source: {key}"
+
+
+def test_fusion_intersection_returns_nine_sources_v2():
+    """2026-05-15 v2: 9종 (기상·응급실·자전거 추가) + fusion_summary.sources_fused == 9."""
+    r = client.get("/fusion/intersection/1007")
+    assert r.status_code == 200
+    body = r.json()
+    sources = body.get("sources", {})
+    for key in ["signal", "vds", "incidents", "accidents_history", "its_link",
+                "dsz_analysis", "weather", "medical", "bike"]:
+        assert key in sources, f"missing fusion source: {key}"
+    summary = body.get("fusion_summary", {})
+    assert summary.get("sources_fused") == 9
+    assert summary.get("schema_version", "").startswith("fusion.v2-9src")
+    # 9종 융합으로 추가된 신호 필드들
+    for k in ["weather_raining", "wet_road_risk_boost", "nearest_ER_load",
+              "severity_multiplier", "bike_lane_risk_boost"]:
+        assert k in summary, f"missing fusion_summary field: {k}"
+
+
+def test_fusion_weather_endpoint():
+    r = client.get("/fusion/weather", params={"nx": 60, "ny": 127})
+    assert r.status_code == 200
+    j = r.json()
+    derived = j.get("derived", {}) or j.get("body", {}).get("derived", {})
+    if derived:
+        # stub mode 일 때는 derived 키가 있어야 함
+        assert "wet_road_risk_boost" in derived or "is_raining" in derived
+
+
+def test_fusion_medical_endpoint():
+    r = client.get("/fusion/medical", params={"lat": 37.5665, "lon": 126.9780})
+    assert r.status_code == 200
+    j = r.json()
+    if "hospitals" in j:  # stub mode
+        assert isinstance(j["hospitals"], list)
+        assert len(j["hospitals"]) >= 1
+        assert "derived" in j
+        assert "severity_multiplier" in j["derived"]
+
+
+def test_fusion_bike_endpoint():
+    r = client.get("/fusion/bike", params={"num_of_rows": 10})
+    assert r.status_code == 200
+    j = r.json()
+    if "stations" in j:  # stub mode
+        assert isinstance(j["stations"], list)
+        assert len(j["stations"]) >= 1
+        assert "derived" in j
+
+
+def test_ai_v2_metric_endpoint():
+    """v2 metric 엔드포인트 — 학습 됐으면 available=True, 미학습 시 명시적 안내."""
+    r = client.get("/ai/v2-metric")
+    assert r.status_code == 200
+    j = r.json()
+    assert "available" in j
+    if j["available"]:
+        assert "metrics" in j
+        assert "auc" in j["metrics"]
+        assert j.get("schema_version", "").startswith("fusion.v2-9src")
+    else:
+        assert "training_script" in j
+        assert "notebooks/train_risk_transformer_v2_9src.py" in j["training_script"]
+
+
+def test_ai_v1_vs_v2_comparison():
+    """v1 vs v2 비교 — 두 metric 다 있으면 delta_pct 계산, v2 미학습이면 안내."""
+    r = client.get("/ai/v1-vs-v2")
+    assert r.status_code == 200
+    j = r.json()
+    assert "available" in j
+    if j["available"]:
+        assert "v1" in j and "v2" in j and "table" in j
+        assert j["v1"]["features"] == 10
+        assert j["v2"]["features"] == 13
+
+
+def test_ai_collab_bus_live_endpoint():
+    """BIS 실시간 버스 엔드포인트 (Cycle 4 신규)."""
+    r = client.get("/collab/bus-live", params={"lat": 37.5651, "lon": 127.0073, "radius_m": 200})
+    assert r.status_code == 200
+    j = r.json()
+    assert j["mode"] in ("live", "stub", "error")
+    assert "buses" in j and isinstance(j["buses"], list)
+    assert j["count"] == len(j["buses"])
 
 
 def test_fleet_stats_shape():

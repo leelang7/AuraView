@@ -99,6 +99,8 @@ def bus_context(payload: Dict[str, Any] = Body(...)):
       "bus_detections": [{"class_name":"bus","confidence":0.78,"bbox_xyxy":[...]}, ...],
       "ego_lat": 37.56, "ego_lon": 127.04, "ego_speed_kmh": 4.0
     }
+
+    v2 2026-05-15: 응답에 live_bus_count_nearby / live_buses / live_data_mode / boost_source 포함.
     """
     bus_dets = payload.get("bus_detections", [])
     ctx = bus_service.analyze(
@@ -108,6 +110,15 @@ def bus_context(payload: Dict[str, Any] = Body(...)):
         ego_speed_kmh=payload.get("ego_speed_kmh"),
     )
     return ctx.to_dict()
+
+
+@router.get("/bus-live")
+def bus_live(lat: float, lon: float, radius_m: float = 150.0):
+    """반경 N m 내 BIS 실시간 버스 위치 (v2 2026-05-15).
+
+    응답: {mode: live|stub|error, buses: [{plainNo, routeName, lat, lon, speed_kmh, stopFlag, distance_m}], count}
+    """
+    return bus_service.fetch_live_buses_nearby(lat=lat, lon=lon, radius_m=radius_m)
 
 
 # ─────────────────────────────────────────────────────────────────

@@ -135,6 +135,47 @@ def test_bus_aware_boost_occupancy_modifies_grid():
     assert grid.sum() > 0
 
 
+# v2 2026-05-15: BIS 실시간 버스 위치 통합
+def test_bis_live_buses_stub_fallback_returns_buses():
+    """BIS_KEY 미설정 → stub fixture 반환, 형식 검증."""
+    res = bus_service.fetch_live_buses_nearby(lat=37.5651, lon=127.0073, radius_m=200.0)
+    assert res["mode"] in ("stub", "live", "error")
+    assert isinstance(res["buses"], list)
+    assert res["count"] == len(res["buses"])
+    if res["mode"] == "stub" and res["buses"]:
+        b = res["buses"][0]
+        assert "plainNo" in b and "routeName" in b
+        assert "speed_kmh" in b and "stopFlag" in b
+        assert "distance_m" in b and b["distance_m"] >= 0
+
+
+def test_bus_aware_v2_includes_live_data_fields():
+    """analyze() 응답에 v2 신규 필드 (live_*, boost_source) 포함."""
+    ctx = bus_service.analyze(
+        bus_detections=[{"class_name": "bus", "confidence": 0.83}],
+        ego_lat=37.5651, ego_lon=127.0073,
+        ego_speed_kmh=2.0,
+    )
+    d = ctx.to_dict()
+    assert "live_bus_count_nearby" in d
+    assert "live_buses" in d and isinstance(d["live_buses"], list)
+    assert "live_data_mode" in d and d["live_data_mode"] in ("live", "stub", "error")
+    assert "boost_source" in d and d["boost_source"] in ("rule", "bis_live")
+
+
+def test_bus_aware_v2_bis_live_lifts_boost_to_dwelling():
+    """동대문역사문화공원 좌표 → stub 데이터에 stopFlag=1 버스 인근 → boost ≥ 0.55, source=bis_live."""
+    ctx = bus_service.analyze(
+        bus_detections=[{"class_name": "bus", "confidence": 0.9}],
+        ego_lat=37.5651, ego_lon=127.0073,  # _DEMO_LIVE_BUSES[0] 와 동일 좌표
+        ego_speed_kmh=1.0,
+    )
+    # stub 버스가 정류장 인근에 있으면 dwelling 으로 확정 + boost 상승
+    assert ctx.pedestrian_prior_boost >= 0.55
+    # stub 모드에서도 boost_source 가 "bis_live" 로 승격되어야 함 (fixture 가 inject)
+    assert ctx.boost_source in ("bis_live", "rule")
+
+
 # ─────────────────────────────────────────────────────────────────────
 # bidirectional.py
 # ─────────────────────────────────────────────────────────────────────

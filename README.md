@@ -15,6 +15,11 @@
 
 > 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
+> 🆕 **v2 업데이트 (2026-05-15) — 6종 → 9종 공공데이터 융합 확장**
+> 추가: 🌧️ **기상청 동네예보 (KMA)** · 🏥 **응급실 실시간 가용병상 (NEDIS / E-Gen)** · 🚴 **서울 공공자전거 따릉이**.
+> 각각 우천 위험 가중치 (+0.18) · 사고 심각도 보정 (×1.34) · 자전거도로 prior (+0.22) 로 융합 위험 점수에 자동 반영됩니다.
+> 검증: [`/fusion/sources`](https://auraview.allthatai.kr/fusion/sources) (count=9, schema=fusion.v2-9src-2026.05.15) · [`/fusion/weather`](https://auraview.allthatai.kr/fusion/weather) · [`/fusion/medical`](https://auraview.allthatai.kr/fusion/medical) · [`/fusion/bike`](https://auraview.allthatai.kr/fusion/bike)
+
 ## 🏆 Judge Hub (심사위원 전용 한 페이지)
 
 > **<https://auraview.allthatai.kr/competition/>** — KPI 4종 + 검증 URL 11개 + 라이브 데모 5종 + 8 시나리오 + 문서 5종 한 화면. JSON 직접 호출 없이 시각적으로 모두 가능.
@@ -25,7 +30,7 @@
 |---|:---:|---|---|
 | **AI 학습** | 5점 | [`GET /ai/model-card`](https://auraview.allthatai.kr/ai/model-card) · [`GET /ai/training-history`](https://auraview.allthatai.kr/ai/training-history) | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) |
 | **AI 분석** | 5점 | [`GET /ai/scenario-analysis`](https://auraview.allthatai.kr/ai/scenario-analysis) · [`GET /ai/feature-importance`](https://auraview.allthatai.kr/ai/feature-importance) · [`GET /ai/roc-curve`](https://auraview.allthatai.kr/ai/roc-curve) | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt |
-| **데이터융합** | 5점 | [`GET /fusion/sources`](https://auraview.allthatai.kr/fusion/sources) · [`GET /fusion/intersection/{id}`](https://auraview.allthatai.kr/fusion/sources) | 신호·VDS·돌발·TAAS·ITS·DSZ 6종 실시간 융합 |
+| **데이터융합** | 5점 | [`GET /fusion/sources`](https://auraview.allthatai.kr/fusion/sources) · [`GET /fusion/intersection/{id}`](https://auraview.allthatai.kr/fusion/sources) · [`/fusion/weather`](https://auraview.allthatai.kr/fusion/weather) · [`/fusion/medical`](https://auraview.allthatai.kr/fusion/medical) · [`/fusion/bike`](https://auraview.allthatai.kr/fusion/bike) | 신호·VDS·돌발·TAAS·ITS·DSZ + **기상(KMA)·응급실(NEDIS)·따릉이 9종 실시간 융합** (v2 2026-05-15) |
 | **가명정보결합** | 5점 | [`GET /privacy/pipeline-spec`](https://auraview.allthatai.kr/privacy/pipeline-spec) · [`POST /privacy/demo-join`](https://auraview.allthatai.kr/docs#/privacy) | HMAC-SHA256 가명화 + k-익명성(k≥5) + TAAS×VDS 결합 |
 | **안심구역** | 5점 | [`GET /dsz/pipeline-report`](https://auraview.allthatai.kr/dsz/pipeline-report) · [`POST /dsz/seed-demo`](https://auraview.allthatai.kr/docs#/dsz) | dsz.ex.co.kr 표준 반입→결합→반출 파이프라인 |
 | **종합 스코어카드** | — | [`GET /competition/scorecard`](https://auraview.allthatai.kr/competition/scorecard) | 25점 항목별 달성 현황 + 증거 링크 원스톱 |
@@ -259,7 +264,7 @@ github.com/leelang7/AuraView
 | `POST` | `/detect/frame` · `/detect/video` | 이미지·영상 위험 분석 |
 | `POST` | `/occupancy/infer` · `GET /occupancy/demo` | 3D Occupancy 추정 |
 | `POST` | `/fleet/contribute` · `GET /fleet/stats` | 하드샘플 업로드 (PII 자동 마스킹) |
-| `GET`  | `/fusion/intersection/{id}` · `/fusion/sources` | 6종 공공데이터 융합 |
+| `GET`  | `/fusion/intersection/{id}` · `/fusion/sources` · **`/fusion/weather`** · **`/fusion/medical`** · **`/fusion/bike`** ★ | **9종 공공데이터 융합** (신호·VDS·돌발·TAAS·ITS·DSZ + 기상·응급실·따릉이, v2 2026-05-15) |
 | `POST` | `/dsz/verify` · `/dsz/join/taas-vds` · `GET /dsz/artifacts` | 안심구역 결합·검증 |
 | `POST` | `/reports/generate?top=N` · `GET /reports/list` | 위험 교차로 Top-N 정책 리포트 |
 | `POST` | `/scenario/reenact` · `GET /scenario/list` · `/scenario/presets` | 사고 재현 영상 |

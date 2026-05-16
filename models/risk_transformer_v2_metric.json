@@ -1,0 +1,47 @@
+{
+  "version": "0.4-trained-transformer-v2-9src",
+  "schema_version": "fusion.v2-9src-2026.05.15",
+  "params": 68162,
+  "epochs": 3,
+  "batch_size": 128,
+  "optimizer": "AdamW lr=2e-3 wd=1e-4",
+  "samples": {
+    "train": 2000,
+    "val": 500
+  },
+  "auc": 0.9338,
+  "f1@0.5": 0.9268,
+  "precision@0.5": 0.9306,
+  "recall@0.5": 0.9231,
+  "val_loss": 0.2652,
+  "label_noise": 0.06,
+  "scenarios": [
+    "mixed",
+    "rush_hour",
+    "night",
+    "rainy",
+    "bicycle_lane"
+  ],
+  "features": [
+    "duration",
+    "vehicle_cnt",
+    "vru_cnt",
+    "vds_speed",
+    "vds_volume",
+    "occluded_mass",
+    "taas_nearby",
+    "signal_stop",
+    "incident_flag",
+    "obstacle_big",
+    "weather_wet_boost",
+    "er_load",
+    "bike_lane_boost"
+  ],
+  "new_features_v2": [
+    "weather_wet_boost",
+    "er_load",
+    "bike_lane_boost"
+  ],
+  "checkpoint": "models/risk_transformer_v2.pt",
+  "note": "9-source 융합 학습 (10 v1 + 3 신규: 기상/응급실/자전거). v1 대비 우천·자전거·rush_hour 시나리오 분리도 향상 기대."
+}

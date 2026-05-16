@@ -99,15 +99,32 @@
       <rect x="240" y="504" width="120" height="14"/>
     </g>
 
-    <!-- 신호등 기둥 -->
-    <rect x="338" y="130" width="8" height="90" fill="#555"/>
-    <!-- 신호등 박스 -->
-    <rect x="320" y="100" width="44" height="32" rx="5" fill="#333"/>
-    <circle cx="333" cy="116" r="8" fill="#CC4444"/>
-    <circle cx="342" cy="116" r="8" fill="#888" opacity="0.4"/>
-    <circle cx="351" cy="116" r="8" fill="#888" opacity="0.4"/>
-    <!-- 신호등 라벨 -->
-    <text x="342" y="95" text-anchor="middle" font-size="10" fill="#888">신호등</text>
+    <!-- 횡단보도 보행자 신호등 (한국 표준: 빨간 서있는 사람 / 녹색 걷는 사람) -->
+    <rect x="338" y="170" width="8" height="155" fill="#555"/>
+    <!-- 신호등 박스 (세로) -->
+    <rect x="320" y="100" width="44" height="68" rx="5" fill="#1A1A1A" stroke="#444" stroke-width="1.5"/>
+    <!-- 빨강 등 (서있는 사람 — 정지) -->
+    <rect x="324" y="104" width="36" height="30" rx="3" fill="#220A0A"/>
+    <g fill="#FF4040">
+      <circle cx="342" cy="111" r="3.2"/>
+      <rect x="340" y="115" width="4" height="9" rx="0.6"/>
+      <rect x="336.5" y="117" width="3" height="6"/>
+      <rect x="344.5" y="117" width="3" height="6"/>
+      <rect x="338.5" y="124" width="2.5" height="6"/>
+      <rect x="343.5" y="124" width="2.5" height="6"/>
+    </g>
+    <!-- 녹색 등 (걷는 사람 — 비활성, 어둡게) -->
+    <rect x="324" y="134" width="36" height="30" rx="3" fill="#0A1A12"/>
+    <g fill="#888" opacity="0.35">
+      <circle cx="342" cy="141" r="3.2"/>
+      <rect x="340" y="145" width="4" height="9" rx="0.6"/>
+      <rect x="335" y="146" width="3.5" height="6" transform="rotate(-15, 336.5, 149)"/>
+      <rect x="345.5" y="148" width="3" height="6"/>
+      <rect x="336" y="154" width="3" height="6" transform="rotate(20, 337.5, 157)"/>
+      <rect x="345" y="154" width="3" height="6"/>
+    </g>
+    <!-- 라벨 -->
+    <text x="342" y="92" text-anchor="middle" font-size="10" fill="#888">보행자 신호</text>
 
     <!-- 트럭 — 애니메이션 포함 -->
     <g id="truckL">
@@ -237,14 +254,30 @@
       <rect x="840" y="504" width="120" height="14"/>
     </g>
 
-    <!-- 신호등 기둥 -->
-    <rect x="938" y="130" width="8" height="90" fill="#1A4A30"/>
-    <!-- 신호등 박스 -->
-    <rect x="920" y="100" width="44" height="32" rx="5" fill="#0D2218"/>
-    <circle cx="933" cy="116" r="8" fill="#CC4444"/>
-    <circle cx="942" cy="116" r="8" fill="#333" opacity="0.4"/>
-    <circle cx="951" cy="116" r="8" fill="#333" opacity="0.4"/>
-    <text x="942" y="95" text-anchor="middle" font-size="10" fill="#00A070">신호등</text>
+    <!-- 횡단보도 보행자 신호등 (한국 표준) -->
+    <rect x="938" y="170" width="8" height="155" fill="#1A4A30"/>
+    <rect x="920" y="100" width="44" height="68" rx="5" fill="#0D2218" stroke="#1A4A30" stroke-width="1.5"/>
+    <!-- 빨강 등 (서있는 사람 — 정지) -->
+    <rect x="924" y="104" width="36" height="30" rx="3" fill="#220A0A"/>
+    <g fill="#FF4040">
+      <circle cx="942" cy="111" r="3.2"/>
+      <rect x="940" y="115" width="4" height="9" rx="0.6"/>
+      <rect x="936.5" y="117" width="3" height="6"/>
+      <rect x="944.5" y="117" width="3" height="6"/>
+      <rect x="938.5" y="124" width="2.5" height="6"/>
+      <rect x="943.5" y="124" width="2.5" height="6"/>
+    </g>
+    <!-- 녹색 등 (걷는 사람) -->
+    <rect x="924" y="134" width="36" height="30" rx="3" fill="#0A1A12"/>
+    <g fill="#00E09A" opacity="0.85">
+      <circle cx="942" cy="141" r="3.2"/>
+      <rect x="940" y="145" width="4" height="9" rx="0.6"/>
+      <rect x="935" y="146" width="3.5" height="6" transform="rotate(-15, 936.5, 149)"/>
+      <rect x="945.5" y="148" width="3" height="6"/>
+      <rect x="936" y="154" width="3" height="6" transform="rotate(20, 937.5, 157)"/>
+      <rect x="945" y="154" width="3" height="6"/>
+    </g>
+    <text x="942" y="92" text-anchor="middle" font-size="10" fill="#00A070">보행자 신호</text>
 
     <!-- 트럭 (우측 패널) — 동일 애니메이션 -->
     <g id="truckR">

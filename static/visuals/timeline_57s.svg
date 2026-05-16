@@ -97,12 +97,9 @@
   <rect x="120" y="247" width="960" height="4" rx="2" fill="#555555"/>
 
   <!-- 진행 애니메이션 오버레이 선 (클립 적용) -->
-  <rect x="120" y="247" width="960" height="4" rx="2" fill="url(#lineGrad)" clip-path="url(#lineClip)">
-  </rect>
-  <!-- 클립 너비 애니메이션 -->
-  <animateTransform xlink:href="#clipRect" attributeName="" type="translate" dur="0s"/>
+  <rect x="120" y="247" width="960" height="4" rx="2" fill="url(#lineGrad)" clip-path="url(#lineClip)"/>
 
-  <!-- 진행선 애니메이션 (clipRect width 0→960 반복) -->
+  <!-- 진행선 애니메이션 (광점 좌→우 이동, 4초 반복) -->
   <rect x="120" y="247" width="4" height="4" rx="2" fill="url(#lineGrad)">
     <animate attributeName="x" from="120" to="1080" dur="4s" repeatCount="indefinite" calcMode="linear"/>
     <animate attributeName="opacity" from="1" to="0.3" dur="4s" repeatCount="indefinite"/>

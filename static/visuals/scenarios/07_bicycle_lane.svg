@@ -25,12 +25,17 @@
 
   <!-- 자동차 도로 (2차로, 우측통행) -->
   <rect x="80" y="200" width="440" height="120" rx="2" fill="#1C2340"/>
-  <!-- 중앙선 (노란 dashed) -->
-  <rect x="120" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="180" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="280" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="360" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="440" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <rect x="80" y="205" width="440" height="55" fill="#162038" opacity="0.45"/>
+  <rect x="80" y="262" width="440" height="58" fill="#0F2335" opacity="0.30"/>
+  <!-- 중앙선 -->
+  <rect x="120" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="180" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="280" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="360" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="440" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <!-- ★ 진행 방향 -->
+  <text x="100" y="232" font-size="12" font-weight="900" fill="#5A6C8C" opacity="0.85">⟵  반대 차로</text>
+  <text x="100" y="305" font-size="12" font-weight="900" fill="#7CC8FF" opacity="0.95">내 차 ⟶</text>
 
   <!-- 자전거 도로 -->
   <rect x="80" y="170" width="440" height="30" rx="2" fill="#0A2A1A"/>

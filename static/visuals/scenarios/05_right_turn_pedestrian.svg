@@ -27,14 +27,23 @@
   <rect x="80" y="215" width="440" height="105" rx="2" fill="#1C2340"/>
   <rect x="310" y="100" width="130" height="120" rx="2" fill="#1C2340"/>
 
-  <!-- 가로 도로 중앙선 (노란 dashed, 교차로 영역 제외) -->
-  <rect x="120" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="180" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="240" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="450" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <!-- 세로 도로 중앙선 -->
-  <rect x="373" y="100" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="373" y="160" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <!-- 가로 도로 차로 음영 -->
+  <rect x="80" y="215" width="440" height="48" fill="#162038" opacity="0.45"/>
+  <rect x="80" y="266" width="440" height="54" fill="#0F2335" opacity="0.30"/>
+  <!-- 가로 도로 중앙선 -->
+  <rect x="120" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="180" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="240" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="450" y="264" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <!-- 세로 도로 차로 음영 -->
+  <rect x="310" y="100" width="63" height="115" fill="#162038" opacity="0.45"/>
+  <rect x="377" y="100" width="63" height="115" fill="#0F2335" opacity="0.30"/>
+  <rect x="373" y="100" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="373" y="160" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <!-- ★ 진행 방향 라벨 -->
+  <text x="328" y="116" font-size="11" font-weight="900" fill="#7CC8FF" opacity="0.95" transform="rotate(90 328 116)">내 차 ↓</text>
+  <text x="408" y="118" font-size="9" font-weight="900" fill="#5A6C8C" opacity="0.85" transform="rotate(-90 408 118)">↑</text>
+  <text x="500" y="307" font-size="11" font-weight="900" fill="#7CC8FF" opacity="0.95" text-anchor="end">아래 차로 ⟶</text>
 
   <!-- 횡단보도 (한국 표준: 차량 진행방향과 평행한 가로 stripe 가 세로로 반복) -->
   <rect x="295" y="219" width="90" height="10" fill="#E8E8E8" opacity="0.92"/>

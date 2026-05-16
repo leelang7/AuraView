@@ -25,15 +25,17 @@
 
   <!-- 도로 (탑뷰, 2차로 · 한국 우측통행) -->
   <rect x="80" y="200" width="440" height="120" rx="4" fill="#1C2340"/>
-  <!-- 중앙선 (노란 dashed) -->
-  <rect x="120" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
-  <rect x="200" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
-  <rect x="280" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
-  <rect x="360" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
-  <rect x="440" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.7"/>
-  <!-- 도로 가장자리 -->
+  <rect x="80" y="205" width="440" height="55" fill="#162038" opacity="0.55"/>
+  <rect x="80" y="262" width="440" height="55" fill="#0F2335" opacity="0.30"/>
+  <rect x="120" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="200" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="280" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="500" y="258" width="14" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
   <line x1="80" y1="205" x2="520" y2="205" stroke="#3A4A6A" stroke-width="1.2"/>
   <line x1="80" y1="315" x2="520" y2="315" stroke="#3A4A6A" stroke-width="1.2"/>
+  <!-- ★ 진행 방향 라벨 -->
+  <text x="88" y="228" font-size="12" font-weight="900" fill="#5A6C8C" opacity="0.85">⟵  반대 차로</text>
+  <text x="88" y="304" font-size="12" font-weight="900" fill="#7CC8FF" opacity="0.95">내 차 ⟶</text>
 
   <!-- 신호등 기둥 (한국 표준: 가로 배열) -->
   <rect x="401" y="130" width="6" height="75" fill="#334466"/>

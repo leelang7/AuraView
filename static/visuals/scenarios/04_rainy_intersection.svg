@@ -38,14 +38,25 @@
   <rect x="80" y="260" width="440" height="30" fill="url(#reflection)" opacity="0.5"/>
   <rect x="250" y="100" width="100" height="60" fill="url(#reflection)" opacity="0.3"/>
 
-  <!-- 가로 도로 중앙선 (노란 dashed, 교차로 영역 제외) -->
-  <rect x="120" y="263" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.55"/>
-  <rect x="180" y="263" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.55"/>
-  <rect x="395" y="263" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.55"/>
-  <rect x="455" y="263" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.55"/>
+  <!-- 가로 도로 차로 음영 -->
+  <rect x="80" y="215" width="440" height="48" fill="#162038" opacity="0.45"/>
+  <rect x="80" y="265" width="440" height="55" fill="#0F2335" opacity="0.30"/>
+  <!-- 가로 도로 중앙선 (노란 dashed) -->
+  <rect x="120" y="263" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="180" y="263" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="395" y="263" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="455" y="263" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <!-- 세로 도로 차로 음영 -->
+  <rect x="230" y="100" width="70" height="115" fill="#162038" opacity="0.45"/>
+  <rect x="302" y="100" width="68" height="115" fill="#0F2335" opacity="0.30"/>
   <!-- 세로 도로 중앙선 -->
-  <rect x="298" y="105" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.55"/>
-  <rect x="298" y="160" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.55"/>
+  <rect x="298" y="105" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="298" y="160" width="4" height="32" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <!-- ★ 진행 방향 라벨 -->
+  <text x="88" y="238" font-size="11" font-weight="900" fill="#5A6C8C" opacity="0.85">⟵</text>
+  <text x="92" y="305" font-size="11" font-weight="900" fill="#7CC8FF" opacity="0.95">내 차 ⟶</text>
+  <text x="247" y="118" font-size="9" font-weight="900" fill="#5A6C8C" opacity="0.85" transform="rotate(90 247 118)">↓</text>
+  <text x="335" y="118" font-size="9" font-weight="900" fill="#5A6C8C" opacity="0.85" transform="rotate(-90 335 118)">↑</text>
 
   <!-- 빗방울 -->
   <g stroke="#00C8FF" stroke-width="1.2" opacity="0.5">

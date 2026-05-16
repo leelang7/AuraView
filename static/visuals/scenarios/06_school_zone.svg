@@ -37,11 +37,41 @@
 
   <!-- 도로 (2차로, 우측통행) -->
   <rect x="80" y="210" width="440" height="100" rx="2" fill="#1C2340"/>
-  <!-- 중앙선 (노란 dashed, 횡단보도 양옆만) -->
-  <rect x="120" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="180" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="380" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
-  <rect x="440" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.6"/>
+  <rect x="80" y="215" width="440" height="43" fill="#162038" opacity="0.45"/>
+  <rect x="80" y="262" width="440" height="48" fill="#0F2335" opacity="0.30"/>
+  <!-- 중앙선 (노란 dashed) -->
+  <rect x="120" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="180" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="380" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <rect x="440" y="258" width="32" height="4" rx="1" fill="#FFD93D" opacity="0.85"/>
+  <!-- ★ 진행 방향 -->
+  <text x="345" y="234" font-size="11" font-weight="900" fill="#5A6C8C" opacity="0.85">⟵</text>
+  <text x="355" y="304" font-size="11" font-weight="900" fill="#7CC8FF" opacity="0.95">내 차 ⟶</text>
+
+  <!-- 횡단보도 보행자 신호등 (위쪽 인도 끝, 한국 표준) -->
+  <rect x="240" y="100" width="6" height="105" fill="#555"/>
+  <rect x="223" y="60" width="40" height="50" rx="4" fill="#1A1A1A" stroke="#444" stroke-width="1.2"/>
+  <!-- 빨강 (서있는 사람 — 정지) -->
+  <rect x="226" y="63" width="34" height="22" rx="2.5" fill="#220A0A"/>
+  <g fill="#FF4040">
+    <circle cx="243" cy="69" r="2.5"/>
+    <rect x="241.5" y="72" width="3" height="7" rx="0.5"/>
+    <rect x="239" y="73" width="2.3" height="5"/>
+    <rect x="246" y="73" width="2.3" height="5"/>
+    <rect x="240.5" y="79" width="2" height="5"/>
+    <rect x="244.5" y="79" width="2" height="5"/>
+  </g>
+  <!-- 녹색 (걷는 사람 — 비활성) -->
+  <rect x="226" y="87" width="34" height="22" rx="2.5" fill="#0A1A12"/>
+  <g fill="#888" opacity="0.35">
+    <circle cx="243" cy="93" r="2.5"/>
+    <rect x="241.5" y="96" width="3" height="7" rx="0.5"/>
+    <rect x="237.5" y="97" width="2.5" height="5" transform="rotate(-15, 238.7, 99.5)"/>
+    <rect x="247" y="98" width="2.3" height="5"/>
+    <rect x="238" y="103" width="2.3" height="5" transform="rotate(20, 239, 105.5)"/>
+    <rect x="247" y="103" width="2.3" height="5"/>
+  </g>
+  <text x="243" y="56" text-anchor="middle" font-size="8" fill="#FF6B6B" font-weight="700">보행자 신호</text>
 
   <!-- 스쿨존 표지 -->
   <rect x="240" y="195" width="120" height="20" rx="4" fill="#A095FF" opacity="0.8"/>

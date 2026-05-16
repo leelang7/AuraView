@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AuraView 1분 자동 시연</title>
+<meta property="og:title" content="AuraView 1분 자동 시연">
+<meta property="og:description" content="운전자가 못 보는 곳을 AuraView가 본다 — 13개 시네마틱 시퀀스 자동재생">
+<meta property="og:image" content="/static/visuals/og_card.svg">
+<meta property="og:type" content="website">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+html,body{
+  width:100%;height:100%;
+  background:#000;color:#fff;
+  font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  overflow:hidden;
+  user-select:none;
+}
+
+/* ── 메인 스테이지 ─────────────────────────── */
+#stage{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+}
+
+/* SVG 슬롯 — 두 개를 겹쳐 크로스페이드 */
+.svg-slot{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;
+  transition:opacity 1.2s ease-in-out;
+  pointer-events:none;
+}
+.svg-slot.active{opacity:1;}
+.svg-slot img{
+  max-width:min(90vw,160vh);
+  max-height:min(80vh,90vw);
+  width:auto;height:auto;
+  object-fit:contain;
+  display:block;
+}
+
+/* ── 자막 ──────────────────────────────────── */
+#caption{
+  position:fixed;
+  bottom:18%;left:50%;
+  transform:translateX(-50%);
+  width:min(92vw,960px);
+  text-align:center;
+  opacity:0;
+  transition:opacity 1.2s ease-in-out;
+  z-index:20;
+  pointer-events:none;
+}
+#caption.active{opacity:1;}
+#caption-text{
+  font-size:clamp(22px,3.8vw,62px);
+  font-weight:700;
+  line-height:1.35;
+  letter-spacing:-0.02em;
+  text-shadow:0 2px 24px rgba(0,0,0,.9),0 0 60px rgba(0,0,0,.7);
+  color:#fff;
+}
+
+/* ── 진행 바 ────────────────────────────────── */
+#progress-bar{
+  position:fixed;bottom:0;left:0;
+  height:2px;
+  background:rgba(255,255,255,0.85);
+  width:0%;
+  z-index:50;
+  transition:width 0.4s linear;
+}
+#progress-track{
+  position:fixed;bottom:0;left:0;
+  height:2px;width:100%;
+  background:rgba(255,255,255,0.12);
+  z-index:49;
+}
+
+/* ── 상단 HUD ────────────────────────────────── */
+#hud-top{
+  position:fixed;top:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;
+  z-index:60;
+  background:linear-gradient(to bottom,rgba(0,0,0,.55) 0%,transparent 100%);
+  pointer-events:none;
+}
+#logo{
+  font-size:12px;letter-spacing:.08em;
+  opacity:.5;font-weight:500;
+  display:flex;align-items:center;gap:6px;
+}
+#logo-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:#4af;display:inline-block;
+}
+#controls{
+  display:flex;align-items:center;gap:12px;
+  pointer-events:all;
+}
+.ctrl-btn{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
+  color:#fff;border-radius:6px;
+  padding:4px 10px;font-size:13px;cursor:pointer;
+  transition:background .2s;line-height:1.6;
+}
+.ctrl-btn:hover{background:rgba(255,255,255,.18);}
+#scene-index{
+  font-size:12px;opacity:.55;letter-spacing:.04em;min-width:40px;text-align:center;
+}
+
+/* ── 하단 힌트 ───────────────────────────────── */
+#hud-bottom{
+  position:fixed;bottom:10px;right:16px;
+  font-size:11px;opacity:.38;letter-spacing:.03em;
+  z-index:60;
+  pointer-events:none;
+}
+
+/* ── 오버레이 CTA (마지막 장면) ──────────────── */
+#cta-overlay{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:30;
+  opacity:0;pointer-events:none;
+  transition:opacity 1.2s ease-in-out;
+  background:rgba(0,0,0,.4);
+}
+#cta-overlay.active{opacity:1;pointer-events:all;}
+#cta-link{
+  display:inline-block;margin-top:24px;
+  padding:14px 36px;
+  border:2px solid rgba(255,255,255,.7);
+  border-radius:40px;
+  font-size:clamp(14px,2vw,20px);
+  font-weight:600;letter-spacing:.04em;
+  color:#fff;text-decoration:none;
+  background:rgba(255,255,255,.06);
+  transition:background .3s,border-color .3s;
+}
+#cta-link:hover{background:rgba(255,255,255,.18);border-color:#fff;}
+
+/* ── prefers-reduced-motion ─────────────────── */
+@media(prefers-reduced-motion:reduce){
+  .svg-slot,#caption,#cta-overlay{transition:none!important;}
+  #progress-bar{transition:none!important;}
+}
+
+/* ── 일시정지 아이콘 페이드 ──────────────────── */
+#pause-indicator{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-size:72px;opacity:0;
+  z-index:70;pointer-events:none;
+  transition:opacity .3s;
+}
+#pause-indicator.show{opacity:.6;}
+</style>
+</head>
+<body>
+
+<!-- 스테이지 -->
+<div id="stage">
+  <div class="svg-slot" id="slot-a">
+    <img id="img-a" src="" alt="">
+  </div>
+  <div class="svg-slot" id="slot-b">
+    <img id="img-b" src="" alt="">
+  </div>
+</div>
+
+<!-- 자막 -->
+<div id="caption">
+  <p id="caption-text"></p>
+</div>
+
+<!-- 진행 바 -->
+<div id="progress-track"></div>
+<div id="progress-bar"></div>
+
+<!-- 상단 HUD -->
+<div id="hud-top">
+  <div id="logo">
+    <span id="logo-dot"></span>
+    AuraView &nbsp;·&nbsp; K-PERCEPTION
+  </div>
+  <div id="controls">
+    <span id="scene-index">1 / 13</span>
+    <button class="ctrl-btn" id="btn-pause" title="일시정지/재생">⏸</button>
+    <button class="ctrl-btn" id="btn-next" title="다음 장면">›</button>
+    <button class="ctrl-btn" id="btn-close" title="닫기">✕</button>
+  </div>
+</div>
+
+<!-- 하단 힌트 -->
+<div id="hud-bottom">ESC로 종료 &nbsp;·&nbsp; 자세히 보기 → /story</div>
+
+<!-- CTA (마지막 장면) -->
+<div id="cta-overlay" id="cta-overlay">
+  <div id="cta-link-wrap">
+    <a id="cta-link" href="/story">자세히 보러 가기 →</a>
+  </div>
+</div>
+
+<!-- 일시정지 표시 -->
+<div id="pause-indicator">⏸</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ── 시퀀스 정의 ─────────────────────────────── */
+const BASE = "/static/visuals/";
+const SCENES = [
+  { src: BASE+"og_card.svg",                    dur: 4000,  cap: "운전자가 못 보는 곳을\nAuraView가 본다" },
+  { src: BASE+"before_after.svg",               dur: 8000,  cap: "트럭 뒤에 어린이가 있습니다.\n누가 먼저 알아챌까요?" },
+  { src: BASE+"timeline_57s.svg",               dur: 6000,  cap: "AuraView는 3.38초 먼저 봅니다" },
+  { src: BASE+"impact_waffle.svg",              dur: 8000,  cap: "매년 21명의 생명,\n살려낼 수 있습니다" },
+  { src: BASE+"scenarios/01_truck_occlusion.svg",      dur: 5000,  cap: "트럭이 가린 사각지대\n— V2V 협업 인지" },
+  { src: BASE+"scenarios/02_motorcycle_blindspot.svg", dur: 5000,  cap: "좌측 사각 이륜차\n— BEV occupancy" },
+  { src: BASE+"scenarios/03_signal_occlusion.svg",     dur: 5000,  cap: "버스가 가린 신호등\n— 신호 API 직접 호출" },
+  { src: BASE+"scenarios/04_rainy_intersection.svg",   dur: 5000,  cap: "비 오는 교차로\n— KMA 기상 자동 보정" },
+  { src: BASE+"scenarios/05_right_turn_pedestrian.svg",dur: 5000,  cap: "우회전 보행자\n— 도로교통법 25조 매핑" },
+  { src: BASE+"scenarios/06_school_zone.svg",          dur: 5000,  cap: "어린이 보호구역\n— 등하교 시 위험 ×1.5" },
+  { src: BASE+"scenarios/07_bicycle_lane.svg",         dur: 5000,  cap: "자전거 도로\n— 따릉이 거치 prior" },
+  { src: BASE+"scenarios/08_night_pedestrian.svg",     dur: 5000,  cap: "야간 보행자\n— V2V 헤드라이트 공유" },
+  { src: BASE+"og_card.svg",                    dur: 6000,  cap: "지금 보러 가세요\nauraview.allthatai.kr/story", isCTA: true }
+];
+
+const TOTAL_MS = SCENES.reduce((s,sc)=>s+sc.dur, 0);
+
+/* ── DOM refs ────────────────────────────────── */
+const slotA       = document.getElementById("slot-a");
+const slotB       = document.getElementById("slot-b");
+const imgA        = document.getElementById("img-a");
+const imgB        = document.getElementById("img-b");
+const captionEl   = document.getElementById("caption");
+const captionText = document.getElementById("caption-text");
+const progressBar = document.getElementById("progress-bar");
+const sceneIndex  = document.getElementById("scene-index");
+const btnPause    = document.getElementById("btn-pause");
+const btnNext     = document.getElementById("btn-next");
+const btnClose    = document.getElementById("btn-close");
+const ctaOverlay  = document.getElementById("cta-overlay");
+const pauseInd    = document.getElementById("pause-indicator");
+const stage       = document.getElementById("stage");
+
+/* ── 상태 ────────────────────────────────────── */
+let current     = 0;
+let paused      = false;
+let timer       = null;
+let progressRaf = null;
+let progressStartTime = null;
+let progressStartPct  = 0;
+let elapsed     = 0;      // ms elapsed in CURRENT scene
+let activeSlot  = "a";    // which slot is visible
+
+/* ── preload next ────────────────────────────── */
+const preloadCache = {};
+function preload(idx){
+  if(idx >= SCENES.length) return;
+  const url = SCENES[idx].src;
+  if(preloadCache[url]) return;
+  const img = new Image();
+  img.src = url;
+  preloadCache[url] = true;
+}
+
+/* ── 슬롯 전환 ────────────────────────────────── */
+function showScene(idx, instant){
+  const sc = SCENES[idx];
+
+  // 자막
+  captionEl.classList.remove("active");
+  setTimeout(()=>{
+    captionText.textContent = sc.cap.replace(/\n/g," \n");
+    captionText.style.whiteSpace = "pre-line";
+    captionEl.classList.add("active");
+  }, instant ? 0 : 400);
+
+  // CTA 오버레이
+  ctaOverlay.classList.toggle("active", !!sc.isCTA);
+
+  // 어떤 슬롯이 다음인가?
+  const nextSlot  = activeSlot === "a" ? "b" : "a";
+  const nextImg   = nextSlot  === "a" ? imgA : imgB;
+  const nextEl    = nextSlot  === "a" ? slotA : slotB;
+  const curEl     = activeSlot === "a" ? slotA : slotB;
+
+  nextImg.src = sc.src;
+  nextEl.classList.add("active");
+  if(!instant) setTimeout(()=>curEl.classList.remove("active"), 1200);
+  else curEl.classList.remove("active");
+  activeSlot = nextSlot;
+
+  // HUD
+  sceneIndex.textContent = `${idx+1} / ${SCENES.length}`;
+
+  preload(idx+1);
+}
+
+/* ── 진행 바 RAF ────────────────────────────── */
+function startProgressRaf(fromPct, toPct, durationMs){
+  if(progressRaf) cancelAnimationFrame(progressRaf);
+  progressStartTime = performance.now();
+  progressStartPct  = fromPct;
+  const range = toPct - fromPct;
+
+  function tick(now){
+    const dt = now - progressStartTime;
+    const frac = Math.min(dt / durationMs, 1);
+    const pct  = progressStartPct + range * frac;
+    progressBar.style.width = pct.toFixed(3) + "%";
+    if(frac < 1 && !paused){
+      progressRaf = requestAnimationFrame(tick);
+    }
+  }
+  progressRaf = requestAnimationFrame(tick);
+}
+
+/* ── 누적 offset 계산 ─────────────────────────── */
+function scenePctStart(idx){
+  let ms = 0;
+  for(let i=0;i<idx;i++) ms += SCENES[i].dur;
+  return (ms / TOTAL_MS) * 100;
+}
+function scenePctEnd(idx){
+  return scenePctStart(idx) + (SCENES[idx].dur / TOTAL_MS) * 100;
+}
+
+/* ── 장면 실행 ────────────────────────────────── */
+function runScene(idx, resumeElapsed){
+  if(idx >= SCENES.length){ idx = 0; elapsed = 0; }
+  current = idx;
+  const sc = SCENES[idx];
+  const remaining = sc.dur - (resumeElapsed||0);
+
+  showScene(idx, (resumeElapsed||0) > 0);
+
+  const pctStart = scenePctStart(idx) + ((resumeElapsed||0)/TOTAL_MS)*100;
+  const pctEnd   = scenePctEnd(idx);
+  startProgressRaf(pctStart, pctEnd, remaining);
+
+  timer = setTimeout(()=>{
+    elapsed = 0;
+    runScene((idx+1) % SCENES.length, 0);
+  }, remaining);
+}
+
+/* ── 일시정지 / 재생 ─────────────────────────── */
+function togglePause(){
+  if(!paused){
+    // pause
+    paused = true;
+    clearTimeout(timer);
+    if(progressRaf) cancelAnimationFrame(progressRaf);
+    // 현재 진행률 스냅
+    const pctNow = parseFloat(progressBar.style.width)||0;
+    progressBar.style.width = pctNow + "%";
+    // elapsed 누적
+    elapsed += (performance.now() - progressStartTime);
+    btnPause.textContent = "▶";
+    pauseInd.classList.add("show");
+  } else {
+    // resume
+    paused = false;
+    btnPause.textContent = "⏸";
+    pauseInd.classList.remove("show");
+    runScene(current, Math.min(elapsed, SCENES[current].dur - 50));
+    elapsed = 0;
+  }
+}
+
+/* ── 다음 장면 ───────────────────────────────── */
+function goNext(){
+  clearTimeout(timer);
+  if(progressRaf) cancelAnimationFrame(progressRaf);
+  elapsed = 0;
+  runScene((current+1) % SCENES.length, 0);
+}
+
+/* ── 이벤트 ──────────────────────────────────── */
+btnPause.addEventListener("click", e=>{ e.stopPropagation(); togglePause(); });
+btnNext.addEventListener("click",  e=>{ e.stopPropagation(); goNext(); });
+btnClose.addEventListener("click", e=>{ e.stopPropagation(); location.href="/story"; });
+stage.addEventListener("click", ()=>{ location.href="/story"; });
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") location.href="/story";
+  if(e.key===" "){ e.preventDefault(); togglePause(); }
+  if(e.key==="ArrowRight"){ goNext(); }
+});
+
+/* ── 초기 실행 ───────────────────────────────── */
+preload(0);
+preload(1);
+runScene(0, 0);
+
+})();
+</script>
+</body>
+</html>

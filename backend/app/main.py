@@ -195,6 +195,7 @@ _mount_static(app, ["static", "kiosk"], "/kiosk")
 _mount_static(app, ["static", "summary"], "/submission")
 _mount_static(app, ["static", "competition"], "/competition")
 _mount_static(app, ["static", "story"], "/story")        # v3 2026-05-16: 일반인용 30초 스토리 페이지
+_mount_static(app, ["static", "reel"], "/reel")          # v5 2026-05-16: 72초 자동재생 시네마틱 시퀀스 (영상 대체)
 _mount_static(app, ["static"], "/static")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)
@@ -1096,6 +1097,7 @@ def prototype_ui():
             </div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <a href="/story/" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1.5px;color:#0a0e18;padding:9px 16px;background:linear-gradient(135deg,#FFB020,#FF6B6B);border:1px solid rgba(255,176,32,0.7);border-radius:99px;font-weight:900;box-shadow:0 0 18px rgba(255,176,32,0.45);">📖 일반인용 30초 스토리</a>
+              <a href="/reel/" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1.5px;color:#fff;padding:9px 16px;background:linear-gradient(135deg,#FF4444,#7c3aed);border:1px solid rgba(255,68,68,0.7);border-radius:99px;font-weight:900;box-shadow:0 0 18px rgba(255,68,68,0.45);">🎥 1분 시연</a>
               <a href="/competition/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#fff;padding:7px 14px;background:linear-gradient(135deg,rgba(0,224,154,0.30),rgba(0,200,255,0.20));border:1px solid rgba(0,224,154,0.55);border-radius:99px;font-weight:700;">🏆 JUDGE HUB</a>
               <a href="/submission/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--safe);padding:7px 14px;border:1px solid rgba(0,224,154,0.4);border-radius:99px;">≡ SUMMARY</a>
               <a href="https://github.com/leelang7/AuraView/releases/latest/download/AuraView_Whitepaper.pdf" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--warn);padding:7px 14px;border:1px solid rgba(255,176,32,0.4);border-radius:99px;">📑 WHITEPAPER PDF</a>

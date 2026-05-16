@@ -5,6 +5,47 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.11 — 시네마틱 1분 시연 페이지 + Reveal.js 14장 갱신 + 메인 연결 (2026-05-16)
+
+### Added — `/reel` 72초 자동재생 시네마틱 시퀀스
+- `static/reel/index.html` (14KB, 외부 의존 0) — 영상 대체물.
+- 시퀀스 12 장면 무한 루프:
+  - 1. og_card 4초 ("운전자가 못 보는 곳을 AuraView가 본다")
+  - 2. before_after 8초
+  - 3. timeline_57s 6초
+  - 4. impact_waffle 8초
+  - 5~12. scenarios/01~08 각 5초
+  - 13. og_card CTA 6초
+- 풀스크린 검은 배경 + 큰 한국어 자막 (`clamp(22px, 3.8vw, 62px)`)
+- 진행 바 + scene 인덱스 + ⏸/▶/›/✕ 컨트롤
+- 스페이스바 일시정지, → 다음, ESC → /story 이동
+- `prefers-reduced-motion` 미디어 쿼리 존중
+- main.py `_mount_static(["static", "reel"], "/reel")`
+
+### Updated — Reveal.js 14장 슬라이드 전면 갱신 (`/static/slides/`)
+- 기존 12장 → **14장** 풀 갱신 (46.8KB, Reveal.js 4.5.0 CDN).
+- SVG 7종 인라인 임베드 (`before_after`, `timeline_57s`, `impact_waffle`, `og_card`, `scenarios/01~08`).
+- 흐름: Cover → Problem → Insight → Solution → Architecture → 15-source → AI → V2V → 시나리오 8종 → Impact → Top-10 → 법적 근거 → 가점 25점 → Live Demo CTA
+- 한국어 폰트 시스템 fallback (외부 폰트 의존 없음)
+
+### Fixed — 시나리오 SVG 03 (신호등 고증)
+- `scenarios/03_signal_occlusion.svg`: 신호등 세로 배열 → **한국 표준 가로 배열** (적-황-녹).
+- 박스 30×55 → 86×28, 라이트 cx=388/414/440 cy=122.
+
+### Added — 메인 진입점에 /reel 연결
+- `/story` 상단 sticky 메뉴에 `🎥 1분 시연` 버튼 추가
+- `/story` CTA 그리드 첫 번째에 시네마틱 카드 강조
+- `/competition` 골든 배너 위에 `🎥` 빨강 배너 (최우선 노출)
+- `/ui` 헤더에 `🎥 1분 시연` 풀 그라디언트 버튼 (📖 옆)
+- `/kiosk` 자동 시연 장면 00 → `/reel` (72초), 장면 00b → `/story`
+
+### Why
+- "영상 콘텐츠 부족" 사용자 지적 해결 — opencv 의존 없이 SVG 시퀀스로 영상 효과.
+- Reveal.js 슬라이드는 발표용으로 1순위 — 풀 갱신 + SVG 임베드로 시각 임팩트 ↑.
+- 모든 메인 진입점에서 /reel 1-tap 도달 — 시연 부스 무인 운영 가능.
+
+---
+
 ## v0.10 — 15-source + 8 시나리오 카드 + 인터랙티브 시뮬레이터 + OG 공유 (2026-05-16)
 
 ### Added — 12 → 15종 공공데이터 확장

@@ -31,13 +31,13 @@
   <rect x="300" y="247" width="35" height="6" rx="2" fill="#FFD93D" opacity="0.6"/>
   <rect x="380" y="247" width="35" height="6" rx="2" fill="#FFD93D" opacity="0.6"/>
 
-  <!-- 신호등 기둥 -->
-  <rect x="398" y="110" width="6" height="95" fill="#334466"/>
-  <rect x="386" y="108" width="30" height="55" rx="6" fill="#222E45"/>
-  <!-- 신호등 라이트 -->
-  <circle cx="401" cy="123" r="7" fill="#333"/>
-  <circle cx="401" cy="138" r="7" fill="#333"/>
-  <circle cx="401" cy="153" r="7" fill="#00CC44" opacity="0.9"/>
+  <!-- 신호등 기둥 (한국 표준: 가로 배열) -->
+  <rect x="401" y="130" width="6" height="75" fill="#334466"/>
+  <rect x="374" y="108" width="86" height="28" rx="6" fill="#222E45"/>
+  <!-- 신호등 라이트: 적-황-녹 가로 배열 -->
+  <circle cx="388" cy="122" r="8" fill="#333"/>
+  <circle cx="414" cy="122" r="8" fill="#333"/>
+  <circle cx="440" cy="122" r="8" fill="#00CC44" opacity="0.9"/>
 
   <!-- 대형 버스 (신호 가림) -->
   <rect x="330" y="200" width="140" height="80" rx="5" fill="#2E4A80"/>
@@ -60,14 +60,14 @@
   <text x="165" y="178" text-anchor="middle" font-size="9" fill="#99AACC">Camera fallback OK</text>
 
   <!-- 연결선 -->
-  <line x1="230" y1="157" x2="386" y2="140" stroke="#FFD93D" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
+  <line x1="230" y1="157" x2="374" y2="122" stroke="#FFD93D" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
 
   <!-- 에고 차량 -->
   <rect x="160" y="218" width="75" height="45" rx="5" fill="#3A6FD8"/>
   <text x="198" y="245" text-anchor="middle" font-size="9" fill="white" font-weight="700">EGO</text>
 
-  <!-- 신호 복구 애니메이션 -->
-  <circle cx="401" cy="153" r="7" fill="#00CC44" opacity="0.9">
+  <!-- 신호 복구 애니메이션 (녹색 위치 cx=440 맞춤) -->
+  <circle cx="440" cy="122" r="8" fill="#00CC44" opacity="0.9">
     <animate attributeName="opacity" values="0.3;1;0.3" dur="1.8s" repeatCount="indefinite"/>
   </circle>
 

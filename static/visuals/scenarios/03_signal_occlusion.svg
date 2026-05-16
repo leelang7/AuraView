@@ -37,13 +37,28 @@
   <text x="88" y="228" font-size="12" font-weight="900" fill="#5A6C8C" opacity="0.85">⟵  반대 차로</text>
   <text x="88" y="304" font-size="12" font-weight="900" fill="#7CC8FF" opacity="0.95">내 차 ⟶</text>
 
-  <!-- 신호등 기둥 (한국 표준: 가로 배열) -->
-  <rect x="401" y="130" width="6" height="75" fill="#334466"/>
-  <rect x="374" y="108" width="86" height="28" rx="6" fill="#222E45"/>
-  <!-- 신호등 라이트: 적-황-녹 가로 배열 -->
-  <circle cx="388" cy="122" r="8" fill="#333"/>
-  <circle cx="414" cy="122" r="8" fill="#333"/>
-  <circle cx="440" cy="122" r="8" fill="#00CC44" opacity="0.9"/>
+  <!-- 한국 표준 차량 신호등 (도로 우측 가장자리 cantilever 기둥 + 가로 빔 → 도로 위 박스) -->
+  <!-- 세로 기둥 (도로 끝 우측 = 교차로 끝, 인도 위) -->
+  <rect x="510" y="180" width="6" height="125" fill="#3A4A6A"/>
+  <!-- 기둥 받침 (인도) -->
+  <rect x="503" y="303" width="20" height="8" rx="1.5" fill="#2A3A5A"/>
+  <!-- 가로 cantilever 빔 (위쪽에서 도로 안쪽으로 뻗음) -->
+  <rect x="370" y="178" width="146" height="5" fill="#3A4A6A"/>
+  <!-- 신호등 박스 (도로 위 공중) -->
+  <rect x="372" y="138" width="92" height="40" rx="4" fill="#1A1A1A" stroke="#444" stroke-width="1.5"/>
+  <!-- 흰 테두리 헤드 (차양) -->
+  <rect x="372" y="138" width="92" height="6" fill="#2A2A2A"/>
+  <!-- 신호등 라이트: 적-황-녹 가로 배열 (한국 표준) -->
+  <circle cx="392" cy="158" r="9" fill="#220A0A"/>
+  <circle cx="392" cy="158" r="6.5" fill="#333"/>
+  <circle cx="418" cy="158" r="9" fill="#1A1A06"/>
+  <circle cx="418" cy="158" r="6.5" fill="#333"/>
+  <circle cx="444" cy="158" r="9" fill="#0A1A12"/>
+  <circle cx="444" cy="158" r="6.5" fill="#00CC44" opacity="0.95">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="1.4s" repeatCount="indefinite"/>
+  </circle>
+  <!-- 좌회전 표시 (선택) -->
+  <text x="418" y="135" text-anchor="middle" font-size="8" fill="#7799BB">차량 신호</text>
 
   <!-- 대형 버스 (아래 차로 안, 내 차 앞쪽 — 신호등 가림) — 우측통행 적용 우측 배치 -->
   <rect x="380" y="266" width="115" height="46" rx="5" fill="#2E4A80"/>
@@ -54,9 +69,9 @@
   <circle cx="478" cy="312" r="6" fill="#111" stroke="#555" stroke-width="1.5"/>
   <text x="437" y="293" text-anchor="middle" font-size="10" fill="#9AB5DD" font-weight="700">버스</text>
 
-  <!-- 신호등 가림 표시 -->
-  <path d="M 398 108 L 470 108 L 470 165 L 398 165" fill="none" stroke="#FFD93D" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.8"/>
-  <text x="440" y="145" text-anchor="middle" font-size="9" fill="#FFD93D">가림 구역</text>
+  <!-- 신호등 가림 표시 (버스가 신호등 박스 가림) -->
+  <path d="M 372 144 L 464 144 L 464 178 L 372 178 Z" fill="none" stroke="#FFD93D" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.85"/>
+  <text x="418" y="170" text-anchor="middle" font-size="10" fill="#FFD93D" font-weight="700">가림 구역</text>
 
   <!-- API 직접 호출 표시 -->
   <rect x="100" y="130" width="130" height="55" rx="8" fill="#1A2840" stroke="#FFD93D" stroke-width="1.5"/>
@@ -64,8 +79,8 @@
   <text x="165" y="165" text-anchor="middle" font-size="9" fill="#99AACC">현재: 녹색 (14s)</text>
   <text x="165" y="178" text-anchor="middle" font-size="9" fill="#99AACC">Camera fallback OK</text>
 
-  <!-- 연결선 -->
-  <line x1="230" y1="157" x2="374" y2="122" stroke="#FFD93D" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
+  <!-- 연결선 (API → 신호등 박스) -->
+  <line x1="230" y1="157" x2="372" y2="158" stroke="#FFD93D" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
 
   <!-- 내 차 (아래 차로, 화면 우측 — 한국 우측통행 + 버스 뒤) -->
   <rect x="290" y="269" width="74" height="42" rx="5" fill="#3A6FD8"/>

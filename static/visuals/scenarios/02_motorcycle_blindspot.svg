@@ -46,9 +46,9 @@
   <!-- 차량 방향 화살표 (진행 방향: 우측) -->
   <polygon points="475,276 488,276 488,272 496,278 488,284 488,280 475,280" fill="#7CC8FF" opacity="0.85"/>
 
-  <!-- 사각지대 扇형 (내 차 좌측 후방 = 탑뷰 차량 왼쪽 아래) -->
-  <path d="M 390 252 L 230 305 L 230 322 L 390 300 Z" fill="#FFB020" opacity="0.18"/>
-  <text x="310" y="318" text-anchor="middle" font-size="11" fill="#FFB020" font-weight="700">좌측 후방 사각</text>
+  <!-- 사각지대 扇형 (내 차 우측 후방 = 진행방향 기준 오른쪽 뒤) -->
+  <path d="M 390 270 L 230 305 L 230 322 L 390 322 Z" fill="#FFB020" opacity="0.20"/>
+  <text x="310" y="318" text-anchor="middle" font-size="11" fill="#FFB020" font-weight="700">우측 후방 사각</text>
 
   <!-- 이륜차 (사각지대 안, 같은 차로 — 내 차 왼쪽 후방) -->
   <g>

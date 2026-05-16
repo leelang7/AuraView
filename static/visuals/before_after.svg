@@ -8,128 +8,101 @@
     <pattern id="gridR" width="40" height="40" patternUnits="userSpaceOnUse">
       <path d="M40 0 L0 0 0 40" fill="none" stroke="#0F2A1E" stroke-width="0.4" opacity="0.6"/>
     </pattern>
-    <radialGradient id="warnGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FF4040" stop-opacity="0.65"/>
+    <radialGradient id="redGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF4040" stop-opacity="0.7"/>
       <stop offset="100%" stop-color="#FF4040" stop-opacity="0"/>
     </radialGradient>
-    <filter id="redGlow"><feGaussianBlur stdDeviation="3"/></filter>
+    <radialGradient id="greenGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00CC44" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#00CC44" stop-opacity="0"/>
+    </radialGradient>
   </defs>
 
-  <!-- ═══════════════ 좌 패널 : 지금 (AuraView 없음) ═══════════════ -->
-  <!-- 배경 -->
+  <!-- ═══════════════ 좌 패널 : 지금 (트럭이 신호등 가림 — 내 차는 신호 상태 모름) ═══════════════ -->
   <rect x="0" y="0" width="600" height="600" fill="#1A0A0E"/>
   <rect x="0" y="0" width="600" height="600" fill="url(#gridL)"/>
+  <!-- 헤더 -->
   <rect x="0" y="0" width="600" height="140" fill="#220F12" opacity="0.7"/>
   <text x="300" y="70" text-anchor="middle" font-size="54" font-weight="900" fill="#FF4444" letter-spacing="-1">지금</text>
   <text x="300" y="105" text-anchor="middle" font-size="14" fill="#FF8888" letter-spacing="2">AuraView 없으면</text>
 
-  <!-- 위 인도 (한국 우측통행 차로 = 위 차로 = 차들이 진행하는 곳) -->
+  <!-- 위 인도 -->
   <rect x="0" y="200" width="600" height="60" fill="#0E0608"/>
   <line x1="0" y1="260" x2="600" y2="260" stroke="#3A1A20" stroke-width="1"/>
 
   <!-- 도로 -->
   <rect x="0" y="260" width="600" height="260" fill="#1F1F22"/>
-  <!-- 위 차로 (한국 우측통행: 차량이 우→좌 진행 시 진행방향 기준 우측 = 이 차로) -->
   <rect x="0" y="260" width="600" height="125" fill="#1A1A1D" opacity="0.4"/>
-  <!-- 중앙선 -->
   <g fill="#D4A024" opacity="0.85">
     <rect x="40"  y="388" width="48" height="6" rx="1"/>
     <rect x="120" y="388" width="48" height="6" rx="1"/>
     <rect x="200" y="388" width="48" height="6" rx="1"/>
-    <rect x="500" y="388" width="48" height="6" rx="1"/>
-    <rect x="560" y="388" width="40" height="6" rx="1"/>
+    <rect x="300" y="388" width="48" height="6" rx="1"/>
+    <rect x="380" y="388" width="48" height="6" rx="1"/>
+    <rect x="460" y="388" width="48" height="6" rx="1"/>
+    <rect x="540" y="388" width="48" height="6" rx="1"/>
   </g>
-  <!-- 아래 차로 (반대 방향) -->
   <rect x="0" y="397" width="600" height="123" fill="#181819" opacity="0.6"/>
-  <!-- 진행 방향 라벨 (한국 우측통행) -->
   <text x="20" y="305" font-size="14" font-weight="900" fill="#7C8AA8" opacity="0.95">⟵  내 차 진행 방향 (한국 우측통행 = 위 차로)</text>
   <text x="20" y="495" font-size="13" font-weight="800" fill="#5A4A4E" opacity="0.85">반대 차로  ⟶</text>
-
-  <!-- 아래 인도 -->
   <rect x="0" y="520" width="600" height="40" fill="#0E0608"/>
 
-  <!-- 횡단보도 (도로 전체 가로지름) -->
-  <g fill="#E8E8E8" opacity="0.88">
-    <rect x="180" y="266" width="170" height="14"/>
-    <rect x="180" y="286" width="170" height="14"/>
-    <rect x="180" y="306" width="170" height="14"/>
-    <rect x="180" y="326" width="170" height="14"/>
-    <rect x="180" y="346" width="170" height="14"/>
-    <rect x="180" y="366" width="170" height="14"/>
-    <rect x="180" y="404" width="170" height="14"/>
-    <rect x="180" y="424" width="170" height="14"/>
-    <rect x="180" y="444" width="170" height="14"/>
-    <rect x="180" y="464" width="170" height="14"/>
-    <rect x="180" y="484" width="170" height="14"/>
-    <rect x="180" y="504" width="170" height="14"/>
-  </g>
-  <!-- 정지선 (횡단보도 우측 = 우→좌 진행 차량 정지 위치) -->
-  <rect x="354" y="260" width="6" height="125" fill="#E8E8E8" opacity="0.7"/>
+  <!-- 차량 신호등 (cantilever 매달림, 진행 방향 끝쪽 = 좌측, 도로 위 공중) — 한국 표준 -->
+  <!-- 기둥 (좌측 끝 인도 위) -->
+  <rect x="44" y="160" width="6" height="180" fill="#3A4A6A"/>
+  <rect x="34" y="338" width="26" height="8" rx="1.5" fill="#2A3A5A"/>
+  <!-- 가로 cantilever 빔 -->
+  <rect x="50" y="160" width="180" height="6" fill="#3A4A6A"/>
+  <!-- 신호등 박스 (도로 위 공중, 좌→우 적-황-녹 한국 표준 가로 배열) -->
+  <rect x="86" y="166" width="148" height="60" rx="6" fill="#1A1A1A" stroke="#444" stroke-width="1.5"/>
+  <rect x="86" y="166" width="148" height="8" fill="#2A2A2A"/>
+  <!-- 라이트들 (BEFORE: 내 차는 못 봄, 실제 신호는 적색이라 가정) -->
+  <circle cx="118" cy="196" r="14" fill="#220A0A"/>
+  <circle cx="118" cy="196" r="10" fill="#FF4040"/>
+  <circle cx="160" cy="196" r="14" fill="#1A1A06"/>
+  <circle cx="160" cy="196" r="10" fill="#333"/>
+  <circle cx="202" cy="196" r="14" fill="#0A1A12"/>
+  <circle cx="202" cy="196" r="10" fill="#333"/>
+  <text x="160" y="160" text-anchor="middle" font-size="10" fill="#888">차량 신호등</text>
 
-  <!-- 보행자 신호등 (횡단보도 양 끝 인도, 한국 표준 사람 픽토그램) -->
-  <!-- 우측 신호등 (위 인도) -->
-  <rect x="326" y="172" width="4" height="28" fill="#444"/>
-  <rect x="314" y="146" width="28" height="40" rx="3" fill="#1A1A1A" stroke="#444" stroke-width="1"/>
-  <rect x="316" y="148" width="24" height="18" rx="2" fill="#220A0A"/>
-  <g fill="#FF4040">
-    <circle cx="328" cy="153" r="2.2"/>
-    <rect x="327" y="156" width="2.5" height="6" rx="0.4"/>
-    <rect x="324.5" y="157" width="2" height="4.5"/>
-    <rect x="330.5" y="157" width="2" height="4.5"/>
-    <rect x="325.5" y="162" width="1.5" height="3.5"/>
-    <rect x="329.5" y="162" width="1.5" height="3.5"/>
-  </g>
-  <rect x="316" y="166" width="24" height="18" rx="2" fill="#0A1A12"/>
-  <g fill="#444" opacity="0.4">
-    <circle cx="328" cy="170" r="2.2"/>
-    <rect x="327" y="173" width="2.5" height="5" rx="0.4"/>
-  </g>
-
-  <!-- 트럭 (위 차로, 정지선 앞 = 횡단보도 우측, 우→좌 진행이므로 캐빈은 좌측) -->
+  <!-- 트럭 (내 차 앞, 위 차로) — 내 차에서 신호등을 가림 -->
   <g id="truckL">
-    <!-- 짐칸 (우측) -->
-    <rect x="425" y="278" width="120" height="90" rx="4" fill="#5A5A6A"/>
-    <!-- 캐빈 (좌측 = 우→좌 진행 방향 앞) -->
-    <rect x="380" y="288" width="50" height="80" rx="4" fill="#6A6A7A"/>
-    <rect x="387" y="295" width="36" height="26" rx="2" fill="#8ACDDF" opacity="0.5"/>
-    <!-- 바퀴 -->
-    <circle cx="410" cy="370" r="9" fill="#1A1A1A"/>
-    <circle cx="450" cy="370" r="9" fill="#1A1A1A"/>
-    <circle cx="520" cy="370" r="9" fill="#1A1A1A"/>
-    <text x="485" y="335" text-anchor="middle" font-size="14" fill="#AAAAAA" font-weight="800">TRUCK</text>
+    <rect x="290" y="278" width="160" height="100" rx="4" fill="#5A5A6A"/>
+    <rect x="240" y="288" width="55" height="90" rx="4" fill="#6A6A7A"/>
+    <rect x="247" y="297" width="40" height="28" rx="2" fill="#8ACDDF" opacity="0.5"/>
+    <circle cx="270" cy="380" r="10" fill="#1A1A1A"/>
+    <circle cx="320" cy="380" r="10" fill="#1A1A1A"/>
+    <circle cx="420" cy="380" r="10" fill="#1A1A1A"/>
+    <text x="370" y="335" text-anchor="middle" font-size="16" fill="#AAAAAA" font-weight="800">TRUCK</text>
   </g>
 
-  <!-- 어린이 (횡단보도 위, 트럭 뒤 = 트럭의 좌측, 위 차로) — BEFORE: 회색·흐림 -->
-  <g id="childL" opacity="0.30">
-    <circle cx="265" cy="312" r="10" fill="#888888"/>
-    <rect x="258" y="322" width="14" height="22" rx="3" fill="#888888"/>
-    <line x1="258" y1="330" x2="251" y2="346" stroke="#888888" stroke-width="3"/>
-    <line x1="272" y1="330" x2="279" y2="346" stroke="#888888" stroke-width="3"/>
-    <line x1="260" y1="344" x2="257" y2="362" stroke="#888888" stroke-width="3"/>
-    <line x1="270" y1="344" x2="273" y2="362" stroke="#888888" stroke-width="3"/>
-  </g>
-  <!-- 시야 차단 음영 (트럭 너머) -->
-  <path d="M 380 288 L 380 385 L 180 385 L 180 280 Z" fill="#888888" opacity="0.06"/>
-  <text x="220" y="395" font-size="14" font-weight="700" fill="#888888" opacity="0.7">보이지 않는 영역</text>
+  <!-- 트럭이 신호등 가림 시각화 (트럭에서 신호등 방향 점선 박스 = 시야 차단 zone) -->
+  <path d="M 240 288 L 50 230 L 50 166 L 240 200 Z" fill="#888888" opacity="0.10"/>
+  <line x1="540" y1="305" x2="240" y2="295" stroke="#7799AA" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
+  <line x1="240" y1="295" x2="86" y2="200" stroke="#7799AA" stroke-width="1.2" stroke-dasharray="3,4" opacity="0.3"/>
+  <text x="135" y="245" font-size="13" font-weight="800" fill="#FF8888">신호등이<tspan x="135" dy="16">트럭에 가려짐</tspan></text>
 
-  <!-- 내 차 (트럭 뒤 = 화면 우측 끝, 위 차로 / 우→좌 진행) -->
+  <!-- 내 차에서 본 신호 상태 = ??? -->
+  <rect x="380" y="190" width="150" height="60" rx="8" fill="#1A0A0E" stroke="#FF6666" stroke-width="1.5"/>
+  <text x="455" y="212" text-anchor="middle" font-size="11" fill="#FF8888" font-weight="700">내 차 시점</text>
+  <text x="455" y="235" text-anchor="middle" font-size="22" fill="#FF4040" font-weight="900">신호 ???</text>
+
+  <!-- 내 차 (트럭 뒤 = 화면 우측 끝, 위 차로) -->
   <g id="egoL">
-    <rect x="555" y="295" width="60" height="40" rx="5" fill="#4A4A60"/>
-    <rect x="568" y="300" width="35" height="14" rx="2" fill="#6088AA" opacity="0.6"/>
-    <circle cx="565" cy="338" r="6" fill="#1A1A1A"/>
-    <circle cx="605" cy="338" r="6" fill="#1A1A1A"/>
-    <text x="585" y="321" text-anchor="middle" font-size="10" fill="white" font-weight="800">나(운전자)</text>
+    <rect x="525" y="295" width="70" height="42" rx="5" fill="#4A4A60"/>
+    <rect x="540" y="300" width="40" height="14" rx="2" fill="#6088AA" opacity="0.6"/>
+    <circle cx="538" cy="340" r="7" fill="#1A1A1A"/>
+    <circle cx="582" cy="340" r="7" fill="#1A1A1A"/>
+    <text x="560" y="323" text-anchor="middle" font-size="10" fill="white" font-weight="800">나(운전자)</text>
   </g>
-  <!-- 시야선 (운전자 → 트럭에 가려져 끊어짐) -->
-  <line x1="555" y1="315" x2="380" y2="320" stroke="#7799AA" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
 
   <!-- 하단 카피 -->
   <rect x="0" y="555" width="600" height="45" fill="#0A0608"/>
-  <text x="300" y="582" text-anchor="middle" font-size="15" font-weight="800" fill="#FFFFFF">트럭 뒤 사각지대 — 보행자 못 봄</text>
-  <text x="14" y="595" font-size="9" fill="#FF6666" font-weight="700">⚠ 사고 위험 높음</text>
+  <text x="300" y="582" text-anchor="middle" font-size="15" font-weight="800" fill="#FFFFFF">앞 트럭이 신호등 가림 — 신호 상태 모름</text>
+  <text x="14" y="595" font-size="9" fill="#FF6666" font-weight="700">⚠ 적색 무시 진입 위험</text>
 
 
-  <!-- ═══════════════ 우 패널 : AuraView (AI 도로안전 적용) ═══════════════ -->
+  <!-- ═══════════════ 우 패널 : AuraView (신호 API 직접 호출) ═══════════════ -->
   <g id="panelR" transform="translate(600,0)">
     <rect x="0" y="0" width="600" height="600" fill="#0A1F18"/>
     <rect x="0" y="0" width="600" height="600" fill="url(#gridR)"/>
@@ -139,117 +112,95 @@
 
     <rect x="0" y="200" width="600" height="60" fill="#06150E"/>
     <line x1="0" y1="260" x2="600" y2="260" stroke="#1E5A40" stroke-width="1"/>
-
     <rect x="0" y="260" width="600" height="260" fill="#15201C"/>
     <rect x="0" y="260" width="600" height="125" fill="#102018" opacity="0.4"/>
     <g fill="#D4A024" opacity="0.95">
       <rect x="40"  y="388" width="48" height="6" rx="1"/>
       <rect x="120" y="388" width="48" height="6" rx="1"/>
       <rect x="200" y="388" width="48" height="6" rx="1"/>
-      <rect x="500" y="388" width="48" height="6" rx="1"/>
-      <rect x="560" y="388" width="40" height="6" rx="1"/>
+      <rect x="300" y="388" width="48" height="6" rx="1"/>
+      <rect x="380" y="388" width="48" height="6" rx="1"/>
+      <rect x="460" y="388" width="48" height="6" rx="1"/>
+      <rect x="540" y="388" width="48" height="6" rx="1"/>
     </g>
     <rect x="0" y="397" width="600" height="123" fill="#101A14" opacity="0.6"/>
     <text x="20" y="305" font-size="14" font-weight="900" fill="#00E09A" opacity="0.95">⟵  내 차 진행 방향 (한국 우측통행 = 위 차로)</text>
     <text x="20" y="495" font-size="13" font-weight="800" fill="#3A6A50" opacity="0.85">반대 차로  ⟶</text>
-
     <rect x="0" y="520" width="600" height="40" fill="#06150E"/>
 
-    <!-- 횡단보도 -->
-    <g fill="#E8E8E8" opacity="0.92">
-      <rect x="180" y="266" width="170" height="14"/>
-      <rect x="180" y="286" width="170" height="14"/>
-      <rect x="180" y="306" width="170" height="14"/>
-      <rect x="180" y="326" width="170" height="14"/>
-      <rect x="180" y="346" width="170" height="14"/>
-      <rect x="180" y="366" width="170" height="14"/>
-      <rect x="180" y="404" width="170" height="14"/>
-      <rect x="180" y="424" width="170" height="14"/>
-      <rect x="180" y="444" width="170" height="14"/>
-      <rect x="180" y="464" width="170" height="14"/>
-      <rect x="180" y="484" width="170" height="14"/>
-      <rect x="180" y="504" width="170" height="14"/>
-    </g>
-    <rect x="354" y="260" width="6" height="125" fill="#E8E8E8" opacity="0.7"/>
+    <!-- 신호등 (한국 표준 cantilever) -->
+    <rect x="44" y="160" width="6" height="180" fill="#1E5A40"/>
+    <rect x="34" y="338" width="26" height="8" rx="1.5" fill="#0F3A28"/>
+    <rect x="50" y="160" width="180" height="6" fill="#1E5A40"/>
+    <rect x="86" y="166" width="148" height="60" rx="6" fill="#0F1A12" stroke="#1E5A40" stroke-width="1.5"/>
+    <rect x="86" y="166" width="148" height="8" fill="#1A2A20"/>
+    <circle cx="118" cy="196" r="14" fill="#220A0A"/>
+    <circle cx="118" cy="196" r="10" fill="#FF4040">
+      <animate attributeName="opacity" values="0.7;1;0.7" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="160" cy="196" r="14" fill="#1A1A06"/>
+    <circle cx="160" cy="196" r="10" fill="#333"/>
+    <circle cx="202" cy="196" r="14" fill="#0A1A12"/>
+    <circle cx="202" cy="196" r="10" fill="#333"/>
+    <text x="160" y="160" text-anchor="middle" font-size="10" fill="#7CC8B0">차량 신호등</text>
 
-    <!-- 보행자 신호등 (한국 표준 사람 픽토그램) -->
-    <rect x="326" y="172" width="4" height="28" fill="#1E5A40"/>
-    <rect x="314" y="146" width="28" height="40" rx="3" fill="#0F1A12" stroke="#1E5A40" stroke-width="1"/>
-    <rect x="316" y="148" width="24" height="18" rx="2" fill="#220A0A"/>
-    <g fill="#FF4040">
-      <circle cx="328" cy="153" r="2.2"/>
-      <rect x="327" y="156" width="2.5" height="6" rx="0.4"/>
-      <rect x="324.5" y="157" width="2" height="4.5"/>
-      <rect x="330.5" y="157" width="2" height="4.5"/>
-      <rect x="325.5" y="162" width="1.5" height="3.5"/>
-      <rect x="329.5" y="162" width="1.5" height="3.5"/>
-    </g>
-    <rect x="316" y="166" width="24" height="18" rx="2" fill="#0A1A12"/>
-    <g fill="#00E09A" opacity="0.5">
-      <circle cx="328" cy="170" r="2.2"/>
-      <rect x="327" y="173" width="2.5" height="5" rx="0.4"/>
-    </g>
-
-    <!-- 트럭 (좌 패널과 동일 위치) -->
+    <!-- 트럭 (동일 위치) -->
     <g id="truckR">
-      <rect x="425" y="278" width="120" height="90" rx="4" fill="#3A5044"/>
-      <rect x="380" y="288" width="50" height="80" rx="4" fill="#445A4D"/>
-      <rect x="387" y="295" width="36" height="26" rx="2" fill="#7AC8B0" opacity="0.45"/>
-      <circle cx="410" cy="370" r="9" fill="#0F1A12"/>
-      <circle cx="450" cy="370" r="9" fill="#0F1A12"/>
-      <circle cx="520" cy="370" r="9" fill="#0F1A12"/>
-      <text x="485" y="335" text-anchor="middle" font-size="14" fill="#7C9C8A" font-weight="800">TRUCK</text>
+      <rect x="290" y="278" width="160" height="100" rx="4" fill="#3A5044"/>
+      <rect x="240" y="288" width="55" height="90" rx="4" fill="#445A4D"/>
+      <rect x="247" y="297" width="40" height="28" rx="2" fill="#7AC8B0" opacity="0.45"/>
+      <circle cx="270" cy="380" r="10" fill="#0F1A12"/>
+      <circle cx="320" cy="380" r="10" fill="#0F1A12"/>
+      <circle cx="420" cy="380" r="10" fill="#0F1A12"/>
+      <text x="370" y="335" text-anchor="middle" font-size="16" fill="#7C9C8A" font-weight="800">TRUCK</text>
     </g>
 
-    <!-- 어린이 (감지! 빨강 + 글로우 + 점선 박스) -->
-    <circle cx="265" cy="325" r="50" fill="url(#warnGlow)"/>
-    <g id="childR" filter="url(#redGlow)">
-      <circle cx="265" cy="312" r="10" fill="#FF4040"/>
-      <rect x="258" y="322" width="14" height="22" rx="3" fill="#FF4040"/>
-      <line x1="258" y1="330" x2="251" y2="346" stroke="#FF4040" stroke-width="3"/>
-      <line x1="272" y1="330" x2="279" y2="346" stroke="#FF4040" stroke-width="3"/>
-      <line x1="260" y1="344" x2="257" y2="362" stroke="#FF4040" stroke-width="3"/>
-      <line x1="270" y1="344" x2="273" y2="362" stroke="#FF4040" stroke-width="3"/>
-    </g>
-    <!-- 점선 추적 박스 -->
-    <rect x="245" y="298" width="40" height="70" rx="4" fill="none" stroke="#FF4040" stroke-width="2" stroke-dasharray="5,3">
+    <!-- 트럭 가림 부분에 빨간 신호등 강조 (AuraView가 인식) -->
+    <circle cx="118" cy="196" r="32" fill="url(#redGlow)"/>
+    <rect x="72" y="152" width="172" height="92" rx="8" fill="none" stroke="#FF4040" stroke-width="2" stroke-dasharray="5,3">
       <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="1.3s" repeatCount="indefinite"/>
     </rect>
 
-    <!-- V2V/CCTV 점선 (위·아래에서 어린이로) -->
-    <path d="M 50 480 Q 150 420 240 350" stroke="#00E09A" stroke-width="2" fill="none" stroke-dasharray="6,4">
+    <!-- 신호 API 직접 호출 화살표 (도로 위쪽 클라우드 → 신호등) -->
+    <path d="M 380 90 Q 280 110 160 160" stroke="#00E09A" stroke-width="2" fill="none" stroke-dasharray="6,4">
       <animate attributeName="stroke-dashoffset" values="0;-20" dur="0.9s" repeatCount="indefinite"/>
     </path>
-    <text x="110" y="455" font-size="10" fill="#00E09A" font-weight="700">V2V</text>
 
-    <!-- HUD 경보 박스 -->
-    <rect x="20" y="200" width="380" height="80" rx="10" fill="#2A0F12" stroke="#FF4040" stroke-width="2">
+    <!-- 신호 API 카드 (우상단) -->
+    <rect x="370" y="60" width="220" height="65" rx="10" fill="#0A1F14" stroke="#00E09A" stroke-width="2"/>
+    <text x="480" y="83" text-anchor="middle" font-size="11" fill="#7CC8B0" font-weight="700">신호 API · apis.data.go.kr</text>
+    <text x="480" y="103" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="900">실시간 신호: 적색 (잔여 12s)</text>
+    <text x="480" y="120" text-anchor="middle" font-size="10" fill="#7CC8B0">카메라 우회 — 트럭 가림 무관</text>
+
+    <!-- HUD 경보 (도로 우측, 내 차 위) -->
+    <rect x="380" y="190" width="195" height="80" rx="10" fill="#2A0F12" stroke="#FF4040" stroke-width="2">
       <animate attributeName="stroke-opacity" values="0.7;1;0.7" dur="1.2s" repeatCount="indefinite"/>
     </rect>
-    <text x="210" y="230" text-anchor="middle" font-size="18" font-weight="900" fill="#FF4040">⚠  5.7초 안에 충돌 위험 — 즉시 정지!</text>
-    <text x="210" y="252" text-anchor="middle" font-size="12" fill="#FFAAAA">보행자(어린이) 탐지됨 · AuraView HUD 경보</text>
-    <text x="210" y="270" text-anchor="middle" font-size="11" fill="#7CC8B0">근거: 15종 공공데이터 + V2V 협업 인지</text>
+    <text x="478" y="218" text-anchor="middle" font-size="20" font-weight="900" fill="#FF4040">⚠  적신호 정지!</text>
+    <text x="478" y="240" text-anchor="middle" font-size="12" fill="#FFAAAA">잔여 12초 · 정지선 직전 제동</text>
+    <text x="478" y="258" text-anchor="middle" font-size="10" fill="#7CC8B0">근거: 신호 API + 15종 공공데이터</text>
 
-    <!-- 내 차 (트럭 뒤 = 화면 우측 끝) -->
+    <!-- 내 차 -->
     <g id="egoR">
-      <rect x="555" y="295" width="60" height="40" rx="5" fill="#1E4A38"/>
-      <rect x="568" y="300" width="35" height="14" rx="2" fill="#3AA078" opacity="0.6"/>
-      <circle cx="565" cy="338" r="6" fill="#0F1A12"/>
-      <circle cx="605" cy="338" r="6" fill="#0F1A12"/>
-      <text x="585" y="321" text-anchor="middle" font-size="10" fill="white" font-weight="800">나(운전자)</text>
+      <rect x="525" y="295" width="70" height="42" rx="5" fill="#1E4A38"/>
+      <rect x="540" y="300" width="40" height="14" rx="2" fill="#3AA078" opacity="0.6"/>
+      <circle cx="538" cy="340" r="7" fill="#0F1A12"/>
+      <circle cx="582" cy="340" r="7" fill="#0F1A12"/>
+      <text x="560" y="323" text-anchor="middle" font-size="10" fill="white" font-weight="800">나(운전자)</text>
     </g>
-    <!-- AuraView 경보 → 내 차 -->
-    <path d="M 210 282 Q 350 290 555 315" stroke="#00E09A" stroke-width="2" fill="none" stroke-dasharray="5,3">
+
+    <!-- HUD → 내 차 -->
+    <path d="M 478 272 Q 530 285 560 295" stroke="#FF4040" stroke-width="2" fill="none" stroke-dasharray="5,3">
       <animate attributeName="stroke-dashoffset" values="0;-16" dur="0.7s" repeatCount="indefinite"/>
     </path>
 
     <!-- 하단 카피 -->
     <rect x="0" y="555" width="600" height="45" fill="#06120E"/>
-    <text x="300" y="582" text-anchor="middle" font-size="15" font-weight="800" fill="#00E09A">15종 공공데이터 + V2V로 사각지대 복원</text>
-    <text x="300" y="595" text-anchor="middle" font-size="10" fill="#7CC8B0" font-weight="700">실시간 AI 경보 · 사고 예방</text>
+    <text x="300" y="582" text-anchor="middle" font-size="15" font-weight="800" fill="#00E09A">신호 API 직접 호출 — 카메라 가림 무관</text>
+    <text x="300" y="595" text-anchor="middle" font-size="10" fill="#7CC8B0" font-weight="700">실시간 신호 상태 · 정지선 직전 안전 제동</text>
   </g>
 
-  <!-- 중앙 분할선 + vs 배지 -->
+  <!-- 분할선 + vs -->
   <line x1="600" y1="0" x2="600" y2="600" stroke="#FFB020" stroke-width="2" opacity="0.55"/>
   <circle cx="600" cy="300" r="22" fill="#0A0E18" stroke="#FFB020" stroke-width="2"/>
   <text x="600" y="305" text-anchor="middle" font-size="14" font-weight="900" fill="#FFB020">vs</text>

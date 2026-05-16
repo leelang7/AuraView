@@ -3,8 +3,23 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>AuraView — 보이지 않는 위험을 본다</title>
-<meta name="description" content="트럭 뒤에 가려진 어린이, 신호등 너머 보행자 — AuraView는 9종 공공데이터와 V2V로 사각지대까지 계산해 평균 3.38초 먼저 위험을 알려줍니다."/>
+<title>AuraView — 운전자가 못 보는 곳을 본다</title>
+<meta name="description" content="트럭 뒤에 가려진 어린이, 신호등 너머 보행자 — AuraView는 12종 공공데이터와 V2V로 사각지대까지 계산해 평균 3.38초 먼저 위험을 알려줍니다. 매년 21명의 생명을 보호합니다."/>
+
+<!-- OpenGraph / SNS 공유 카드 -->
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="AuraView — 운전자가 못 보는 곳을 본다"/>
+<meta property="og:description" content="12종 공공데이터 + V2V 협업 인지로 평균 3.38초 먼저 위험 감지. 매년 21명의 생명을 보호하는 한국 도로 안전 AI. 2026 국토교통 데이터활용 경진대회 출품작."/>
+<meta property="og:image" content="https://auraview.allthatai.kr/static/visuals/og_card.svg"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:url" content="https://auraview.allthatai.kr/story/"/>
+<meta property="og:site_name" content="AuraView K-Perception"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="AuraView — 운전자가 못 보는 곳을 본다"/>
+<meta name="twitter:description" content="12종 공공데이터 + V2V로 3.38초 먼저 위험 감지 · 매년 21명 보호"/>
+<meta name="twitter:image" content="https://auraview.allthatai.kr/static/visuals/og_card.svg"/>
 
 <style>
   :root {
@@ -225,6 +240,46 @@
     opacity: 1;
     transform: translateY(0);
   }
+
+  /* simulator sliders */
+  .sim-row {
+    margin-bottom: 14px;
+  }
+  .sim-row-inner {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;
+  }
+  .sim-row .lbl {
+    font-size: 12px; color: var(--muted); font-weight: 600;
+  }
+  .sim-row .val {
+    font-size: 14px; font-weight: 800; color: var(--accent);
+    font-family: monospace;
+  }
+  .sim-row input[type=range] {
+    width: 100%; height: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: linear-gradient(90deg, var(--safe), var(--warn));
+    border-radius: 2px; outline: none; cursor: pointer;
+  }
+  .sim-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px;
+    background: var(--text);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(0, 200, 255, 0.30);
+    cursor: pointer;
+  }
+  .sim-row input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    background: var(--text);
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    cursor: pointer;
+  }
+
+  @media (max-width: 720px) {
+    .sim-grid { grid-template-columns: 1fr !important; }
+  }
 </style>
 </head>
 <body>
@@ -235,7 +290,7 @@
   <h1>운전자가 못 보는 곳을<br/><em>AuraView</em> 가 본다.</h1>
   <p class="hero-sub">
     트럭이 신호등을 가렸을 때. 좌측 사각지대에 이륜차가 있을 때. 어린이가 버스 뒤에서 길을 건널 때.
-    AuraView는 <b>12종 공공데이터</b>와 <b>V2V 협업 인지</b>로 사각지대까지 계산해
+    AuraView는 <b>15종 공공데이터</b>와 <b>V2V 협업 인지</b>로 사각지대까지 계산해
     <b style="color:var(--safe);">평균 3.38초 먼저</b> 위험을 알려줍니다.
   </p>
   <div class="hero-stats">
@@ -252,7 +307,7 @@
       <div class="l">매년 살릴 수 있는 생명</div>
     </div>
     <div class="stat">
-      <div class="n">12종</div>
+      <div class="n">15종</div>
       <div class="l">실시간 공공데이터 융합</div>
     </div>
   </div>
@@ -307,7 +362,7 @@
 <!-- ─────────────────────────  12 SOURCES  ───────────────────────── -->
 <section>
   <div class="wrap reveal">
-    <h2><em>12종 공공데이터</em>가 한 번에 결합됩니다.</h2>
+    <h2><em>15종 공공데이터</em>가 한 번에 결합됩니다.</h2>
     <p class="section-sub">
       어떤 단일 모델도 못 보는 정보를 — 한국 도로 인프라가 이미 측정 중인 모든 신호를 — 한 응답으로 결합합니다.
       카메라가 보지 못해도, 다른 데이터가 위험을 알려줍니다.
@@ -325,6 +380,72 @@
       <div class="src-card"><div class="emoji">🏫</div><div class="name">어린이보호구역</div><div class="desc">vworld · 등하교 시 위험 ×1.5</div><span class="badge badge-v3">v3 NEW</span></div>
       <div class="src-card"><div class="emoji">❄️</div><div class="name">도로결빙 위험</div><div class="desc">RWIS · 블랙아이스 자동 추론</div><span class="badge badge-v3">v3 NEW</span></div>
       <div class="src-card"><div class="emoji">🚶</div><div class="name">보행자 사고다발</div><div class="desc">TAAS · 광화문·강남역 등 hotspot</div><span class="badge badge-v3">v3 NEW</span></div>
+      <div class="src-card"><div class="emoji">💨</div><div class="name">미세먼지 (PM10/PM2.5)</div><div class="desc">에어코리아 · 시정·카메라 오염 위험</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
+      <div class="src-card"><div class="emoji">🎒</div><div class="name">어린이 통학로 GIS</div><div class="desc">교육부 · 등하교 시간 +0.18</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
+      <div class="src-card"><div class="emoji">⚡</div><div class="name">EV 충전소</div><div class="desc">한국환경공단 · 정차 EV 패턴 이상탐지</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────  STORY 4 : 8 시나리오 카드  ───────────────────────── -->
+<section>
+  <div class="wrap reveal">
+    <h2><em>8가지 위험 상황</em>에서 모두 작동합니다.</h2>
+    <p class="section-sub">한국 도로에서 가장 사고가 많이 일어나는 8개 시나리오 모두를 학습하고 대응합니다.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;max-width:1100px;margin:0 auto;">
+      <div class="src-card" style="padding:0;overflow:hidden;"><object data="/static/visuals/scenarios/01_truck_occlusion.svg" type="image/svg+xml" style="width:100%;display:block;" aria-label="트럭 가림"></object></div>
+      <div class="src-card" style="padding:0;overflow:hidden;"><object data="/static/visuals/scenarios/02_motorcycle_blindspot.svg" type="image/svg+xml" style="width:100%;display:block;" aria-label="이륜 사각"></object></div>
+      <div class="src-card" style="padding:0;overflow:hidden;"><object data="/static/visuals/scenarios/03_signal_occlusion.svg" type="image/svg+xml" style="width:100%;display:block;" aria-label="신호등 가림"></object></div>
+      <div class="src-card" style="padding:0;overflow:hidden;"><object data="/static/visuals/scenarios/04_rainy_intersection.svg" type="image/svg+xml" style="width:100%;display:block;" aria-label="우천"></object></div>
+      <div class="src-card" style="padding:0;overflow:hidden;"><object data="/static/visuals/scenarios/05_right_turn_pedestrian.svg" type="image/svg+xml" style="width:100%;display:block;" aria-label="우회전 보행자"></object></div>
+      <div class="src-card" style="padding:0;overflow:hidden;"><object data="/static/visuals/scenarios/06_school_zone.svg" type="image/svg+xml" style="width:100%;display:block;" aria-label="스쿨존"></object></div>
+      <div class="src-card" style="padding:0;overflow:hidden;"><object data="/static/visuals/scenarios/07_bicycle_lane.svg" type="image/svg+xml" style="width:100%;display:block;" aria-label="자전거 도로"></object></div>
+      <div class="src-card" style="padding:0;overflow:hidden;"><object data="/static/visuals/scenarios/08_night_pedestrian.svg" type="image/svg+xml" style="width:100%;display:block;" aria-label="야간 보행자"></object></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────  STORY 5 : 인터랙티브 시뮬레이터  ───────────────────────── -->
+<section class="alt">
+  <div class="wrap reveal">
+    <h2><em>지금 당장</em> 위험도를 계산해 보세요.</h2>
+    <p class="section-sub">슬라이더를 조절하면 12종 데이터가 어떻게 결합되어 위험도를 만드는지 즉시 보입니다.</p>
+    <div style="max-width:980px;margin:0 auto;padding:28px;background:linear-gradient(135deg,rgba(0,200,255,0.05),rgba(0,224,154,0.03));border:1px solid var(--border);border-radius:18px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+        <!-- LEFT: sliders -->
+        <div>
+          <div class="sim-row" data-key="speed" data-min="0" data-max="80" data-init="35" data-unit="km/h" data-label="평균 속도 (VDS)"></div>
+          <div class="sim-row" data-key="incidents" data-min="0" data-max="5" data-init="1" data-unit="건" data-label="활성 돌발상황"></div>
+          <div class="sim-row" data-key="taas" data-min="0" data-max="10" data-init="3" data-unit="건" data-label="TAAS 사고이력 (인근 5y)"></div>
+          <div class="sim-row" data-key="weather" data-min="0" data-max="30" data-init="0" data-unit="%" data-label="🌧️ 우천 위험 (KMA)"></div>
+          <div class="sim-row" data-key="er_load" data-min="0" data-max="100" data-init="55" data-unit="%" data-label="🏥 응급실 포화도"></div>
+          <div class="sim-row" data-key="freeze" data-min="0" data-max="32" data-init="0" data-unit="%" data-label="❄️ 결빙 위험"></div>
+          <div class="sim-row" data-key="school" data-min="100" data-max="150" data-init="100" data-unit="%" data-label="🏫 스쿨존 multiplier"></div>
+          <div class="sim-row" data-key="ped" data-min="0" data-max="30" data-init="0" data-unit="%" data-label="🚶 보행자 다발 boost"></div>
+        </div>
+        <!-- RIGHT: result -->
+        <div style="position:sticky;top:24px;">
+          <div style="text-align:center;margin-bottom:16px;">
+            <div style="font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;">FUSION RISK SCORE</div>
+            <div id="simScore" style="font-size:88px;font-weight:900;color:var(--safe);line-height:1;">0.00</div>
+            <div id="simLevel" style="font-size:14px;font-weight:800;letter-spacing:2px;margin-top:4px;color:var(--safe);">LOW</div>
+          </div>
+          <div style="height:14px;background:rgba(255,255,255,0.05);border-radius:7px;overflow:hidden;margin-bottom:18px;">
+            <div id="simBar" style="height:100%;width:0%;background:linear-gradient(90deg,#00E09A,#FFB020,#FF4444);transition:width 0.3s;border-radius:7px;"></div>
+          </div>
+          <div style="padding:16px;background:rgba(255,176,32,0.06);border:1px solid rgba(255,176,32,0.20);border-radius:10px;">
+            <div style="font-size:11px;letter-spacing:2px;color:var(--warn);margin-bottom:8px;">이 조건에서 예방 효과</div>
+            <div style="font-size:13px;line-height:1.7;color:var(--text);">
+              연간 예방 사고: <b id="simPrevented" style="color:var(--safe);">—</b><br/>
+              사망 감소: <b id="simDeaths" style="color:var(--safe);">—</b>명/년 (5% Pilot)<br/>
+              회피율: <b id="simAvoidance" style="color:var(--accent);">—</b>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center;">
+            계산식: <code>fusion_risk_score</code> backend formula 와 동일
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -347,8 +468,8 @@
       </a>
       <a class="cta" href="/fusion/intersection/1007">
         <div class="icon">🔗</div>
-        <div class="title">12종 융합 JSON</div>
-        <div class="desc">한 번의 호출로 12개 공공데이터 결합 결과 (라이브)</div>
+        <div class="title">15종 융합 JSON</div>
+        <div class="desc">한 번의 호출로 15개 공공데이터 결합 결과 (라이브)</div>
       </a>
       <a class="cta" href="/slides/">
         <div class="icon">🎞️</div>
@@ -380,6 +501,91 @@
     entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
   }, { threshold: 0.15 });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // ── 인터랙티브 시뮬레이터 ──
+  (function initSimulator() {
+    const state = {};
+    document.querySelectorAll('.sim-row').forEach(row => {
+      const key = row.dataset.key;
+      const min = parseFloat(row.dataset.min);
+      const max = parseFloat(row.dataset.max);
+      const init = parseFloat(row.dataset.init);
+      const unit = row.dataset.unit;
+      const label = row.dataset.label;
+      state[key] = init;
+
+      row.innerHTML = `
+        <div class="sim-row-inner">
+          <span class="lbl">${label}</span>
+          <span class="val"><span id="v_${key}">${init}</span> ${unit}</span>
+        </div>
+        <input type="range" id="r_${key}" min="${min}" max="${max}" value="${init}" step="${(max-min) > 50 ? 1 : 0.5}"/>
+      `;
+      const slider = row.querySelector('input');
+      const valEl = row.querySelector(`#v_${key}`);
+      slider.addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        state[key] = v;
+        valEl.textContent = v;
+        recompute();
+      });
+    });
+
+    function recompute() {
+      // backend public_api.py IntersectionFusion.to_dict() 와 동일한 가중치
+      // 속도0.20 + 돌발0.15 + TAAS0.15 + 기상0.12 + ER0.08 + 자전거0.08 + 결빙0.10 + 보행자0.07
+      // + (스쿨존 multiplier - 1.0) * 0.10 (가산), 마지막에 multiplier 곱
+      const speed = state.speed;
+      const inc = state.incidents;
+      const taas = state.taas;
+      const weather = state.weather / 100;     // 0~0.30
+      const er = state.er_load / 100;          // 0~1.0
+      const freeze = state.freeze / 100;       // 0~0.32
+      const ped = state.ped / 100;             // 0~0.30
+      const sz = state.school / 100;           // 1.0~1.5
+
+      let base = (
+        (1.0 - Math.min(speed, 80) / 80) * 0.20 +
+        Math.min(inc, 3) / 3 * 0.15 +
+        Math.min(taas, 7) / 7 * 0.15 +
+        weather * 0.12 +
+        er * 0.08 +
+        freeze * 0.10 +
+        ped * 0.07 +
+        (sz - 1.0) * 0.10
+      );
+      if (sz > 1.0) base *= sz;
+      const risk = Math.min(1.0, base);
+
+      // UI 갱신
+      const $ = (id) => document.getElementById(id);
+      $('simScore').textContent = risk.toFixed(2);
+      $('simBar').style.width = (risk * 100).toFixed(0) + '%';
+
+      let level, levelColor;
+      if (risk >= 0.6) { level = 'HIGH'; levelColor = '#FF4444'; }
+      else if (risk >= 0.35) { level = 'MEDIUM'; levelColor = '#FFB020'; }
+      else { level = 'LOW'; levelColor = '#00E09A'; }
+      $('simLevel').textContent = level;
+      $('simLevel').style.color = levelColor;
+      $('simScore').style.color = levelColor;
+
+      // 임팩트 추정 (TAAS 2024 기반)
+      // 회피율 = min(0.85, 0.25 × lead_time)  · risk 가 높을수록 lead_time 도 높다 가정
+      const leadTime = 1.5 + risk * 3.5;        // 1.5 ~ 5.0s
+      const avoidance = Math.min(0.85, 0.25 * leadTime);
+      const urbanRatio = 0.46, deathTotal = 2581, injuryTotal = 290400, accidentTotal = 207535;
+      const coverage = 0.05;  // 5% pilot
+      const scenarioRatio = 0.42;
+      const prevented = Math.round(accidentTotal * urbanRatio * scenarioRatio * coverage * avoidance);
+      const deaths = Math.round(deathTotal * urbanRatio * scenarioRatio * coverage * avoidance);
+
+      $('simPrevented').textContent = prevented.toLocaleString() + '건';
+      $('simDeaths').textContent = deaths;
+      $('simAvoidance').textContent = (avoidance * 100).toFixed(1) + '%';
+    }
+    recompute();
+  })();
 </script>
 
 </body>

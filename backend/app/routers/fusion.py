@@ -51,6 +51,10 @@ def list_sources():
         {"id": "school_zone",        "name": "어린이보호구역 GIS",           "origin": "api.vworld.kr (lt_c_spzzone)", "gain": "스쿨존 위험 ×1.5 (등하교)", "added": "v3-2026.05.16"},
         {"id": "black_ice",          "name": "도로결빙 위험구간 (KMA 파생)", "origin": "T1H+PTY+RN1 결합",              "gain": "블랙아이스 +0.32", "added": "v3-2026.05.16"},
         {"id": "pedestrian_hotspot", "name": "보행자 사고다발지역",          "origin": "taas.koroad.or.kr (ped)",       "gain": "보행자 prior +0.30", "added": "v3-2026.05.16"},
+        # v4 2026-05-16: 12 → 15종 확장
+        {"id": "air_quality",  "name": "환경부 미세먼지 (PM10/PM2.5)", "origin": "apis.data.go.kr/B552584", "gain": "시정·카메라오염 +0.06", "added": "v4-2026.05.16"},
+        {"id": "school_route", "name": "어린이 통학로 GIS",            "origin": "도로교통공단 통학로",     "gain": "통학시간 boost +0.18",  "added": "v4-2026.05.16"},
+        {"id": "ev_charger",   "name": "EV 충전소 위치/사용률",        "origin": "apis.data.go.kr/B552584 (Ev)", "gain": "EV 정차 패턴 이상탐지", "added": "v4-2026.05.16"},
     ]
     for s in sources:
         meta = fresh.get(s["id"]) or {}
@@ -61,7 +65,7 @@ def list_sources():
     return {
         "sources": sources,
         "count": len(sources),
-        "schema_version": "fusion.v3-12src-2026.05.16",
+        "schema_version": "fusion.v4-15src-2026.05.16",
         "checked_at": now_ts.isoformat() + "Z",
     }
 
@@ -105,6 +109,27 @@ def fusion_pedestrian_hotspots(lat: float = Query(37.5665), lon: float = Query(1
                                 radius_m: float = Query(500.0, ge=50.0, le=5000.0)):
     """반경 N m 보행자 사고다발지역 (TAAS 보행자 특화)."""
     return public_api.fetch_pedestrian_hotspots(lat=lat, lon=lon, radius_m=radius_m)
+
+
+# v4 2026-05-16: 12 → 15종 확장
+@router.get("/air-quality")
+def fusion_air_quality(sido: str = Query("서울")):
+    """시도별 실시간 미세먼지 (PM10/PM2.5)."""
+    return public_api.fetch_air_quality(sido=sido)
+
+
+@router.get("/school-route")
+def fusion_school_route(lat: float = Query(37.5081), lon: float = Query(127.0440),
+                        radius_m: float = Query(800.0, ge=50.0, le=5000.0)):
+    """반경 N m 내 어린이 통학로 + 등하교 시간대 boost."""
+    return public_api.fetch_school_routes(lat=lat, lon=lon, radius_m=radius_m)
+
+
+@router.get("/ev-charger")
+def fusion_ev_charger(lat: float = Query(37.5665), lon: float = Query(126.9780),
+                       radius_m: float = Query(500.0, ge=50.0, le=5000.0)):
+    """반경 N m 내 EV 충전소 + 사용률 → 정차 패턴 이상탐지."""
+    return public_api.fetch_ev_chargers(lat=lat, lon=lon, radius_m=radius_m)
 
 
 @router.get("/intersection/{intersection_id}")

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400" font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 야간 배경 -->
+  <rect width="600" height="400" fill="#060B14"/>
+  <defs>
+    <pattern id="grid8" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0 L0 0 0 20" fill="none" stroke="#0F1A28" stroke-width="0.5"/>
+    </pattern>
+    <!-- 헤드라이트 그라디언트 -->
+    <radialGradient id="headlight1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFBE0" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#FFE566" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#FFE566" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="headlight2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFBE0" stop-opacity="0.8"/>
+      <stop offset="40%" stop-color="#B8D4FF" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#B8D4FF" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 별 -->
+    <circle id="star" r="1.2" fill="white" opacity="0.6"/>
+  </defs>
+  <rect width="600" height="400" fill="url(#grid8)"/>
+
+  <!-- 별 -->
+  <use href="#star" x="100" y="80"/>
+  <use href="#star" x="150" y="60"/>
+  <use href="#star" x="200" y="75"/>
+  <use href="#star" x="250" y="55"/>
+  <use href="#star" x="350" y="65"/>
+  <use href="#star" x="420" y="72"/>
+  <use href="#star" x="480" y="58"/>
+  <use href="#star" x="530" y="80"/>
+  <use href="#star" x="310" y="50"/>
+  <use href="#star" x="170" y="45"/>
+
+  <!-- 좌상단 배지 -->
+  <circle cx="48" cy="48" r="32" fill="#5575E5"/>
+  <text x="48" y="44" text-anchor="middle" font-size="11" fill="white" font-weight="700">시나리오</text>
+  <text x="48" y="62" text-anchor="middle" font-size="20" fill="white" font-weight="900">08</text>
+
+  <!-- 상단 제목 -->
+  <text x="300" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="white">야간 보행자</text>
+  <text x="300" y="60" text-anchor="middle" font-size="13" fill="#8899CC">Night Pedestrian — V2V 헤드라이트 공유</text>
+
+  <!-- 우상단 위험도 -->
+  <text x="560" y="30" text-anchor="middle" font-size="18" fill="#5575E5">⚠</text>
+  <text x="560" y="48" text-anchor="middle" font-size="11" fill="#99AADD">위험도</text>
+  <text x="560" y="62" text-anchor="middle" font-size="12" fill="#5575E5" font-weight="700">높음</text>
+
+  <!-- 도로 (야간) -->
+  <rect x="80" y="215" width="440" height="115" rx="2" fill="#0C1220"/>
+  <rect x="80" y="262" width="440" height="3" fill="#1A2440"/>
+  <!-- 차선 반사 -->
+  <rect x="140" y="260" width="35" height="5" rx="1" fill="#3A5080" opacity="0.6"/>
+  <rect x="220" y="260" width="35" height="5" rx="1" fill="#3A5080" opacity="0.6"/>
+  <rect x="350" y="260" width="35" height="5" rx="1" fill="#3A5080" opacity="0.6"/>
+  <rect x="430" y="260" width="35" height="5" rx="1" fill="#3A5080" opacity="0.6"/>
+
+  <!-- 에고 차량 -->
+  <rect x="100" y="232" width="80" height="48" rx="5" fill="#1E3060"/>
+  <text x="140" y="260" text-anchor="middle" font-size="9" fill="#8899CC" font-weight="700">EGO</text>
+  <!-- 에고 헤드라이트 -->
+  <ellipse cx="220" cy="248" rx="120" ry="30" fill="url(#headlight1)" opacity="0.5"/>
+
+  <!-- 맞은편 AuraView 차 (V2V) -->
+  <rect x="420" y="232" width="80" height="48" rx="5" fill="#1A2A50"/>
+  <text x="460" y="252" text-anchor="middle" font-size="8" fill="#5575E5" font-weight="700">AuraView</text>
+  <text x="460" y="264" text-anchor="middle" font-size="8" fill="#99AADD">V2V</text>
+  <!-- AV 헤드라이트 -->
+  <ellipse cx="380" cy="248" rx="100" ry="28" fill="url(#headlight2)" opacity="0.6"/>
+
+  <!-- 보행자 실루엣 (어둠 속) -->
+  <g opacity="0.85">
+    <circle cx="320" cy="228" r="11" fill="#334466"/>
+    <rect x="314" y="239" width="12" height="22" rx="4" fill="#2A3A5A"/>
+    <line x1="314" y1="247" x2="307" y2="260" stroke="#2A3A5A" stroke-width="2.5"/>
+    <line x1="326" y1="247" x2="333" y2="260" stroke="#2A3A5A" stroke-width="2.5"/>
+    <line x1="314" y1="261" x2="311" y2="275" stroke="#2A3A5A" stroke-width="2.5"/>
+    <line x1="326" y1="261" x2="329" y2="275" stroke="#2A3A5A" stroke-width="2.5"/>
+  </g>
+  <!-- V2V 조명으로 보행자 밝아짐 -->
+  <circle cx="320" cy="248" r="35" fill="#5575E5" opacity="0.12"/>
+
+  <!-- V2V 시야 공유 화살표 -->
+  <path d="M 420 250 L 340 250" stroke="#5575E5" stroke-width="2" fill="none" stroke-dasharray="8,4">
+    <animate attributeName="stroke-dashoffset" values="0;-24" dur="1s" repeatCount="indefinite"/>
+  </path>
+  <polygon points="340,245 328,250 340,255" fill="#5575E5"/>
+  <text x="382" y="240" text-anchor="middle" font-size="9" fill="#5575E5">V2V 시야 공유</text>
+
+  <!-- KMA 시정 패널 -->
+  <rect x="90" y="120" width="160" height="70" rx="8" fill="#0A0F20" stroke="#5575E5" stroke-width="1.5"/>
+  <text x="170" y="140" text-anchor="middle" font-size="10" fill="#5575E5" font-weight="700">V2V + KMA 시정</text>
+  <text x="170" y="156" text-anchor="middle" font-size="9" fill="#8899CC">야간 시정: 320m</text>
+  <text x="170" y="171" text-anchor="middle" font-size="9" fill="#8899CC">헤드라이트 공유 활성</text>
+  <text x="170" y="183" text-anchor="middle" font-size="8" fill="#5575E5">보행자 탐지 확장됨</text>
+
+  <!-- 보행자 탐지 펄스 -->
+  <circle cx="320" cy="248" r="22" fill="none" stroke="#5575E5" stroke-width="2" opacity="0">
+    <animate attributeName="r" values="22;48;22" dur="2.3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.8;0;0.8" dur="2.3s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- 달 -->
+  <circle cx="540" cy="90" r="18" fill="#1C2A40"/>
+  <circle cx="548" cy="84" r="14" fill="#060B14"/>
+
+  <!-- 하단 카피 -->
+  <rect x="0" y="355" width="600" height="45" fill="#060B14" opacity="0.95"/>
+  <text x="200" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 V2V 헤드라이트 공유로 야간 시야를 확장합니다</text>
+
+  <!-- 우하단 데이터 라벨 -->
+  <rect x="448" y="358" width="144" height="32" rx="6" fill="#1E2A45"/>
+  <text x="520" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="520" y="383" text-anchor="middle" font-size="11" fill="#5575E5" font-weight="700">V2V + KMA 시정</text>
+</svg>

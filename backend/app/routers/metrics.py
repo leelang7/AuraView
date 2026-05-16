@@ -270,6 +270,33 @@ def data_attribution():
                 "used_in": ["/fusion/intersection/{id}", "/fusion/pedestrian-hotspots", "ped_hotspot_boost +0.30"],
                 "added": "v3-2026.05.16",
             },
+            {
+                "id": "air_quality",
+                "name": "환경부 미세먼지 (PM10/PM2.5)",
+                "provider": "환경부 한국환경공단 에어코리아",
+                "origin": "apis.data.go.kr/B552584/ArpltnInforInqireSvc",
+                "license": "공공누리 1유형",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/air-quality", "시정 저하·카메라 오염 +0.06"],
+                "added": "v4-2026.05.16",
+            },
+            {
+                "id": "school_route",
+                "name": "어린이 통학로 GIS",
+                "provider": "도로교통공단 / 교육부",
+                "origin": "school route GeoJSON (fallback fixture)",
+                "license": "공공누리 1유형",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/school-route", "통학시간 +0.18 / 외 시간 +0.08"],
+                "added": "v4-2026.05.16",
+            },
+            {
+                "id": "ev_charger",
+                "name": "EV 충전소 위치 + 사용률",
+                "provider": "한국환경공단",
+                "origin": "apis.data.go.kr/B552584/EvCharger",
+                "license": "공공데이터 이용약관",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/ev-charger", "ev_dwelling_likelihood"],
+                "added": "v4-2026.05.16",
+            },
         ],
         "static_datasets": [
             {

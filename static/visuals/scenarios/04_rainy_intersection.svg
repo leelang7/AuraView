@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400" font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 배경 -->
+  <rect width="600" height="400" fill="#0A1220"/>
+  <defs>
+    <pattern id="grid4" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0 L0 0 0 20" fill="none" stroke="#1A2840" stroke-width="0.5"/>
+    </pattern>
+    <linearGradient id="wetRoad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1A2A40"/>
+      <stop offset="100%" stop-color="#0F1E30"/>
+    </linearGradient>
+    <linearGradient id="reflection" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00C8FF" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#00C8FF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="400" fill="url(#grid4)"/>
+
+  <!-- 좌상단 배지 -->
+  <circle cx="48" cy="48" r="32" fill="#00C8FF"/>
+  <text x="48" y="44" text-anchor="middle" font-size="11" fill="#001A22" font-weight="700">시나리오</text>
+  <text x="48" y="62" text-anchor="middle" font-size="20" fill="#001A22" font-weight="900">04</text>
+
+  <!-- 상단 제목 -->
+  <text x="300" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="white">우천 교차로</text>
+  <text x="300" y="60" text-anchor="middle" font-size="13" fill="#AABBCC">Rainy Intersection — 노면 반사 보정</text>
+
+  <!-- 우상단 위험도 -->
+  <text x="560" y="30" text-anchor="middle" font-size="18" fill="#00C8FF">⚠</text>
+  <text x="560" y="48" text-anchor="middle" font-size="11" fill="#88DDFF">위험도</text>
+  <text x="560" y="62" text-anchor="middle" font-size="12" fill="#00C8FF" font-weight="700">중간</text>
+
+  <!-- 교차로 도로 -->
+  <rect x="80" y="210" width="440" height="110" rx="2" fill="url(#wetRoad)"/>
+  <rect x="230" y="100" width="140" height="120" rx="2" fill="url(#wetRoad)"/>
+  <!-- 노면 반사 -->
+  <rect x="80" y="260" width="440" height="30" fill="url(#reflection)" opacity="0.5"/>
+  <rect x="250" y="100" width="100" height="60" fill="url(#reflection)" opacity="0.3"/>
+
+  <!-- 차선 -->
+  <rect x="80" y="258" width="440" height="4" fill="#2A3A5A"/>
+  <rect x="140" y="255" width="30" height="6" rx="1" fill="#00C8FF" opacity="0.4"/>
+  <rect x="210" y="255" width="30" height="6" rx="1" fill="#00C8FF" opacity="0.4"/>
+  <rect x="350" y="255" width="30" height="6" rx="1" fill="#00C8FF" opacity="0.4"/>
+  <rect x="420" y="255" width="30" height="6" rx="1" fill="#00C8FF" opacity="0.4"/>
+  <rect x="297" y="256" width="6" height="3" rx="1" fill="#00C8FF" opacity="0.4"/>
+
+  <!-- 빗방울 -->
+  <g stroke="#00C8FF" stroke-width="1.2" opacity="0.5">
+    <line x1="100" y1="80" x2="95" y2="100"/>
+    <line x1="140" y1="70" x2="135" y2="90"/>
+    <line x1="180" y1="85" x2="175" y2="105"/>
+    <line x1="220" y1="75" x2="215" y2="95"/>
+    <line x1="260" y1="82" x2="255" y2="102"/>
+    <line x1="350" y1="78" x2="345" y2="98"/>
+    <line x1="390" y1="68" x2="385" y2="88"/>
+    <line x1="430" y1="83" x2="425" y2="103"/>
+    <line x1="470" y1="72" x2="465" y2="92"/>
+    <line x1="510" y1="80" x2="505" y2="100"/>
+    <line x1="120" y1="155" x2="115" y2="175"/>
+    <line x1="160" y1="165" x2="155" y2="185"/>
+    <line x1="440" y1="148" x2="435" y2="168"/>
+    <line x1="480" y1="160" x2="475" y2="180"/>
+  </g>
+
+  <!-- 에고 차량 -->
+  <rect x="150" y="228" width="75" height="45" rx="5" fill="#3A6FD8"/>
+  <text x="188" y="255" text-anchor="middle" font-size="9" fill="white" font-weight="700">EGO</text>
+
+  <!-- 교차 차량 -->
+  <rect x="250" y="140" width="45" height="70" rx="5" fill="#4A5A80"/>
+  <text x="273" y="178" text-anchor="middle" font-size="8" fill="#AABBCC">CAR</text>
+
+  <!-- KMA 보정 패널 -->
+  <rect x="380" y="130" width="150" height="65" rx="8" fill="#0A1830" stroke="#00C8FF" stroke-width="1.5"/>
+  <text x="455" y="150" text-anchor="middle" font-size="10" fill="#00C8FF" font-weight="700">KMA 강수 보정</text>
+  <text x="455" y="165" text-anchor="middle" font-size="10" fill="#AABBCC">신뢰도 +0.18 적용</text>
+  <text x="455" y="180" text-anchor="middle" font-size="9" fill="#88AACC">강수량: 12mm/h</text>
+
+  <!-- 빗방울 애니메이션 -->
+  <g>
+    <line x1="300" y1="80" x2="295" y2="100" stroke="#00C8FF" stroke-width="1.5" opacity="0">
+      <animate attributeName="opacity" values="0;0.8;0" dur="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="y1" values="80;120" dur="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="y2" values="100;140" dur="1.2s" repeatCount="indefinite"/>
+    </line>
+    <line x1="330" y1="65" x2="325" y2="85" stroke="#00C8FF" stroke-width="1.5" opacity="0">
+      <animate attributeName="opacity" values="0;0.7;0" dur="1.4s" begin="0.3s" repeatCount="indefinite"/>
+      <animate attributeName="y1" values="65;110" dur="1.4s" begin="0.3s" repeatCount="indefinite"/>
+      <animate attributeName="y2" values="85;130" dur="1.4s" begin="0.3s" repeatCount="indefinite"/>
+    </line>
+  </g>
+
+  <!-- 하단 카피 -->
+  <rect x="0" y="355" width="600" height="45" fill="#0A0F1E" opacity="0.9"/>
+  <text x="188" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 KMA 강수 데이터로 +0.18 신뢰도 보정을 적용합니다</text>
+
+  <!-- 우하단 데이터 라벨 -->
+  <rect x="460" y="358" width="132" height="32" rx="6" fill="#1E2A45"/>
+  <text x="526" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="526" y="383" text-anchor="middle" font-size="11" fill="#00C8FF" font-weight="700">KMA + VDS</text>
+</svg>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400" font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 배경 -->
+  <rect width="600" height="400" fill="#0F1525"/>
+  <defs>
+    <pattern id="grid5" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0 L0 0 0 20" fill="none" stroke="#1E2A45" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="400" fill="url(#grid5)"/>
+
+  <!-- 좌상단 배지 -->
+  <circle cx="48" cy="48" r="32" fill="#FF6B6B"/>
+  <text x="48" y="44" text-anchor="middle" font-size="11" fill="white" font-weight="700">시나리오</text>
+  <text x="48" y="62" text-anchor="middle" font-size="20" fill="white" font-weight="900">05</text>
+
+  <!-- 상단 제목 -->
+  <text x="300" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="white">우회전 보행자</text>
+  <text x="300" y="60" text-anchor="middle" font-size="13" fill="#AABBCC">Right Turn Pedestrian — Intent 예측</text>
+
+  <!-- 우상단 위험도 -->
+  <text x="560" y="30" text-anchor="middle" font-size="18" fill="#FF6B6B">⚠</text>
+  <text x="560" y="48" text-anchor="middle" font-size="11" fill="#FF9999">위험도</text>
+  <text x="560" y="62" text-anchor="middle" font-size="12" fill="#FF6B6B" font-weight="700">매우 높음</text>
+
+  <!-- 교차로 도로 -->
+  <rect x="80" y="215" width="440" height="105" rx="2" fill="#1C2340"/>
+  <rect x="310" y="100" width="130" height="120" rx="2" fill="#1C2340"/>
+
+  <!-- 차선 -->
+  <rect x="80" y="262" width="440" height="4" fill="#2A3A5A"/>
+  <rect x="135" y="259" width="30" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
+  <rect x="205" y="259" width="30" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
+
+  <!-- 횡단보도 -->
+  <rect x="300" y="215" width="15" height="105" fill="#2A3A5A"/>
+  <rect x="320" y="215" width="15" height="105" fill="#2A3A5A"/>
+  <rect x="340" y="215" width="15" height="105" fill="#2A3A5A"/>
+  <rect x="360" y="215" width="15" height="105" fill="#2A3A5A"/>
+
+  <!-- 우회전 차량 -->
+  <g>
+    <rect x="350" y="140" width="70" height="42" rx="5" fill="#3A6FD8" transform="rotate(0,385,161)"/>
+    <text x="385" y="165" text-anchor="middle" font-size="9" fill="white" font-weight="700">EGO</text>
+    <!-- 우회전 화살표 -->
+    <path d="M 385 182 Q 385 220 340 240" stroke="#FF6B6B" stroke-width="2" fill="none" stroke-dasharray="6,3"/>
+    <polygon points="337,237 341,248 348,239" fill="#FF6B6B"/>
+  </g>
+
+  <!-- 보행자 -->
+  <g>
+    <circle cx="335" cy="232" r="9" fill="#FF9090"/>
+    <rect x="330" y="241" width="10" height="18" rx="3" fill="#FF9090"/>
+    <line x1="330" y1="247" x2="323" y2="258" stroke="#FF9090" stroke-width="2"/>
+    <line x1="340" y1="247" x2="347" y2="258" stroke="#FF9090" stroke-width="2"/>
+    <line x1="330" y1="259" x2="326" y2="270" stroke="#FF9090" stroke-width="2"/>
+    <line x1="340" y1="259" x2="344" y2="270" stroke="#FF9090" stroke-width="2"/>
+  </g>
+
+  <!-- Intent 예측 패널 -->
+  <rect x="90" y="120" width="165" height="75" rx="8" fill="#1A0F20" stroke="#FF6B6B" stroke-width="1.5"/>
+  <text x="172" y="140" text-anchor="middle" font-size="10" fill="#FF6B6B" font-weight="700">Intent 예측</text>
+  <text x="172" y="155" text-anchor="middle" font-size="9" fill="#AABBCC">보행 의도: 직진 89%</text>
+  <text x="172" y="169" text-anchor="middle" font-size="9" fill="#FFAAAA">도로교통법 25조 적용</text>
+  <text x="172" y="183" text-anchor="middle" font-size="9" fill="#FF6B6B">→ 일시정지 권고</text>
+
+  <!-- 위험 경고 박스 -->
+  <rect x="380" y="215" width="130" height="35" rx="5" fill="#2A0F0F" stroke="#FF6B6B" stroke-width="1.5" opacity="0">
+    <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
+  </rect>
+  <text x="445" y="229" text-anchor="middle" font-size="10" fill="#FF4444" font-weight="700" opacity="0">
+    <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
+    충돌 위험!
+  </text>
+  <text x="445" y="244" text-anchor="middle" font-size="9" fill="#FF8888" opacity="0">
+    <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
+    즉시 제동 권고
+  </text>
+
+  <!-- 보행자 펄스 -->
+  <circle cx="335" cy="245" r="18" fill="none" stroke="#FF6B6B" stroke-width="2" opacity="0">
+    <animate attributeName="r" values="18;38;18" dur="1.6s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.9;0;0.9" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- 하단 카피 -->
+  <rect x="0" y="355" width="600" height="45" fill="#0A0F1E" opacity="0.9"/>
+  <text x="205" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 intent 예측 + 도로교통법 25조로 사고를 예방합니다</text>
+
+  <!-- 우하단 데이터 라벨 -->
+  <rect x="458" y="358" width="134" height="32" rx="6" fill="#1E2A45"/>
+  <text x="525" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="525" y="383" text-anchor="middle" font-size="11" fill="#FF6B6B" font-weight="700">Intent + 법령</text>
+</svg>

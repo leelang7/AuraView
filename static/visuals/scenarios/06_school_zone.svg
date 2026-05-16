@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400" font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 배경 -->
+  <rect width="600" height="400" fill="#0F1525"/>
+  <defs>
+    <pattern id="grid6" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0 L0 0 0 20" fill="none" stroke="#1E2A45" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="400" fill="url(#grid6)"/>
+
+  <!-- 스쿨존 오버레이 -->
+  <rect x="80" y="95" width="440" height="240" rx="8" fill="#A095FF" opacity="0.06"/>
+
+  <!-- 좌상단 배지 -->
+  <circle cx="48" cy="48" r="32" fill="#A095FF"/>
+  <text x="48" y="44" text-anchor="middle" font-size="11" fill="white" font-weight="700">시나리오</text>
+  <text x="48" y="62" text-anchor="middle" font-size="20" fill="white" font-weight="900">06</text>
+
+  <!-- 상단 제목 -->
+  <text x="300" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="white">스쿨존 어린이 보호구역</text>
+  <text x="300" y="60" text-anchor="middle" font-size="13" fill="#AABBCC">School Zone — 어린이 위험도 ×1.5 상향</text>
+
+  <!-- 우상단 위험도 -->
+  <text x="560" y="30" text-anchor="middle" font-size="18" fill="#A095FF">⚠</text>
+  <text x="560" y="48" text-anchor="middle" font-size="11" fill="#C8C0FF">위험도</text>
+  <text x="560" y="62" text-anchor="middle" font-size="12" fill="#A095FF" font-weight="700">높음</text>
+
+  <!-- 학교 건물 -->
+  <rect x="90" y="105" width="140" height="90" rx="4" fill="#1E2A45"/>
+  <rect x="90" y="100" width="140" height="18" rx="3" fill="#A095FF" opacity="0.7"/>
+  <text x="160" y="114" text-anchor="middle" font-size="10" fill="white" font-weight="700">초등학교</text>
+  <rect x="100" y="125" width="28" height="25" rx="2" fill="#0F1A30"/>
+  <rect x="138" y="125" width="28" height="25" rx="2" fill="#0F1A30"/>
+  <rect x="176" y="125" width="28" height="25" rx="2" fill="#0F1A30"/>
+  <rect x="138" y="158" width="28" height="37" rx="2" fill="#0F1A30"/>
+
+  <!-- 도로 -->
+  <rect x="80" y="210" width="440" height="100" rx="2" fill="#1C2340"/>
+  <rect x="80" y="255" width="440" height="4" fill="#2A3A5A"/>
+
+  <!-- 스쿨존 표지 -->
+  <rect x="240" y="195" width="120" height="20" rx="4" fill="#A095FF" opacity="0.8"/>
+  <text x="300" y="210" text-anchor="middle" font-size="11" fill="white" font-weight="700">어린이 보호구역</text>
+
+  <!-- 횡단보도 -->
+  <rect x="230" y="210" width="14" height="100" fill="#2A3A5A"/>
+  <rect x="250" y="210" width="14" height="100" fill="#2A3A5A"/>
+  <rect x="270" y="210" width="14" height="100" fill="#2A3A5A"/>
+
+  <!-- 어린이들 -->
+  <g fill="#FFD5A0">
+    <!-- 어린이 1 -->
+    <circle cx="250" cy="222" r="7"/>
+    <rect x="246" y="229" width="8" height="14" rx="2"/>
+    <!-- 어린이 2 -->
+    <circle cx="270" cy="225" r="7"/>
+    <rect x="266" y="232" width="8" height="14" rx="2"/>
+    <!-- 어린이 3 -->
+    <circle cx="260" cy="232" r="6" opacity="0.7"/>
+    <rect x="257" y="238" width="7" height="12" rx="2" opacity="0.7"/>
+  </g>
+
+  <!-- 에고 차량 -->
+  <rect x="360" y="228" width="75" height="45" rx="5" fill="#3A6FD8"/>
+  <text x="398" y="255" text-anchor="middle" font-size="9" fill="white" font-weight="700">EGO</text>
+
+  <!-- vworld GIS 패널 -->
+  <rect x="380" y="110" width="155" height="75" rx="8" fill="#150E2A" stroke="#A095FF" stroke-width="1.5"/>
+  <text x="458" y="130" text-anchor="middle" font-size="10" fill="#A095FF" font-weight="700">vworld 스쿨존 GIS</text>
+  <text x="458" y="146" text-anchor="middle" font-size="9" fill="#AABBCC">위험도 가중치 ×1.5</text>
+  <text x="458" y="161" text-anchor="middle" font-size="9" fill="#AABBCC">등교시간대: 07-09시</text>
+  <text x="458" y="176" text-anchor="middle" font-size="9" fill="#C8C0FF">현재: 활성 구역</text>
+
+  <!-- 어린이 펄스 애니메이션 -->
+  <circle cx="260" cy="230" r="20" fill="none" stroke="#A095FF" stroke-width="2.5" opacity="0">
+    <animate attributeName="r" values="20;45;20" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.9;0;0.9" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- 속도 제한 표시 -->
+  <circle cx="160" cy="215" r="20" fill="#FF3333" stroke="white" stroke-width="2"/>
+  <text x="160" y="213" text-anchor="middle" font-size="10" fill="white" font-weight="700">30</text>
+  <text x="160" y="225" text-anchor="middle" font-size="7" fill="white">km/h</text>
+
+  <!-- 하단 카피 -->
+  <rect x="0" y="355" width="600" height="45" fill="#0A0F1E" opacity="0.9"/>
+  <text x="198" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 vworld 스쿨존 데이터로 위험도를 ×1.5 상향합니다</text>
+
+  <!-- 우하단 데이터 라벨 -->
+  <rect x="445" y="358" width="147" height="32" rx="6" fill="#1E2A45"/>
+  <text x="518" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="518" y="383" text-anchor="middle" font-size="11" fill="#A095FF" font-weight="700">스쿨존 GIS + 시간대</text>
+</svg>

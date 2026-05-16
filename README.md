@@ -15,6 +15,11 @@
 
 > 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
+> 🆕 **v4 업데이트 (2026-05-16) — 12종 → 15종 공공데이터 + OG 공유 + 인터랙티브 시뮬레이터 + 8 시나리오 카드**
+> 추가 데이터 3종: 💨 **환경부 미세먼지 (PM10/PM2.5)** · 🎒 **어린이 통학로 GIS** · ⚡ **한국환경공단 EV 충전소**.
+> 추가 비주얼: SNS OG 카드 SVG · 8 시나리오 카드 SVG · `/story` 페이지 인터랙티브 시뮬레이터 (슬라이더로 위험점수 실시간 계산).
+> 검증: [`/fusion/sources`](https://auraview.allthatai.kr/fusion/sources) (count=15, schema=fusion.v4-15src-2026.05.16) · [`/fusion/air-quality`](https://auraview.allthatai.kr/fusion/air-quality) · [`/fusion/school-route`](https://auraview.allthatai.kr/fusion/school-route) · [`/fusion/ev-charger`](https://auraview.allthatai.kr/fusion/ev-charger)
+
 > 🆕 **v3 업데이트 (2026-05-16) — 9종 → 12종 공공데이터 + 일반인용 스토리 페이지**
 > 추가 데이터: 🏫 **어린이보호구역 GIS (vworld)** · ❄️ **도로결빙 위험 (KMA 파생 블랙아이스)** · 🚶 **보행자 사고다발지역 (TAAS)**.
 > 추가 시각자료: BEFORE/AFTER SVG · 3.38초 타임라인 SVG · 21명 살림 waffle chart SVG (모두 SMIL 애니메이션).

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400" font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 배경 -->
+  <rect width="600" height="400" fill="#0F1525"/>
+  <defs>
+    <pattern id="grid3" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0 L0 0 0 20" fill="none" stroke="#1E2A45" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="400" fill="url(#grid3)"/>
+
+  <!-- 좌상단 배지 -->
+  <circle cx="48" cy="48" r="32" fill="#FFD93D"/>
+  <text x="48" y="44" text-anchor="middle" font-size="11" fill="#1A1A00" font-weight="700">시나리오</text>
+  <text x="48" y="62" text-anchor="middle" font-size="20" fill="#1A1A00" font-weight="900">03</text>
+
+  <!-- 상단 제목 -->
+  <text x="300" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="white">신호등 가림 시나리오</text>
+  <text x="300" y="60" text-anchor="middle" font-size="13" fill="#AABBCC">Signal Occlusion — 버스에 의한 신호 차단</text>
+
+  <!-- 우상단 위험도 -->
+  <text x="560" y="30" text-anchor="middle" font-size="18" fill="#FFD93D">⚠</text>
+  <text x="560" y="48" text-anchor="middle" font-size="11" fill="#FFEE88">위험도</text>
+  <text x="560" y="62" text-anchor="middle" font-size="12" fill="#FFD93D" font-weight="700">중간</text>
+
+  <!-- 도로 -->
+  <rect x="80" y="200" width="440" height="120" rx="4" fill="#1C2340"/>
+  <rect x="80" y="250" width="440" height="4" fill="#2A3A5A"/>
+  <rect x="140" y="247" width="35" height="6" rx="2" fill="#FFD93D" opacity="0.6"/>
+  <rect x="220" y="247" width="35" height="6" rx="2" fill="#FFD93D" opacity="0.6"/>
+  <rect x="300" y="247" width="35" height="6" rx="2" fill="#FFD93D" opacity="0.6"/>
+  <rect x="380" y="247" width="35" height="6" rx="2" fill="#FFD93D" opacity="0.6"/>
+
+  <!-- 신호등 기둥 -->
+  <rect x="398" y="110" width="6" height="95" fill="#334466"/>
+  <rect x="386" y="108" width="30" height="55" rx="6" fill="#222E45"/>
+  <!-- 신호등 라이트 -->
+  <circle cx="401" cy="123" r="7" fill="#333"/>
+  <circle cx="401" cy="138" r="7" fill="#333"/>
+  <circle cx="401" cy="153" r="7" fill="#00CC44" opacity="0.9"/>
+
+  <!-- 대형 버스 (신호 가림) -->
+  <rect x="330" y="200" width="140" height="80" rx="5" fill="#2E4A80"/>
+  <rect x="330" y="195" width="140" height="12" rx="3" fill="#3A5A90"/>
+  <rect x="340" y="210" width="45" height="30" rx="2" fill="#1A2840" opacity="0.8"/>
+  <rect x="395" y="210" width="35" height="30" rx="2" fill="#1A2840" opacity="0.8"/>
+  <rect x="440" y="210" width="25" height="30" rx="2" fill="#1A2840" opacity="0.8"/>
+  <circle cx="355" cy="285" r="11" fill="#111" stroke="#555" stroke-width="2"/>
+  <circle cx="450" cy="285" r="11" fill="#111" stroke="#555" stroke-width="2"/>
+  <text x="400" y="248" text-anchor="middle" font-size="10" fill="#7799CC">BUS</text>
+
+  <!-- 신호등 가림 표시 -->
+  <path d="M 398 108 L 470 108 L 470 165 L 398 165" fill="none" stroke="#FFD93D" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.8"/>
+  <text x="440" y="145" text-anchor="middle" font-size="9" fill="#FFD93D">가림 구역</text>
+
+  <!-- API 직접 호출 표시 -->
+  <rect x="100" y="130" width="130" height="55" rx="8" fill="#1A2840" stroke="#FFD93D" stroke-width="1.5"/>
+  <text x="165" y="150" text-anchor="middle" font-size="10" fill="#FFD93D" font-weight="700">신호 API 직접 호출</text>
+  <text x="165" y="165" text-anchor="middle" font-size="9" fill="#99AACC">현재: 녹색 (14s)</text>
+  <text x="165" y="178" text-anchor="middle" font-size="9" fill="#99AACC">Camera fallback OK</text>
+
+  <!-- 연결선 -->
+  <line x1="230" y1="157" x2="386" y2="140" stroke="#FFD93D" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
+
+  <!-- 에고 차량 -->
+  <rect x="160" y="218" width="75" height="45" rx="5" fill="#3A6FD8"/>
+  <text x="198" y="245" text-anchor="middle" font-size="9" fill="white" font-weight="700">EGO</text>
+
+  <!-- 신호 복구 애니메이션 -->
+  <circle cx="401" cy="153" r="7" fill="#00CC44" opacity="0.9">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- 하단 카피 -->
+  <rect x="0" y="355" width="600" height="45" fill="#0A0F1E" opacity="0.9"/>
+  <text x="195" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 신호 API 직접 호출로 카메라 가림을 극복합니다</text>
+
+  <!-- 우하단 데이터 라벨 -->
+  <rect x="440" y="358" width="152" height="32" rx="6" fill="#1E2A45"/>
+  <text x="516" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="516" y="383" text-anchor="middle" font-size="11" fill="#FFD93D" font-weight="700">신호 API + Bus prior</text>
+</svg>

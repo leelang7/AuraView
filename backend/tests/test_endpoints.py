@@ -28,17 +28,18 @@ def test_root_alive():
     assert "AuraView" in r.text or "message" in r.text
 
 
-def test_fusion_sources_lists_twelve():
-    """2026-05-16 v3: 9종 → 12종 확장 (스쿨존·결빙·보행자 사고다발 추가)."""
+def test_fusion_sources_lists_fifteen():
+    """2026-05-16 v4: 12종 → 15종 확장 (미세먼지·통학로·EV 추가)."""
     r = client.get("/fusion/sources")
     assert r.status_code == 200
     body = r.json()
-    assert body.get("count") == 12
+    assert body.get("count") == 15
     ids = {s["id"] for s in body["sources"]}
     assert {"signal", "vds", "incidents", "taas", "its", "dsz",
             "weather", "medical", "bike",
-            "school_zone", "black_ice", "pedestrian_hotspot"} <= ids
-    assert body.get("schema_version", "").startswith("fusion.v3-12src")
+            "school_zone", "black_ice", "pedestrian_hotspot",
+            "air_quality", "school_route", "ev_charger"} <= ids
+    assert body.get("schema_version", "").startswith("fusion.v4-15src")
 
 
 def test_fusion_intersection_returns_six_keys():
@@ -50,26 +51,53 @@ def test_fusion_intersection_returns_six_keys():
         assert key in sources, f"missing fusion source: {key}"
 
 
-def test_fusion_intersection_returns_twelve_sources_v3():
-    """2026-05-16 v3: 12종 (스쿨존·결빙·보행자다발 추가) + fusion_summary.sources_fused == 12."""
+def test_fusion_intersection_returns_fifteen_sources_v4():
+    """2026-05-16 v4: 15종 (미세먼지·통학로·EV 추가) + sources_fused == 15."""
     r = client.get("/fusion/intersection/1007")
     assert r.status_code == 200
     body = r.json()
     sources = body.get("sources", {})
     for key in ["signal", "vds", "incidents", "accidents_history", "its_link",
                 "dsz_analysis", "weather", "medical", "bike",
-                "school_zone", "black_ice", "pedestrian_hotspot"]:
+                "school_zone", "black_ice", "pedestrian_hotspot",
+                "air_quality", "school_route", "ev_charger"]:
         assert key in sources, f"missing fusion source: {key}"
     summary = body.get("fusion_summary", {})
-    assert summary.get("sources_fused") == 12
-    assert summary.get("schema_version", "").startswith("fusion.v3-12src")
-    # v2 + v3 신규 필드들
+    assert summary.get("sources_fused") == 15
+    assert summary.get("schema_version", "").startswith("fusion.v4-15src")
     for k in ["weather_raining", "wet_road_risk_boost", "nearest_ER_load",
               "severity_multiplier", "bike_lane_risk_boost",
               "in_school_zone", "school_zone_multiplier",
               "black_ice_risk", "freeze_risk_boost",
-              "in_pedestrian_hotspot", "ped_hotspot_boost"]:
+              "in_pedestrian_hotspot", "ped_hotspot_boost",
+              "pm10_avg", "air_quality_risk_boost",
+              "on_school_route", "walk_route_boost",
+              "near_ev_station", "ev_dwelling_likelihood"]:
         assert k in summary, f"missing fusion_summary field: {k}"
+
+
+def test_fusion_air_quality_endpoint():
+    r = client.get("/fusion/air-quality", params={"sido": "서울"})
+    assert r.status_code == 200
+    j = r.json()
+    if "derived" in j:
+        assert "air_quality_risk_boost" in j["derived"]
+
+
+def test_fusion_school_route_endpoint():
+    r = client.get("/fusion/school-route", params={"lat": 37.5081, "lon": 127.0440})
+    assert r.status_code == 200
+    j = r.json()
+    assert "derived" in j
+    assert "walk_route_boost" in j["derived"]
+
+
+def test_fusion_ev_charger_endpoint():
+    r = client.get("/fusion/ev-charger", params={"lat": 37.5665, "lon": 126.9780})
+    assert r.status_code == 200
+    j = r.json()
+    assert "derived" in j
+    assert "ev_dwelling_likelihood" in j["derived"]
 
 
 def test_fusion_school_zone_endpoint():

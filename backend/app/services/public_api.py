@@ -614,7 +614,131 @@ def fetch_pedestrian_hotspots(lat: float = 37.5665, lon: float = 126.9780,
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (12-source v3 2026-05-16)
+# 13. 환경부 미세먼지 (PM10/PM2.5) — 시정·카메라 오염 추정 (v4 2026-05-16)
+# ──────────────────────────────────────────────────────────────────────
+
+AIR_BASE_URL = os.getenv("AIR_BASE_URL", "https://apis.data.go.kr/B552584/ArpltnInforInqireSvc")
+AIR_KEY = os.getenv("AIR_KEY", os.getenv("SERVICE_KEY", ""))
+
+_AIR_FALLBACK = {
+    "source": "환경부 한국환경공단 에어코리아 (stub — AIR_KEY 미설정)",
+    "collected_at": "2026-05-16T12:00:00Z",
+    "stations": [
+        {"stationName": "중구",     "sidoName": "서울", "pm10Value": 88,  "pm25Value": 42, "khaiGrade": 3, "khaiValue": 124, "dataTime": "2026-05-16 11:00"},
+        {"stationName": "강남구",   "sidoName": "서울", "pm10Value": 72,  "pm25Value": 35, "khaiGrade": 2, "khaiValue": 98,  "dataTime": "2026-05-16 11:00"},
+        {"stationName": "서초구",   "sidoName": "서울", "pm10Value": 95,  "pm25Value": 48, "khaiGrade": 3, "khaiValue": 134, "dataTime": "2026-05-16 11:00"},
+    ],
+    "derived": {
+        "pm10_avg": 85, "pm25_avg": 41,
+        "khai_grade": 3,                  # 1좋음/2보통/3나쁨/4매우나쁨
+        "visibility_reduction_m": 320,    # 미세먼지에 의한 시야 감소
+        "camera_pollution_risk": 0.15,    # 카메라 표면 오염 위험 (먼지 누적)
+        "air_quality_risk_boost": 0.06,
+    },
+}
+
+
+def fetch_air_quality(sido: str = "서울") -> Dict[str, Any]:
+    """에어코리아 시도별 실시간 미세먼지."""
+    url = f"{AIR_BASE_URL}/getCtprvnRltmMesureDnsty"
+    params = {
+        "serviceKey": AIR_KEY, "returnType": "json",
+        "sidoName": sido, "ver": "1.0", "numOfRows": 100, "pageNo": 1,
+    }
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("air_quality", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("Air quality API failed: %s", exc)
+        _record_fetch("air_quality", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if ALLOW_FALLBACK:
+            return _AIR_FALLBACK
+        raise
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 14. 어린이 통학로 GIS — 도로교통공단 (v4 2026-05-16)
+# ──────────────────────────────────────────────────────────────────────
+
+_SCHOOL_ROUTE_FALLBACK = {
+    "source": "어린이 통학로 GIS (stub)",
+    "routes": [
+        {"id": "SR-001", "school": "대도초등학교",      "from_lat": 37.5077, "from_lon": 127.0430, "to_lat": 37.5085, "to_lon": 127.0448, "child_count_estimated": 1200, "crosswalks": 3, "signals": 2},
+        {"id": "SR-002", "school": "잠실초등학교",      "from_lat": 37.5129, "from_lon": 127.0996, "to_lat": 37.5137, "to_lon": 127.1014, "child_count_estimated": 1140, "crosswalks": 4, "signals": 3},
+        {"id": "SR-003", "school": "광희초등학교 일대",  "from_lat": 37.5647, "from_lon": 127.0067, "to_lat": 37.5655, "to_lon": 127.0080, "child_count_estimated": 540,  "crosswalks": 2, "signals": 2},
+    ],
+}
+
+
+def fetch_school_routes(lat: float = 37.5081, lon: float = 127.0440, radius_m: float = 800.0) -> Dict[str, Any]:
+    """반경 N m 내 어린이 통학로. 부근에 어린이가 다니는 도로 식별."""
+    from datetime import datetime
+    kst_hour = (datetime.utcnow().hour + 9) % 24
+    is_walk_time = (7 <= kst_hour < 9) or (13 <= kst_hour < 16)
+
+    nearby = []
+    for r in _SCHOOL_ROUTE_FALLBACK["routes"]:
+        d = _haversine_m_local(lat, lon, r["from_lat"], r["from_lon"])
+        if d <= radius_m:
+            nearby.append({**r, "distance_m": round(d, 1)})
+    _record_fetch("school_route", "stub", True if nearby else False)
+
+    return {
+        "source": "어린이 통학로 GIS",
+        "routes": nearby, "count": len(nearby),
+        "is_walk_time_kst": is_walk_time, "kst_hour": kst_hour,
+        "derived": {
+            "on_school_route": len(nearby) > 0,
+            "child_pedestrian_density": sum(r.get("child_count_estimated", 0) for r in nearby),
+            "walk_route_boost": (0.18 if is_walk_time else 0.08) if nearby else 0.0,
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 15. 한국전력 EV 충전소 위치 (v4 2026-05-16) — 차량유형 이상탐지 + EV 정차 패턴
+# ──────────────────────────────────────────────────────────────────────
+
+EV_BASE_URL = os.getenv("EV_BASE_URL", "https://apis.data.go.kr/B552584/EvCharger")
+EV_KEY = os.getenv("EV_KEY", os.getenv("SERVICE_KEY", ""))
+
+_EV_FALLBACK = {
+    "source": "한국환경공단 EV 충전소 (stub)",
+    "stations": [
+        {"id": "EV-001", "name": "강남센터 충전소",     "lat": 37.4981, "lon": 127.0278, "charger_count": 8,  "fast_count": 6, "available": 3, "usage_pct": 62},
+        {"id": "EV-002", "name": "잠실종합운동장 충전소","lat": 37.5135, "lon": 127.1003, "charger_count": 12, "fast_count": 8, "available": 1, "usage_pct": 92},
+        {"id": "EV-003", "name": "광화문 충전소",       "lat": 37.5715, "lon": 126.9767, "charger_count": 4,  "fast_count": 2, "available": 4, "usage_pct": 0},
+        {"id": "EV-004", "name": "성수동 충전소",       "lat": 37.5448, "lon": 127.0561, "charger_count": 6,  "fast_count": 4, "available": 2, "usage_pct": 67},
+    ],
+}
+
+
+def fetch_ev_chargers(lat: float = 37.5665, lon: float = 126.9780, radius_m: float = 500.0) -> Dict[str, Any]:
+    """반경 N m EV 충전소. 정차한 EV 패턴 이상 탐지에 활용."""
+    nearby = []
+    for s in _EV_FALLBACK["stations"]:
+        d = _haversine_m_local(lat, lon, s["lat"], s["lon"])
+        if d <= radius_m:
+            nearby.append({**s, "distance_m": round(d, 1)})
+    _record_fetch("ev_charger", "stub", True if nearby else False)
+    total_chargers = sum(s.get("charger_count", 0) for s in nearby)
+    avg_usage = (sum(s.get("usage_pct", 0) for s in nearby) / len(nearby)) if nearby else 0
+    return {
+        "source": "EV 충전소 (한국환경공단)",
+        "stations": nearby, "count": len(nearby),
+        "derived": {
+            "near_ev_station": len(nearby) > 0,
+            "total_chargers": total_chargers,
+            "avg_usage_pct": round(avg_usage, 1),
+            "ev_dwelling_likelihood": round(avg_usage / 100.0, 2),  # 정차한 EV가 있을 확률
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (15-source v4 2026-05-16)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -633,6 +757,10 @@ class IntersectionFusion:
     school_zone: Dict[str, Any]
     black_ice: Dict[str, Any]
     pedestrian_hotspot: Dict[str, Any]
+    # v4 2026-05-16: 15-source 확장
+    air_quality: Dict[str, Any]
+    school_route: Dict[str, Any]
+    ev_charger: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -671,19 +799,34 @@ class IntersectionFusion:
         in_ped_hotspot  = bool(ph_derived.get("in_pedestrian_hotspot", False))
         ped_boost       = float(ph_derived.get("ped_hotspot_boost", 0.0))
 
-        # 12종 통합 위험 점수
-        # 가중치: 속도0.20 + 돌발0.15 + TAAS0.15 + 기상0.12 + ER0.08 + 자전거0.08
-        #         + 결빙0.10 + 보행자다발0.07 + 스쿨존0.05
+        # NEW v4 2026-05-16: 미세먼지·통학로·EV 충전소 신호 추출
+        air_derived   = self.air_quality.get("derived", {})    if isinstance(self.air_quality, dict)    else {}
+        route_derived = self.school_route.get("derived", {})   if isinstance(self.school_route, dict)   else {}
+        ev_derived    = self.ev_charger.get("derived", {})     if isinstance(self.ev_charger, dict)     else {}
+
+        air_boost      = float(air_derived.get("air_quality_risk_boost", 0.0))
+        pm10_avg       = float(air_derived.get("pm10_avg", 0.0))
+        on_school_rt   = bool(route_derived.get("on_school_route", False))
+        walk_boost     = float(route_derived.get("walk_route_boost", 0.0))
+        ev_dwelling    = float(ev_derived.get("ev_dwelling_likelihood", 0.0))
+        near_ev        = bool(ev_derived.get("near_ev_station", False))
+
+        # 15종 통합 위험 점수
+        # 가중치: 속도0.18 + 돌발0.12 + TAAS0.12 + 기상0.10 + ER0.06 + 자전거0.06
+        #         + 결빙0.08 + 보행자다발0.06 + 스쿨존0.10 + 통학로0.06 + 미세먼지0.03 + EV0.03
         base = (
-            (1.0 - min(avg_speed, 80) / 80) * 0.20 +
-            min(incident_count, 3) / 3 * 0.15 +
-            min(taas_count, 7) / 7 * 0.15 +
-            wet_boost * 0.12 +
-            er_load * 0.08 +
-            bike_boost * 0.08 +
-            freeze_boost * 0.10 +
-            ped_boost * 0.07 +
-            (sz_multiplier - 1.0) * 0.10   # 스쿨존(1.5→0.05, 1.2→0.02)
+            (1.0 - min(avg_speed, 80) / 80) * 0.18 +
+            min(incident_count, 3) / 3 * 0.12 +
+            min(taas_count, 7) / 7 * 0.12 +
+            wet_boost * 0.10 +
+            er_load * 0.06 +
+            bike_boost * 0.06 +
+            freeze_boost * 0.08 +
+            ped_boost * 0.06 +
+            (sz_multiplier - 1.0) * 0.10 +
+            walk_boost * 0.06 +
+            air_boost * 0.03 +
+            ev_dwelling * 0.03
         )
         base *= sz_multiplier if in_school_zone else 1.0
         risk_score = min(1.0, round(base, 3))
@@ -691,8 +834,8 @@ class IntersectionFusion:
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 12,
-                "schema_version": "fusion.v3-12src-2026.05.16",
+                "sources_fused": 15,
+                "schema_version": "fusion.v4-15src-2026.05.16",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
@@ -703,13 +846,20 @@ class IntersectionFusion:
                 "nearest_ER_load": er_load,
                 "severity_multiplier": severity_mul,
                 "bike_lane_risk_boost": bike_boost,
-                # v3 신규 5필드
+                # v3
                 "in_school_zone": in_school_zone,
                 "school_zone_multiplier": sz_multiplier,
                 "black_ice_risk": ice_risk,
                 "freeze_risk_boost": freeze_boost,
                 "in_pedestrian_hotspot": in_ped_hotspot,
                 "ped_hotspot_boost": ped_boost,
+                # v4 신규 5필드
+                "pm10_avg": pm10_avg,
+                "air_quality_risk_boost": air_boost,
+                "on_school_route": on_school_rt,
+                "walk_route_boost": walk_boost,
+                "near_ev_station": near_ev,
+                "ev_dwelling_likelihood": ev_dwelling,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",
@@ -724,10 +874,13 @@ class IntersectionFusion:
                 "weather":           {"provider": "기상청 동네예보 (KMA)",       "data": self.weather},
                 "medical":           {"provider": "E-Gen 응급실 실시간 가용병상","data": self.medical},
                 "bike":              {"provider": "서울시 공공자전거 따릉이",    "data": self.bike},
-                # v3 신규 3종
                 "school_zone":         {"provider": "어린이보호구역 GIS (vworld)",     "data": self.school_zone},
                 "black_ice":           {"provider": "도로결빙 위험 (KMA 파생)",        "data": self.black_ice},
                 "pedestrian_hotspot":  {"provider": "TAAS 보행자 사고다발지역",        "data": self.pedestrian_hotspot},
+                # v4 신규 3종
+                "air_quality":         {"provider": "환경부 에어코리아 (PM10/PM2.5)",   "data": self.air_quality},
+                "school_route":        {"provider": "어린이 통학로 GIS",              "data": self.school_route},
+                "ev_charger":          {"provider": "한국환경공단 EV 충전소",          "data": self.ev_charger},
             },
         }
 
@@ -789,4 +942,8 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         school_zone=fetch_school_zone(lat=lat0, lon=lon0, radius_m=500.0),
         black_ice=fetch_black_ice_risk(lat=lat0, lon=lon0, weather_data=weather_data),
         pedestrian_hotspot=fetch_pedestrian_hotspots(lat=lat0, lon=lon0, radius_m=500.0),
+        # v4 2026-05-16
+        air_quality=fetch_air_quality(sido="서울"),
+        school_route=fetch_school_routes(lat=lat0, lon=lon0, radius_m=800.0),
+        ev_charger=fetch_ev_chargers(lat=lat0, lon=lon0, radius_m=500.0),
     )

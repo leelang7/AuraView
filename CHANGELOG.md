@@ -5,6 +5,47 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.10 — 15-source + 8 시나리오 카드 + 인터랙티브 시뮬레이터 + OG 공유 (2026-05-16)
+
+### Added — 12 → 15종 공공데이터 확장
+- **환경부 미세먼지 (PM10/PM2.5)** — 에어코리아 API. `air_quality_risk_boost +0.06` (시정·카메라 오염).
+- **어린이 통학로 GIS** — 도로교통공단 + 등하교 시간대 자동 인식. `walk_route_boost +0.18` (통학시간) / +0.08 (외 시간).
+- **EV 충전소** — 한국환경공단. 정차한 EV 패턴 이상탐지용 `ev_dwelling_likelihood`.
+- 신규 엔드포인트: `GET /fusion/air-quality`, `/fusion/school-route`, `/fusion/ev-charger`
+- `fusion_summary` 신규 5필드: `pm10_avg`, `air_quality_risk_boost`, `on_school_route`, `walk_route_boost`, `near_ev_station`, `ev_dwelling_likelihood`
+- 위험점수 재가중 (12가지 항)
+- `schema_version: fusion.v4-15src-2026.05.16`
+
+### Added — OG 공유 + 8 시나리오 카드
+- **`static/visuals/og_card.svg`** (11KB) — 1200×630 SNS 공유 카드. AuraView 메인 카피 + 3-stat + 도로 장식.
+- **`/story` HTML head**: `<meta property="og:*" />` + Twitter Card 풀세트 (카톡/페이스북/트위터 미리보기 작동).
+- **8 시나리오 SVG 카드** `static/visuals/scenarios/01_truck_occlusion.svg` ~ `08_night_pedestrian.svg` (각 5~6KB). SMIL 애니메이션 + 시나리오별 색상 배지.
+
+### Added — 인터랙티브 시뮬레이터 (`/story` 5번째 섹션)
+- 슬라이더 8개 (속도·돌발·TAAS·기상·ER·결빙·스쿨존·보행자)
+- 실시간 위험점수 + level 배지 + 진행바 (HIGH/MEDIUM/LOW)
+- 연간 예방 사고·사망 추정 (TAAS 2024 기준 자동 계산)
+- backend `fusion_risk_score` 와 동일한 가중치 (JS port)
+
+### UI/UX
+- `/story` 헤더 12종 → 15종 갱신, 데이터 카드 그리드 +3 (v4 NEW 노랑 배지)
+- 8 시나리오 카드 그리드 신규 섹션 (트럭·이륜·신호·우천·우회전·스쿨존·자전거·야간)
+- README v4 헤더 + 신규 3 endpoint 노출
+
+### Tests (98 → 101)
+- `test_fusion_sources_lists_fifteen` (전 _twelve 교체)
+- `test_fusion_intersection_returns_fifteen_sources_v4` (전 _twelve_v3 교체)
+- `test_fusion_air_quality_endpoint` · `test_fusion_school_route_endpoint` · `test_fusion_ev_charger_endpoint`
+- `test_data_attribution_lists_15_public_sources` (전 _12_ 교체)
+
+### Why
+- 15종 융합 = "한국 도로의 거의 모든 측정 신호를 결합" 슬로건 가능
+- OG 카드 = 카톡 한 번 공유로 심사위원·시민에게 메시지 전달
+- 인터랙티브 시뮬레이터 = "AuraView가 어떻게 작동하는지 30초 체험" → 시연 부스 핵심 도구
+- 8 시나리오 카드 = "어떤 위험 상황을 다루는가" 일목요연
+
+---
+
 ## v0.9 — 12-source 융합 + 일반인용 스토리 페이지 + 시각자료 3종 (2026-05-16)
 
 ### Added — 9 → 12종 공공데이터 확장

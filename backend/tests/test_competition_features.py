@@ -196,17 +196,18 @@ def test_healthz_details_has_resources_field():
 
 
 # ─── /metrics/data-attribution ────────────────────────────────────────
-def test_data_attribution_lists_12_public_sources():
-    """경진대회 출처 명시 의무 — 12종 공공데이터 + 정적 데이터셋 + 라이브러리. 2026-05-16 v3 9→12종 확장."""
+def test_data_attribution_lists_15_public_sources():
+    """경진대회 출처 명시 의무 — 15종 공공데이터. 2026-05-16 v4 12→15종 확장."""
     r = client.get("/metrics/data-attribution")
     assert r.status_code == 200
     j = r.json()
     sources = j.get("data_sources", [])
-    assert len(sources) == 12
+    assert len(sources) == 15
     ids = {s["id"] for s in sources}
     assert ids >= {"signal", "vds", "incidents", "taas", "its", "dsz",
                    "weather", "medical", "bike",
-                   "school_zone", "black_ice", "pedestrian_hotspot"}
+                   "school_zone", "black_ice", "pedestrian_hotspot",
+                   "air_quality", "school_route", "ev_charger"}
     for s in sources:
         assert "license" in s
         assert "provider" in s

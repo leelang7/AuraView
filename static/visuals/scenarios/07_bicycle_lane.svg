@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400" font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 배경 -->
+  <rect width="600" height="400" fill="#0F1525"/>
+  <defs>
+    <pattern id="grid7" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0 L0 0 0 20" fill="none" stroke="#1E2A45" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="400" fill="url(#grid7)"/>
+
+  <!-- 좌상단 배지 -->
+  <circle cx="48" cy="48" r="32" fill="#00E09A"/>
+  <text x="48" y="44" text-anchor="middle" font-size="11" fill="#001A10" font-weight="700">시나리오</text>
+  <text x="48" y="62" text-anchor="middle" font-size="20" fill="#001A10" font-weight="900">07</text>
+
+  <!-- 상단 제목 -->
+  <text x="300" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="white">자전거 도로</text>
+  <text x="300" y="60" text-anchor="middle" font-size="13" fill="#AABBCC">Bicycle Lane — 따릉이 거치 prior 적용</text>
+
+  <!-- 우상단 위험도 -->
+  <text x="560" y="30" text-anchor="middle" font-size="18" fill="#00E09A">⚠</text>
+  <text x="560" y="48" text-anchor="middle" font-size="11" fill="#88FFCC">위험도</text>
+  <text x="560" y="62" text-anchor="middle" font-size="12" fill="#00E09A" font-weight="700">낮음</text>
+
+  <!-- 자동차 도로 -->
+  <rect x="80" y="200" width="440" height="120" rx="2" fill="#1C2340"/>
+  <rect x="80" y="255" width="440" height="4" fill="#2A3A5A"/>
+  <rect x="130" y="252" width="35" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
+  <rect x="210" y="252" width="35" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
+  <rect x="290" y="252" width="35" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
+  <rect x="370" y="252" width="35" height="6" rx="1" fill="#FFD93D" opacity="0.5"/>
+
+  <!-- 자전거 도로 -->
+  <rect x="80" y="170" width="440" height="30" rx="2" fill="#0A2A1A"/>
+  <rect x="80" y="168" width="440" height="4" fill="#00E09A" opacity="0.6"/>
+  <text x="300" y="190" text-anchor="middle" font-size="10" fill="#00E09A" opacity="0.7">자전거 전용도로</text>
+
+  <!-- 자전거 -->
+  <g>
+    <circle cx="220" cy="183" r="9" fill="none" stroke="#00E09A" stroke-width="2"/>
+    <circle cx="240" cy="183" r="9" fill="none" stroke="#00E09A" stroke-width="2"/>
+    <line x1="220" y1="183" x2="230" y2="174" stroke="#00E09A" stroke-width="2"/>
+    <line x1="230" y1="174" x2="240" y2="183" stroke="#00E09A" stroke-width="2"/>
+    <line x1="230" y1="174" x2="230" y2="180" stroke="#00E09A" stroke-width="1.5"/>
+    <!-- 라이더 -->
+    <circle cx="230" cy="168" r="5" fill="#00CC88"/>
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="1.8s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- 따릉이 거치대 아이콘 -->
+  <g transform="translate(380, 145)">
+    <rect x="0" y="0" width="60" height="40" rx="5" fill="#0A2A1A" stroke="#00E09A" stroke-width="1.5"/>
+    <text x="30" y="13" text-anchor="middle" font-size="8" fill="#00E09A">따릉이 거치</text>
+    <!-- 작은 자전거 아이콘 -->
+    <circle cx="18" cy="28" r="5" fill="none" stroke="#00E09A" stroke-width="1.5"/>
+    <circle cx="30" cy="28" r="5" fill="none" stroke="#00E09A" stroke-width="1.5"/>
+    <line x1="18" y1="28" x2="24" y2="22" stroke="#00E09A" stroke-width="1.5"/>
+    <line x1="24" y1="22" x2="30" y2="28" stroke="#00E09A" stroke-width="1.5"/>
+    <circle cx="44" cy="28" r="5" fill="none" stroke="#00E09A" stroke-width="1.5"/>
+    <line x1="44" y1="28" x2="50" y2="22" stroke="#00E09A" stroke-width="1.5"/>
+    <line x1="50" y1="22" x2="56" y2="28" stroke="#00E09A" stroke-width="1.5"/>
+    <circle cx="56" cy="28" r="5" fill="none" stroke="#00E09A" stroke-width="1.5"/>
+  </g>
+
+  <!-- Prior 정보 패널 -->
+  <rect x="90" y="100" width="170" height="75" rx="8" fill="#0A2A1A" stroke="#00E09A" stroke-width="1.5"/>
+  <text x="175" y="120" text-anchor="middle" font-size="10" fill="#00E09A" font-weight="700">따릉이 GIS prior</text>
+  <text x="175" y="135" text-anchor="middle" font-size="9" fill="#AABBCC">근처 거치대: 3개소</text>
+  <text x="175" y="150" text-anchor="middle" font-size="9" fill="#AABBCC">자전거 점유 +0.22</text>
+  <text x="175" y="165" text-anchor="middle" font-size="9" fill="#00E09A">자전거 탐지 강화 중</text>
+
+  <!-- 에고 차량 -->
+  <rect x="160" y="222" width="75" height="45" rx="5" fill="#3A6FD8"/>
+  <text x="198" y="249" text-anchor="middle" font-size="9" fill="white" font-weight="700">EGO</text>
+
+  <!-- GIS 도로 지도 아이콘 -->
+  <g transform="translate(440, 100)">
+    <rect x="0" y="0" width="80" height="60" rx="6" fill="#0F1A10" stroke="#00E09A" stroke-width="1" opacity="0.9"/>
+    <line x1="10" y1="15" x2="70" y2="15" stroke="#00E09A" stroke-width="1" opacity="0.5"/>
+    <line x1="10" y1="30" x2="70" y2="30" stroke="#1C2340" stroke-width="4"/>
+    <line x1="10" y1="45" x2="70" y2="45" stroke="#00E09A" stroke-width="2" opacity="0.7"/>
+    <text x="40" y="58" text-anchor="middle" font-size="7" fill="#7799BB">GIS Map</text>
+  </g>
+
+  <!-- 자전거 이동 애니메이션 -->
+  <circle cx="220" cy="183" r="14" fill="none" stroke="#00E09A" stroke-width="1.5" opacity="0">
+    <animate attributeName="r" values="14;30;14" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.7;0;0.7" dur="2s" repeatCount="indefinite"/>
+    <animateTransform attributeName="transform" type="translate" values="0,0;30,0;60,0" dur="4s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- 하단 카피 -->
+  <rect x="0" y="355" width="600" height="45" fill="#0A0F1E" opacity="0.9"/>
+  <text x="192" y="381" text-anchor="middle" font-size="14" fill="#00E09A" font-weight="600">AuraView 가 따릉이 거치 prior +0.22 로 자전거 탐지를 강화합니다</text>
+
+  <!-- 우하단 데이터 라벨 -->
+  <rect x="455" y="358" width="137" height="32" rx="6" fill="#1E2A45"/>
+  <text x="524" y="370" text-anchor="middle" font-size="9" fill="#7799BB">핵심 데이터</text>
+  <text x="524" y="383" text-anchor="middle" font-size="11" fill="#00E09A" font-weight="700">따릉이 + GIS</text>
+</svg>

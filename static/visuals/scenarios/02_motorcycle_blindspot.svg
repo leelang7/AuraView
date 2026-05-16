@@ -40,27 +40,27 @@
   <text x="100" y="175" font-size="14" font-weight="900" fill="#5A6C8C" opacity="0.85">⟵  반대 차로</text>
   <text x="100" y="280" font-size="14" font-weight="900" fill="#7CC8FF" opacity="0.95">내 차 ⟶</text>
 
-  <!-- 주 차량 (내 차) — 우측통행 → 아래 차로(y=232~325) 안 -->
-  <rect x="290" y="252" width="78" height="48" rx="6" fill="#3A6FD8"/>
-  <text x="329" y="282" text-anchor="middle" font-size="10" fill="white" font-weight="800" letter-spacing="0.5">내 차</text>
+  <!-- 주 차량 (내 차) — 한국 우측통행 = 아래 차로 + 화면 우측 -->
+  <rect x="390" y="252" width="78" height="48" rx="6" fill="#3A6FD8"/>
+  <text x="429" y="282" text-anchor="middle" font-size="10" fill="white" font-weight="800" letter-spacing="0.5">내 차</text>
   <!-- 차량 방향 화살표 (진행 방향: 우측) -->
-  <polygon points="375,276 388,276 388,272 396,278 388,284 388,280 375,280" fill="#7CC8FF" opacity="0.85"/>
+  <polygon points="475,276 488,276 488,272 496,278 488,284 488,280 475,280" fill="#7CC8FF" opacity="0.85"/>
 
-  <!-- 사각지대 扇형 (내 차 좌측 후방 = 탑뷰 좌측 아래) -->
-  <path d="M 290 252 L 160 305 L 160 325 L 290 300 Z" fill="#FFB020" opacity="0.18"/>
-  <text x="220" y="320" text-anchor="middle" font-size="11" fill="#FFB020" font-weight="700">좌측 후방 사각</text>
+  <!-- 사각지대 扇형 (내 차 좌측 후방 = 탑뷰 차량 왼쪽 아래) -->
+  <path d="M 390 252 L 230 305 L 230 322 L 390 300 Z" fill="#FFB020" opacity="0.18"/>
+  <text x="310" y="318" text-anchor="middle" font-size="11" fill="#FFB020" font-weight="700">좌측 후방 사각</text>
 
-  <!-- 이륜차 (사각지대 안, 같은 차로) -->
+  <!-- 이륜차 (사각지대 안, 같은 차로 — 내 차 왼쪽 후방) -->
   <g>
-    <circle cx="195" cy="298" r="7" fill="none" stroke="#FFB020" stroke-width="2"/>
-    <circle cx="215" cy="298" r="7" fill="none" stroke="#FFB020" stroke-width="2"/>
-    <rect x="192" y="294" width="26" height="8" rx="2" fill="#FFB020" opacity="0.9"/>
-    <circle cx="205" cy="289" r="5" fill="#FFD093"/>
+    <circle cx="290" cy="298" r="7" fill="none" stroke="#FFB020" stroke-width="2"/>
+    <circle cx="310" cy="298" r="7" fill="none" stroke="#FFB020" stroke-width="2"/>
+    <rect x="287" y="294" width="26" height="8" rx="2" fill="#FFB020" opacity="0.9"/>
+    <circle cx="300" cy="289" r="5" fill="#FFD093"/>
     <animate attributeName="opacity" values="0.6;1;0.6" dur="1.6s" repeatCount="indefinite"/>
   </g>
 
   <!-- 펄스 링 (이륜차 강조) -->
-  <circle cx="205" cy="298" r="18" fill="none" stroke="#FFB020" stroke-width="2" opacity="0">
+  <circle cx="300" cy="298" r="18" fill="none" stroke="#FFB020" stroke-width="2" opacity="0">
     <animate attributeName="r" values="18;40;18" dur="2.2s" repeatCount="indefinite"/>
     <animate attributeName="opacity" values="0.7;0;0.7" dur="2.2s" repeatCount="indefinite"/>
   </circle>

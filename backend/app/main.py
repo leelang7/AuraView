@@ -196,6 +196,7 @@ _mount_static(app, ["static", "summary"], "/submission")
 _mount_static(app, ["static", "competition"], "/competition")
 _mount_static(app, ["static", "story"], "/story")        # v3 2026-05-16: 일반인용 30초 스토리 페이지
 _mount_static(app, ["static", "reel"], "/reel")          # v5 2026-05-16: 72초 자동재생 시네마틱 시퀀스 (영상 대체)
+_mount_static(app, ["static", "gallery"], "/gallery")    # v6 2026-05-17: 17 SVG 시각자료 갤러리 (필터+라이트박스)
 _mount_static(app, ["static"], "/static")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)

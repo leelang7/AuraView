@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AuraView — 시각자료 갤러리 (17 SVG)</title>
+<meta name="description" content="BEFORE/AFTER · 3.38초 타임라인 · 21명 살림 · 15종 융합 · K-MaaS · Tesla 비교 · AI 학습 · 앱 UI · 8 시나리오 — 한 곳에 17 SVG."/>
+<meta property="og:title" content="AuraView 시각자료 갤러리"/>
+<meta property="og:description" content="2026 국토교통 데이터활용 경진대회 출품 비주얼 17종 종합"/>
+<meta property="og:image" content="https://auraview.allthatai.kr/static/visuals/og_card.svg"/>
+<meta property="og:type" content="website"/>
+<style>
+  :root {
+    --bg: #0A0E18;
+    --bg2: #0F1525;
+    --surface: #131B2E;
+    --text: #E8F0FF;
+    --muted: #8896B0;
+    --safe: #00E09A;
+    --accent: #00C8FF;
+    --warn: #FFB020;
+    --danger: #FF4444;
+    --purple: #A095FF;
+    --border: rgba(120, 140, 180, 0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* sticky nav (story와 동일 디자인) */
+  .topnav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10, 14, 24, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-family: monospace; font-size: 13px; }
+  .brand .dot { color: var(--safe); font-weight: 900; }
+  .brand strong { color: var(--text); }
+  .brand small { color: var(--muted); font-size: 11px; letter-spacing: 1.5px; }
+  .nav-links { display: flex; gap: 6px; flex-wrap: wrap; font-family: monospace; font-size: 11px; }
+  .nav-links a {
+    padding: 6px 10px; border-radius: 99px; text-decoration: none; font-weight: 800;
+  }
+  .nav-links a.pill-story { background: rgba(255, 176, 32, 0.18); color: #FFB020; }
+  .nav-links a.pill-reel  { background: rgba(255, 68, 68, 0.18); color: #FF6B6B; }
+  .nav-links a.pill-hub   { background: rgba(0, 224, 154, 0.18); color: var(--safe); }
+  .nav-links a.pill-ui    { background: rgba(0, 200, 255, 0.18); color: var(--accent); }
+  .nav-links a.pill-muted { color: var(--muted); }
+
+  /* hero */
+  .hero {
+    padding: 60px 24px 40px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, rgba(0, 200, 255, 0.07) 0%, transparent 60%);
+  }
+  .eyebrow { font-size: 12px; letter-spacing: 3px; color: var(--accent); font-weight: 700; margin-bottom: 14px; }
+  h1 {
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 900; line-height: 1.18; letter-spacing: -1px; margin-bottom: 14px;
+  }
+  h1 em { color: var(--safe); font-style: normal; }
+  .lede { font-size: 15px; color: var(--muted); max-width: 720px; margin: 0 auto; }
+
+  /* filter chips */
+  .filters {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    padding: 24px 24px 4px;
+  }
+  .chip {
+    padding: 8px 14px; border-radius: 99px;
+    background: rgba(0, 200, 255, 0.06);
+    border: 1px solid var(--border);
+    color: var(--text); font-size: 12px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+    transition: all 0.18s;
+  }
+  .chip.active {
+    background: var(--accent); color: var(--bg); border-color: var(--accent);
+  }
+  .chip:hover { border-color: var(--accent); }
+
+  /* gallery grid */
+  .grid {
+    max-width: 1320px; margin: 0 auto; padding: 24px;
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+    box-shadow: 0 12px 36px rgba(0, 200, 255, 0.16);
+  }
+  .card .thumb {
+    background: #060B14;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    position: relative;
+  }
+  .card .thumb object {
+    width: 100%; height: 100%; display: block;
+    pointer-events: none;
+  }
+  .card .meta { padding: 14px 16px 16px; }
+  .card .badge {
+    display: inline-block;
+    padding: 2px 7px; border-radius: 4px;
+    font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+  .badge-impact { background: rgba(255, 68, 68, 0.20); color: #FF6B6B; }
+  .badge-data   { background: rgba(0, 200, 255, 0.20); color: var(--accent); }
+  .badge-tech   { background: rgba(160, 149, 255, 0.20); color: var(--purple); }
+  .badge-app    { background: rgba(0, 224, 154, 0.20); color: var(--safe); }
+  .badge-scn    { background: rgba(255, 176, 32, 0.20); color: var(--warn); }
+  .card h3 { font-size: 15px; font-weight: 900; margin-bottom: 4px; color: var(--text); }
+  .card .desc {
+    font-size: 12px; color: var(--muted); line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card .open-link {
+    display: inline-block;
+    margin-top: 10px; font-size: 11px;
+    color: var(--accent); text-decoration: none; font-family: monospace;
+  }
+
+  /* lightbox */
+  .lightbox {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 100;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 40px;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox .lb-content {
+    max-width: 1280px; max-height: 90vh; width: 100%;
+    background: var(--bg2);
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .lightbox .lb-svg {
+    background: #060B14; padding: 20px;
+    flex: 1; overflow: auto;
+  }
+  .lightbox .lb-svg object { width: 100%; height: auto; max-height: 70vh; display: block; margin: 0 auto; }
+  .lightbox .lb-info { padding: 16px 22px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .lightbox .lb-info h2 { font-size: 18px; font-weight: 900; }
+  .lightbox .lb-info p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .lightbox .lb-close {
+    position: absolute; top: 20px; right: 20px;
+    background: rgba(255, 255, 255, 0.1); color: var(--text);
+    border: none; border-radius: 50%;
+    width: 40px; height: 40px; font-size: 18px; cursor: pointer;
+  }
+  .lightbox .lb-actions { display: flex; gap: 8px; }
+  .lightbox .lb-actions a {
+    padding: 8px 14px; border-radius: 99px;
+    background: var(--accent); color: var(--bg);
+    text-decoration: none; font-weight: 800; font-size: 12px;
+  }
+
+  footer {
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- 상단 sticky nav -->
+<div class="topnav">
+  <div class="brand">
+    <span class="dot">●</span>
+    <strong>AuraView</strong>
+    <small>K-PERCEPTION</small>
+  </div>
+  <nav class="nav-links">
+    <a href="/story/" class="pill-story">📖 일반인용</a>
+    <a href="/reel/"  class="pill-reel">🎥 1분 시연</a>
+    <a href="/gallery/" class="pill-hub" style="background:rgba(160,149,255,0.18);color:#A095FF;">🖼️ 갤러리</a>
+    <a href="/competition/" class="pill-hub">🏆 심사위원</a>
+    <a href="/ui"     class="pill-ui">🎬 풀 대시보드</a>
+    <a href="/slides/" class="pill-muted">슬라이드</a>
+    <a href="/docs"   class="pill-muted">API</a>
+  </nav>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="eyebrow">// AURAVIEW VISUALS · 17 SVG · PURE SMIL</div>
+  <h1>17개 <em>시각자료</em>, 한 곳에서.</h1>
+  <p class="lede">
+    BEFORE/AFTER 비교 · 타임라인 · 21명 살림 · 15종 융합 · K-MaaS 우회 · Tesla 비교 · AI 학습 · 앱 UI · 8 시나리오.
+    모두 외부 의존 0 SVG 1.1 + SMIL 애니메이션. 클릭하면 풀스크린.
+  </p>
+</div>
+
+<!-- 필터 -->
+<div class="filters" id="filters">
+  <button class="chip active" data-cat="all">전체 (17)</button>
+  <button class="chip" data-cat="impact">임팩트</button>
+  <button class="chip" data-cat="data">데이터</button>
+  <button class="chip" data-cat="tech">기술</button>
+  <button class="chip" data-cat="app">앱</button>
+  <button class="chip" data-cat="scn">시나리오</button>
+</div>
+
+<!-- 갤러리 그리드 -->
+<div class="grid" id="grid">
+  <!-- JS 동적 렌더링 -->
+</div>
+
+<footer>
+  <div>AuraView K-Perception © 2026 · MIT License</div>
+  <div style="margin-top:6px;">17 SVG 모두 외부 의존 0 · <a href="https://github.com/leelang7/AuraView">github.com/leelang7/AuraView</a></div>
+</footer>
+
+<!-- 라이트박스 -->
+<div class="lightbox" id="lightbox" onclick="if(event.target.id==='lightbox') closeLB()">
+  <div class="lb-content">
+    <button class="lb-close" onclick="closeLB()">✕</button>
+    <div class="lb-svg" id="lb-svg"></div>
+    <div class="lb-info">
+      <div>
+        <h2 id="lb-title">—</h2>
+        <p id="lb-desc">—</p>
+      </div>
+      <div class="lb-actions">
+        <a id="lb-open" href="" target="_blank">새 탭으로 열기</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const VISUALS = [
+  { f: 'og_card.svg',                  cat: 'impact', title: 'OG 공유 카드',                    desc: '카톡·페이스북·트위터 공유 시 자동 표시되는 1200×630 메인 카피' },
+  { f: 'before_after.svg',             cat: 'impact', title: 'BEFORE/AFTER — 트럭이 신호등 가림', desc: '앞 트럭이 신호등 가렸을 때 운전자는 모름 vs AuraView 신호 API 직접 호출' },
+  { f: 'timeline_57s.svg',             cat: 'impact', title: '3.38초 선행 경고 타임라인',          desc: 'T-3.38s 부터 위험 감지 + 회피율 84.5% 비교' },
+  { f: 'impact_waffle.svg',            cat: 'impact', title: '매년 21명 생명 살림 waffle',          desc: 'TAAS 2024 기준 · 100명 격자 + 21명 순차 점등' },
+  { f: 'fusion_diagram.svg',           cat: 'data',   title: '15종 데이터 융합 다이어그램',          desc: '좌 15 입력 → 가운데 AuraView 엔진 → 우 4 출력 (위험점수·HUD·K-MaaS)' },
+  { f: 'kmaas_alternatives.svg',       cat: 'data',   title: 'K-MaaS 우회 추천',                  desc: '강남역 위험 → 지하철 2호선·버스 152번·따릉이 3 대안' },
+  { f: 'tesla_vs_auraview.svg',        cat: 'tech',   title: 'Tesla vs AuraView 비교 5종',         desc: 'V2V · 신호 API · TAAS+DSZ · KMA · NEDIS+K-MaaS — 한국 차별점' },
+  { f: 'ai_metrics.svg',               cat: 'tech',   title: 'AI 학습 결과 (가점 10점 증빙)',         desc: '학습 곡선 + ROC + 시나리오 분리도 + v1↔v2 비교' },
+  { f: 'app_mockup.svg',               cat: 'app',    title: 'Flutter 앱 UI 모형',                desc: '운전자 폰 화면 + Flutter 스택 + 실 작동 메트릭' },
+  { f: 'scenarios/01_truck_occlusion.svg',      cat: 'scn', title: '시나리오 01 — 트럭 가림',       desc: '보행자 사각지대 + V2V 협업 인지' },
+  { f: 'scenarios/02_motorcycle_blindspot.svg', cat: 'scn', title: '시나리오 02 — 좌측 사각 이륜',  desc: 'BEV occupancy 로 사각지대 점유 추정' },
+  { f: 'scenarios/03_signal_occlusion.svg',     cat: 'scn', title: '시나리오 03 — 신호등 가림',     desc: '신호 API 직접 호출, 카메라 fallback' },
+  { f: 'scenarios/04_rainy_intersection.svg',   cat: 'scn', title: '시나리오 04 — 우천 교차로',      desc: 'KMA 강수 자동 보정 (+0.18)' },
+  { f: 'scenarios/05_right_turn_pedestrian.svg', cat: 'scn', title: '시나리오 05 — 우회전 보행자',  desc: 'Intent 예측 + 도로교통법 25조 매핑' },
+  { f: 'scenarios/06_school_zone.svg',          cat: 'scn', title: '시나리오 06 — 스쿨존',         desc: '어린이 보호구역 등하교 ×1.5 + 보행자 신호등' },
+  { f: 'scenarios/07_bicycle_lane.svg',         cat: 'scn', title: '시나리오 07 — 자전거 도로',     desc: '따릉이 거치 prior +0.22' },
+  { f: 'scenarios/08_night_pedestrian.svg',     cat: 'scn', title: '시나리오 08 — 야간 보행자',     desc: 'V2V 헤드라이트 공유 + KMA 시정 보정' },
+];
+const BASE = '/static/visuals/';
+
+const grid = document.getElementById('grid');
+function render(cat) {
+  grid.innerHTML = '';
+  const list = cat === 'all' ? VISUALS : VISUALS.filter(v => v.cat === cat);
+  list.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.onclick = () => openLB(v);
+    card.innerHTML = `
+      <div class="thumb"><object data="${BASE}${v.f}" type="image/svg+xml"></object></div>
+      <div class="meta">
+        <span class="badge badge-${v.cat}">${({impact:'IMPACT', data:'DATA', tech:'TECH', app:'APP', scn:'SCENARIO'})[v.cat]}</span>
+        <h3>${v.title}</h3>
+        <div class="desc">${v.desc}</div>
+        <a class="open-link" href="${BASE}${v.f}" target="_blank" onclick="event.stopPropagation()">${BASE}${v.f}</a>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+render('all');
+
+// 필터
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+  document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+  c.classList.add('active');
+  render(c.dataset.cat);
+}));
+
+// 라이트박스
+function openLB(v) {
+  document.getElementById('lb-svg').innerHTML =
+    `<object data="${BASE}${v.f}" type="image/svg+xml"></object>`;
+  document.getElementById('lb-title').textContent = v.title;
+  document.getElementById('lb-desc').textContent = v.desc + ' · ' + BASE + v.f;
+  document.getElementById('lb-open').href = BASE + v.f;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLB() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+  document.getElementById('lb-svg').innerHTML = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLB(); });
+</script>
+
+</body>
+</html>

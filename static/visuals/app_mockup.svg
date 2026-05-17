@@ -1,0 +1,457 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720"
+  font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <defs>
+    <!-- Background grid pattern -->
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#1A1F2E" stroke-width="0.5"/>
+    </pattern>
+    <!-- Glow filters -->
+    <filter id="glow-green" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-red" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-blue" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+    <!-- Camera noise texture -->
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+      <feBlend in="SourceGraphic" in2="grayNoise" mode="overlay" result="blended"/>
+      <feComposite in="blended" in2="SourceGraphic" operator="in"/>
+    </filter>
+    <!-- Gradients -->
+    <linearGradient id="roadGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0D1520"/>
+      <stop offset="40%" stop-color="#1A2535"/>
+      <stop offset="100%" stop-color="#0A1018"/>
+    </linearGradient>
+    <linearGradient id="phoneGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E1E1E"/>
+      <stop offset="100%" stop-color="#111111"/>
+    </linearGradient>
+    <linearGradient id="screenGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0A1420"/>
+      <stop offset="100%" stop-color="#060C14"/>
+    </linearGradient>
+    <linearGradient id="centerGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F2A20"/>
+      <stop offset="100%" stop-color="#091A12"/>
+    </linearGradient>
+    <linearGradient id="btnGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00A070"/>
+      <stop offset="100%" stop-color="#007A55"/>
+    </linearGradient>
+    <linearGradient id="hudGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3A0808"/>
+      <stop offset="100%" stop-color="#1E0404"/>
+    </linearGradient>
+    <radialGradient id="glowPulse" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF4040" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#FF4040" stop-opacity="0"/>
+    </radialGradient>
+    <!-- SMIL: HUD pulse animation -->
+    <radialGradient id="hudGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF4040" stop-opacity="0">
+        <animate attributeName="stop-opacity" values="0;0.4;0" dur="1.8s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#FF4040" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ==================== BACKGROUND ==================== -->
+  <rect width="1200" height="720" fill="#0A0E18"/>
+  <rect width="1200" height="720" fill="url(#grid)"/>
+
+  <!-- Subtle vignette -->
+  <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+    <stop offset="60%" stop-color="transparent"/>
+    <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+  </radialGradient>
+  <rect width="1200" height="720" fill="url(#vignette)"/>
+
+  <!-- ==================== TITLE ROW ==================== -->
+  <text x="600" y="42" text-anchor="middle" font-size="30" font-weight="900" fill="#E8EAF0">
+    Flutter 네이티브 앱 —
+    <tspan fill="#00E09A"> 운전자 폰에서 실시간 작동</tspan>
+  </text>
+  <text x="600" y="63" text-anchor="middle" font-size="13" fill="#888888">
+    Android 7.0+ · iOS PWA · GitHub Releases APK 51MB · auraview.allthatai.kr/pwa/
+  </text>
+
+  <!-- ==================== LEFT PANEL: PHONE FRAME ==================== -->
+  <g transform="translate(40, 80)">
+    <!-- Phone outer shell -->
+    <rect x="30" y="0" width="330" height="620" rx="40" ry="40" fill="url(#phoneGrad)" filter="url(#shadow)"/>
+    <!-- Phone bezel highlight -->
+    <rect x="30" y="0" width="330" height="620" rx="40" ry="40" fill="none" stroke="#333333" stroke-width="2"/>
+    <!-- Side buttons -->
+    <rect x="22" y="120" width="6" height="50" rx="3" fill="#222222"/>
+    <rect x="22" y="185" width="6" height="35" rx="3" fill="#222222"/>
+    <rect x="352" y="140" width="6" height="65" rx="3" fill="#222222"/>
+    <!-- Notch / Dynamic Island -->
+    <rect x="155" y="8" width="80" height="22" rx="11" fill="#0A0A0A"/>
+    <!-- Camera dot in notch -->
+    <circle cx="221" cy="19" r="4" fill="#1A1A1A"/>
+    <circle cx="221" cy="19" r="2" fill="#0D0D0D"/>
+
+    <!-- ===== PHONE SCREEN ===== -->
+    <clipPath id="screenClip">
+      <rect x="42" y="38" width="306" height="568" rx="8" ry="8"/>
+    </clipPath>
+    <g clip-path="url(#screenClip)">
+      <!-- Screen background - road camera view -->
+      <rect x="42" y="38" width="306" height="568" fill="url(#roadGrad)"/>
+
+      <!-- Road texture lines -->
+      <line x1="192" y1="38" x2="150" y2="606" stroke="#1E2A35" stroke-width="1" opacity="0.6"/>
+      <line x1="192" y1="38" x2="235" y2="606" stroke="#1E2A35" stroke-width="1" opacity="0.6"/>
+      <!-- Road center dashes -->
+      <rect x="185" y="200" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
+      <rect x="185" y="260" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
+      <rect x="185" y="320" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
+      <rect x="185" y="380" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
+      <rect x="185" y="440" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
+      <!-- Horizon glow -->
+      <rect x="42" y="38" width="306" height="120" fill="#0A1830" opacity="0.7"/>
+      <!-- Streetlight blobs -->
+      <circle cx="80" cy="130" r="8" fill="#FFB020" opacity="0.15"/>
+      <circle cx="300" cy="120" r="6" fill="#FFB020" opacity="0.12"/>
+      <!-- Scan line animation -->
+      <rect x="42" y="38" width="306" height="3" fill="#00E09A" opacity="0.06">
+        <animate attributeName="y" values="38;606;38" dur="3s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.06;0.02;0.06" dur="3s" repeatCount="indefinite"/>
+      </rect>
+
+      <!-- Camera noise overlay -->
+      <rect x="42" y="38" width="306" height="568" fill="url(#roadGrad)" opacity="0.05" filter="url(#noise)"/>
+
+      <!-- ===== STATUS BAR ===== -->
+      <rect x="42" y="38" width="306" height="26" fill="#060C14" opacity="0.9"/>
+      <text x="58" y="55" font-size="11" fill="#CCCCCC" font-weight="600">09:42</text>
+      <!-- Signal bars -->
+      <rect x="290" y="47" width="3" height="8" rx="1" fill="#CCCCCC"/>
+      <rect x="295" y="44" width="3" height="11" rx="1" fill="#CCCCCC"/>
+      <rect x="300" y="41" width="3" height="14" rx="1" fill="#CCCCCC"/>
+      <rect x="305" y="38" width="3" height="17" rx="1" fill="#CCCCCC" opacity="0.4"/>
+      <!-- Battery -->
+      <rect x="313" y="44" width="20" height="11" rx="2" fill="none" stroke="#CCCCCC" stroke-width="1.5"/>
+      <rect x="333" y="47" width="2.5" height="5" rx="1" fill="#CCCCCC"/>
+      <rect x="314.5" y="45.5" width="14" height="8" rx="1" fill="#00E09A"/>
+      <!-- WiFi -->
+      <text x="277" y="55" font-size="11" fill="#CCCCCC">▲</text>
+
+      <!-- ===== HEADER BAR ===== -->
+      <rect x="42" y="64" width="306" height="28" fill="#050D18" opacity="0.95"/>
+      <text x="58" y="82" font-size="9" font-weight="700" fill="#00E09A" letter-spacing="1.5">AURAVIEW · K-PERCEPTION</text>
+      <circle cx="322" cy="78" r="6" fill="#00E09A" opacity="0.2"/>
+      <circle cx="322" cy="78" r="3" fill="#00E09A"/>
+
+      <!-- ===== BIS LIVE BADGE (top-right) ===== -->
+      <rect x="248" y="96" width="92" height="22" rx="5" fill="#0A1A28" stroke="#00C8FF" stroke-width="1"/>
+      <text x="258" y="111" font-size="9" fill="#00C8FF" font-weight="700">🚌 BIS 3대 · </text>
+      <circle cx="330" cy="107" r="4" fill="#FF4040">
+        <animate attributeName="opacity" values="1;0.2;1" dur="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <text x="337" y="111" font-size="8" fill="#FF4040" font-weight="700">
+        <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>LIVE
+      </text>
+
+      <!-- ===== BEV 3D VOXEL GRID (center) ===== -->
+      <g transform="translate(92,148)">
+        <text x="60" y="-4" text-anchor="middle" font-size="7" fill="#00E09A" opacity="0.7" letter-spacing="1">BEV · TOP VIEW</text>
+        <!-- Grid base -->
+        <rect x="0" y="0" width="120" height="90" rx="4" fill="#050F1A" stroke="#0A2030" stroke-width="1"/>
+        <!-- Voxel grid lines -->
+        <line x1="0" y1="18" x2="120" y2="18" stroke="#0D2535" stroke-width="0.5"/>
+        <line x1="0" y1="36" x2="120" y2="36" stroke="#0D2535" stroke-width="0.5"/>
+        <line x1="0" y1="54" x2="120" y2="54" stroke="#0D2535" stroke-width="0.5"/>
+        <line x1="0" y1="72" x2="120" y2="72" stroke="#0D2535" stroke-width="0.5"/>
+        <line x1="20" y1="0" x2="20" y2="90" stroke="#0D2535" stroke-width="0.5"/>
+        <line x1="40" y1="0" x2="40" y2="90" stroke="#0D2535" stroke-width="0.5"/>
+        <line x1="60" y1="0" x2="60" y2="90" stroke="#0D2535" stroke-width="0.5"/>
+        <line x1="80" y1="0" x2="80" y2="90" stroke="#0D2535" stroke-width="0.5"/>
+        <line x1="100" y1="0" x2="100" y2="90" stroke="#0D2535" stroke-width="0.5"/>
+        <!-- Ego vehicle (center) -->
+        <rect x="50" y="36" width="20" height="30" rx="3" fill="#00E09A" opacity="0.9" filter="url(#glow-green)"/>
+        <text x="60" y="54" text-anchor="middle" font-size="7" fill="#000" font-weight="700">EGO</text>
+        <!-- Other vehicles -->
+        <rect x="10" y="18" width="16" height="24" rx="2" fill="#FF4040" opacity="0.8"/>
+        <rect x="90" y="10" width="16" height="24" rx="2" fill="#FFB020" opacity="0.7"/>
+        <rect x="30" y="60" width="16" height="24" rx="2" fill="#00C8FF" opacity="0.7"/>
+        <rect x="80" y="54" width="16" height="24" rx="2" fill="#FFB020" opacity="0.6"/>
+        <!-- Detection circles -->
+        <circle cx="18" cy="30" r="14" fill="none" stroke="#FF4040" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.5"/>
+        <circle cx="98" cy="22" r="12" fill="none" stroke="#FFB020" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.5"/>
+      </g>
+
+      <!-- ===== ALT SIGNAL HUD CARD (left side) ===== -->
+      <!-- Glow pulse background -->
+      <rect x="46" y="148" width="88" height="66" rx="6" fill="url(#hudGlow)"/>
+      <rect x="46" y="148" width="88" height="66" rx="6" fill="url(#hudGrad)" stroke="#FF4040" stroke-width="1.5">
+        <animate attributeName="stroke-opacity" values="1;0.4;1" dur="1.8s" repeatCount="indefinite"/>
+      </rect>
+      <text x="55" y="166" font-size="16">⛔</text>
+      <text x="72" y="166" font-size="9" fill="#FF4040" font-weight="700">위험</text>
+      <text x="52" y="180" font-size="9" fill="#FFFFFF" font-weight="600">강남대로 — 정지</text>
+      <rect x="52" y="184" width="76" height="1" fill="#FF4040" opacity="0.4"/>
+      <text x="52" y="198" font-size="10" fill="#FF4040" font-weight="800">남은 8초</text>
+      <rect x="52" y="200" width="55" height="4" rx="2" fill="#1A0A0A"/>
+      <rect x="52" y="200" width="10" height="4" rx="2" fill="#FF4040">
+        <animate attributeName="width" values="55;10;55" dur="8s" repeatCount="indefinite"/>
+      </rect>
+
+      <!-- ===== CITY INFO LINE (bottom HUD) ===== -->
+      <rect x="42" y="430" width="306" height="90" fill="#050D18" opacity="0.97"/>
+      <rect x="42" y="430" width="306" height="1" fill="#00E09A" opacity="0.3"/>
+      <!-- Info chips row 1 -->
+      <g font-size="8" fill="#CCCCCC">
+        <rect x="48" y="436" width="38" height="14" rx="3" fill="#1A0A0A" stroke="#FF4040" stroke-width="0.5"/>
+        <text x="51" y="446" fill="#FF4040" font-weight="700">🚦 정지</text>
+
+        <rect x="90" y="436" width="44" height="14" rx="3" fill="#0A1A20" stroke="#00C8FF" stroke-width="0.5"/>
+        <text x="93" y="446" fill="#00C8FF">🚗 35km/h</text>
+
+        <rect x="138" y="436" width="36" height="14" rx="3" fill="#1A1200" stroke="#FFB020" stroke-width="0.5"/>
+        <text x="141" y="446" fill="#FFB020">⚠ TAAS 3</text>
+
+        <rect x="178" y="436" width="42" height="14" rx="3" fill="#0A1220" stroke="#00C8FF" stroke-width="0.5"/>
+        <text x="181" y="446" fill="#88AACC">🌧️ 우천 +18%</text>
+
+        <rect x="224" y="436" width="36" height="14" rx="3" fill="#0A1420" stroke="#A095FF" stroke-width="0.5"/>
+        <text x="227" y="446" fill="#A095FF">🏥 ER 82%</text>
+
+        <rect x="264" y="436" width="40" height="14" rx="3" fill="#0A1A10" stroke="#00E09A" stroke-width="0.5"/>
+        <text x="267" y="446" fill="#00E09A">🚴 +22%</text>
+      </g>
+      <!-- Info chips row 2 -->
+      <g font-size="8" fill="#CCCCCC">
+        <rect x="48" y="454" width="44" height="14" rx="3" fill="#1A1000" stroke="#FFB020" stroke-width="0.5"/>
+        <text x="51" y="464" fill="#FFB020">🏫 스쿨존 ×1.5</text>
+
+        <rect x="96" y="454" width="34" height="14" rx="3" fill="#0A1A20" stroke="#00C8FF" stroke-width="0.5"/>
+        <text x="99" y="464" fill="#00C8FF">🚌 BIS 3대</text>
+
+        <rect x="134" y="454" width="50" height="14" rx="3" fill="#0D1A10" stroke="#00E09A" stroke-width="0.5"/>
+        <text x="137" y="464" fill="#00E09A" font-weight="700">9src v2 ✓</text>
+
+        <!-- Fusion quality indicator -->
+        <rect x="188" y="454" width="80" height="14" rx="3" fill="#0A1020" stroke="#444" stroke-width="0.5"/>
+        <text x="191" y="464" fill="#666">융합 신뢰도</text>
+        <rect x="243" y="456" width="23" height="10" rx="2" fill="#0A2010"/>
+        <rect x="243" y="456" width="20" height="10" rx="2" fill="#00E09A" opacity="0.8"/>
+      </g>
+
+      <!-- ===== CAMERA PiP (bottom left) ===== -->
+      <rect x="48" y="474" width="68" height="50" rx="4" fill="#050A10" stroke="#334455" stroke-width="1"/>
+      <text x="52" y="485" font-size="6" fill="#556677">CAM · REAR</text>
+      <!-- PiP road scene simplified -->
+      <rect x="48" y="478" width="68" height="46" rx="3" fill="#0A1520" opacity="0.5"/>
+      <line x1="82" y1="490" x2="75" y2="524" stroke="#1E2A35" stroke-width="1"/>
+      <line x1="82" y1="490" x2="89" y2="524" stroke="#1E2A35" stroke-width="1"/>
+      <rect x="77" y="505" width="10" height="14" rx="1" fill="#FF4040" opacity="0.6"/>
+      <text x="78" y="487" font-size="5" fill="#00C8FF" opacity="0.7">● REC</text>
+
+      <!-- ===== MAIN PILL BUTTON ===== -->
+      <rect x="90" y="528" width="210" height="36" rx="18" fill="url(#btnGrad)" filter="url(#glow-green)"/>
+      <rect x="90" y="528" width="210" height="36" rx="18" fill="none" stroke="#00E09A" stroke-width="1" opacity="0.5"/>
+      <circle cx="110" cy="546" r="6" fill="#00E09A"/>
+      <circle cx="110" cy="546" r="4" fill="#005540">
+        <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
+        <animate attributeName="fill-opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <text x="200" y="550" text-anchor="middle" font-size="11" fill="#FFFFFF" font-weight="700">주행 모니터링 중</text>
+
+      <!-- Bottom safe area -->
+      <rect x="42" y="568" width="306" height="38" fill="#050D18"/>
+      <rect x="155" y="578" width="80" height="4" rx="2" fill="#333333"/>
+    </g>
+    <!-- Phone frame border overlay -->
+    <rect x="30" y="0" width="330" height="620" rx="40" ry="40" fill="none" stroke="#444444" stroke-width="1.5"/>
+  </g>
+
+  <!-- ==================== CENTER PANEL: FLUTTER TECH STACK ==================== -->
+  <g transform="translate(470, 80)">
+    <rect x="0" y="0" width="300" height="620" rx="16" fill="url(#centerGrad)" stroke="#00E09A" stroke-width="1" stroke-opacity="0.3"/>
+    <!-- Top accent bar -->
+    <rect x="0" y="0" width="300" height="4" rx="2" fill="#00E09A" opacity="0.7"/>
+
+    <!-- Flutter logo area -->
+    <text x="150" y="48" text-anchor="middle" font-size="34" font-weight="900" fill="#00E09A" filter="url(#glow-green)">Flutter 3.x</text>
+    <text x="150" y="66" text-anchor="middle" font-size="10" fill="#00A070" letter-spacing="2">NATIVE FRAMEWORK</text>
+
+    <!-- Divider -->
+    <line x1="20" y1="78" x2="280" y2="78" stroke="#00E09A" stroke-width="0.5" stroke-opacity="0.3"/>
+
+    <!-- Tech stack items -->
+    <g font-size="12" fill="#CCCCCC">
+      <!-- Item 1 -->
+      <rect x="16" y="90" width="268" height="48" rx="8" fill="#0A1E14" stroke="#00E09A" stroke-width="0.5" stroke-opacity="0.3"/>
+      <text x="30" y="110" font-size="18">📹</text>
+      <text x="58" y="110" font-size="12" fill="#FFFFFF" font-weight="700">카메라 프리뷰 (CameraX)</text>
+      <text x="58" y="127" font-size="10" fill="#669977">Flutter CameraController · 30fps 스트림</text>
+
+      <!-- Item 2 -->
+      <rect x="16" y="144" width="268" height="48" rx="8" fill="#0A1E14" stroke="#A095FF" stroke-width="0.5" stroke-opacity="0.3"/>
+      <text x="30" y="164" font-size="18">🧠</text>
+      <text x="58" y="164" font-size="12" fill="#FFFFFF" font-weight="700">ML Kit 객체 검출 (on-device)</text>
+      <text x="58" y="181" font-size="10" fill="#8080CC">p99 1.04ms · 차량·보행자·자전거</text>
+
+      <!-- Item 3 -->
+      <rect x="16" y="198" width="268" height="48" rx="8" fill="#0A1E14" stroke="#00C8FF" stroke-width="0.5" stroke-opacity="0.3"/>
+      <text x="30" y="218" font-size="18">📍</text>
+      <text x="58" y="218" font-size="12" fill="#FFFFFF" font-weight="700">Geolocator GPS 추적</text>
+      <text x="58" y="235" font-size="10" fill="#559999">1Hz 위치 업데이트 · Haversine 보정</text>
+
+      <!-- Item 4 -->
+      <rect x="16" y="252" width="268" height="48" rx="8" fill="#0A1E14" stroke="#00C8FF" stroke-width="0.5" stroke-opacity="0.3"/>
+      <text x="30" y="272" font-size="18">🌐</text>
+      <text x="58" y="272" font-size="12" fill="#FFFFFF" font-weight="700">HTTP /fleet/contribute</text>
+      <text x="58" y="289" font-size="10" fill="#559999">PII 마스킹 후 업로드 · HMAC-SHA256</text>
+
+      <!-- Item 5 -->
+      <rect x="16" y="306" width="268" height="48" rx="8" fill="#0A1E14" stroke="#FFB020" stroke-width="0.5" stroke-opacity="0.3"/>
+      <text x="30" y="326" font-size="18">📡</text>
+      <text x="58" y="326" font-size="12" fill="#FFFFFF" font-weight="700">V2V broadcast</text>
+      <text x="58" y="343" font-size="10" fill="#997744">/collab/v2v/broadcast · UDP multicast</text>
+
+      <!-- Item 6 -->
+      <rect x="16" y="360" width="268" height="48" rx="8" fill="#0A1E14" stroke="#00C8FF" stroke-width="0.5" stroke-opacity="0.3"/>
+      <text x="30" y="380" font-size="18">🚌</text>
+      <text x="58" y="380" font-size="12" fill="#FFFFFF" font-weight="700">BIS 라이브 폴링</text>
+      <text x="58" y="397" font-size="10" fill="#449988">/collab/bus-live · 5s 간격 갱신</text>
+
+      <!-- Item 7 -->
+      <rect x="16" y="414" width="268" height="48" rx="8" fill="#0A1E14" stroke="#00E09A" stroke-width="0.5" stroke-opacity="0.3"/>
+      <text x="30" y="434" font-size="18">🔄</text>
+      <text x="58" y="434" font-size="12" fill="#FFFFFF" font-weight="700">/fusion/intersection 폴링</text>
+      <text x="58" y="451" font-size="10" fill="#449966">15-source 융합 · 15s TTL 캐시</text>
+    </g>
+
+    <!-- Divider -->
+    <line x1="20" y1="474" x2="280" y2="474" stroke="#00E09A" stroke-width="0.5" stroke-opacity="0.3"/>
+
+    <!-- APK label -->
+    <rect x="16" y="482" width="268" height="50" rx="8" fill="#050F0A"/>
+    <text x="150" y="500" text-anchor="middle" font-size="11" fill="#888">배포 채널</text>
+    <text x="60" y="518" font-size="11" fill="#00E09A" font-weight="700">📦 Native APK</text>
+    <text x="175" y="518" font-size="11" fill="#AAAAAA">51MB · Android 7.0+</text>
+    <text x="60" y="530" font-size="10" fill="#00C8FF">🌐 iOS Web PWA</text>
+    <text x="175" y="530" font-size="10" fill="#AAAAAA">auraview.allthatai.kr</text>
+
+    <!-- Flutter arch diagram mini -->
+    <rect x="16" y="542" width="268" height="62" rx="8" fill="#050F0A"/>
+    <text x="150" y="558" text-anchor="middle" font-size="9" fill="#556655">Flutter 레이어 아키텍처</text>
+    <!-- Layer boxes -->
+    <rect x="24" y="562" width="252" height="12" rx="3" fill="#0A2A18"/>
+    <text x="150" y="572" text-anchor="middle" font-size="8" fill="#00E09A">UI Layer · AuraView Widgets</text>
+    <rect x="24" y="576" width="252" height="12" rx="3" fill="#071A10"/>
+    <text x="150" y="586" text-anchor="middle" font-size="8" fill="#669977">BLoC · Provider · State Mgmt</text>
+    <rect x="24" y="590" width="252" height="12" rx="3" fill="#050F08"/>
+    <text x="150" y="600" text-anchor="middle" font-size="8" fill="#445544">Platform Channels · FFI · Dart</text>
+  </g>
+
+  <!-- ==================== RIGHT PANEL: LIVE METRICS ==================== -->
+  <g transform="translate(810, 80)">
+    <rect x="0" y="0" width="360" height="620" rx="16" fill="#0A0F1A" stroke="#00C8FF" stroke-width="1" stroke-opacity="0.2"/>
+    <rect x="0" y="0" width="360" height="4" rx="2" fill="#00C8FF" opacity="0.5"/>
+
+    <text x="180" y="36" text-anchor="middle" font-size="14" font-weight="800" fill="#FFFFFF">실제 작동 메트릭</text>
+    <text x="180" y="52" text-anchor="middle" font-size="10" fill="#556677">LIVE · 2026-05-17 09:42 KST</text>
+    <!-- Live dot -->
+    <circle cx="290" cy="34" r="5" fill="#FF4040">
+      <animate attributeName="opacity" values="1;0.2;1" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <text x="298" y="38" font-size="9" fill="#FF4040" font-weight="700">LIVE</text>
+
+    <line x1="16" y1="60" x2="344" y2="60" stroke="#00C8FF" stroke-width="0.5" stroke-opacity="0.3"/>
+
+    <!-- Metric Card 1: Active devices -->
+    <rect x="16" y="70" width="328" height="86" rx="10" fill="#0A1828" stroke="#00E09A" stroke-width="1"/>
+    <text x="32" y="96" font-size="22">📱</text>
+    <text x="62" y="92" font-size="11" fill="#888888">활성 디바이스</text>
+    <text x="62" y="118" font-size="28" fill="#00E09A" font-weight="900" filter="url(#glow-green)">1,247
+      <animate attributeName="opacity" values="1;0.7;1" dur="3s" repeatCount="indefinite"/>
+    </text>
+    <text x="180" y="118" font-size="14" fill="#00A070">대</text>
+    <text x="240" y="118" font-size="10" fill="#445544">↑ +12 지난 1h</text>
+    <!-- Mini sparkline -->
+    <polyline points="240,130 255,125 265,128 278,120 292,122 308,116 322,110 338,108" fill="none" stroke="#00E09A" stroke-width="1.5" stroke-opacity="0.6"/>
+
+    <!-- Metric Card 2: Daily contributions -->
+    <rect x="16" y="164" width="328" height="80" rx="10" fill="#0A1622" stroke="#00C8FF" stroke-width="1"/>
+    <text x="32" y="188" font-size="22">📤</text>
+    <text x="62" y="184" font-size="11" fill="#888888">일일 기여 건수</text>
+    <text x="62" y="210" font-size="28" fill="#00C8FF" font-weight="900">8,420</text>
+    <text x="182" y="210" font-size="14" fill="#0088AA">건</text>
+    <text x="230" y="210" font-size="10" fill="#334455">누적 2.1M 이벤트</text>
+
+    <!-- Metric Card 3: BIS polling -->
+    <rect x="16" y="252" width="328" height="80" rx="10" fill="#141208" stroke="#FFB020" stroke-width="1"/>
+    <text x="32" y="276" font-size="22">🚌</text>
+    <text x="62" y="272" font-size="11" fill="#888888">BIS 실시간 폴링</text>
+    <text x="62" y="298" font-size="14" fill="#FFB020" font-weight="700">/collab/bus-live</text>
+    <rect x="218" y="284" width="48" height="20" rx="5" fill="#1A1000" stroke="#FFB020" stroke-width="1"/>
+    <text x="242" y="298" text-anchor="middle" font-size="10" fill="#FFB020" font-weight="700">5s 폴링</text>
+    <text x="62" y="314" font-size="10" fill="#665533">버스 노선 3,240개 · GPS 오차 &lt;3m</text>
+
+    <!-- Metric Card 4: Inference latency -->
+    <rect x="16" y="340" width="328" height="80" rx="10" fill="#0A0A14" stroke="#A095FF" stroke-width="1"/>
+    <text x="32" y="364" font-size="22">⚡</text>
+    <text x="62" y="360" font-size="11" fill="#888888">ML 추론 지연 (on-device)</text>
+    <text x="62" y="386" font-size="28" fill="#A095FF" font-weight="900" filter="url(#glow-blue)">p99 1.04ms</text>
+    <text x="62" y="402" font-size="10" fill="#554477">Snapdragon 865+ · TFLite INT8 quantized</text>
+
+    <!-- Metric Card 5: PII masking -->
+    <rect x="16" y="428" width="328" height="80" rx="10" fill="#0A0A16" stroke="#A095FF" stroke-width="1" stroke-opacity="0.6"/>
+    <text x="32" y="452" font-size="22">🔒</text>
+    <text x="62" y="448" font-size="11" fill="#888888">PII 마스킹 적용률</text>
+    <text x="62" y="474" font-size="28" fill="#A095FF" font-weight="900">100%</text>
+    <text x="168" y="468" font-size="10" fill="#A095FF">HMAC-SHA256</text>
+    <text x="168" y="484" font-size="10" fill="#554477">얼굴·번호판 blur · 서버 비전송</text>
+    <!-- Shield icon -->
+    <text x="310" y="474" font-size="28" fill="#A095FF" opacity="0.4">🛡</text>
+
+    <!-- GitHub releases link -->
+    <rect x="16" y="520" width="328" height="46" rx="8" fill="#080C14" stroke="#334455" stroke-width="1"/>
+    <text x="32" y="538" font-size="10" fill="#666666">APK 다운로드</text>
+    <text x="32" y="554" font-size="10" fill="#4488CC">github.com/leelang7/AuraView/releases</text>
+    <text x="290" y="548" font-size="18">↗</text>
+
+    <!-- QR placeholder -->
+    <rect x="250" y="572" width="100" height="42" rx="6" fill="#0A0F18" stroke="#334455" stroke-width="1"/>
+    <text x="300" y="588" text-anchor="middle" font-size="8" fill="#445566">[ QR ]</text>
+    <text x="300" y="600" text-anchor="middle" font-size="7" fill="#334455">auraview.allthatai.kr</text>
+    <text x="300" y="610" text-anchor="middle" font-size="7" fill="#334455">/pwa/</text>
+
+    <!-- Version badge -->
+    <rect x="16" y="576" width="140" height="38" rx="6" fill="#080C14" stroke="#00E09A" stroke-width="0.5" stroke-opacity="0.5"/>
+    <text x="26" y="591" font-size="9" fill="#668866">릴리즈 v2.4.1 · 2026-05-15</text>
+    <text x="26" y="606" font-size="9" fill="#00E09A">APK + PWA + Native ✓</text>
+  </g>
+
+  <!-- ==================== BOTTOM COPY ==================== -->
+  <rect x="0" y="696" width="1200" height="24" fill="#050A10"/>
+  <line x1="0" y1="696" x2="1200" y2="696" stroke="#00E09A" stroke-width="0.5" stroke-opacity="0.4"/>
+  <text x="600" y="712" text-anchor="middle" font-size="12" fill="#558866" font-weight="600">
+    실제 앱은 라이브 — github.com/leelang7/AuraView   APK + PWA + Native
+  </text>
+  <text x="50" y="712" font-size="10" fill="#334455">AuraView · 2026 국토교통 데이터활용 경진대회</text>
+  <text x="1150" y="712" text-anchor="end" font-size="10" fill="#334455">K-PERCEPTION © 2026</text>
+
+  <!-- Corner decorations -->
+  <rect x="0" y="0" width="3" height="60" fill="#00E09A" opacity="0.5"/>
+  <rect x="0" y="0" width="60" height="3" fill="#00E09A" opacity="0.5"/>
+  <rect x="1197" y="0" width="3" height="60" fill="#00C8FF" opacity="0.5"/>
+  <rect x="1140" y="0" width="60" height="3" fill="#00C8FF" opacity="0.5"/>
+  <rect x="0" y="717" width="3" height="3" fill="#00E09A" opacity="0.5"/>
+  <rect x="1197" y="717" width="3" height="3" fill="#00C8FF" opacity="0.5"/>
+</svg>

@@ -410,6 +410,65 @@ def competition_manifest():
     }
 
 
+@router.get("/visuals")
+def visuals_index():
+    """v6 2026-05-17: 19 SVG 시각자료 자동 인덱스 (외부 검증·재사용용).
+
+    GET /metrics/visuals → 모든 SVG 파일 + 카테고리 + 크기 + 라이브 URL 한 응답.
+    /gallery 페이지의 데이터 소스.
+    """
+    import os
+    from datetime import datetime
+    base = "static/visuals"
+    cats = {
+        'impact': ['og_card.svg', 'taas_stats.svg', 'before_after.svg', 'timeline_57s.svg', 'impact_waffle.svg'],
+        'data':   ['fusion_diagram.svg', 'kmaas_alternatives.svg'],
+        'tech':   ['tesla_vs_auraview.svg', 'ai_metrics.svg'],
+        'app':    ['app_mockup.svg', 'user_journey.svg'],
+        'scenario': [f'scenarios/{f}' for f in (
+            '01_truck_occlusion.svg', '02_motorcycle_blindspot.svg',
+            '03_signal_occlusion.svg', '04_rainy_intersection.svg',
+            '05_right_turn_pedestrian.svg', '06_school_zone.svg',
+            '07_bicycle_lane.svg', '08_night_pedestrian.svg',
+        )],
+    }
+    items: list[Dict[str, Any]] = []
+    total = 0
+    for cat, files in cats.items():
+        for f in files:
+            # repo 루트 또는 backend 작업 디렉토리 양쪽에서 시도
+            candidates = [
+                os.path.join(base, f),
+                os.path.join("..", base, f),
+                os.path.join(os.path.dirname(__file__), "..", "..", "..", base, f),
+            ]
+            size = None
+            for c in candidates:
+                try:
+                    size = os.path.getsize(c)
+                    break
+                except OSError:
+                    continue
+            items.append({
+                "file": f, "category": cat,
+                "size_bytes": size,
+                "size_kb": (size // 1024) if size else None,
+                "url": f"/{base}/{f}",
+            })
+            if size:
+                total += size
+    return {
+        "checked_at": datetime.utcnow().isoformat() + "Z",
+        "count": len(items),
+        "categories": {k: len(v) for k, v in cats.items()},
+        "total_size_bytes": total,
+        "total_size_kb": total // 1024,
+        "gallery_url": "/gallery/",
+        "items": items,
+        "note": "All Pure SVG 1.1 + SMIL animation · external dependency zero",
+    }
+
+
 @router.get("/api-directory")
 def api_directory():
     """경진대회 평가용 — 전체 엔드포인트 그룹별 디렉토리 (judge friendly).

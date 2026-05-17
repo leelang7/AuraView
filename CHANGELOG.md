@@ -5,6 +5,61 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.13 — 19 SVG + 8 페이지 진입점 + Flutter 앱 전면 개선 (2026-05-17~18)
+
+### Added — 시각자료 4종 신규 (16 → 19 SVG)
+- `fusion_diagram.svg` (29KB) — 좌 15 입력 → 가운데 융합 엔진 → 우 4 출력
+- `kmaas_alternatives.svg` (23KB) — 위험 교차로 + 지하철·버스·따릉이 3 우회
+- `tesla_vs_auraview.svg` (25KB) — Tesla FSD vs AuraView 한국 차별점 5종
+- `ai_metrics.svg` (27KB) — Risk Transformer 학습 결과 한 화면 (AUC/F1/ROC/scenario/v1↔v2)
+- `app_mockup.svg` (27KB) — Flutter 앱 UI 모형 (폰 프레임 + 스택 + 메트릭)
+- `taas_stats.svg` (21KB) — TAAS 2024 한국 도로 사고 통계 (도넛/시도별/시간대)
+- `user_journey.svg` (29KB) — 운전자·정책결정자·시민 3 페르소나 흐름
+
+### Added — 신규 페이지 (`/gallery`)
+- `static/gallery/index.html` — 19 SVG 종합 그리드 (필터 + 라이트박스 + 카테고리 배지)
+- main.py `_mount_static(['static','gallery'], '/gallery')` 마운트
+- /story sticky 메뉴에 🖼️ 갤러리 링크 추가
+
+### Added — Flutter 앱 전면 개선 (13 항목)
+- **첫 진입 온보딩** PageView 3장 (`_OnboardingScreen` + SharedPreferences 'onboarding_done')
+- **BEV setState GPU 최적화** (RepaintBoundary + ValueListenableBuilder + 30 FPS 캡)
+- **AppLifecycleState.resumed 자동 재시작** (3 타이머 leak 수정)
+- **카메라 권한 거부 복구 UX** (`_CameraPlaceholder` 풀 UI + openAppSettings)
+- **위험 햅틱 경보** (alt_signal 정지 신호 시 heavyImpact 3 burst)
+- **Dead class 6개 제거** (-196 line, _BevPainter / _BevToggleChip / _BrandLogo / _CounterChip / _StatusOrb / _PrimaryActionPill / _OpenSheetHandle)
+- **Dead 함수 2개 제거** (_toggleBev, _manualContribute)
+- **Deprecated Color API 마이그레이션 15곳** (.red → (r*255).round())
+- **일반인 친화 한국어 카피** (alt_signal API → 가려진 신호등도 보여줍니다)
+- **인앱 'AuraView가 뭐예요?' 카드** (_DetailSheet 최상단)
+- **BIS 라이브 폴링** (/collab/bus-live · 5s)
+- **15-source HUD** (스쿨존·결빙·보행자다발·PM·통학로·EV)
+- **_BisBusBadge** (BEV 우상단 라이브 버스 표시)
+- flutter analyze: 60+ → 34 issues (-43%) · 0 error 유지
+- main.dart: 4748 → 4671 line
+
+### Added — backend 신규 엔드포인트
+- `GET /metrics/visuals` — 19 SVG 자동 인덱스 (카테고리/크기/URL)
+
+### Added — landing 페이지 3 골든 진입점 카드
+- 📖 30초 이해 (FFB020→FF6B6B)
+- 🎥 1분 시연 (FF4444→7c3aed)
+- 🖼️ 18 SVG 갤러리 (A095FF→00C8FF)
+- AuraView 카드 badges 12개 (15-Source Fusion · BIS Live · 신호 API · DSZ k-anon · KMA·NEDIS · 스쿨존 GIS 등)
+
+### Updated — README Live 섹션
+- 8 진입점 표 (story / reel / gallery / competition / ui / slides / kiosk / submission)
+- 19 SVG 카테고리별 인덱스
+- Native APK 설명 갱신 (온보딩 + 15-source + BIS + 햅틱)
+
+### Why
+- "수상 1위 목표" 사용자 피드백 반영
+- 일반인·심사위원·정책결정자 3 청중 모두 30초 ~ 1분에 임팩트 이해
+- Flutter 앱이 실제 작동하는 완성도 (온보딩 + 햅틱 + 백그라운드 복귀)
+- 19 SVG 한 곳에서 검증 가능 (/gallery)
+
+---
+
 ## v0.12 — before_after 시나리오 전환 + 시각자료 고증 정정 (2026-05-16~17)
 
 ### Changed — before_after.svg 시나리오 전환 (사용자 피드백)

@@ -280,6 +280,25 @@
   @media (max-width: 720px) {
     .sim-grid { grid-template-columns: 1fr !important; }
   }
+
+  /* preset buttons */
+  .preset-btn {
+    padding: 8px 14px;
+    background: rgba(0, 200, 255, 0.10);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .preset-btn:hover {
+    border-color: var(--accent);
+    background: rgba(0, 200, 255, 0.20);
+    transform: translateY(-1px);
+  }
 </style>
 </head>
 <body>
@@ -434,6 +453,17 @@
     <h2><em>지금 당장</em> 위험도를 계산해 보세요.</h2>
     <p class="section-sub">슬라이더를 조절하면 12종 데이터가 어떻게 결합되어 위험도를 만드는지 즉시 보입니다.</p>
     <div style="max-width:980px;margin:0 auto;padding:28px;background:linear-gradient(135deg,rgba(0,200,255,0.05),rgba(0,224,154,0.03));border:1px solid var(--border);border-radius:18px;">
+      <!-- 시나리오 프리셋 버튼 -->
+      <div style="margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border);">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">프리셋 시나리오</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="presetButtons">
+          <button data-preset="rainy_school" class="preset-btn">🌧️🏫 우천 + 스쿨존 등하교</button>
+          <button data-preset="night_ped" class="preset-btn">🌙🚶 야간 보행자 다발</button>
+          <button data-preset="rush_er" class="preset-btn">🚗🏥 출퇴근 + ER 포화</button>
+          <button data-preset="ice_bicycle" class="preset-btn">❄️🚴 결빙 + 자전거</button>
+          <button data-preset="reset" class="preset-btn" style="background:rgba(255,255,255,0.05);">↺ 초기화</button>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
         <!-- LEFT: sliders -->
         <div>
@@ -470,6 +500,21 @@
         </div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────  K-MaaS 우회  ───────────────────────── -->
+<section>
+  <div class="wrap reveal">
+    <h2>위험할 때, <em>대중교통</em>으로 우회합니다.</h2>
+    <p class="section-sub">
+      전방 위험도가 임계치를 넘으면 AuraView 가 지하철·버스·따릉이 3개 우회 경로를 즉시 추천합니다.
+      추천 데이터는 노선 운영팀에 환원되어 다음 운행 계획에 반영됩니다.
+    </p>
+    <div class="visual-wrap">
+      <object data="/static/visuals/kmaas_alternatives.svg" type="image/svg+xml" aria-label="K-MaaS 우회 추천 (지하철+버스+따릉이)"></object>
+    </div>
+    <div class="caption">한국교통안전공단 K-MaaS · GET /kmaas/alternatives</div>
   </div>
 </section>
 
@@ -557,6 +602,29 @@
         valEl.textContent = v;
         recompute();
       });
+    });
+
+    // 시나리오 프리셋
+    const PRESETS = {
+      rainy_school: { speed: 22, incidents: 2, taas: 4, weather: 22, er_load: 65, freeze: 0,  school: 150, ped: 18 },
+      night_ped:    { speed: 28, incidents: 1, taas: 6, weather: 8,  er_load: 75, freeze: 0,  school: 100, ped: 28 },
+      rush_er:      { speed: 12, incidents: 3, taas: 5, weather: 0,  er_load: 92, freeze: 0,  school: 100, ped: 12 },
+      ice_bicycle:  { speed: 18, incidents: 1, taas: 3, weather: 12, er_load: 60, freeze: 28, school: 100, ped: 8  },
+      reset:        { speed: 35, incidents: 1, taas: 3, weather: 0,  er_load: 55, freeze: 0,  school: 100, ped: 0  },
+    };
+    function applyPreset(key) {
+      const p = PRESETS[key]; if (!p) return;
+      Object.entries(p).forEach(([k, v]) => {
+        state[k] = v;
+        const valEl = document.getElementById('v_' + k);
+        const slider = document.getElementById('r_' + k);
+        if (valEl) valEl.textContent = v;
+        if (slider) slider.value = v;
+      });
+      recompute();
+    }
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
     });
 
     function recompute() {

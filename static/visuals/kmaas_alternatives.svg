@@ -1,0 +1,376 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600"
+     font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <defs>
+    <!-- 미세 격자 패턴 -->
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1C2136" stroke-width="0.5"/>
+    </pattern>
+    <!-- 빨강 글로우 필터 -->
+    <filter id="redGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feFlood flood-color="#FF4040" flood-opacity="0.55" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- 녹색 글로우 -->
+    <filter id="greenGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feFlood flood-color="#00E09A" flood-opacity="0.3" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- 청색 글로우 -->
+    <filter id="blueGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feFlood flood-color="#00C8FF" flood-opacity="0.3" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- 황색 글로우 -->
+    <filter id="yellowGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feFlood flood-color="#FFB020" flood-opacity="0.3" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- 드롭 섀도 -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <!-- 점선 이동 애니메이션용 마커 -->
+    <marker id="arrowCyan" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+      <path d="M0,1 L7,4 L0,7 Z" fill="#00C8FF" opacity="0.85"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+      <path d="M0,1 L7,4 L0,7 Z" fill="#00E09A" opacity="0.85"/>
+    </marker>
+    <marker id="arrowYellow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+      <path d="M0,1 L7,4 L0,7 Z" fill="#FFB020" opacity="0.85"/>
+    </marker>
+    <!-- 위험 카드 테두리 클립 -->
+    <clipPath id="dangerClip">
+      <rect x="20" y="110" width="440" height="440" rx="14"/>
+    </clipPath>
+    <!-- 카드 클립들 -->
+    <clipPath id="card1Clip"><rect x="482" y="110" width="698" height="132" rx="12"/></clipPath>
+    <clipPath id="card2Clip"><rect x="482" y="254" width="698" height="132" rx="12"/></clipPath>
+    <clipPath id="card3Clip"><rect x="482" y="398" width="698" height="132" rx="12"/></clipPath>
+    <!-- 격자 배경 -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0A0E18"/>
+      <stop offset="100%" stop-color="#0D1220"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ── 배경 ── -->
+  <rect width="1200" height="600" fill="url(#bgGrad)"/>
+  <rect width="1200" height="600" fill="url(#grid)"/>
+
+  <!-- ══════════════════════════════════════
+       상단 제목
+  ══════════════════════════════════════ -->
+  <text x="600" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#E8EAF0">
+    전방 위험 →
+    <tspan fill="#00C8FF"> K-MaaS</tspan>
+    <tspan fill="#E8EAF0"> 가 우회를 추천합니다</tspan>
+  </text>
+  <text x="600" y="76" text-anchor="middle" font-size="14" fill="#6B7A9E">
+    지하철 · 버스 · 공공자전거 — 운영팀에 데이터 환원
+  </text>
+  <!-- 구분선 -->
+  <line x1="40" y1="92" x2="1160" y2="92" stroke="#1E2640" stroke-width="1"/>
+
+  <!-- ══════════════════════════════════════
+       좌측: 위험 교차로 카드
+  ══════════════════════════════════════ -->
+  <!-- 카드 배경 -->
+  <rect x="20" y="100" width="440" height="452" rx="14" fill="#141829" filter="url(#shadow)"/>
+  <!-- 위험 테두리 펄스 -->
+  <rect x="20" y="100" width="440" height="452" rx="14" fill="none" stroke="#FF4040" stroke-width="2">
+    <animate attributeName="stroke-opacity" values="1;0.25;1" dur="1.5s" repeatCount="indefinite"/>
+    <animate attributeName="stroke-width" values="2;4;2" dur="1.5s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- 교차로 탑뷰 영역 -->
+  <g clip-path="url(#dangerClip)">
+    <!-- 도로 배경 -->
+    <rect x="20" y="110" width="440" height="440" rx="0" fill="#0F1320"/>
+    <!-- 건물 블록들 -->
+    <rect x="30"  y="120" width="155" height="130" rx="4" fill="#1A1F2E"/>
+    <rect x="295" y="120" width="155" height="130" rx="4" fill="#1A1F2E"/>
+    <rect x="30"  y="390" width="155" height="150" rx="4" fill="#1A1F2E"/>
+    <rect x="295" y="390" width="155" height="150" rx="4" fill="#1A1F2E"/>
+    <!-- 건물 창문 효과 -->
+    <rect x="50"  y="135" width="18" height="12" rx="2" fill="#2A3050" opacity="0.7"/>
+    <rect x="76"  y="135" width="18" height="12" rx="2" fill="#2A3050" opacity="0.7"/>
+    <rect x="102" y="135" width="18" height="12" rx="2" fill="#2A3050" opacity="0.5"/>
+    <rect x="50"  y="155" width="18" height="12" rx="2" fill="#2A3050" opacity="0.6"/>
+    <rect x="76"  y="155" width="18" height="12" rx="2" fill="#00C8FF" opacity="0.15"/>
+    <rect x="310" y="135" width="18" height="12" rx="2" fill="#2A3050" opacity="0.7"/>
+    <rect x="336" y="135" width="18" height="12" rx="2" fill="#2A3050" opacity="0.5"/>
+    <rect x="362" y="135" width="18" height="12" rx="2" fill="#2A3050" opacity="0.7"/>
+    <!-- 가로 도로 -->
+    <rect x="20"  y="250" width="440" height="80" fill="#1C2030"/>
+    <!-- 가로 도로 중앙선 -->
+    <line x1="20" y1="290" x2="175" y2="290" stroke="#FFD700" stroke-width="1.5" stroke-dasharray="12,8"/>
+    <line x1="285" y1="290" x2="460" y2="290" stroke="#FFD700" stroke-width="1.5" stroke-dasharray="12,8"/>
+    <!-- 세로 도로 -->
+    <rect x="185" y="110" width="110" height="440" fill="#1C2030"/>
+    <!-- 세로 도로 중앙선 -->
+    <line x1="240" y1="110" x2="240" y2="248" stroke="#FFD700" stroke-width="1.5" stroke-dasharray="12,8"/>
+    <line x1="240" y1="332" x2="240" y2="552" stroke="#FFD700" stroke-width="1.5" stroke-dasharray="12,8"/>
+    <!-- 교차로 바닥 (빨강 글로우) -->
+    <rect x="185" y="250" width="110" height="80" fill="#1C2030"/>
+    <rect x="185" y="250" width="110" height="80" fill="#FF4040" opacity="0.08">
+      <animate attributeName="opacity" values="0.08;0.22;0.08" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <!-- 횡단보도 -->
+    <g fill="#E8EAF0" opacity="0.18">
+      <rect x="185" y="248" width="14" height="6"/><rect x="205" y="248" width="14" height="6"/>
+      <rect x="225" y="248" width="14" height="6"/><rect x="245" y="248" width="14" height="6"/>
+      <rect x="265" y="248" width="14" height="6"/>
+      <rect x="185" y="326" width="14" height="6"/><rect x="205" y="326" width="14" height="6"/>
+      <rect x="225" y="326" width="14" height="6"/><rect x="245" y="326" width="14" height="6"/>
+      <rect x="265" y="326" width="14" height="6"/>
+    </g>
+    <!-- 신호등 (빨강) -->
+    <g>
+      <rect x="178" y="240" width="8" height="18" rx="2" fill="#252A3C"/>
+      <circle cx="182" cy="243" r="3" fill="#FF4040">
+        <animate attributeName="opacity" values="1;0.4;1" dur="0.8s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="182" cy="250" r="3" fill="#333"/>
+      <circle cx="182" cy="257" r="3" fill="#333"/>
+    </g>
+    <g>
+      <rect x="294" y="240" width="8" height="18" rx="2" fill="#252A3C"/>
+      <circle cx="298" cy="243" r="3" fill="#FF4040">
+        <animate attributeName="opacity" values="1;0.4;1" dur="0.8s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="298" cy="250" r="3" fill="#333"/>
+      <circle cx="298" cy="257" r="3" fill="#333"/>
+    </g>
+    <!-- 차량 1: 위험 차량 (붉은 강조) -->
+    <g>
+      <rect x="200" y="210" width="28" height="16" rx="3" fill="#CC2020" filter="url(#redGlow)">
+        <animateTransform attributeName="transform" type="translate" values="0,0;0,5;0,0" dur="2s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="204" y="212" width="8" height="4" rx="1" fill="#FF8080" opacity="0.6"/>
+      <rect x="216" y="212" width="8" height="4" rx="1" fill="#FF8080" opacity="0.6"/>
+    </g>
+    <!-- 차량 2: 횡방향 -->
+    <g>
+      <rect x="60" y="262" width="22" height="14" rx="3" fill="#3A5080">
+        <animateTransform attributeName="transform" type="translate" values="0,0;8,0;0,0" dur="3s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+    <!-- 차량 3 -->
+    <g>
+      <rect x="310" y="270" width="22" height="14" rx="3" fill="#50503A">
+        <animateTransform attributeName="transform" type="translate" values="0,0;-6,0;0,0" dur="2.5s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+    <!-- 위험 X 마크 -->
+    <g filter="url(#redGlow)" opacity="0.9">
+      <line x1="210" y1="262" x2="270" y2="318" stroke="#FF4040" stroke-width="3.5">
+        <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.5s" repeatCount="indefinite"/>
+      </line>
+      <line x1="270" y1="262" x2="210" y2="318" stroke="#FF4040" stroke-width="3.5">
+        <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.5s" repeatCount="indefinite"/>
+      </line>
+    </g>
+  </g>
+
+  <!-- 위험 레이블 -->
+  <rect x="40" y="352" width="200" height="36" rx="8" fill="#FF4040" opacity="0.15"/>
+  <rect x="40" y="352" width="200" height="36" rx="8" fill="none" stroke="#FF4040" stroke-width="1.2" opacity="0.6"/>
+  <text x="140" y="375" text-anchor="middle" font-size="16" font-weight="700" fill="#FF6060">
+    ⚠ 위험도 0.78  HIGH
+  </text>
+
+  <!-- 교차로 이름 -->
+  <text x="240" y="415" text-anchor="middle" font-size="17" font-weight="700" fill="#E8EAF0">강남역 교차로</text>
+  <!-- 부가 정보 -->
+  <text x="240" y="438" text-anchor="middle" font-size="12" fill="#8090B0">
+    예상 지연 12분 · 사고 위험 +35%
+  </text>
+  <!-- AI 분석 태그 -->
+  <rect x="130" y="448" width="220" height="24" rx="6" fill="#1A1F2E"/>
+  <text x="240" y="465" text-anchor="middle" font-size="11" fill="#00C8FF" opacity="0.85">
+    AuraView 실시간 위험 분석 · 신호데이터 융합
+  </text>
+  <!-- 하단 위험도 바 -->
+  <rect x="40" y="480" width="400" height="8" rx="4" fill="#1A1F2E"/>
+  <rect x="40" y="480" width="312" height="8" rx="4" fill="#FF4040" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.5;0.8" dur="1.5s" repeatCount="indefinite"/>
+  </rect>
+  <text x="40" y="504" font-size="10" fill="#FF6060">위험 지수</text>
+  <text x="440" y="504" text-anchor="end" font-size="10" fill="#FF6060">78%</text>
+
+  <!-- ══════════════════════════════════════
+       흐름 화살표 (좌측 → 우측 3카드)
+  ══════════════════════════════════════ -->
+  <!-- 화살표 1: → 지하철 카드 -->
+  <path d="M462,176 C470,176 474,176 482,176" fill="none" stroke="#00E09A" stroke-width="2"
+        stroke-dasharray="6,4" marker-end="url(#arrowGreen)" opacity="0.9">
+    <animate attributeName="stroke-dashoffset" values="20;0" dur="1.2s" repeatCount="indefinite"/>
+  </path>
+  <!-- 화살표 2: → 버스 카드 -->
+  <path d="M462,290 C470,290 474,320 482,320" fill="none" stroke="#00C8FF" stroke-width="2"
+        stroke-dasharray="6,4" marker-end="url(#arrowCyan)" opacity="0.9">
+    <animate attributeName="stroke-dashoffset" values="20;0" dur="1.2s" repeatCount="indefinite"/>
+  </path>
+  <!-- 화살표 3: → 따릉이 카드 -->
+  <path d="M462,400 C470,400 474,464 482,464" fill="none" stroke="#FFB020" stroke-width="2"
+        stroke-dasharray="6,4" marker-end="url(#arrowYellow)" opacity="0.9">
+    <animate attributeName="stroke-dashoffset" values="20;0" dur="1.2s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- ══════════════════════════════════════
+       우측 카드 1: 지하철 2호선
+  ══════════════════════════════════════ -->
+  <rect x="482" y="110" width="698" height="132" rx="12" fill="#0E1E18" filter="url(#shadow)"/>
+  <rect x="482" y="110" width="698" height="132" rx="12" fill="none" stroke="#00E09A" stroke-width="1.5" opacity="0.5">
+    <animate attributeName="opacity" values="0.5;0.9;0.5" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="482" y="110" width="698" height="132" rx="12" fill="#00E09A" opacity="0">
+    <set attributeName="opacity" to="0.06" begin="mouseover" end="mouseout"/>
+  </rect>
+  <!-- 색상 바 -->
+  <rect x="482" y="110" width="6" height="132" rx="3" fill="#00E09A"/>
+  <!-- 아이콘 영역 -->
+  <rect x="498" y="124" width="58" height="58" rx="10" fill="#0A2018"/>
+  <text x="527" y="163" text-anchor="middle" font-size="32">🚇</text>
+  <!-- 노선 뱃지 -->
+  <rect x="498" y="190" width="58" height="20" rx="6" fill="#009950"/>
+  <text x="527" y="204" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">2호선</text>
+  <!-- 텍스트 정보 -->
+  <text x="574" y="142" font-size="17" font-weight="700" fill="#00E09A">지하철 2호선</text>
+  <text x="574" y="163" font-size="13" fill="#C0D8CC">강남역  →  역삼역</text>
+  <!-- 통계 뱃지들 -->
+  <rect x="574" y="174" width="90" height="22" rx="6" fill="#0A2018"/>
+  <text x="619" y="189" text-anchor="middle" font-size="11" fill="#00E09A">소요 8분</text>
+  <rect x="672" y="174" width="90" height="22" rx="6" fill="#0A2018"/>
+  <text x="717" y="189" text-anchor="middle" font-size="11" fill="#A0C8B8">도보 3분</text>
+  <rect x="770" y="174" width="110" height="22" rx="6" fill="#003320"/>
+  <text x="825" y="189" text-anchor="middle" font-size="11" font-weight="700" fill="#00FF90">위험 -82%</text>
+  <!-- 미니 노선도 -->
+  <g>
+    <circle cx="920" cy="148" r="10" fill="#009950" stroke="#00E09A" stroke-width="1.5"/>
+    <text x="920" y="152" text-anchor="middle" font-size="7" font-weight="700" fill="#FFF">강남</text>
+    <line x1="930" y1="148" x2="1000" y2="148" stroke="#00E09A" stroke-width="2" stroke-dasharray="5,3"/>
+    <circle cx="1010" cy="148" r="10" fill="#009950" stroke="#00E09A" stroke-width="1.5"/>
+    <text x="1010" y="152" text-anchor="middle" font-size="7" font-weight="700" fill="#FFF">역삼</text>
+    <!-- 열차 이동 애니메이션 -->
+    <circle r="5" fill="#00FF90" opacity="0.9">
+      <animateMotion path="M930,148 L1000,148" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <text x="965" y="168" text-anchor="middle" font-size="10" fill="#6B8A7A">약 1.2km</text>
+  </g>
+  <!-- 추천 뱃지 -->
+  <rect x="890" y="192" width="270" height="20" rx="5" fill="#003A20"/>
+  <text x="1025" y="206" text-anchor="middle" font-size="10" fill="#00E09A">실시간 운행 정보 연동 · K-MaaS 환경부 API</text>
+
+  <!-- ══════════════════════════════════════
+       우측 카드 2: 버스 152번
+  ══════════════════════════════════════ -->
+  <rect x="482" y="254" width="698" height="132" rx="12" fill="#0A1428" filter="url(#shadow)"/>
+  <rect x="482" y="254" width="698" height="132" rx="12" fill="none" stroke="#00C8FF" stroke-width="1.5" opacity="0.4">
+    <animate attributeName="opacity" values="0.4;0.85;0.4" dur="2.2s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="482" y="254" width="6" height="132" rx="3" fill="#00C8FF"/>
+  <!-- 아이콘 -->
+  <rect x="498" y="268" width="58" height="58" rx="10" fill="#081828"/>
+  <text x="527" y="307" text-anchor="middle" font-size="32">🚌</text>
+  <rect x="498" y="334" width="58" height="20" rx="6" fill="#0040A0"/>
+  <text x="527" y="348" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">152번</text>
+  <!-- 텍스트 -->
+  <text x="574" y="286" font-size="17" font-weight="700" fill="#00C8FF">버스 152번</text>
+  <text x="574" y="307" font-size="13" fill="#A0C0D8">강남역 정류장  →  역삼역 정류장</text>
+  <!-- 통계 뱃지들 -->
+  <rect x="574" y="318" width="90" height="22" rx="6" fill="#081828"/>
+  <text x="619" y="333" text-anchor="middle" font-size="11" fill="#00C8FF">소요 11분</text>
+  <rect x="672" y="318" width="110" height="22" rx="6" fill="#081828"/>
+  <text x="727" y="333" text-anchor="middle" font-size="11" fill="#FFB020">5분 후 도착</text>
+  <rect x="790" y="318" width="110" height="22" rx="6" fill="#001A40"/>
+  <text x="845" y="333" text-anchor="middle" font-size="11" font-weight="700" fill="#60D8FF">위험 -68%</text>
+  <!-- BIS 실시간 -->
+  <g>
+    <rect x="898" y="270" width="268" height="70" rx="8" fill="#060E1E"/>
+    <rect x="898" y="270" width="268" height="70" rx="8" fill="none" stroke="#00C8FF" stroke-width="0.8" opacity="0.4"/>
+    <text x="908" y="288" font-size="10" fill="#6B8AAA">BIS 실시간</text>
+    <rect x="908" y="294" width="8" height="8" rx="2" fill="#00C8FF">
+      <animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite"/>
+    </rect>
+    <text x="922" y="302" font-size="11" fill="#00C8FF">152 · 강남역 → 5분</text>
+    <rect x="908" y="308" width="8" height="8" rx="2" fill="#4488FF" opacity="0.6"/>
+    <text x="922" y="316" font-size="11" fill="#6090C0">152 · 역삼역 → 16분</text>
+    <text x="908" y="330" font-size="10" fill="#3A5070">잔여좌석: 12 · 저상버스</text>
+  </g>
+  <rect x="898" y="344" width="268" height="20" rx="5" fill="#001830"/>
+  <text x="1032" y="358" text-anchor="middle" font-size="10" fill="#00C8FF">교통카드 연동 · 서울시 BIS API</text>
+
+  <!-- ══════════════════════════════════════
+       우측 카드 3: 따릉이
+  ══════════════════════════════════════ -->
+  <rect x="482" y="398" width="698" height="132" rx="12" fill="#141408" filter="url(#shadow)"/>
+  <rect x="482" y="398" width="698" height="132" rx="12" fill="none" stroke="#FFB020" stroke-width="1.5" opacity="0.45">
+    <animate attributeName="opacity" values="0.45;0.9;0.45" dur="1.9s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="482" y="398" width="6" height="132" rx="3" fill="#FFB020"/>
+  <!-- 아이콘 -->
+  <rect x="498" y="412" width="58" height="58" rx="10" fill="#0E0E02"/>
+  <text x="527" y="451" text-anchor="middle" font-size="32">🚴</text>
+  <rect x="498" y="478" width="58" height="20" rx="6" fill="#806010"/>
+  <text x="527" y="492" text-anchor="middle" font-size="11" font-weight="700" fill="#FFE080">따릉이</text>
+  <!-- 텍스트 -->
+  <text x="574" y="430" font-size="17" font-weight="700" fill="#FFB020">따릉이 (공공자전거)</text>
+  <text x="574" y="451" font-size="13" fill="#C0B090">강남역 11번출구 거치소  →  역삼역 6번출구</text>
+  <!-- 통계 뱃지들 -->
+  <rect x="574" y="462" width="80" height="22" rx="6" fill="#0E0E02"/>
+  <text x="614" y="477" text-anchor="middle" font-size="11" fill="#FFB020">소요 6분</text>
+  <rect x="662" y="462" width="120" height="22" rx="6" fill="#0E0E02"/>
+  <text x="722" y="477" text-anchor="middle" font-size="11" fill="#D0A050">거치소 4대 가용</text>
+  <rect x="790" y="462" width="110" height="22" rx="6" fill="#201800"/>
+  <text x="845" y="477" text-anchor="middle" font-size="11" font-weight="700" fill="#FFD050">위험 -91%</text>
+  <!-- 자전거 도로 미니 표시 -->
+  <g>
+    <rect x="898" y="414" width="268" height="70" rx="8" fill="#080800"/>
+    <rect x="898" y="414" width="268" height="70" rx="8" fill="none" stroke="#FFB020" stroke-width="0.8" opacity="0.4"/>
+    <text x="908" y="432" font-size="10" fill="#7A6830">자전거 전용 도로</text>
+    <!-- 도로 표시 -->
+    <rect x="908" y="438" width="248" height="12" rx="3" fill="#141400"/>
+    <line x1="908" y1="444" x2="1156" y2="444" stroke="#FFB020" stroke-width="1" stroke-dasharray="8,6" opacity="0.7"/>
+    <!-- 자전거 이동 -->
+    <text font-size="14" y="444">
+      <animateMotion path="M908,0 L1150,0" dur="2.5s" repeatCount="indefinite"/>
+      🚴
+    </text>
+    <text x="908" y="465" font-size="10" fill="#7A6830">거치소 A-47 · 이용요금 30분 무료</text>
+    <text x="908" y="478" font-size="10" fill="#7A6830">공공자전거 따릉이 API 연동</text>
+  </g>
+  <rect x="898" y="488" width="268" height="20" rx="5" fill="#181400"/>
+  <text x="1032" y="502" text-anchor="middle" font-size="10" fill="#FFB020">서울시 따릉이 · K-MaaS 연동</text>
+
+  <!-- ══════════════════════════════════════
+       하단 카피
+  ══════════════════════════════════════ -->
+  <line x1="40" y1="548" x2="1160" y2="548" stroke="#1E2640" stroke-width="1"/>
+  <!-- AuraView 로고 텍스트 -->
+  <text x="60" y="576" font-size="13" font-weight="700" fill="#00C8FF">AuraView</text>
+  <text x="60" y="592" font-size="10" fill="#3A4A6A">실시간 위험 감지 플랫폼</text>
+  <!-- 중앙 카피 -->
+  <text x="600" y="570" text-anchor="middle" font-size="12" fill="#5A6A8A">
+    한국교통안전공단 K-MaaS 연동 · 노선 운영팀에 위험 데이터 환원
+  </text>
+  <text x="600" y="588" text-anchor="middle" font-size="10" fill="#3A4A6A">
+    2026 국토교통 데이터활용 경진대회 출품작 · 공공데이터 기반
+  </text>
+  <!-- 우측 태그들 -->
+  <rect x="970" y="558" width="80" height="18" rx="5" fill="#0A2018"/>
+  <text x="1010" y="571" text-anchor="middle" font-size="10" fill="#00E09A">K-MaaS API</text>
+  <rect x="1058" y="558" width="100" height="18" rx="5" fill="#081828"/>
+  <text x="1108" y="571" text-anchor="middle" font-size="10" fill="#00C8FF">실시간 운행정보</text>
+  <rect x="1000" y="580" width="158" height="18" rx="5" fill="#141400"/>
+  <text x="1079" y="593" text-anchor="middle" font-size="10" fill="#FFB020">따릉이 · BIS 데이터 환원</text>
+</svg>

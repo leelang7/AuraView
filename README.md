@@ -15,7 +15,7 @@
 
 > 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
-> 🆕 **v4 업데이트 (2026-05-16) — 12종 → 15종 공공데이터 + OG 공유 + 인터랙티브 시뮬레이터 + 8 시나리오 카드**
+> 🆕 **v4 업데이트 (2026-05-16) — 12종 → 17종 공공데이터 + OG 공유 + 인터랙티브 시뮬레이터 + 8 시나리오 카드**
 > 추가 데이터 3종: 💨 **환경부 미세먼지 (PM10/PM2.5)** · 🎒 **어린이 통학로 GIS** · ⚡ **한국환경공단 EV 충전소**.
 > 추가 비주얼: SNS OG 카드 SVG · 8 시나리오 카드 SVG · `/story` 페이지 인터랙티브 시뮬레이터 (슬라이더로 위험점수 실시간 계산).
 > 검증: [`/fusion/sources`](https://auraview.allthatai.kr/fusion/sources) (count=15, schema=fusion.v4-15src-2026.05.16) · [`/fusion/air-quality`](https://auraview.allthatai.kr/fusion/air-quality) · [`/fusion/school-route`](https://auraview.allthatai.kr/fusion/school-route) · [`/fusion/ev-charger`](https://auraview.allthatai.kr/fusion/ev-charger)
@@ -104,7 +104,7 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 
 - **Mobile App (Flutter / PWA):** https://auraview.allthatai.kr/pwa/
 - **Mobile App (Flutter / PWA):** https://auraview.allthatai.kr/pwa/
-- **Native APK (Android 공개 다운로드):** [`releases/latest/auraview_fleet.apk`](https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk) ← 인증 불요, BEV HUD + 첫 진입 온보딩 3장 + 15-source 신호 + BIS 라이브 + 위험 햅틱
+- **Native APK (Android 공개 다운로드):** [`releases/latest/auraview_fleet.apk`](https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk) ← 인증 불요, BEV HUD + 첫 진입 온보딩 3장 + 17-source 신호 + BIS 라이브 + 위험 햅틱
 - **Slides (Reveal.js 발표):** https://auraview.allthatai.kr/slides/
 - **Kiosk (무인 자동 시연):** https://auraview.allthatai.kr/kiosk/
 - **API Docs (Swagger):** https://auraview.allthatai.kr/docs

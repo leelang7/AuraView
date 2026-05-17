@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1200 720" width="1200" height="720"
+     font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+
+  <defs>
+    <!-- 배경 그라데이션 -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0A0E18"/>
+      <stop offset="100%" stop-color="#0D1220"/>
+    </linearGradient>
+
+    <!-- Tesla 열 배경 -->
+    <linearGradient id="teslaColBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1A2A3E"/>
+      <stop offset="100%" stop-color="#111D2B"/>
+    </linearGradient>
+
+    <!-- AuraView 열 배경 -->
+    <linearGradient id="auraColBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F2A20"/>
+      <stop offset="100%" stop-color="#0A1E16"/>
+    </linearGradient>
+
+    <!-- 글로우 필터 (⭐ 행) -->
+    <filter id="glowCyan" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowGold" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowPurple" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowBlue" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowGreen" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="textShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000" flood-opacity="0.7"/>
+    </filter>
+
+    <!-- 점선 대시 애니메이션 마커 -->
+    <marker id="arrowCyan" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#00C8FF"/>
+    </marker>
+    <marker id="arrowGold" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#FFB020"/>
+    </marker>
+
+    <!-- 클립 패스 -->
+    <clipPath id="leftColClip">
+      <rect x="75" y="165" width="495" height="520" rx="8"/>
+    </clipPath>
+    <clipPath id="rightColClip">
+      <rect x="630" y="165" width="495" height="520" rx="8"/>
+    </clipPath>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 배경 -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <rect width="1200" height="720" fill="url(#bgGrad)"/>
+
+  <!-- 미세 격자 -->
+  <g opacity="0.07" stroke="#4488CC" stroke-width="0.5">
+    <!-- 세로선 -->
+    <line x1="100" y1="0" x2="100" y2="720"/>
+    <line x1="200" y1="0" x2="200" y2="720"/>
+    <line x1="300" y1="0" x2="300" y2="720"/>
+    <line x1="400" y1="0" x2="400" y2="720"/>
+    <line x1="500" y1="0" x2="500" y2="720"/>
+    <line x1="600" y1="0" x2="600" y2="720"/>
+    <line x1="700" y1="0" x2="700" y2="720"/>
+    <line x1="800" y1="0" x2="800" y2="720"/>
+    <line x1="900" y1="0" x2="900" y2="720"/>
+    <line x1="1000" y1="0" x2="1000" y2="720"/>
+    <line x1="1100" y1="0" x2="1100" y2="720"/>
+    <!-- 가로선 -->
+    <line x1="0" y1="80" x2="1200" y2="80"/>
+    <line x1="0" y1="160" x2="1200" y2="160"/>
+    <line x1="0" y1="240" x2="1200" y2="240"/>
+    <line x1="0" y1="320" x2="1200" y2="320"/>
+    <line x1="0" y1="400" x2="1200" y2="400"/>
+    <line x1="0" y1="480" x2="1200" y2="480"/>
+    <line x1="0" y1="560" x2="1200" y2="560"/>
+    <line x1="0" y1="640" x2="1200" y2="640"/>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 상단 제목 영역 -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 제목 배경 바 -->
+  <rect x="0" y="0" width="1200" height="155" fill="#08111F" opacity="0.85"/>
+  <line x1="0" y1="155" x2="1200" y2="155" stroke="#FFB020" stroke-width="2" opacity="0.6"/>
+
+  <!-- 제목 텍스트 -->
+  <text x="600" y="58" text-anchor="middle" font-size="34" font-weight="900" fill="#F0F4FF" filter="url(#textShadow)">Tesla FSD만으로는 부족하다 —</text>
+  <text x="600" y="100" text-anchor="middle" font-size="34" font-weight="900" fill="#00E09A" filter="url(#softGlow)">한국 도로 차별점 5종</text>
+
+  <!-- 부제 -->
+  <text x="600" y="132" text-anchor="middle" font-size="13" fill="#888888">
+    AuraView K-Perception은 한국 공공 인프라(V2V · 신호 API · DSZ · KMA · NEDIS) 위에서 작동
+  </text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 좌측 열: Tesla FSD -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <rect x="75" y="165" width="495" height="520" rx="8" fill="url(#teslaColBg)" stroke="#2A3D55" stroke-width="1.5"/>
+
+  <!-- Tesla 헤더 -->
+  <rect x="75" y="165" width="495" height="72" rx="8" fill="#1E3352"/>
+  <rect x="75" y="205" width="495" height="32" fill="#1E3352"/><!-- 아래 모서리 직각 -->
+
+  <!-- Tesla T 로고 (SVG path) -->
+  <g transform="translate(113, 185)">
+    <rect x="0" y="0" width="34" height="34" rx="17" fill="#CC0000" opacity="0.9"/>
+    <path d="M5,10 L29,10 L29,14 L19,14 L19,30 L15,30 L15,14 L5,14 Z" fill="white"/>
+  </g>
+
+  <text x="160" y="198" font-size="22" font-weight="700" fill="#E8EEF5">Tesla FSD</text>
+  <text x="160" y="218" font-size="11" fill="#7A95B0">글로벌 표준 · 단일 차량 시점</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 우측 열: AuraView K-Perception -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <rect x="630" y="165" width="495" height="520" rx="8" fill="url(#auraColBg)" stroke="#1A4030" stroke-width="1.5"/>
+
+  <!-- AuraView 헤더 -->
+  <rect x="630" y="165" width="495" height="72" rx="8" fill="#0E3526"/>
+  <rect x="630" y="205" width="495" height="32" fill="#0E3526"/>
+
+  <!-- AuraView 로고 (육각형 아이콘) -->
+  <g transform="translate(668, 170)">
+    <polygon points="17,2 30,9 30,23 17,30 4,23 4,9" fill="none" stroke="#00E09A" stroke-width="2.5"/>
+    <polygon points="17,7 25,12 25,20 17,25 9,20 9,12" fill="#00E09A" opacity="0.25"/>
+    <text x="17" y="21" text-anchor="middle" font-size="11" font-weight="700" fill="#00E09A">A</text>
+  </g>
+
+  <text x="715" y="198" font-size="22" font-weight="700" fill="#00E09A">AuraView K-Perception</text>
+  <text x="715" y="218" font-size="11" fill="#3DAA78">한국 공공 인프라 결합 · 협업 인지</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 가운데 분할선 + VS 원 -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <line x1="600" y1="175" x2="600" y2="675" stroke="#FFB020" stroke-width="2.5" opacity="0.7"/>
+
+  <!-- VS 원 -->
+  <circle cx="600" cy="425" r="28" fill="#0A0E18" stroke="#FFB020" stroke-width="2.5"/>
+  <text x="600" y="431" text-anchor="middle" font-size="16" font-weight="900" fill="#FFB020">VS</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 행 1: V2V 협업 인지 (y=237~337) -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 좌측 구분선 -->
+  <line x1="90" y1="337" x2="555" y2="337" stroke="#2A3D55" stroke-width="1" opacity="0.7"/>
+  <!-- 우측 구분선 -->
+  <line x1="645" y1="337" x2="1110" y2="337" stroke="#1A4030" stroke-width="1" opacity="0.7"/>
+
+  <!-- 좌측 행1: 단일 차량 카메라만 -->
+  <g transform="translate(100, 245)">
+    <!-- 카 아이콘 (단순) -->
+    <rect x="0" y="18" width="60" height="28" rx="6" fill="none" stroke="#4A6580" stroke-width="2"/>
+    <rect x="10" y="10" width="40" height="18" rx="4" fill="none" stroke="#4A6580" stroke-width="1.5"/>
+    <circle cx="12" cy="46" r="6" fill="#2A3D55" stroke="#4A6580" stroke-width="2"/>
+    <circle cx="48" cy="46" r="6" fill="#2A3D55" stroke="#4A6580" stroke-width="2"/>
+    <!-- 카메라 아이콘 -->
+    <rect x="70" y="22" width="22" height="16" rx="3" fill="none" stroke="#4A6580" stroke-width="1.5"/>
+    <circle cx="81" cy="30" r="4" fill="none" stroke="#4A6580" stroke-width="1.2"/>
+    <line x1="60" y1="30" x2="70" y2="30" stroke="#4A6580" stroke-width="1.5" stroke-dasharray="3,2"/>
+  </g>
+  <text x="215" y="267" font-size="13" font-weight="600" fill="#7A95B0">단일 차량 카메라만</text>
+  <text x="215" y="285" font-size="11" fill="#506070">주변 차량 정보 없음</text>
+  <text x="215" y="303" font-size="10" fill="#404F60">전방 시야 의존 100%</text>
+  <!-- 행 번호 -->
+  <text x="96" y="248" font-size="10" fill="#506070">① </text>
+
+  <!-- 우측 행1: V2V 협업 인지 -->
+  <g transform="translate(655, 245)">
+    <!-- 차1 -->
+    <rect x="0" y="18" width="50" height="24" rx="5" fill="none" stroke="#00C8FF" stroke-width="2"/>
+    <rect x="8" y="10" width="34" height="14" rx="3" fill="none" stroke="#00C8FF" stroke-width="1.5"/>
+    <circle cx="10" cy="42" r="5" fill="#0A2A3A" stroke="#00C8FF" stroke-width="2"/>
+    <circle cx="40" cy="42" r="5" fill="#0A2A3A" stroke="#00C8FF" stroke-width="2"/>
+    <!-- V2V 화살표 흐름 -->
+    <line x1="52" y1="30" x2="78" y2="30" stroke="#00C8FF" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowCyan)">
+      <animate attributeName="stroke-dashoffset" from="0" to="-18" dur="1.2s" repeatCount="indefinite"/>
+    </line>
+    <line x1="78" y1="30" x2="52" y2="30" stroke="#00C8FF" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5">
+      <animate attributeName="stroke-dashoffset" from="-18" to="0" dur="1.2s" repeatCount="indefinite"/>
+    </line>
+    <!-- 차2 -->
+    <rect x="80" y="18" width="50" height="24" rx="5" fill="none" stroke="#00C8FF" stroke-width="2"/>
+    <rect x="88" y="10" width="34" height="14" rx="3" fill="none" stroke="#00C8FF" stroke-width="1.5"/>
+    <circle cx="90" cy="42" r="5" fill="#0A2A3A" stroke="#00C8FF" stroke-width="2"/>
+    <circle cx="120" cy="42" r="5" fill="#0A2A3A" stroke="#00C8FF" stroke-width="2"/>
+  </g>
+  <!-- ⭐ + 텍스트 -->
+  <text x="815" y="267" font-size="14" fill="#00C8FF" filter="url(#glowCyan)">
+    ⭐ V2V 협업 인지
+    <animateTransform attributeName="transform" type="scale" values="1;1.08;1" dur="2.5s" repeatCount="indefinite" additive="sum"/>
+  </text>
+  <text x="815" y="286" font-size="12" font-weight="600" fill="#00C8FF">마주오는 차의 시점 빌려옴</text>
+  <text x="815" y="304" font-size="10" fill="#3D8FAA">차간 실시간 위험 데이터 공유</text>
+  <!-- 한국 표준 배지 -->
+  <rect x="980" y="255" width="62" height="18" rx="9" fill="#00C8FF" opacity="0.18" stroke="#00C8FF" stroke-width="1"/>
+  <text x="1011" y="268" text-anchor="middle" font-size="9" fill="#00C8FF">한국 표준</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 행 2: 신호 API (y=337~437) -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <line x1="90" y1="437" x2="555" y2="437" stroke="#2A3D55" stroke-width="1" opacity="0.7"/>
+  <line x1="645" y1="437" x2="1110" y2="437" stroke="#1A4030" stroke-width="1" opacity="0.7"/>
+
+  <!-- 좌측 행2 -->
+  <g transform="translate(100, 348)">
+    <!-- 카메라 -->
+    <rect x="0" y="10" width="28" height="20" rx="3" fill="none" stroke="#4A6580" stroke-width="2"/>
+    <circle cx="14" cy="20" r="5" fill="none" stroke="#4A6580" stroke-width="1.5"/>
+    <!-- 신호등 -->
+    <rect x="42" y="5" width="22" height="50" rx="4" fill="none" stroke="#4A6580" stroke-width="2"/>
+    <circle cx="53" cy="17" r="5" fill="#4A6580" opacity="0.4"/>
+    <circle cx="53" cy="30" r="5" fill="#4A6580" opacity="0.4"/>
+    <circle cx="53" cy="43" r="5" fill="#4A6580" opacity="0.4"/>
+    <!-- 점선 -->
+    <line x1="28" y1="20" x2="42" y2="20" stroke="#4A6580" stroke-width="1.5" stroke-dasharray="3,2"/>
+  </g>
+  <text x="96" y="348" font-size="10" fill="#506070">② </text>
+  <text x="185" y="370" font-size="13" font-weight="600" fill="#7A95B0">신호등 카메라 검출만</text>
+  <text x="185" y="388" font-size="11" fill="#506070">버스·트럭 가리면 오감지</text>
+  <text x="185" y="406" font-size="10" fill="#404F60">악천후 시 신뢰도 저하</text>
+
+  <!-- 우측 행2 -->
+  <g transform="translate(655, 348)">
+    <!-- API 박스 -->
+    <rect x="0" y="8" width="110" height="36" rx="5" fill="none" stroke="#FFB020" stroke-width="1.5" stroke-dasharray="5,3">
+      <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1.8s" repeatCount="indefinite"/>
+    </rect>
+    <text x="55" y="24" text-anchor="middle" font-size="9" font-weight="700" fill="#FFB020">apis.data.go.kr</text>
+    <text x="55" y="37" text-anchor="middle" font-size="8" fill="#CC8A10">신호 데이터 API</text>
+    <!-- 연결 화살표 -->
+    <line x1="112" y1="26" x2="128" y2="26" stroke="#FFB020" stroke-width="1.5" marker-end="url(#arrowGold)">
+      <animate attributeName="stroke-dashoffset" from="0" to="-10" dur="1s" repeatCount="indefinite"/>
+    </line>
+    <!-- 신호등 컬러 -->
+    <rect x="130" y="5" width="20" height="46" rx="3" fill="none" stroke="#FFB020" stroke-width="1.5"/>
+    <circle cx="140" cy="16" r="4" fill="#FF4040"/>
+    <circle cx="140" cy="28" r="4" fill="#FFB020"/>
+    <circle cx="140" cy="40" r="4" fill="#00CC44"/>
+  </g>
+  <text x="815" y="370" font-size="14" fill="#FFB020" filter="url(#glowGold)">
+    ⭐ 신호 API 직접 호출
+    <animateTransform attributeName="transform" type="scale" values="1;1.06;1" dur="3s" repeatCount="indefinite" additive="sum"/>
+  </text>
+  <text x="815" y="388" font-size="12" font-weight="600" fill="#FFB020">버스 가려도 무관</text>
+  <text x="815" y="406" font-size="10" fill="#AA7810">공공 API 직결 · 지연 &lt;50ms</text>
+  <rect x="980" y="357" width="62" height="18" rx="9" fill="#FFB020" opacity="0.18" stroke="#FFB020" stroke-width="1"/>
+  <text x="1011" y="370" text-anchor="middle" font-size="9" fill="#FFB020">한국 표준</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 행 3: 사고이력 (y=437~537) -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <line x1="90" y1="537" x2="555" y2="537" stroke="#2A3D55" stroke-width="1" opacity="0.7"/>
+  <line x1="645" y1="537" x2="1110" y2="537" stroke="#1A4030" stroke-width="1" opacity="0.7"/>
+
+  <!-- 좌측 행3 -->
+  <g transform="translate(106, 452)">
+    <!-- ? 아이콘 -->
+    <circle cx="25" cy="28" r="25" fill="none" stroke="#4A6580" stroke-width="2" opacity="0.5"/>
+    <text x="25" y="35" text-anchor="middle" font-size="26" fill="#4A6580" opacity="0.7">?</text>
+  </g>
+  <text x="96" y="452" font-size="10" fill="#506070">③ </text>
+  <text x="170" y="472" font-size="13" font-weight="600" fill="#7A95B0">사고이력 모름</text>
+  <text x="170" y="490" font-size="11" fill="#506070">위험구간 데이터 없음</text>
+  <text x="170" y="508" font-size="10" fill="#404F60">학습 데이터 = 해외 기준</text>
+
+  <!-- 우측 행3 -->
+  <g transform="translate(655, 452)">
+    <!-- 데이터 아이콘 -->
+    <rect x="0" y="10" width="55" height="40" rx="4" fill="none" stroke="#A095FF" stroke-width="1.5"/>
+    <line x1="8" y1="20" x2="47" y2="20" stroke="#A095FF" stroke-width="1" opacity="0.6"/>
+    <line x1="8" y1="28" x2="40" y2="28" stroke="#A095FF" stroke-width="1" opacity="0.6"/>
+    <line x1="8" y1="36" x2="44" y2="36" stroke="#A095FF" stroke-width="1" opacity="0.6"/>
+    <text x="27" y="45" text-anchor="middle" font-size="7" fill="#A095FF">TAAS</text>
+    <!-- 자물쇠 -->
+    <rect x="65" y="18" width="22" height="18" rx="3" fill="none" stroke="#A095FF" stroke-width="1.5"/>
+    <path d="M69,18 Q69,10 76,10 Q83,10 83,18" fill="none" stroke="#A095FF" stroke-width="1.5"/>
+    <circle cx="76" cy="27" r="3" fill="#A095FF" opacity="0.7"/>
+    <!-- 결합 화살표 -->
+    <line x1="55" y1="30" x2="65" y2="30" stroke="#A095FF" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <!-- DSZ 배지 -->
+    <rect x="95" y="20" width="35" height="20" rx="3" fill="#A095FF" opacity="0.2" stroke="#A095FF" stroke-width="1"/>
+    <text x="112" y="34" text-anchor="middle" font-size="8" fill="#A095FF">k-익명</text>
+  </g>
+  <text x="815" y="472" font-size="14" fill="#A095FF" filter="url(#glowPurple)">
+    ⭐ TAAS + DSZ k-익명 결합
+    <animateTransform attributeName="transform" type="scale" values="1;1.07;1" dur="2.8s" repeatCount="indefinite" additive="sum"/>
+  </text>
+  <text x="815" y="490" font-size="12" font-weight="600" fill="#A095FF">한국 사고 위험구간 실시간 반영</text>
+  <text x="815" y="508" font-size="10" fill="#7070CC">개인정보 보호 k-익명화 적용</text>
+  <rect x="980" y="459" width="62" height="18" rx="9" fill="#A095FF" opacity="0.18" stroke="#A095FF" stroke-width="1"/>
+  <text x="1011" y="472" text-anchor="middle" font-size="9" fill="#A095FF">한국 표준</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 행 4: 기상 (y=537~637) -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <line x1="90" y1="637" x2="555" y2="637" stroke="#2A3D55" stroke-width="1" opacity="0.7"/>
+  <line x1="645" y1="637" x2="1110" y2="637" stroke="#1A4030" stroke-width="1" opacity="0.7"/>
+
+  <!-- 좌측 행4 -->
+  <g transform="translate(106, 552)">
+    <!-- 비 구름 -->
+    <path d="M10,20 Q10,10 22,10 Q26,4 34,6 Q42,4 44,12 Q52,12 52,20 Q52,28 10,28 Z" fill="none" stroke="#4A6580" stroke-width="1.5" opacity="0.6"/>
+    <line x1="18" y1="32" x2="16" y2="42" stroke="#4A6580" stroke-width="1.5" opacity="0.5"/>
+    <line x1="26" y1="32" x2="24" y2="42" stroke="#4A6580" stroke-width="1.5" opacity="0.5"/>
+    <line x1="34" y1="32" x2="32" y2="42" stroke="#4A6580" stroke-width="1.5" opacity="0.5"/>
+    <line x1="42" y1="32" x2="40" y2="42" stroke="#4A6580" stroke-width="1.5" opacity="0.5"/>
+    <!-- X 표시 -->
+    <line x1="58" y1="14" x2="72" y2="28" stroke="#CC4444" stroke-width="2.5" opacity="0.8"/>
+    <line x1="72" y1="14" x2="58" y2="28" stroke="#CC4444" stroke-width="2.5" opacity="0.8"/>
+  </g>
+  <text x="96" y="552" font-size="10" fill="#506070">④ </text>
+  <text x="185" y="572" font-size="13" font-weight="600" fill="#7A95B0">기상 영향 미반영</text>
+  <text x="185" y="590" font-size="11" fill="#506070">우천·안개 시 감지율 급락</text>
+  <text x="185" y="608" font-size="10" fill="#404F60">기상 보정 알고리즘 없음</text>
+
+  <!-- 우측 행4 -->
+  <g transform="translate(655, 550)">
+    <!-- 기상청 구름+비 -->
+    <path d="M5,22 Q5,12 16,12 Q20,6 28,8 Q36,6 38,14 Q46,14 46,22 Q46,30 5,30 Z" fill="none" stroke="#6BAEFF" stroke-width="1.5"/>
+    <line x1="14" y1="34" x2="12" y2="44" stroke="#6BAEFF" stroke-width="1.5"/>
+    <line x1="22" y1="34" x2="20" y2="44" stroke="#6BAEFF" stroke-width="1.5"/>
+    <line x1="30" y1="34" x2="28" y2="44" stroke="#6BAEFF" stroke-width="1.5"/>
+    <line x1="38" y1="34" x2="36" y2="44" stroke="#6BAEFF" stroke-width="1.5"/>
+    <!-- KMA 화살표 -->
+    <line x1="50" y1="22" x2="68" y2="22" stroke="#6BAEFF" stroke-width="1.5" stroke-dasharray="4,2">
+      <animate attributeName="stroke-dashoffset" from="0" to="-12" dur="1.4s" repeatCount="indefinite"/>
+    </line>
+    <!-- 가중치 배지 -->
+    <rect x="70" y="12" width="68" height="22" rx="4" fill="#6BAEFF" opacity="0.15" stroke="#6BAEFF" stroke-width="1"/>
+    <text x="104" y="27" text-anchor="middle" font-size="11" font-weight="700" fill="#6BAEFF">+0.18 가중치</text>
+  </g>
+  <text x="815" y="572" font-size="14" fill="#6BAEFF" filter="url(#glowBlue)">
+    ⭐ KMA 기상 자동 보정
+    <animateTransform attributeName="transform" type="scale" values="1;1.07;1" dur="2.2s" repeatCount="indefinite" additive="sum"/>
+  </text>
+  <text x="815" y="590" font-size="12" font-weight="600" fill="#6BAEFF">우천 감지율 +0.18 자동 보정</text>
+  <text x="815" y="608" font-size="10" fill="#4070AA">기상청 API 실시간 연동</text>
+  <rect x="980" y="559" width="62" height="18" rx="9" fill="#6BAEFF" opacity="0.18" stroke="#6BAEFF" stroke-width="1"/>
+  <text x="1011" y="572" text-anchor="middle" font-size="9" fill="#6BAEFF">한국 표준</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 행 5: 응급 대응 (y=637~685) — 마지막 행 -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 좌측 행5 -->
+  <g transform="translate(106, 648)">
+    <!-- 119 X -->
+    <rect x="0" y="0" width="50" height="30" rx="5" fill="none" stroke="#4A6580" stroke-width="1.5" opacity="0.5"/>
+    <text x="25" y="20" text-anchor="middle" font-size="14" font-weight="700" fill="#4A6580" opacity="0.6">119</text>
+    <line x1="54" y1="2" x2="64" y2="12" stroke="#CC4444" stroke-width="2.5" opacity="0.8"/>
+    <line x1="64" y1="2" x2="54" y2="12" stroke="#CC4444" stroke-width="2.5" opacity="0.8"/>
+  </g>
+  <text x="96" y="648" font-size="10" fill="#506070">⑤ </text>
+  <text x="185" y="658" font-size="13" font-weight="600" fill="#7A95B0">사고 후 대응 없음</text>
+  <text x="185" y="675" font-size="11" fill="#506070">응급 연계 시스템 없음</text>
+
+  <!-- 우측 행5 -->
+  <g transform="translate(655, 645)">
+    <!-- 병원 -->
+    <rect x="0" y="5" width="36" height="26" rx="3" fill="none" stroke="#00E09A" stroke-width="1.5"/>
+    <line x1="13" y1="5" x2="13" y2="31" stroke="#00E09A" stroke-width="1.5"/>
+    <line x1="0" y1="18" x2="36" y2="18" stroke="#00E09A" stroke-width="1.5"/>
+    <text x="18" y="15" text-anchor="middle" font-size="9" fill="#00E09A">+</text>
+    <!-- 연결 -->
+    <line x1="38" y1="18" x2="54" y2="18" stroke="#00E09A" stroke-width="1.5" stroke-dasharray="4,2">
+      <animate attributeName="stroke-dashoffset" from="0" to="-12" dur="1.6s" repeatCount="indefinite"/>
+    </line>
+    <!-- 지하철 -->
+    <rect x="56" y="8" width="36" height="22" rx="3" fill="none" stroke="#00E09A" stroke-width="1.5"/>
+    <text x="74" y="23" text-anchor="middle" font-size="9" fill="#00E09A">지하철</text>
+  </g>
+  <text x="815" y="658" font-size="14" fill="#00E09A" filter="url(#glowGreen)">
+    ⭐ NEDIS 응급실 + K-MaaS 우회
+    <animateTransform attributeName="transform" type="scale" values="1;1.08;1" dur="2s" repeatCount="indefinite" additive="sum"/>
+  </text>
+  <text x="815" y="676" font-size="11" font-weight="600" fill="#00E09A">사고 즉시 응급연계 + 대체경로</text>
+  <rect x="980" y="645" width="62" height="18" rx="9" fill="#00E09A" opacity="0.18" stroke="#00E09A" stroke-width="1"/>
+  <text x="1011" y="658" text-anchor="middle" font-size="9" fill="#00E09A">한국 표준</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- 하단 바 + 카피 -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <rect x="75" y="690" width="1050" height="24" rx="5" fill="#0F1E35" opacity="0.85"/>
+  <text x="600" y="706" text-anchor="middle" font-size="12" font-weight="600" fill="#B0C4D8">
+    한국 공공데이터 인프라가 이미 측정 중인 신호를 활용 — Tesla가 못 보는 것을 본다
+  </text>
+
+  <!-- 우하단 워터마크 -->
+  <text x="1150" y="714" text-anchor="end" font-size="9" fill="#304050">AuraView · 2026 국토교통 데이터활용 경진대회</text>
+
+</svg>

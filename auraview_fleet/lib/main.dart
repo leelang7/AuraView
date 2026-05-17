@@ -3147,139 +3147,6 @@ class _Bev3DVoxelPainter extends CustomPainter {
 }
 
 
-class _BevPainter extends CustomPainter {
-  final Map<String, dynamic>? bev;
-  final Map<String, dynamic>? fusion;
-  _BevPainter({this.bev, this.fusion});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bg = Paint()..color = const Color(0xFF050A10);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(8)),
-      bg,
-    );
-
-    final w = size.width, h = size.height;
-    // 1) 차로 가이드 점선 (수직 3개) — 깊이감
-    final lanePaint = Paint()
-      ..color = const Color(0x10FFFFFF)
-      ..strokeWidth = 1;
-    for (final cx in [w * 0.30, w * 0.50, w * 0.70]) {
-      double y = 4;
-      while (y < h - 4) {
-        canvas.drawLine(Offset(cx, y), Offset(cx, y + 6), lanePaint);
-        y += 12;
-      }
-    }
-
-    // 2) 그리드 점유 (40x40 다운샘플) — 색상 ramp cyan→orange→red
-    final gflat = bev?['grid_flat'];
-    final gshape = bev?['grid_shape_flat'];
-    if (gflat is List && gshape is List && gshape.length == 2) {
-      final rows = (gshape[0] as num).toInt();
-      final cols = (gshape[1] as num).toInt();
-      final cellW = w / cols, cellH = h / rows;
-      for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) {
-          final p = ((gflat[r * cols + c] ?? 0) as num).toDouble();
-          if (p < 0.08) continue;
-          final t = p.clamp(0.0, 1.0);
-          // EGO 가 화면 하단 → row 0 = bottom, row max = top
-          final yTop = h - (r + 1) * cellH;
-          final xLeft = c * cellW;
-          final col = Color.fromARGB(
-            (220 * t.clamp(0.4, 1.0)).round(),
-            (255 * t).round(),
-            (180 - 140 * t).clamp(20, 200).round(),
-            (200 * (1 - t)).round(),
-          );
-          canvas.drawRect(
-            Rect.fromLTWH(xLeft, yTop, cellW + 0.5, cellH + 0.5),
-            Paint()..color = col,
-          );
-        }
-      }
-    }
-
-    // 3) EGO 마커 (하단 중앙)
-    final ego = Offset(w * 0.5, h - 8);
-    canvas.drawCircle(ego, 5, Paint()..color = _accent);
-    canvas.drawCircle(ego, 5, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = const Color(0xFFFFFFFF));
-
-    // 4) Hotspot 마커 + 거리
-    final hotspots = bev?['hotspots'] as List?;
-    if (hotspots != null) {
-      final shape = bev?['shape'] as List?;
-      final fineRows = shape != null ? (shape[0] as num).toInt() : 80;
-      final fineCols = shape != null ? (shape[1] as num).toInt() : 80;
-      for (final h0 in hotspots) {
-        if (h0 is! Map) continue;
-        final row = (h0['row'] as num?)?.toInt() ?? 0;
-        final col = (h0['col'] as num?)?.toInt() ?? 0;
-        final kind = h0['kind'] as String? ?? 'object';
-        final dist = (h0['distance_m'] as num?)?.toDouble() ?? 0;
-        final px = (col / (fineCols - 1)) * w;
-        final py = h - (row / (fineRows - 1)) * h;
-        Color color;
-        switch (kind) {
-          case 'occluded_shadow': color = _warn; break;
-          case 'intent_prior':    color = _safe; break;
-          case 'signal_shadow':   color = _accent2; break;
-          default:                color = _danger;
-        }
-        // 외곽 box (작게)
-        canvas.drawRect(
-          Rect.fromCenter(center: Offset(px, py), width: 14, height: 14),
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5
-            ..color = color,
-        );
-        canvas.drawCircle(Offset(px, py), 2, Paint()..color = color);
-        // 거리 텍스트
-        final tp = TextPainter(
-          text: TextSpan(
-            text: '${dist.toInt()}m',
-            style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w700),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        var lx = px + 10;
-        var ly = py - 10;
-        if (lx + tp.width > w) lx = px - tp.width - 10;
-        if (ly < 0) ly = 0;
-        tp.paint(canvas, Offset(lx, ly));
-      }
-    }
-
-    // 5) 도시정보 결합 표시 — 좌상단 작은 배지
-    if (fusion != null) {
-      final tp = TextPainter(
-        text: const TextSpan(
-          text: '도시정보 결합',
-          style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w700),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(4, 4, tp.width + 10, 14),
-          const Radius.circular(4),
-        ),
-        Paint()..color = _safe.withValues(alpha: 0.15),
-      );
-      tp.paint(canvas, const Offset(9, 4.5));
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BevPainter oldDelegate) =>
-      oldDelegate.bev != bev || oldDelegate.fusion != fusion;
-}
 
 class _CameraPlaceholder extends StatelessWidget {
   const _CameraPlaceholder();
@@ -3487,8 +3354,8 @@ class _IdleStatusCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 hasInter
-                  ? '근접 교차로 자동 감지 · alt_signal API 활성'
-                  : (shadowOn ? '엣지 voxel · 위험 장면만 자동 업로드' : '데모 모드는 BEV 패널 LIVE↔DEMO 토글로 전환'),
+                  ? '근접 교차로 자동 감지 · 가려진 신호등도 보여줍니다'
+                  : (shadowOn ? '위험 순간만 자동으로 안전 데이터에 기여합니다' : '아래 주행 시작 버튼으로 모니터링을 켜세요'),
                 style: TextStyle(
                   color: _muted, fontSize: 10.5,
                   fontFamily: 'monospace', fontWeight: FontWeight.w600,

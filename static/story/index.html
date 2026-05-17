@@ -492,6 +492,8 @@
           <div class="sim-row" data-key="freeze" data-min="0" data-max="32" data-init="0" data-unit="%" data-label="❄️ 결빙 위험"></div>
           <div class="sim-row" data-key="school" data-min="100" data-max="150" data-init="100" data-unit="%" data-label="🏫 스쿨존 multiplier"></div>
           <div class="sim-row" data-key="ped" data-min="0" data-max="30" data-init="0" data-unit="%" data-label="🚶 보행자 다발 boost"></div>
+          <div class="sim-row" data-key="surface" data-min="0" data-max="35" data-init="0" data-unit="%" data-label="🛣️ 노면 위험 (RWIS)"></div>
+          <div class="sim-row" data-key="insp" data-min="0" data-max="8" data-init="0" data-unit="%" data-label="🔧 검사 부적합 boost (KOTSA)"></div>
         </div>
         <!-- RIGHT: result -->
         <div style="position:sticky;top:24px;">
@@ -665,13 +667,13 @@
       });
     });
 
-    // 시나리오 프리셋
+    // 시나리오 프리셋 (v5: RWIS surface + KOTSA inspection 추가)
     const PRESETS = {
-      rainy_school: { speed: 22, incidents: 2, taas: 4, weather: 22, er_load: 65, freeze: 0,  school: 150, ped: 18 },
-      night_ped:    { speed: 28, incidents: 1, taas: 6, weather: 8,  er_load: 75, freeze: 0,  school: 100, ped: 28 },
-      rush_er:      { speed: 12, incidents: 3, taas: 5, weather: 0,  er_load: 92, freeze: 0,  school: 100, ped: 12 },
-      ice_bicycle:  { speed: 18, incidents: 1, taas: 3, weather: 12, er_load: 60, freeze: 28, school: 100, ped: 8  },
-      reset:        { speed: 35, incidents: 1, taas: 3, weather: 0,  er_load: 55, freeze: 0,  school: 100, ped: 0  },
+      rainy_school: { speed: 22, incidents: 2, taas: 4, weather: 22, er_load: 65, freeze: 0,  school: 150, ped: 18, surface: 10, insp: 1 },
+      night_ped:    { speed: 28, incidents: 1, taas: 6, weather: 8,  er_load: 75, freeze: 0,  school: 100, ped: 28, surface: 0,  insp: 2 },
+      rush_er:      { speed: 12, incidents: 3, taas: 5, weather: 0,  er_load: 92, freeze: 0,  school: 100, ped: 12, surface: 0,  insp: 4 },
+      ice_bicycle:  { speed: 18, incidents: 1, taas: 3, weather: 12, er_load: 60, freeze: 28, school: 100, ped: 8,  surface: 35, insp: 0 },
+      reset:        { speed: 35, incidents: 1, taas: 3, weather: 0,  er_load: 55, freeze: 0,  school: 100, ped: 0,  surface: 0,  insp: 0 },
     };
     function applyPreset(key) {
       const p = PRESETS[key]; if (!p) return;
@@ -689,27 +691,31 @@
     });
 
     function recompute() {
-      // backend public_api.py IntersectionFusion.to_dict() 와 동일한 가중치
-      // 속도0.20 + 돌발0.15 + TAAS0.15 + 기상0.12 + ER0.08 + 자전거0.08 + 결빙0.10 + 보행자0.07
-      // + (스쿨존 multiplier - 1.0) * 0.10 (가산), 마지막에 multiplier 곱
+      // v5 17-source: backend IntersectionFusion 가중치 동기화
+      // 속도0.16 + 돌발0.10 + TAAS0.10 + 기상0.09 + ER0.05 + 결빙0.07 + 보행자0.05
+      // + 스쿨존multi×0.10 + 노면0.07 + 검사0.05, 스쿨존 multiplier 마지막에 곱
       const speed = state.speed;
       const inc = state.incidents;
       const taas = state.taas;
-      const weather = state.weather / 100;     // 0~0.30
-      const er = state.er_load / 100;          // 0~1.0
-      const freeze = state.freeze / 100;       // 0~0.32
-      const ped = state.ped / 100;             // 0~0.30
-      const sz = state.school / 100;           // 1.0~1.5
+      const weather = state.weather / 100;
+      const er = state.er_load / 100;
+      const freeze = state.freeze / 100;
+      const ped = state.ped / 100;
+      const sz = state.school / 100;
+      const surface = (state.surface || 0) / 100;   // v5 RWIS 0~0.35
+      const insp = (state.insp || 0) / 100;         // v5 KOTSA 0~0.08
 
       let base = (
-        (1.0 - Math.min(speed, 80) / 80) * 0.20 +
-        Math.min(inc, 3) / 3 * 0.15 +
-        Math.min(taas, 7) / 7 * 0.15 +
-        weather * 0.12 +
-        er * 0.08 +
-        freeze * 0.10 +
-        ped * 0.07 +
-        (sz - 1.0) * 0.10
+        (1.0 - Math.min(speed, 80) / 80) * 0.16 +
+        Math.min(inc, 3) / 3 * 0.10 +
+        Math.min(taas, 7) / 7 * 0.10 +
+        weather * 0.09 +
+        er * 0.05 +
+        freeze * 0.07 +
+        ped * 0.05 +
+        (sz - 1.0) * 0.10 +
+        surface * 0.07 +
+        insp * 0.05
       );
       if (sz > 1.0) base *= sz;
       const risk = Math.min(1.0, base);

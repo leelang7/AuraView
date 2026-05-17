@@ -1817,12 +1817,21 @@ class _CityInfoLine extends StatelessWidget {
     final bool nearEv = (summary?['near_ev_station'] == true);
     final double evDwelling = (summary?['ev_dwelling_likelihood'] is num) ? (summary!['ev_dwelling_likelihood'] as num).toDouble() : 0.0;
 
+    // v5 2026-05-18: 17-source (도로 노면 + KOTSA 자동차검사)
+    final String roadSurface = (summary?['road_surface']?.toString() ?? 'dry');
+    final double surfaceBoost = (summary?['surface_risk_boost'] is num) ? (summary!['surface_risk_boost'] as num).toDouble() : 0.0;
+    final bool lowVis = (summary?['low_visibility_flag'] == true);
+    final double inspBoost = (summary?['inspection_risk_boost'] is num) ? (summary!['inspection_risk_boost'] as num).toDouble() : 0.0;
+    final double inspFailRate = (summary?['inspection_fail_rate_district'] is num) ? (summary!['inspection_fail_rate_district'] as num).toDouble() : 0.0;
+
     final showSchoolZone = inSchoolZone && szMul > 1.0;
     final showBlackIce = blackIce || freezeBoost > 0.05;
     final showPedHotspot = inPedHotspot && pedBoost > 0.05;
     final showAir = pm10 >= 80 || airBoost > 0.04;
     final showWalkRoute = onSchoolRoute && walkBoost > 0.05;
     final showEv = nearEv && evDwelling >= 0.7;
+    final showSurface = surfaceBoost > 0.05 || lowVis;
+    final showInsp = inspBoost > 0.02;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -1904,7 +1913,25 @@ class _CityInfoLine extends StatelessWidget {
               Text('EV ${(evDwelling*100).toStringAsFixed(0)}%',
                 style: const TextStyle(color: Color(0xFF7CE4B0), fontSize: 10, fontWeight: FontWeight.w700)),
             ]),
-          // v4 배지: N종 융합 (15까지 확장)
+          // v5: 도로 노면 (RWIS)
+          if (showSurface)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(roadSurface == 'frost' || roadSurface == 'ice' ? Icons.ac_unit
+                   : roadSurface == 'snow' ? Icons.cloudy_snowing
+                   : roadSurface == 'wet'  ? Icons.water
+                   : Icons.opacity,
+                size: 11, color: const Color(0xFF6BE3FF)), const SizedBox(width: 3),
+              Text('${({"frost":"결빙","ice":"결빙","snow":"적설","wet":"습윤","dry":"건조"}[roadSurface] ?? roadSurface)} +${(surfaceBoost*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFF6BE3FF), fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v5: 자동차검사 부적합률 (KOTSA)
+          if (showInsp)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.build_circle_outlined, size: 11, color: const Color(0xFFA095FF)), const SizedBox(width: 3),
+              Text('검사부적합 ${(inspFailRate*100).toStringAsFixed(1)}%',
+                style: const TextStyle(color: Color(0xFFA095FF), fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          // v5 배지: N종 융합 (17까지 확장)
           if (sourcesFused >= 7)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -1913,7 +1940,7 @@ class _CityInfoLine extends StatelessWidget {
                 border: Border.all(color: _safe.withValues(alpha: 0.45), width: 0.8),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text('${sourcesFused}src v${sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2")}',
+              child: Text('${sourcesFused}src v${sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2"))}',
                 style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
             ),
           // v2: BIS 실시간 버스 표시 (반경 150m 내 차량 수)

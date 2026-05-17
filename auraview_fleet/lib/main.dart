@@ -142,6 +142,7 @@ class _FleetHomeState extends State<FleetHome>
   String? _autoIntersectionName;
   Timer? _bevTimer;
   Timer? _scnRotateTimer;
+  Timer? _pollServerTimer;        // v5 2026-05-17: leak 방지 위해 인스턴스 보관
   List<double>? _prevFrameGray;  // motion diff 용 이전 프레임
 
   // ★ ML Kit 객체 검출 (사람/차량 on-device 인식)
@@ -237,6 +238,7 @@ class _FleetHomeState extends State<FleetHome>
     _ticker?.cancel();
     _bevTimer?.cancel();
     _scnRotateTimer?.cancel();
+    _pollServerTimer?.cancel();
     _posSub?.cancel();
     _cam?.dispose();
     _objDetector?.close();
@@ -351,7 +353,19 @@ class _FleetHomeState extends State<FleetHome>
             .timeout(const Duration(seconds: 6));
         if (r.statusCode == 200) {
           final body = jsonDecode(r.body) as Map<String, dynamic>;
+          // v5 2026-05-17: 위험 햅틱 — 정지 신호 + 이전과 상태 다를 때만 진동 (스팸 방지)
+          final newState = (body['signal_state']?.toString() ?? '').toLowerCase();
+          final wasStop  = ((_altSignal?['signal_state'] as String?) ?? '').toLowerCase().contains('stop');
+          final isStop   = newState.contains('stop') || newState.contains('red');
           if (mounted) setState(() => _altSignal = body);
+          if (isStop && !wasStop) {
+            // 새로 정지 신호 감지 → 강한 햅틱 (heavyImpact 3회 burst)
+            HapticFeedback.heavyImpact();
+            await Future.delayed(const Duration(milliseconds: 120));
+            HapticFeedback.heavyImpact();
+            await Future.delayed(const Duration(milliseconds: 120));
+            HapticFeedback.heavyImpact();
+          }
         }
       } catch (_) {}
     }
@@ -718,7 +732,19 @@ class _FleetHomeState extends State<FleetHome>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) _ticker?.cancel();
+    if (state == AppLifecycleState.paused) {
+      _ticker?.cancel();
+      _bevTimer?.cancel();
+      _pollServerTimer?.cancel();
+    } else if (state == AppLifecycleState.resumed) {
+      // 백그라운드에서 돌아왔을 때 타이머 재시작 (foreground service 미구현 보완)
+      if (_shadowOn) {
+        _ticker ??= Timer.periodic(kShadowInterval, (_) => _shadowTick());
+      }
+      _bevTimer ??= Timer.periodic(const Duration(seconds: 5), (_) => _fetchBev());
+      _pollServerTimer ??= Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
+      _refreshLocation();
+    }
   }
 
   Future<void> _bootstrap() async {
@@ -756,7 +782,7 @@ class _FleetHomeState extends State<FleetHome>
     _refreshLocation();
     _startLocationStream();
     _pollServer();
-    Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
+    _pollServerTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
 
     // BEV 자동 시작 (5초 주기) — LIVE: 카메라 voxelize 만, DEMO: + 서버 시나리오
     _fetchBev();
@@ -1223,8 +1249,25 @@ class _FleetHomeState extends State<FleetHome>
               ),
             ),
 
-            // 4) 카메라 PiP — 좌하단 작게 (140×100) · 드라이브 버튼 위
-            if (_cam != null && _cam!.value.isInitialized)
+            // 4) 카메라 PiP — 좌하단 (140×100). 권한 없으면 _CameraPlaceholder.
+            if (_cam == null || !_cam!.value.isInitialized)
+              Positioned(
+                left: 14, bottom: 100,
+                child: Container(
+                  width: 220, height: 240,
+                  decoration: BoxDecoration(
+                    color: const Color(0xEE0D1520),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _danger.withValues(alpha: 0.55), width: 1.5),
+                    boxShadow: [BoxShadow(color: _danger.withValues(alpha: 0.20), blurRadius: 12)],
+                  ),
+                  child: const ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(11)),
+                    child: _CameraPlaceholder(),
+                  ),
+                ),
+              )
+            else if (_cam != null && _cam!.value.isInitialized)
               Positioned(
                 left: 14, bottom: 100,
                 child: GestureDetector(
@@ -3244,12 +3287,53 @@ class _CameraPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: _bg,
-      child: const Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.no_photography_outlined, color: _muted, size: 56),
-          SizedBox(height: 16),
-          Text('카메라 권한이 필요합니다', style: TextStyle(color: _muted, fontSize: 14)),
-        ]),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.no_photography_outlined, color: _muted, size: 56),
+            const SizedBox(height: 16),
+            const Text('카메라 권한이 필요합니다',
+                style: TextStyle(color: _text, fontSize: 16, fontWeight: FontWeight.w800),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            const Text(
+              'AuraView는 운전 중 도로 영상을 분석해 사각지대를 보여줍니다.\n영상은 위험 순간만 PII 자동 마스킹 후 업로드됩니다.',
+              style: TextStyle(color: _muted, fontSize: 12, height: 1.55),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // 카메라 권한 재요청 버튼
+            FilledButton.icon(
+              onPressed: () async {
+                final st = await Permission.camera.request();
+                if (st.isPermanentlyDenied) {
+                  await openAppSettings();
+                }
+              },
+              icon: const Icon(Icons.camera_alt_outlined, size: 18),
+              label: const Text('카메라 권한 허용'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _accent, foregroundColor: _bg,
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // 영구 거부 시 시스템 설정 직접 열기
+            TextButton.icon(
+              onPressed: () => openAppSettings(),
+              icon: const Icon(Icons.settings_outlined, size: 14, color: _muted),
+              label: const Text('시스템 설정 직접 열기',
+                  style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(height: 12),
+            // 카메라 없이도 동작하는 부분 안내
+            Text('카메라 없이도 GPS · 신호 · 15-source 데이터는 받습니다',
+                style: TextStyle(color: _muted.withValues(alpha: 0.6), fontSize: 10, height: 1.4),
+                textAlign: TextAlign.center),
+          ]),
+        ),
       ),
     );
   }

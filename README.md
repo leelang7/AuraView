@@ -77,12 +77,34 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 | ⭐ 10초 | https://auraview.allthatai.kr/submission/ | 인쇄 가능 원페이지 요약 |
 | 또는 | https://auraview.allthatai.kr/kiosk/ | 무인 자동 시연 10장면 |
 
-### 🌐 Live
+### 🌐 Live (8 진입점)
 
-- **📖 일반인용 30초 스토리 (v3 NEW):** https://auraview.allthatai.kr/story/ — 처음 보는 사람도 30초에 이해 (SVG 3종 + 12종 카드 + CTA)
-- **Dashboard:** https://auraview.allthatai.kr/ui ← 9탭 풀 데모
+| 페이지 | 용도 | URL |
+|---|---|---|
+| 📖 **일반인용 스토리** | 30초 이해 + 인터랙티브 시뮬레이터 + 시나리오 프리셋 | [/story/](https://auraview.allthatai.kr/story/) |
+| 🎥 **1분 자동 시연** | 풀스크린 시네마틱 16 장면 무한루프 (시연 부스용) | [/reel/](https://auraview.allthatai.kr/reel/) |
+| 🖼️ **시각자료 갤러리** | 18 SVG 종합 + 필터/라이트박스 | [/gallery/](https://auraview.allthatai.kr/gallery/) |
+| 🏆 **심사위원 허브** | 11 검증 URL + 5 데모 + 8 시나리오 + 가점 25점 | [/competition/](https://auraview.allthatai.kr/competition/) |
+| 🎬 **풀 대시보드** | 10탭 라이브 데모 (Fusion / BEV / Fleet / V2V 등) | [/ui](https://auraview.allthatai.kr/ui) |
+| 🎞️ **발표 슬라이드** | Reveal.js 14장 (Cover → CTA) | [/slides/](https://auraview.allthatai.kr/slides/) |
+| 📺 **무인 키오스크** | 자동 순회 13 장면 | [/kiosk/](https://auraview.allthatai.kr/kiosk/) |
+| ≡ **1-pager** | 인쇄 가능 요약 | [/submission/](https://auraview.allthatai.kr/submission/) |
+
+### 🖼️ 18 SVG 시각자료 (외부 의존 0 · Pure SMIL)
+
+**임팩트 (5):** [og_card](static/visuals/og_card.svg) · [taas_stats](static/visuals/taas_stats.svg) ★ · [before_after](static/visuals/before_after.svg) · [timeline_57s](static/visuals/timeline_57s.svg) · [impact_waffle](static/visuals/impact_waffle.svg)
+**데이터 (2):** [fusion_diagram](static/visuals/fusion_diagram.svg) · [kmaas_alternatives](static/visuals/kmaas_alternatives.svg)
+**기술 (2):** [tesla_vs_auraview](static/visuals/tesla_vs_auraview.svg) · [ai_metrics](static/visuals/ai_metrics.svg)
+**앱 (1):** [app_mockup](static/visuals/app_mockup.svg)
+**시나리오 (8):** [scenarios/01~08](static/visuals/scenarios/)
+
+> 갤러리에서 한 화면에: [/gallery/](https://auraview.allthatai.kr/gallery/)
+
+### 🌐 Other Live
+
 - **Mobile App (Flutter / PWA):** https://auraview.allthatai.kr/pwa/
-- **Native APK (Android 공개 다운로드):** [`releases/latest/auraview_fleet.apk`](https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk) ← 인증 불요, BEV HUD + Fleet 자동 업로드
+- **Mobile App (Flutter / PWA):** https://auraview.allthatai.kr/pwa/
+- **Native APK (Android 공개 다운로드):** [`releases/latest/auraview_fleet.apk`](https://github.com/leelang7/AuraView/releases/latest/download/auraview_fleet.apk) ← 인증 불요, BEV HUD + 첫 진입 온보딩 3장 + 15-source 신호 + BIS 라이브 + 위험 햅틱
 - **Slides (Reveal.js 발표):** https://auraview.allthatai.kr/slides/
 - **Kiosk (무인 자동 시연):** https://auraview.allthatai.kr/kiosk/
 - **API Docs (Swagger):** https://auraview.allthatai.kr/docs

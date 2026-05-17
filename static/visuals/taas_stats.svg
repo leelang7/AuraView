@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720"
+     style="font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;">
+  <defs>
+    <!-- 배경 격자 패턴 -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1A2035" stroke-width="0.5"/>
+    </pattern>
+    <!-- 도넛 클립 -->
+    <clipPath id="donutClip">
+      <circle cx="195" cy="310" r="110"/>
+    </clipPath>
+    <!-- 그라디언트: bar chart -->
+    <linearGradient id="barGrad0" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF4040"/>
+      <stop offset="100%" stop-color="#FF6060"/>
+    </linearGradient>
+    <linearGradient id="barGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF5030"/>
+      <stop offset="100%" stop-color="#FF7840"/>
+    </linearGradient>
+    <linearGradient id="barGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF6020"/>
+      <stop offset="100%" stop-color="#FF9030"/>
+    </linearGradient>
+    <linearGradient id="barGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF7010"/>
+      <stop offset="100%" stop-color="#FFA020"/>
+    </linearGradient>
+    <linearGradient id="barGrad4" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF8000"/>
+      <stop offset="100%" stop-color="#FFB020"/>
+    </linearGradient>
+    <linearGradient id="barGrad5" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF9000"/>
+      <stop offset="100%" stop-color="#FFC030"/>
+    </linearGradient>
+    <linearGradient id="barGrad6" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFA000"/>
+      <stop offset="100%" stop-color="#FFD040"/>
+    </linearGradient>
+    <!-- 라인차트 영역 그라디언트 -->
+    <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00C8FF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#00C8FF" stop-opacity="0.02"/>
+    </linearGradient>
+    <!-- 펄스 필터 -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="redglow">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- ═══ 배경 ═══ -->
+  <rect width="1200" height="720" fill="#0A0E18"/>
+  <rect width="1200" height="720" fill="url(#grid)"/>
+  <!-- 상단 그라데이션 바 -->
+  <rect x="0" y="0" width="1200" height="3" fill="#FF4040" opacity="0.8"/>
+
+  <!-- ═══ 제목 영역 ═══ -->
+  <text x="600" y="44" text-anchor="middle" font-size="32" font-weight="900" fill="#F0F4FF">
+    한국 도로의 현실 —
+  </text>
+  <text x="830" y="44" text-anchor="middle" font-size="32" font-weight="900" fill="#FF4040" filter="url(#glow)">
+    매일 7명 사망
+  </text>
+  <!-- 위치 재조정: 두 텍스트를 하나로 합성 -->
+  <text x="600" y="44" text-anchor="middle" font-size="32" font-weight="900" fill="#F0F4FF" opacity="0">placeholder</text>
+
+  <!-- 실제 제목: 단일 텍스트로 -->
+  <text x="600" y="44" text-anchor="middle" font-size="32" font-weight="900">
+    <tspan fill="#F0F4FF">한국 도로의 현실 — </tspan><tspan fill="#FF4040" filter="url(#glow)">매일 7명 사망</tspan>
+  </text>
+  <text x="600" y="68" text-anchor="middle" font-size="13" fill="#888888">
+    TAAS 2024 · 도로교통공단 교통사고분석시스템 · 207,535건 / 사망 2,581 / 부상 290,400
+  </text>
+
+  <!-- 구분선 -->
+  <line x1="40" y1="82" x2="1160" y2="82" stroke="#1E2840" stroke-width="1"/>
+
+  <!-- ══════════════════════════════════════════════════════
+       패널 1: 도넛 차트 (x=40~430)
+  ══════════════════════════════════════════════════════ -->
+  <text x="235" y="108" text-anchor="middle" font-size="15" font-weight="700" fill="#C8D0E8">사고 유형 비중</text>
+
+  <!-- 도넛 차트 슬라이스 (cx=195, cy=310, r=110, 내부r=65) -->
+  <!-- 각도 계산: 차대차 53%=190.8°, 차대사람 22%=79.2°, 추돌 18%=64.8°, 기타 7%=25.2° -->
+  <!-- start angle: -90° (12시 방향) -->
+
+  <!-- 슬라이스 1: 차대차 53% → 0°~190.8° (#FF4040) -->
+  <!-- path: large-arc-flag=1 when angle>180 -->
+  <!-- 0° at top (-90°), 190.8° -->
+  <!-- start: cos(-90°)=0,sin(-90°)=-1 → (195,200) -->
+  <!-- end: -90+190.8=100.8° → cos(100.8°)=-0.1874,sin(100.8°)=0.9823 → (195-20.61,310+108.05)=(174.4,418.1) -->
+  <g opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.8s" begin="0.1s" fill="freeze"/>
+    <path d="M 195 200
+             A 110 110 0 1 1 174.39 418.05
+             L 195 310
+             Z"
+          fill="#FF4040"/>
+    <!-- 내부 원 (마스크 역할) -->
+  </g>
+  <!-- 슬라이스 애니메이션 그룹 -->
+  <g>
+    <g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="0.1s" fill="freeze"/>
+      <!-- 차대차 53%: -90° ~ 100.8° -->
+      <path d="M 195 200 A 110 110 0 1 1 174.39 418.05 L 195 310 Z" fill="#FF4040"/>
+    </g>
+    <g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="0.3s" fill="freeze"/>
+      <!-- 차대사람 22%: 100.8° ~ 180° (끝점: 100.8+79.2=180° → cos(90°)=0,sin(90°)=1 → (195,420)) -->
+      <path d="M 174.39 418.05 A 110 110 0 0 1 195 420 L 195 310 Z" fill="#FFB020"/>
+    </g>
+    <g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="0.5s" fill="freeze"/>
+      <!-- 차대차 추돌 18%: 180° ~ 244.8° (끝: cos(154.8°)=-0.9048,sin(154.8°)=0.4258 → (195-99.5,310+46.8)=(95.5,356.8)) -->
+      <path d="M 195 420 A 110 110 0 0 1 95.47 356.84 L 195 310 Z" fill="#A095FF"/>
+    </g>
+    <g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="0.7s" fill="freeze"/>
+      <!-- 기타 7%: 244.8° ~ 270° (끝: cos(180°→-90+360=270°)=0,sin(270°)=-1 → (195,200)) -->
+      <path d="M 95.47 356.84 A 110 110 0 0 1 195 200 L 195 310 Z" fill="#7C8AA8"/>
+    </g>
+    <!-- 내부 원 (배경색) -->
+    <circle cx="195" cy="310" r="65" fill="#0A0E18"/>
+  </g>
+
+  <!-- 도넛 가운데 텍스트 -->
+  <text x="195" y="303" text-anchor="middle" font-size="22" font-weight="900" fill="#F0F4FF">207,535</text>
+  <text x="195" y="322" text-anchor="middle" font-size="11" fill="#888888">건/년</text>
+
+  <!-- 범례 -->
+  <rect x="330" y="198" width="12" height="12" rx="2" fill="#FF4040"/>
+  <text x="347" y="209" font-size="12" fill="#C8D0E8">차대차 53%</text>
+  <rect x="330" y="220" width="12" height="12" rx="2" fill="#FFB020"/>
+  <text x="347" y="231" font-size="12" fill="#C8D0E8">차대사람 22%</text>
+  <rect x="330" y="242" width="12" height="12" rx="2" fill="#A095FF"/>
+  <text x="347" y="253" font-size="12" fill="#C8D0E8">차대차 추돌 18%</text>
+  <rect x="330" y="264" width="12" height="12" rx="2" fill="#7C8AA8"/>
+  <text x="347" y="275" font-size="12" fill="#C8D0E8">기타 7%</text>
+
+  <!-- 차대사람 강조 라벨 -->
+  <line x1="174" y1="395" x2="290" y2="370" stroke="#FFB020" stroke-width="1" stroke-dasharray="3,2"/>
+  <rect x="290" y="358" width="108" height="24" rx="4" fill="#1A1408" stroke="#FFB020" stroke-width="1"/>
+  <text x="344" y="374" text-anchor="middle" font-size="11" font-weight="700" fill="#FFB020">보행자 위협</text>
+
+  <!-- 패널 구분선 -->
+  <line x1="435" y1="88" x2="435" y2="600" stroke="#1E2840" stroke-width="1"/>
+
+  <!-- ══════════════════════════════════════════════════════
+       패널 2: 시도별 bar chart (x=450~770)
+  ══════════════════════════════════════════════════════ -->
+  <text x="610" y="108" text-anchor="middle" font-size="15" font-weight="700" fill="#C8D0E8">시도별 사망자 분포 (상위 7)</text>
+
+  <!-- bar 데이터: 최대값 419명 기준 max bar width=240px -->
+  <!-- y시작 130, bar높이 30, gap 8 -->
+
+  <!-- 경기 419명 16% → w=240 -->
+  <g>
+    <text x="455" y="152" font-size="12" fill="#A0AABF" text-anchor="start">경기</text>
+    <rect x="490" y="136" width="0" height="22" rx="3" fill="url(#barGrad0)">
+      <animate attributeName="width" from="0" to="240" dur="0.8s" begin="0.4s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+    </rect>
+    <text x="736" y="152" font-size="12" fill="#FF4040" font-weight="700">419명 16%</text>
+  </g>
+
+  <!-- 서울 231명 9% → w=132 -->
+  <g>
+    <text x="455" y="190" font-size="12" fill="#A0AABF" text-anchor="start">서울</text>
+    <rect x="490" y="174" width="0" height="22" rx="3" fill="url(#barGrad1)">
+      <animate attributeName="width" from="0" to="132" dur="0.8s" begin="0.5s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+    </rect>
+    <text x="628" y="190" font-size="12" fill="#FF6040">231명 9%</text>
+  </g>
+
+  <!-- 경북 181명 7% → w=103 -->
+  <g>
+    <text x="455" y="228" font-size="12" fill="#A0AABF" text-anchor="start">경북</text>
+    <rect x="490" y="212" width="0" height="22" rx="3" fill="url(#barGrad2)">
+      <animate attributeName="width" from="0" to="103" dur="0.8s" begin="0.6s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+    </rect>
+    <text x="599" y="228" font-size="12" fill="#FF7030">181명 7%</text>
+  </g>
+
+  <!-- 경남 181명 7% → w=103 -->
+  <g>
+    <text x="455" y="266" font-size="12" fill="#A0AABF" text-anchor="start">경남</text>
+    <rect x="490" y="250" width="0" height="22" rx="3" fill="url(#barGrad3)">
+      <animate attributeName="width" from="0" to="103" dur="0.8s" begin="0.7s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+    </rect>
+    <text x="599" y="266" font-size="12" fill="#FF8020">181명 7%</text>
+  </g>
+
+  <!-- 부산 181명 7% → w=103 -->
+  <g>
+    <text x="455" y="304" font-size="12" fill="#A0AABF" text-anchor="start">부산</text>
+    <rect x="490" y="288" width="0" height="22" rx="3" fill="url(#barGrad4)">
+      <animate attributeName="width" from="0" to="103" dur="0.8s" begin="0.8s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+    </rect>
+    <text x="599" y="304" font-size="12" fill="#FF9010">181명 7%</text>
+  </g>
+
+  <!-- 충남 155명 6% → w=89 -->
+  <g>
+    <text x="455" y="342" font-size="12" fill="#A0AABF" text-anchor="start">충남</text>
+    <rect x="490" y="326" width="0" height="22" rx="3" fill="url(#barGrad5)">
+      <animate attributeName="width" from="0" to="89" dur="0.8s" begin="0.9s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+    </rect>
+    <text x="585" y="342" font-size="12" fill="#FFA000">155명 6%</text>
+  </g>
+
+  <!-- 인천 129명 5% → w=74 -->
+  <g>
+    <text x="455" y="380" font-size="12" fill="#A0AABF" text-anchor="start">인천</text>
+    <rect x="490" y="364" width="0" height="22" rx="3" fill="url(#barGrad6)">
+      <animate attributeName="width" from="0" to="74" dur="0.8s" begin="1.0s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+    </rect>
+    <text x="570" y="380" font-size="12" fill="#FFB020">129명 5%</text>
+  </g>
+
+  <!-- 패널 구분선 -->
+  <line x1="775" y1="88" x2="775" y2="600" stroke="#1E2840" stroke-width="1"/>
+
+  <!-- ══════════════════════════════════════════════════════
+       패널 3: 시간대별 라인 차트 (x=790~1160)
+  ══════════════════════════════════════════════════════ -->
+  <text x="975" y="108" text-anchor="middle" font-size="15" font-weight="700" fill="#C8D0E8">시간대별 사고 발생 (24h)</text>
+
+  <!-- 차트 영역: x=800~1155, y=130~430 (height=300) -->
+  <!-- 가로축 레이블 -->
+  <text x="800" y="450" font-size="10" fill="#666" text-anchor="middle">0시</text>
+  <text x="850" y="450" font-size="10" fill="#666" text-anchor="middle">2</text>
+  <text x="900" y="450" font-size="10" fill="#666" text-anchor="middle">4</text>
+  <text x="950" y="450" font-size="10" fill="#666" text-anchor="middle">6</text>
+  <text x="1000" y="450" font-size="10" fill="#666" text-anchor="middle">8</text>
+  <text x="1050" y="450" font-size="10" fill="#666" text-anchor="middle">10</text>
+  <text x="1100" y="450" font-size="10" fill="#666" text-anchor="middle">12</text>
+  <text x="800" y="462" font-size="10" fill="#666" text-anchor="middle"></text>
+
+  <!-- 0~24h, 각 시 간격 = (1155-800)/24 = 14.79px -->
+  <!-- 데이터 (정규화 0~1, 0=최소, 1=최대): -->
+  <!-- 0:0.18, 1:0.12, 2:0.09, 3:0.08, 4:0.08, 5:0.10, 6:0.18, 7:0.30, 8:0.40,
+       9:0.52, 10:0.60, 11:0.65, 12:0.62, 13:0.68, 14:0.72, 15:0.75, 16:0.82,
+       17:0.88, 18:1.00, 19:0.90, 20:0.72, 21:0.55, 22:0.40, 23:0.28, 24:0.18 -->
+  <!-- y = 430 - val*280 -->
+  <!-- x = 800 + h*14.79 -->
+
+  <!-- 영역 채우기 -->
+  <polygon
+    points="800,430 800,380 814.8,364 829.6,355 844.4,352 859.2,352 874,402 888.8,346 903.6,318 918.4,285 933.2,254 948,234 962.8,224 977.6,240 992.4,214 1007.2,228 1022,209 1036.8,200 1051.6,180 1066.4,150 1081.2,178 1096,150 1110.8,178 1125.6,200 1140.4,224 1155,280 1155,430"
+    fill="url(#areaGrad)"/>
+
+  <!-- 평균 라인 (점선) -->
+  <line x1="800" y1="310" x2="1155" y2="310" stroke="#444" stroke-width="1" stroke-dasharray="5,4"/>
+  <text x="1158" y="314" font-size="10" fill="#666">평균</text>
+
+  <!-- 라인 그래프 -->
+  <polyline
+    points="800,380 814.8,364 829.6,355 844.4,352 859.2,352 874,402 888.8,346 903.6,318 918.4,285 933.2,254 948,234 962.8,224 977.6,240 992.4,214 1007.2,228 1022,209 1036.8,200 1051.6,180 1066.4,150 1081.2,178 1096,150 1110.8,178 1125.6,200 1140.4,224 1155,280"
+    fill="none" stroke="#00C8FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+    stroke-dasharray="700" stroke-dashoffset="700">
+    <animate attributeName="stroke-dashoffset" from="700" to="0" dur="1.5s" begin="0.3s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.6 1"/>
+  </polyline>
+
+  <!-- 18시 피크 표시 (x=800+18*14.79=1066.4) -->
+  <line x1="1066.4" y1="150" x2="1066.4" y2="430" stroke="#FF4040" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  <circle cx="1066.4" cy="150" r="6" fill="#FF4040" filter="url(#redglow)">
+    <animate attributeName="r" values="5;8;5" dur="1.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.6;1" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  <rect x="1030" y="120" width="76" height="22" rx="4" fill="#330808"/>
+  <text x="1068" y="135" text-anchor="middle" font-size="11" font-weight="700" fill="#FF4040">퇴근 시간</text>
+
+  <!-- 14시 피크 표시 (x=800+14*14.79=1007.1) -->
+  <line x1="1007.2" y1="228" x2="1007.2" y2="430" stroke="#FFB020" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  <circle cx="1007.2" cy="228" r="5" fill="#FFB020" filter="url(#glow)"/>
+  <rect x="972" y="198" width="76" height="22" rx="4" fill="#2A1E00"/>
+  <text x="1010" y="213" text-anchor="middle" font-size="11" font-weight="700" fill="#FFB020">하교 시간</text>
+
+  <!-- 가로축 보조선 -->
+  <line x1="800" y1="430" x2="1155" y2="430" stroke="#2A3048" stroke-width="1"/>
+  <!-- x축 주요 시간 레이블 재배치 -->
+  <text x="800" y="445" font-size="10" fill="#555" text-anchor="middle">0h</text>
+  <text x="874" y="445" font-size="10" fill="#555" text-anchor="middle">5h</text>
+  <text x="948" y="445" font-size="10" fill="#555" text-anchor="middle">10h</text>
+  <text x="1022" y="445" font-size="10" fill="#555" text-anchor="middle">15h</text>
+  <text x="1066" y="445" font-size="10" fill="#FF4040" text-anchor="middle" font-weight="700">18h</text>
+  <text x="1096" y="445" font-size="10" fill="#555" text-anchor="middle">20h</text>
+  <text x="1155" y="445" font-size="10" fill="#555" text-anchor="middle">24h</text>
+
+  <!-- ══════════════════════════════════════════════════════
+       하단 구분선
+  ══════════════════════════════════════════════════════ -->
+  <line x1="40" y1="608" x2="1160" y2="608" stroke="#1E2840" stroke-width="1"/>
+
+  <!-- ══════════════════════════════════════════════════════
+       하단 4 카드
+  ══════════════════════════════════════════════════════ -->
+  <!-- 카드 1: 하루 7명 사망 -->
+  <rect x="40" y="618" width="270" height="82" rx="8" fill="#160808" stroke="#FF4040" stroke-width="1.5"/>
+  <rect x="40" y="618" width="270" height="4" rx="2" fill="#FF4040"/>
+  <text x="155" y="648" text-anchor="middle" font-size="24" font-weight="900" fill="#FF4040">하루 7명 사망</text>
+  <text x="155" y="668" text-anchor="middle" font-size="11" fill="#A08080">TAAS 2024 · 2,581명 ÷ 365일</text>
+  <text x="155" y="690" text-anchor="middle" font-size="10" fill="#666">전국 일평균 사망자 수</text>
+
+  <!-- 카드 2: 65세+ 46% -->
+  <rect x="325" y="618" width="270" height="82" rx="8" fill="#161008" stroke="#FFB020" stroke-width="1.5"/>
+  <rect x="325" y="618" width="270" height="4" rx="2" fill="#FFB020"/>
+  <text x="460" y="648" text-anchor="middle" font-size="24" font-weight="900" fill="#FFB020">65세↑ 46%</text>
+  <text x="460" y="668" text-anchor="middle" font-size="11" fill="#A09060">고령 보행자 사망 비중</text>
+  <text x="460" y="690" text-anchor="middle" font-size="10" fill="#666">보행 사망 중 65세 이상 65%↑</text>
+
+  <!-- 카드 3: 도시 교차로 46% -->
+  <rect x="610" y="618" width="270" height="82" rx="8" fill="#100E18" stroke="#A095FF" stroke-width="1.5"/>
+  <rect x="610" y="618" width="270" height="4" rx="2" fill="#A095FF"/>
+  <text x="745" y="648" text-anchor="middle" font-size="24" font-weight="900" fill="#A095FF">도시 교차로 46%</text>
+  <text x="745" y="668" text-anchor="middle" font-size="11" fill="#8880A0">전체 사고 중 도시 교차로 비중</text>
+  <text x="745" y="690" text-anchor="middle" font-size="10" fill="#666">광화문·강남역·잠실·홍대 다발 구역</text>
+
+  <!-- 카드 4: AuraView 효과 -->
+  <rect x="895" y="618" width="265" height="82" rx="8" fill="#081410" stroke="#00E09A" stroke-width="1.5"/>
+  <rect x="895" y="618" width="265" height="4" rx="2" fill="#00E09A"/>
+  <text x="1027" y="643" text-anchor="middle" font-size="14" font-weight="700" fill="#00E09A">AuraView 5% 도입 시</text>
+  <text x="1027" y="663" text-anchor="middle" font-size="16" font-weight="900" fill="#00E09A">연 21명 사망 감소</text>
+  <text x="1027" y="681" text-anchor="middle" font-size="11" fill="#00A070">회피율 84.5% 적용 추정치</text>
+  <text x="1027" y="697" text-anchor="middle" font-size="10" fill="#666">사망자 2,581명 기준 시뮬레이션</text>
+
+  <!-- AuraView 워터마크 -->
+  <text x="1155" y="715" text-anchor="end" font-size="11" fill="#2A3348">AuraView · 2026 국토교통 데이터활용 경진대회</text>
+
+  <!-- ══════════════════════════════════════════════════════
+       패널1 추가 통계 보조 텍스트
+  ══════════════════════════════════════════════════════ -->
+  <text x="235" y="480" text-anchor="middle" font-size="12" fill="#666">총 사망자</text>
+  <text x="235" y="498" text-anchor="middle" font-size="20" font-weight="900" fill="#FF4040">2,581명</text>
+  <text x="235" y="516" text-anchor="middle" font-size="12" fill="#666">부상자</text>
+  <text x="235" y="534" text-anchor="middle" font-size="18" font-weight="700" fill="#FFB020">290,400명</text>
+
+  <!-- 패널2 추가: 나머지 43% 텍스트 -->
+  <text x="610" y="410" text-anchor="middle" font-size="11" fill="#666">※ 나머지 시도 합계 43% (1,108명)</text>
+
+  <!-- 패널3 추가: 발생 다발지 -->
+  <text x="975" y="475" text-anchor="middle" font-size="11" fill="#666">보행 사고 다발: 광화문 · 강남역 · 잠실 · 홍대</text>
+
+  <!-- 패널3 세로축 레이블 -->
+  <text x="793" y="152" text-anchor="end" font-size="10" fill="#555">高</text>
+  <text x="793" y="313" text-anchor="end" font-size="10" fill="#555">中</text>
+  <text x="793" y="433" text-anchor="end" font-size="10" fill="#555">低</text>
+</svg>

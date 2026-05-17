@@ -297,6 +297,24 @@ def data_attribution():
                 "used_in": ["/fusion/intersection/{id}", "/fusion/ev-charger", "ev_dwelling_likelihood"],
                 "added": "v4-2026.05.16",
             },
+            {
+                "id": "road_surface",
+                "name": "도로 노면 상태 (RWIS)",
+                "provider": "한국도로공사",
+                "origin": "data.ex.co.kr/openapi/rwisapi (EX_OPEN_KEY 재사용)",
+                "license": "한국도로공사 공공데이터 약관",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/road-surface", "결빙·습윤·적설 위험 +0.35"],
+                "added": "v5-2026.05.18",
+            },
+            {
+                "id": "vehicle_inspection",
+                "name": "KOTSA 자동차검사통계",
+                "provider": "한국교통안전공단",
+                "origin": "apis.data.go.kr/B552014/InspectionStats",
+                "license": "공공데이터 이용약관",
+                "used_in": ["/fusion/intersection/{id}", "/fusion/vehicle-inspection", "구별 부적합률 → 잠재 위험"],
+                "added": "v5-2026.05.18",
+            },
         ],
         "static_datasets": [
             {

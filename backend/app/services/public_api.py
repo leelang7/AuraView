@@ -738,7 +738,122 @@ def fetch_ev_chargers(lat: float = 37.5665, lon: float = 126.9780, radius_m: flo
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (15-source v4 2026-05-16)
+# 16. 도로 노면 상태 RWIS (한국도로공사 도로기상정보) — v5 2026-05-18
+#    EX_OPEN_KEY 재사용 · 노면 상태 (건조/습윤/적설/결빙) 라이브
+# ──────────────────────────────────────────────────────────────────────
+
+_RWIS_FALLBACK = {
+    "source": "한국도로공사 RWIS (stub — EX_OPEN_KEY 미설정)",
+    "collected_at": "2026-05-18T08:00:00Z",
+    "stations": [
+        {"stationId": "RWS-001", "name": "강남대로 RWS", "lat": 37.4981, "lon": 127.0276, "surface": "dry",  "surface_temp_c": 12.4, "wind_kmh": 8.2,  "visibility_m": 8000},
+        {"stationId": "RWS-014", "name": "성수대교 북단",  "lat": 37.5446, "lon": 127.0556, "surface": "wet",  "surface_temp_c": 6.1,  "wind_kmh": 15.1, "visibility_m": 3500},
+        {"stationId": "RWS-027", "name": "광화문 RWS",   "lat": 37.5720, "lon": 126.9769, "surface": "dry",  "surface_temp_c": 11.8, "wind_kmh": 6.0,  "visibility_m": 9500},
+        {"stationId": "RWS-045", "name": "잠실대교 남단",  "lat": 37.5133, "lon": 127.1000, "surface": "frost","surface_temp_c": -1.2, "wind_kmh": 22.4, "visibility_m": 1200},
+    ],
+    "derived": {
+        "nearest_surface": "dry",
+        "surface_risk_boost": 0.0,        # dry=0, wet=0.10, snow=0.22, ice/frost=0.35
+        "low_visibility_flag": False,
+    },
+}
+
+
+def fetch_road_surface(lat: float = 37.5665, lon: float = 126.9780,
+                       radius_m: float = 2000.0) -> Dict[str, Any]:
+    """반경 N m RWIS 도로 노면 상태 (건조/습윤/적설/결빙). EX_OPEN_KEY 재사용."""
+    url = f"{EX_OPEN_BASE_URL}/rwisapi/rwisAll"
+    params = {"key": EX_OPEN_KEY, "type": "json", "numOfRows": 50}
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("road_surface", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("RWIS API failed: %s", exc)
+        _record_fetch("road_surface", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
+
+    # fallback — 반경 N m 내 최근접 station + 위험 가중치 계산
+    nearby = []
+    for s in _RWIS_FALLBACK["stations"]:
+        d = _haversine_m_local(lat, lon, s["lat"], s["lon"])
+        if d <= radius_m:
+            nearby.append({**s, "distance_m": round(d, 1)})
+    nearby.sort(key=lambda x: x["distance_m"])
+    nearest_surface = nearby[0]["surface"] if nearby else "dry"
+    nearest_vis = nearby[0].get("visibility_m", 10000) if nearby else 10000
+    surface_boost = {"dry": 0.0, "wet": 0.10, "snow": 0.22, "frost": 0.35, "ice": 0.35}.get(nearest_surface, 0.0)
+    return {
+        **_RWIS_FALLBACK,
+        "nearby": nearby, "nearby_count": len(nearby),
+        "derived": {
+            "nearest_surface": nearest_surface,
+            "surface_risk_boost": surface_boost,
+            "nearest_visibility_m": nearest_vis,
+            "low_visibility_flag": nearest_vis < 2000,
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 17. 한국교통안전공단 자동차검사 데이터 (KOTSA) — v5 2026-05-18
+#    교차로 인근 차량 검사 부적합률 = 잠재 사고 위험
+# ──────────────────────────────────────────────────────────────────────
+
+KOTSA_BASE_URL = os.getenv("KOTSA_BASE_URL", "https://apis.data.go.kr/B552014/InspectionStats")
+KOTSA_KEY = os.getenv("KOTSA_KEY", os.getenv("SERVICE_KEY", ""))
+
+_KOTSA_FALLBACK = {
+    "source": "KOTSA 자동차검사통계 (stub — KOTSA_KEY 미설정)",
+    "year": 2024,
+    "by_district": [
+        {"district": "강남구", "total_inspected": 124_521, "failed": 8_716,  "fail_rate": 0.070, "category_main_fail": "제동장치"},
+        {"district": "송파구", "total_inspected":  98_412, "failed": 7_215,  "fail_rate": 0.073, "category_main_fail": "배출가스"},
+        {"district": "중구",   "total_inspected":  54_215, "failed": 4_122,  "fail_rate": 0.076, "category_main_fail": "타이어·등화"},
+        {"district": "성동구", "total_inspected":  68_341, "failed": 4_982,  "fail_rate": 0.073, "category_main_fail": "제동장치"},
+    ],
+    "national_avg_fail_rate": 0.072,
+}
+
+
+def fetch_vehicle_inspection(district: str = "강남구") -> Dict[str, Any]:
+    """KOTSA 자동차검사통계 — 시군구별 부적합률 (잠재 사고 위험 지표)."""
+    url = f"{KOTSA_BASE_URL}/getInspectionByDistrict"
+    params = {"serviceKey": KOTSA_KEY, "district": district, "year": 2024, "type": "json"}
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("vehicle_inspection", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("KOTSA API failed: %s", exc)
+        _record_fetch("vehicle_inspection", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
+
+    by_d = _KOTSA_FALLBACK["by_district"]
+    matched = next((d for d in by_d if d["district"] == district), by_d[0])
+    fail_rate = matched.get("fail_rate", 0.072)
+    nat_avg = _KOTSA_FALLBACK["national_avg_fail_rate"]
+    above_avg = fail_rate > nat_avg
+    risk_boost = max(0.0, min(0.08, (fail_rate - nat_avg) * 4.0))  # 부적합률 1%p 초과 시 +0.04
+    return {
+        **_KOTSA_FALLBACK,
+        "matched": matched,
+        "derived": {
+            "fail_rate_district": fail_rate,
+            "fail_rate_national": nat_avg,
+            "above_national_avg": above_avg,
+            "inspection_risk_boost": round(risk_boost, 3),
+            "main_failure_category": matched.get("category_main_fail"),
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (17-source v5 2026-05-18)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -761,6 +876,9 @@ class IntersectionFusion:
     air_quality: Dict[str, Any]
     school_route: Dict[str, Any]
     ev_charger: Dict[str, Any]
+    # v5 2026-05-18: 17-source 확장
+    road_surface: Dict[str, Any]
+    vehicle_inspection: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -811,22 +929,35 @@ class IntersectionFusion:
         ev_dwelling    = float(ev_derived.get("ev_dwelling_likelihood", 0.0))
         near_ev        = bool(ev_derived.get("near_ev_station", False))
 
-        # 15종 통합 위험 점수
-        # 가중치: 속도0.18 + 돌발0.12 + TAAS0.12 + 기상0.10 + ER0.06 + 자전거0.06
-        #         + 결빙0.08 + 보행자다발0.06 + 스쿨존0.10 + 통학로0.06 + 미세먼지0.03 + EV0.03
+        # NEW v5 2026-05-18: 도로 노면·자동차검사 신호 추출
+        surface_derived = self.road_surface.get("derived", {}) if isinstance(self.road_surface, dict) else {}
+        insp_derived    = self.vehicle_inspection.get("derived", {}) if isinstance(self.vehicle_inspection, dict) else {}
+
+        surface_boost   = float(surface_derived.get("surface_risk_boost", 0.0))
+        surface_kind    = str(surface_derived.get("nearest_surface", "dry"))
+        low_vis_flag    = bool(surface_derived.get("low_visibility_flag", False))
+        insp_boost      = float(insp_derived.get("inspection_risk_boost", 0.0))
+        fail_rate_d     = float(insp_derived.get("fail_rate_district", 0.0))
+
+        # 17종 통합 위험 점수
+        # 가중치: 속도0.16 + 돌발0.10 + TAAS0.10 + 기상0.09 + ER0.05 + 자전거0.05
+        #         + 결빙0.07 + 보행자다발0.05 + 스쿨존0.10 + 통학로0.05 + 미세먼지0.03
+        #         + EV0.03 + 도로노면0.07 + 자동차검사0.05
         base = (
-            (1.0 - min(avg_speed, 80) / 80) * 0.18 +
-            min(incident_count, 3) / 3 * 0.12 +
-            min(taas_count, 7) / 7 * 0.12 +
-            wet_boost * 0.10 +
-            er_load * 0.06 +
-            bike_boost * 0.06 +
-            freeze_boost * 0.08 +
-            ped_boost * 0.06 +
+            (1.0 - min(avg_speed, 80) / 80) * 0.16 +
+            min(incident_count, 3) / 3 * 0.10 +
+            min(taas_count, 7) / 7 * 0.10 +
+            wet_boost * 0.09 +
+            er_load * 0.05 +
+            bike_boost * 0.05 +
+            freeze_boost * 0.07 +
+            ped_boost * 0.05 +
             (sz_multiplier - 1.0) * 0.10 +
-            walk_boost * 0.06 +
+            walk_boost * 0.05 +
             air_boost * 0.03 +
-            ev_dwelling * 0.03
+            ev_dwelling * 0.03 +
+            surface_boost * 0.07 +
+            insp_boost * 0.05
         )
         base *= sz_multiplier if in_school_zone else 1.0
         risk_score = min(1.0, round(base, 3))
@@ -834,8 +965,8 @@ class IntersectionFusion:
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 15,
-                "schema_version": "fusion.v4-15src-2026.05.16",
+                "sources_fused": 17,
+                "schema_version": "fusion.v5-17src-2026.05.18",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
@@ -860,6 +991,12 @@ class IntersectionFusion:
                 "walk_route_boost": walk_boost,
                 "near_ev_station": near_ev,
                 "ev_dwelling_likelihood": ev_dwelling,
+                # v5 신규 5필드
+                "road_surface": surface_kind,
+                "surface_risk_boost": surface_boost,
+                "low_visibility_flag": low_vis_flag,
+                "inspection_fail_rate_district": fail_rate_d,
+                "inspection_risk_boost": insp_boost,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",
@@ -881,6 +1018,9 @@ class IntersectionFusion:
                 "air_quality":         {"provider": "환경부 에어코리아 (PM10/PM2.5)",   "data": self.air_quality},
                 "school_route":        {"provider": "어린이 통학로 GIS",              "data": self.school_route},
                 "ev_charger":          {"provider": "한국환경공단 EV 충전소",          "data": self.ev_charger},
+                # v5 신규 2종
+                "road_surface":        {"provider": "한국도로공사 RWIS 노면상태",       "data": self.road_surface},
+                "vehicle_inspection":  {"provider": "KOTSA 자동차검사통계",             "data": self.vehicle_inspection},
             },
         }
 
@@ -946,4 +1086,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         air_quality=fetch_air_quality(sido="서울"),
         school_route=fetch_school_routes(lat=lat0, lon=lon0, radius_m=800.0),
         ev_charger=fetch_ev_chargers(lat=lat0, lon=lon0, radius_m=500.0),
+        # v5 2026-05-18
+        road_surface=fetch_road_surface(lat=lat0, lon=lon0, radius_m=2000.0),
+        vehicle_inspection=fetch_vehicle_inspection(district="강남구"),
     )

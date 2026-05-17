@@ -55,6 +55,9 @@ def list_sources():
         {"id": "air_quality",  "name": "환경부 미세먼지 (PM10/PM2.5)", "origin": "apis.data.go.kr/B552584", "gain": "시정·카메라오염 +0.06", "added": "v4-2026.05.16"},
         {"id": "school_route", "name": "어린이 통학로 GIS",            "origin": "도로교통공단 통학로",     "gain": "통학시간 boost +0.18",  "added": "v4-2026.05.16"},
         {"id": "ev_charger",   "name": "EV 충전소 위치/사용률",        "origin": "apis.data.go.kr/B552584 (Ev)", "gain": "EV 정차 패턴 이상탐지", "added": "v4-2026.05.16"},
+        # v5 2026-05-18: 15 → 17종 확장
+        {"id": "road_surface",       "name": "도로 노면 상태 (RWIS)",         "origin": "data.ex.co.kr/openapi/rwisapi",          "gain": "노면 위험 (frost +0.35)",         "added": "v5-2026.05.18"},
+        {"id": "vehicle_inspection", "name": "KOTSA 자동차검사통계",          "origin": "apis.data.go.kr/B552014/InspectionStats", "gain": "구별 부적합률 → 잠재 위험", "added": "v5-2026.05.18"},
     ]
     for s in sources:
         meta = fresh.get(s["id"]) or {}
@@ -65,7 +68,7 @@ def list_sources():
     return {
         "sources": sources,
         "count": len(sources),
-        "schema_version": "fusion.v4-15src-2026.05.16",
+        "schema_version": "fusion.v5-17src-2026.05.18",
         "checked_at": now_ts.isoformat() + "Z",
     }
 
@@ -130,6 +133,20 @@ def fusion_ev_charger(lat: float = Query(37.5665), lon: float = Query(126.9780),
                        radius_m: float = Query(500.0, ge=50.0, le=5000.0)):
     """반경 N m 내 EV 충전소 + 사용률 → 정차 패턴 이상탐지."""
     return public_api.fetch_ev_chargers(lat=lat, lon=lon, radius_m=radius_m)
+
+
+# v5 2026-05-18: 15 → 17종 확장
+@router.get("/road-surface")
+def fusion_road_surface(lat: float = Query(37.5665), lon: float = Query(126.9780),
+                        radius_m: float = Query(2000.0, ge=100.0, le=20000.0)):
+    """반경 N m RWIS 도로 노면 상태 (건조/습윤/적설/결빙) + 위험 가중치."""
+    return public_api.fetch_road_surface(lat=lat, lon=lon, radius_m=radius_m)
+
+
+@router.get("/vehicle-inspection")
+def fusion_vehicle_inspection(district: str = Query("강남구")):
+    """KOTSA 시군구별 자동차검사 부적합률 → 잠재 사고 위험 지표."""
+    return public_api.fetch_vehicle_inspection(district=district)
 
 
 @router.get("/intersection/{intersection_id}")

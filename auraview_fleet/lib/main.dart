@@ -104,6 +104,7 @@ class _FleetHomeState extends State<FleetHome>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   CameraController? _cam;
   bool _initing = true;
+  bool _showOnboarding = false;    // v5 2026-05-17: 첫 진입 시 3장 PageView 표시
   bool _shadowOn = false;
   Timer? _ticker;
   late AnimationController _pulseAnim;
@@ -244,19 +245,6 @@ class _FleetHomeState extends State<FleetHome>
     _objDetector?.close();
     _pulseAnim.dispose();
     super.dispose();
-  }
-
-  /// BEV 오버레이 toggle — ON 이면 5초마다 /occupancy/demo + /fusion/intersection 폴링
-  void _toggleBev() {
-    HapticFeedback.lightImpact();
-    setState(() => _bevOpen = !_bevOpen);
-    if (_bevOpen) {
-      _fetchBev();
-      _bevTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchBev());
-    } else {
-      _bevTimer?.cancel();
-      _bevTimer = null;
-    }
   }
 
   /// DEMO 시나리오 모드 토글 — 사용자가 명시적으로 ON 할 때만 서버 시나리오 사용
@@ -755,6 +743,8 @@ class _FleetHomeState extends State<FleetHome>
       await sp.setString('device_id', id);
     }
     _intersectionId = sp.getString('intersection_id');
+    // v5 2026-05-17: 첫 실행 온보딩 플래그
+    _showOnboarding = !(sp.getBool('onboarding_done') ?? false);
     setState(() => _deviceId = id!);
 
     if (!kIsWeb) {
@@ -925,26 +915,6 @@ class _FleetHomeState extends State<FleetHome>
     } catch (_) {}
   }
 
-  Future<void> _manualContribute() async {
-    if (_cam == null || !_cam!.value.isInitialized) {
-      _toast('카메라 준비 안 됨');
-      return;
-    }
-    HapticFeedback.mediumImpact();
-    try {
-      final shot = await _cam!.takePicture();
-      final bytes = await shot.readAsBytes();
-      _captures++;
-      _lastReason = 'manual';
-      final feat = _entropyAndMotion(bytes);
-      _lastEntropy = feat.entropy;
-      await _upload(bytes, feat.entropy, 'manual');
-      _toast('기여됨 ✨', color: _safe);
-    } catch (e) {
-      _toast('업로드 실패', color: _danger);
-    }
-  }
-
   Future<void> _upload(Uint8List jpg, double entropy, String reason) async {
     final uri = Uri.parse('$kApiBase/fleet/contribute');
     final req = http.MultipartRequest('POST', uri);
@@ -1108,6 +1078,14 @@ class _FleetHomeState extends State<FleetHome>
   // ── UI ──────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // v5 2026-05-17: 첫 진입 온보딩 (3장 PageView, 한 번만)
+    if (_showOnboarding) {
+      return _OnboardingScreen(onDone: () async {
+        final sp = await SharedPreferences.getInstance();
+        await sp.setBool('onboarding_done', true);
+        if (mounted) setState(() => _showOnboarding = false);
+      });
+    }
     if (_initing) {
       return Scaffold(
         backgroundColor: _bg,
@@ -1529,48 +1507,6 @@ class _DriveButton extends StatelessWidget {
 // BEV 오버레이 — 도시정보 결합 (Tesla-style 단안 카메라 + signal/VDS/TAAS)
 // ─────────────────────────────────────────────────────────────────
 
-class _BevToggleChip extends StatelessWidget {
-  final bool active;
-  final VoidCallback onTap;
-  const _BevToggleChip({required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: active ? _accent.withValues(alpha: 0.30) : _surface.withValues(alpha: 0.80),
-          border: Border.all(
-            color: active ? _accent : _muted.withValues(alpha: 0.5),
-            width: 2,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: active ? [
-            BoxShadow(color: _accent.withValues(alpha: 0.45), blurRadius: 14),
-          ] : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.grid_view_rounded, size: 18,
-                 color: active ? _accent : _muted),
-            const SizedBox(width: 8),
-            Text(active ? 'BEV ON' : 'BEV',
-                 style: TextStyle(
-                   color: active ? _accent : _muted,
-                   fontSize: 14, fontWeight: FontWeight.w800,
-                   letterSpacing: 1.2,
-                 )),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _BevPanel extends StatefulWidget {
   final Map<String, dynamic>? bev;
   final Map<String, dynamic>? fusion;
@@ -1588,7 +1524,6 @@ class _BevPanel extends StatefulWidget {
 class _BevPanelState extends State<_BevPanel>
     with SingleTickerProviderStateMixin {
   late Ticker _ticker;
-  double _t = 0;
 
   // ── 사용자 컨트롤 상태 (drag/pinch) ──
   double _zoom = 1.0;          // 1.0 = 기본, 0.5 ~ 2.5
@@ -1607,21 +1542,31 @@ class _BevPanelState extends State<_BevPanel>
   @override
   void initState() {
     super.initState();
+    // v5 2026-05-17 최적화: setState 매 프레임 X
+    // → 30 FPS 캡 (33ms 간격) + RepaintBoundary 안의 painter 만 repaint
+    // 부모 위젯 rebuild 차단으로 배터리·발열 대폭 감소
+    double lastT = 0;
     _ticker = Ticker((d) {
       final now = d.inMilliseconds / 1000.0;
-      // FPS 계산 — 최근 0.5초 frame 카운트 / 0.5
+      // 30 FPS 캡: 33ms 미만이면 skip
+      if ((now - lastT) < 0.033) return;
+      lastT = now;
+      // FPS 추적
       _frameTimes.add(now);
       while (_frameTimes.isNotEmpty && now - _frameTimes.first > 0.5) {
         _frameTimes.removeAt(0);
       }
-      _fps = _frameTimes.length * 2.0;  // 0.5초 윈도우 → ×2
-      setState(() { _t = now; });
+      _fps = _frameTimes.length * 2.0;
+      // setState 대신 ValueNotifier 변경만 — RepaintBoundary 안의 CustomPaint 만 repaint
+      _tNotifier.value = now;
     })..start();
   }
+  late final ValueNotifier<double> _tNotifier = ValueNotifier<double>(0);
 
   @override
   void dispose() {
     _ticker.dispose();
+    _tNotifier.dispose();
     super.dispose();
   }
 
@@ -1657,9 +1602,16 @@ class _BevPanelState extends State<_BevPanel>
         child: ColoredBox(
           color: const Color(0xFF0A1018),
           child: Stack(fit: StackFit.expand, children: [
-            CustomPaint(
-              size: Size.infinite,
-              painter: _Bev3DVoxelPainter(bev: widget.bev, t: _t, zoom: _zoom, yawDeg: _yawDeg, fps: _fps),
+            // v5 2026-05-17: RepaintBoundary + ValueListenableBuilder
+            // → BEV CustomPaint 만 repaint, 부모 위젯 rebuild 차단 (배터리·발열 감소)
+            RepaintBoundary(
+              child: ValueListenableBuilder<double>(
+                valueListenable: _tNotifier,
+                builder: (_, t, __) => CustomPaint(
+                  size: Size.infinite,
+                  painter: _Bev3DVoxelPainter(bev: widget.bev, t: t, zoom: _zoom, yawDeg: _yawDeg, fps: _fps),
+                ),
+              ),
             ),
             // v2 2026-05-15: BIS 라이브 버스 작은 마커 오버레이 (상단 우측)
             if (widget.busLive != null &&
@@ -2092,9 +2044,9 @@ class _Bev3DVoxelPainter extends CustomPainter {
       ..close();
     canvas.drawPath(topP, Paint()
       ..color = Color.fromRGBO(
-        (color.red * 1.3).clamp(0, 255).round(),
-        (color.green * 1.3).clamp(0, 255).round(),
-        (color.blue * 1.3).clamp(0, 255).round(),
+        ((color.r * 255).round() * 1.3).clamp(0, 255).round(),
+        ((color.g * 255).round() * 1.3).clamp(0, 255).round(),
+        ((color.b * 255).round() * 1.3).clamp(0, 255).round(),
         0.95,
       ));
 
@@ -2116,9 +2068,9 @@ class _Bev3DVoxelPainter extends CustomPainter {
       ..close();
     canvas.drawPath(rightP, Paint()
       ..color = Color.fromRGBO(
-        (color.red * 0.65).round(),
-        (color.green * 0.65).round(),
-        (color.blue * 0.65).round(),
+        ((color.r * 255).round() * 0.65).round(),
+        ((color.g * 255).round() * 0.65).round(),
+        ((color.b * 255).round() * 0.65).round(),
         0.85,
       ));
 
@@ -2148,12 +2100,12 @@ class _Bev3DVoxelPainter extends CustomPainter {
     final p011 = _project(cxM - w/2, bodyH, czM + l/2, cameraX, cameraZ, size);
 
     // 옆면 (어둡게)
-    final lightCol = Color.fromRGBO((color.red * 1.25).clamp(0,255).round(),
-                                     (color.green * 1.25).clamp(0,255).round(),
-                                     (color.blue * 1.25).clamp(0,255).round(), 0.92);
-    final darkCol = Color.fromRGBO((color.red * 0.55).round(),
-                                    (color.green * 0.55).round(),
-                                    (color.blue * 0.55).round(), 0.85);
+    final lightCol = Color.fromRGBO(((color.r * 255).round() * 1.25).clamp(0,255).round(),
+                                     ((color.g * 255).round() * 1.25).clamp(0,255).round(),
+                                     ((color.b * 255).round() * 1.25).clamp(0,255).round(), 0.92);
+    final darkCol = Color.fromRGBO(((color.r * 255).round() * 0.55).round(),
+                                    ((color.g * 255).round() * 0.55).round(),
+                                    ((color.b * 255).round() * 0.55).round(), 0.85);
 
     // 후면 (z 큰 쪽 = 화면 위)
     canvas.drawPath(Path()
@@ -2169,7 +2121,7 @@ class _Bev3DVoxelPainter extends CustomPainter {
     canvas.drawPath(Path()
       ..moveTo(p000.dx, p000.dy)..lineTo(p100.dx, p100.dy)
       ..lineTo(p101.dx, p101.dy)..lineTo(p001.dx, p001.dy)..close(),
-      Paint()..color = Color.fromRGBO(color.red, color.green, color.blue, 0.92));
+      Paint()..color = Color.fromRGBO((color.r * 255).round(), (color.g * 255).round(), (color.b * 255).round(), 0.92));
     // 윗면
     canvas.drawPath(Path()
       ..moveTo(p001.dx, p001.dy)..lineTo(p101.dx, p101.dy)
@@ -3206,85 +3158,6 @@ class _CameraPlaceholder extends StatelessWidget {
   }
 }
 
-class _BrandLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 32, height: 32,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const RadialGradient(
-              colors: [Color(0xFFD8FAFF), _accent, _accent2],
-              stops: [0.0, 0.45, 1.0],
-            ),
-            boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.4), blurRadius: 10)],
-          ),
-        ),
-        const SizedBox(width: 10),
-        const Text(
-          'AuraView',
-          style: TextStyle(
-            color: _text, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CounterChip extends StatelessWidget {
-  final int uploads;
-  final int serverTotal;
-  const _CounterChip({required this.uploads, required this.serverTotal});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: const Color(0xCC0D1520),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: const Color(0x4400C8FF)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.cloud_upload_outlined, color: _accent, size: 14),
-        const SizedBox(width: 6),
-        Text(
-          uploads > 0 ? '내 기여 $uploads' : '서버 ${serverTotal > 0 ? serverTotal : "—"}',
-          style: const TextStyle(color: _text, fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'monospace'),
-        ),
-      ]),
-    );
-  }
-}
-
-class _StatusOrb extends StatelessWidget {
-  final bool online;
-  final bool shadowOn;
-  const _StatusOrb({required this.online, required this.shadowOn});
-  @override
-  Widget build(BuildContext context) {
-    final color = !online ? _warn : (shadowOn ? _safe : _accent);
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0.5, end: 1.0),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeInOut,
-      builder: (_, double t, __) => Container(
-        width: 14, height: 14,
-        decoration: BoxDecoration(
-          color: color, shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.6 * t), blurRadius: 12)],
-        ),
-      ),
-      onEnd: () {},
-    );
-  }
-}
-
-/// 가려진 신호등 자동 안내 HUD — 카메라 위 상단 표시.
-/// alt_signal 응답이 있고 alt_guide 가 있으면 항상 표시.
-/// 평상시 (신호 HUD 없을 때) 상단 상태 카드 — 화면 텅 비는 거 방지
 class _IdleStatusCard extends StatelessWidget {
   final int uploads;
   final int captures;
@@ -3571,81 +3444,6 @@ class _LiveBadge extends StatelessWidget {
     );
   }
 }
-
-class _PrimaryActionPill extends StatelessWidget {
-  final bool shadowOn;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-  const _PrimaryActionPill({required this.shadowOn, required this.onTap, required this.onLongPress});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
-        decoration: BoxDecoration(
-          gradient: shadowOn
-              ? const LinearGradient(colors: [Color(0xFFFF3B3B), Color(0xFFB71C1C)])
-              : const LinearGradient(colors: [_accent, _accent2]),
-          borderRadius: BorderRadius.circular(99),
-          boxShadow: [
-            BoxShadow(
-              color: (shadowOn ? _danger : _accent).withValues(alpha: 0.45),
-              blurRadius: 28, offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(shadowOn ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                 size: 28, color: shadowOn ? Colors.white : _bg),
-            const SizedBox(width: 10),
-            Text(
-              shadowOn ? '정지' : '시작',
-              style: TextStyle(
-                color: shadowOn ? Colors.white : _bg,
-                fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 0.6,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OpenSheetHandle extends StatelessWidget {
-  final VoidCallback onTap;
-  const _OpenSheetHandle({required this.onTap});
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 38, height: 4,
-            decoration: BoxDecoration(
-              color: _muted.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text('스와이프 / 탭으로 상세',
-              style: TextStyle(color: _muted.withValues(alpha: 0.7), fontSize: 10, letterSpacing: 1.5)),
-        ]),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Detail bottom sheet
-// ─────────────────────────────────────────────────────────────────
 
 class _DetailSheet extends StatefulWidget {
   final String deviceId;
@@ -4695,5 +4493,146 @@ class _CompetitionKpiScreenState extends State<_CompetitionKpiScreen> {
       return buf.toString();
     }
     return v.toString();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// v5 2026-05-17: 첫 진입 온보딩 (3장 PageView)
+// ─────────────────────────────────────────────────────────────────
+class _OnboardingScreen extends StatefulWidget {
+  final VoidCallback onDone;
+  const _OnboardingScreen({required this.onDone});
+  @override
+  State<_OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<_OnboardingScreen> {
+  final _ctrl = PageController();
+  int _page = 0;
+  static const _pages = [
+    _OnboardPage(
+      icon: '👀',
+      title: 'AuraView가 뭐예요?',
+      body: '운전 중 트럭에 가려진 신호등, 사각지대 보행자를\n15종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI 입니다.',
+      accent: Color(0xFFFFB020),
+    ),
+    _OnboardPage(
+      icon: '🛡️',
+      title: '내 폰이 도로의 눈이 됩니다',
+      body: '카메라 + GPS 로 위험 순간만 자동 감지.\n영상은 PII 자동 마스킹 후 업로드 → AI 재학습.\n폰에는 이미지가 저장되지 않습니다.',
+      accent: Color(0xFF00E09A),
+    ),
+    _OnboardPage(
+      icon: '🤝',
+      title: '권한이 필요합니다',
+      body: '• 카메라 (필수) — 도로 영상 분석\n• 위치 (선택) — 교차로 자동 감지\n• 인터넷 (필수) — 안전 데이터 기여\n다음 화면에서 허용 또는 거부 선택.',
+      accent: Color(0xFF00C8FF),
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isLast = _page == _pages.length - 1;
+    return Scaffold(
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: Column(children: [
+          // 상단 skip
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              TextButton(
+                onPressed: widget.onDone,
+                child: const Text('건너뛰기', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+              ),
+            ]),
+          ),
+          // PageView
+          Expanded(
+            child: PageView.builder(
+              controller: _ctrl,
+              itemCount: _pages.length,
+              onPageChanged: (i) => setState(() => _page = i),
+              itemBuilder: (_, i) => _pages[i],
+            ),
+          ),
+          // 인디케이터
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(_pages.length, (i) {
+            final active = i == _page;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: active ? 24 : 8, height: 8,
+              decoration: BoxDecoration(
+                color: active ? _accent : _muted.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            );
+          })),
+          const SizedBox(height: 22),
+          // 다음 / 시작 버튼
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  if (isLast) {
+                    widget.onDone();
+                  } else {
+                    _ctrl.nextPage(duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+                  }
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: isLast ? _safe : _accent,
+                  foregroundColor: _bg,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
+                ),
+                child: Text(isLast ? '시작하기' : '다음',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _OnboardPage extends StatelessWidget {
+  final String icon;
+  final String title;
+  final String body;
+  final Color accent;
+  const _OnboardPage({required this.icon, required this.title, required this.body, required this.accent});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 140, height: 140,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [accent.withValues(alpha: 0.35), accent.withValues(alpha: 0.05), Colors.transparent],
+              ),
+            ),
+            child: Center(child: Text(icon, style: const TextStyle(fontSize: 80))),
+          ),
+          const SizedBox(height: 36),
+          Text(title,
+            style: TextStyle(color: accent, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+            textAlign: TextAlign.center),
+          const SizedBox(height: 18),
+          Text(body,
+            style: TextStyle(color: _text.withValues(alpha: 0.85), fontSize: 14.5, height: 1.7, fontWeight: FontWeight.w500),
+            textAlign: TextAlign.center),
+        ],
+      ),
+    );
   }
 }

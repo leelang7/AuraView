@@ -18,6 +18,17 @@
   .brand .dot{width:8px;height:8px;border-radius:50%;background:#00E09A;box-shadow:0 0 8px #00E09A;}
   .brand .pill{padding:3px 8px;background:rgba(0,224,154,0.18);color:#00E09A;border-radius:99px;font-size:10px;}
   #fps{font-family:monospace;font-size:11px;color:#7CC8B0;opacity:0.85;}
+  /* AI 검출 상태 배지 (모델 로드 / 검출 카운트 / 백엔드) */
+  #ai-status{position:fixed;top:42px;right:14px;z-index:30;padding:4px 10px;
+    background:rgba(10,14,24,0.8);backdrop-filter:blur(6px);border:1px solid rgba(0,200,255,0.30);
+    border-radius:99px;font-size:10.5px;font-weight:800;letter-spacing:0.5px;
+    display:flex;align-items:center;gap:6px;pointer-events:none;color:#7CC8B0;}
+  #ai-status .led{width:7px;height:7px;border-radius:50%;background:#FFB020;box-shadow:0 0 6px #FFB020;
+    animation:pulse 1.2s infinite;}
+  #ai-status.ready .led{background:#00E09A;box-shadow:0 0 6px #00E09A;animation:none;}
+  #ai-status.err .led{background:#FF4040;box-shadow:0 0 6px #FF4040;animation:none;}
+  #ai-status.ready{border-color:rgba(0,224,154,0.45);color:#9CE9C9;}
+  #ai-status.err{border-color:rgba(255,68,68,0.45);color:#FFB0B0;}
   /* 우상단 컨트롤 */
   #ctrls{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:31;pointer-events:auto;}
   .btn{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#fff;
@@ -59,8 +70,12 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
 }}
 </script>
-<!-- v8 2026-05-18: 실 카메라 구동 점유 BEV — TensorFlow.js + COCO-SSD -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<!-- v8 2026-05-18: 실 카메라 구동 점유 BEV — TensorFlow.js + COCO-SSD
+     v8.2 견고화: tfjs-core + webgl + wasm 폴백 backend 명시 -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.20.0/dist/tf-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.20.0/dist/tf-converter.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.20.0/dist/tf-backend-webgl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-cpu@4.20.0/dist/tf-backend-cpu.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 </head>
 <body>
@@ -75,6 +90,9 @@
   </div>
   <span id="fps">— fps</span>
 </div>
+
+<!-- AI 상태 (로딩 / 백엔드 / 검출 카운트) -->
+<div id="ai-status"><span class="led"></span><span id="ai-text">AI 대기 중</span></div>
 
 <div id="ctrls">
   <button class="btn" id="btn-cam" title="카메라 토글">📷 카메라</button>
@@ -409,15 +427,51 @@ document.getElementById('btn-cam').onclick = () => {
 };
 startCamera();
 
-// ── COCO-SSD 로드 + 검출 루프
+// ── AI 상태 배지 헬퍼
+const aiStatus = document.getElementById('ai-status');
+const aiText = document.getElementById('ai-text');
+function setAi(state, text) {
+  aiStatus.classList.remove('ready','err');
+  if (state) aiStatus.classList.add(state);
+  aiText.textContent = text;
+}
+
+// ── COCO-SSD 로드 + 검출 루프 (v8.2: 명시 backend + 폴백)
 let model = null;
+let aiBackend = null;
 (async () => {
+  // 1) TF.js 사용 가능 여부
+  if (typeof tf === 'undefined' || typeof cocoSsd === 'undefined') {
+    setAi('err', 'TF.js 로드 실패 (CDN/네트워크)');
+    notify('AI 라이브러리 로드 실패 — 네트워크 확인', 4500);
+    return;
+  }
+  // 2) backend 우선순위: webgl → cpu (Android WebView 호환)
+  setAi(null, 'TF backend 초기화…');
   try {
-    // lite_mobilenet_v2: 작고 빠름 (모바일 안 안 5-15 FPS)
-    model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
-    notify('검출 모델 준비 완료 · 실시간 BEV 가동', 2500);
+    await tf.setBackend('webgl');
+    await tf.ready();
+    aiBackend = 'webgl';
   } catch (e) {
-    notify('검출 모델 로드 실패 — 네트워크 확인', 4500);
+    try {
+      await tf.setBackend('cpu');
+      await tf.ready();
+      aiBackend = 'cpu';
+    } catch (e2) {
+      setAi('err', 'TF backend 사용불가');
+      notify('GPU/CPU backend 모두 실패', 5000);
+      return;
+    }
+  }
+  setAi(null, `모델 다운로드… (${aiBackend})`);
+  // 3) coco-ssd 모델 로드
+  try {
+    model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+    setAi('ready', `AI ready · ${aiBackend}`);
+    notify(`검출 모델 준비 완료 (${aiBackend}) · 실시간 BEV 가동`, 2800);
+  } catch (e) {
+    setAi('err', '모델 다운로드 실패');
+    notify('모델 다운로드 실패 — 네트워크 확인', 4500);
   }
 })();
 
@@ -548,6 +602,8 @@ async function inferFrame(now) {
     else action = '안전 거리 확보';
   }
   lastRisk = risk; lastTTC = ttc; lastVehN = vehN; lastPedN = pedN;
+  // AI 상태 배지: 검출 카운트 표시
+  setAi('ready', `AI · ${aiBackend} · 검출 ${vehN + pedN}`);
   drawRiskBillboard(riskBoardObj, risk, ttc, action);
   // 빌보드 위치: 가장 가까운 점유물 위
   if (isFinite(minDist)) {

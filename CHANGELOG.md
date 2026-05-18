@@ -5,6 +5,55 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.17 — Tesla 식 정책 대시보드 + /bev3d 실 카메라 구동 (객체 모양 보존) (2026-05-18)
+
+### Added — /policy/ 정책의사결정 대시보드 (Tesla fleet → 통계 → 정책)
+**핵심 컨셉 재정렬**: 이 프로젝트의 본질은 실시간 경고가 아니라
+[수집 (fleet) → 가명·집계 → 통계분석 → 정책의사결정] 데이터 가치사슬.
+- 상단 4단계 pipeline (수집/가명집계/통계분석/정책결정)
+- 5 KPI 카드: fleet 1,247대 · 위험이벤트 38,914 · 고위험 그리드 218 · 정책제안 17 · CI 95%
+- 좌측 공간 위험 히트맵 (Seoul · 100m 그리드 · k≥5 익명 결합 후)
+  - 빨강/주황/녹색 클러스터 + 스쿨존 폴리곤 (학동초/청운초) + 도로망
+- 시간대×요일 heatmap (24h × 7days) — 평일 등교/퇴근, 금요일 야간 고위험 자동 패턴
+- 위험 상위 10개 교차로 (신뢰구간 95%) — 강남대로/청운초/양재대로 등 + CI half-width
+- 데이터 기반 정책 제안 4종 (기대 사고감소 시뮬레이션):
+  - 스쿨존 신설: -32% / 연 4건
+  - 신호 조정: -21% / 연 3건
+  - 단속 강화: -18% / 연 2건
+  - 인프라 개선: -14% / 연 2건
+- 가명·집계 처리 노티스 + /privacy/ 직링크
+
+### Updated — /bev3d 실 카메라 구동 점유 BEV (v8: 객체 모양 보존, 사용자 요청)
+이전 정적 시뮬 + PiP 데코를 진짜 카메라 입력 기반으로 교체:
+- TensorFlow.js + COCO-SSD lite_mobilenet_v2 on-device (~5fps)
+- 6 클래스: person/bicycle/motorcycle/car/bus/truck
+- pixelToBev() 호모그래피: bottom_y 비선형 깊이 (1.5~35m) + 가로 lateral
+- **객체 모양 살리기**: BoxGeometry 폐기 → SpriteMaterial + CanvasTexture
+  - updateOccCrop(): video.drawImage(ROI) 로 실 객체 픽셀을 매 프레임 캔버스 텍스처에 복사
+  - bbox 비율(AR)로 빌보드 width/height 동적 (왜곡 방지 fit + 색 외곽선)
+- Tesla 비주얼 톤: ego emissive 0.45 + 외곽 글로우 링 + 전방 예측 경로 8 segment fade
+- 트래커 + 평활화 (1.5s decay + texture/material dispose)
+- 위험 빌보드 위치 = 최근접 점유물 위, 색/액션 동적 (즉시 정지/감속/안전)
+
+### Updated — v8.2 /bev3d/ 견고화 (사용자 "실시간 라이브? 사람 모양?")
+- TF.js backend 명시 분리: webgl 우선 → cpu 폴백 (Android WebView 호환성)
+- 별도 모듈 로드: tfjs-core + tfjs-converter + tfjs-backend-webgl + tfjs-backend-cpu
+- AI 상태 배지 (#ai-status): 우상단 펄스 LED + 라벨
+  - 단계별 표시: TF backend 초기화 → 모델 다운로드 → AI ready · webgl/cpu · 검출 N개
+  - 실패 시 빨강 LED + 사유 메시지
+
+### Updated — Flutter v7.5 ★ 모드 5탭 확장
+- _JudgeModeScreen: 4탭 → 5탭
+  - ★ 가산점 · ⚖ 정책 · 🔒 PII · 🛡 안전구역 · 📖 스토리
+- /policy/ 새 페이지를 ★ 두번째 탭으로 우선 배치
+
+### Static pages
+- /story/ nav: ⚖ 정책 대시보드 핀 추가
+- /scorecard/ 엔드포인트 목록에 /policy/ 추가
+- backend/app/main.py: /policy 마운트
+
+---
+
 ## v0.16 — 가산점 25점 적격 증거 페이지 + 19종 융합 + 자체 3D BEV (2026-05-18)
 
 ### Added — judge-facing 페이지 4종 신규

@@ -4865,10 +4865,11 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
   bool _loaded = false;
 
   static const _tabs = <Map<String, String>>[
-    {'name': '가산점 25점', 'icon': '★', 'url': 'https://auraview.allthatai.kr/scorecard/'},
-    {'name': 'PII 데모', 'icon': '🔒', 'url': 'https://auraview.allthatai.kr/privacy/'},
-    {'name': '안전구역',   'icon': '🛡', 'url': 'https://auraview.allthatai.kr/safezone/'},
-    {'name': '스토리',     'icon': '📖', 'url': 'https://auraview.allthatai.kr/story/'},
+    {'name': '가산점',  'icon': '★', 'url': 'https://auraview.allthatai.kr/scorecard/'},
+    {'name': '정책',    'icon': '⚖', 'url': 'https://auraview.allthatai.kr/policy/'},
+    {'name': 'PII',     'icon': '🔒', 'url': 'https://auraview.allthatai.kr/privacy/'},
+    {'name': '안전구역','icon': '🛡', 'url': 'https://auraview.allthatai.kr/safezone/'},
+    {'name': '스토리',  'icon': '📖', 'url': 'https://auraview.allthatai.kr/story/'},
   ];
 
   @override

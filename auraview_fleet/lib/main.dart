@@ -159,6 +159,12 @@ class _FleetHomeState extends State<FleetHome>
   List<Map<String, dynamic>> _bevDetections = const [];
   int _bevImgW = 1280, _bevImgH = 720;
 
+  // v11.1 2026-05-19: 검출 파이프라인 디버그 상태 (왜 안 잡히는지 화면에 표시)
+  String _detectDebug = '초기화 대기';
+  int _detectRawN = 0;
+  int _detectKeptN = 0;
+  DateTime? _detectLastAt;
+
   // ★ DEMO 시나리오 모드 — 사용자가 명시적으로 켤 때만 활성 (기본 OFF)
   // OFF: LIVE 모드 — 카메라 frame → 클라이언트 voxel (실제 환경)
   // ON:  DEMO 모드 — 서버 4 시나리오 자동 순환 (실내 시연용)
@@ -567,12 +573,20 @@ class _FleetHomeState extends State<FleetHome>
   // v9.2 2026-05-18: ML Kit 검출 → Flutter 네이티브 BEV 오버레이용 state + (옵션) WebView push.
   //   사람/차량 bbox 를 저장 → _LiveBevTilted 가 perspective transform 위에 박스 그림.
   Future<void> _pushDetectionsToBev(String imagePath, Uint8List bytes) async {
-    if (_objDetector == null) return;
+    if (_objDetector == null) {
+      if (mounted) setState(() => _detectDebug = 'ML Kit 초기화 실패');
+      return;
+    }
     try {
       final inputImage = InputImage.fromFilePath(imagePath);
       final objects = await _objDetector!.processImage(inputImage);
+      // v11.1 디버그: raw count 기록
+      final rawN = objects.length;
       final src = img.decodeJpg(bytes);
-      if (src == null) return;
+      if (src == null) {
+        if (mounted) setState(() => _detectDebug = 'JPEG 디코드 실패');
+        return;
+      }
       final imgW = src.width, imgH = src.height;
       final imgArea = (imgW * imgH).toDouble();
       final dets = <Map<String, dynamic>>[];
@@ -604,6 +618,12 @@ class _FleetHomeState extends State<FleetHome>
         setState(() {
           _bevDetections = dets;
           _bevImgW = imgW; _bevImgH = imgH;
+          _detectRawN = rawN;
+          _detectKeptN = dets.length;
+          _detectLastAt = DateTime.now();
+          _detectDebug = rawN == 0
+            ? 'ML Kit raw=0 (이미지에서 객체 미발견)'
+            : 'raw=$rawN kept=${dets.length}';
         });
       }
       // (옵션) WebView 가 살아있을 때 push 도 진행 (legacy WebView BEV 화면 호환)
@@ -614,7 +634,9 @@ class _FleetHomeState extends State<FleetHome>
           await wv.runJavaScript('window.aurDetect && window.aurDetect($payload)');
         } catch (_) {}
       }
-    } catch (_) {/* skip frame */}
+    } catch (e) {
+      if (mounted) setState(() => _detectDebug = 'detect 예외: ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}');
+    }
   }
 
   double _estimateOcclusionScore() {
@@ -1323,6 +1345,27 @@ class _FleetHomeState extends State<FleetHome>
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: _RecPill(on: _shadowOn, onTap: _toggleShadow),
+                ),
+              ),
+            ),
+
+            // v11.1 2026-05-19: 검출 디버그 pill (왜 안 잡히는지 표시)
+            Positioned(
+              left: 10, bottom: 56,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xDD000000),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: (_detectRawN > 0 ? _safe : _warn).withValues(alpha: 0.5),
+                    width: 0.8),
+                ),
+                child: Text(
+                  '🔍 $_detectDebug${_detectLastAt != null ? " · ${DateTime.now().difference(_detectLastAt!).inSeconds}s ago" : ""}',
+                  style: TextStyle(
+                    color: _detectRawN > 0 ? _safe : _warn,
+                    fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
                 ),
               ),
             ),

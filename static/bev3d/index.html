@@ -59,6 +59,9 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
 }}
 </script>
+<!-- v8 2026-05-18: 실 카메라 구동 점유 BEV — TensorFlow.js + COCO-SSD -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 </head>
 <body>
 
@@ -173,61 +176,198 @@ function makeVehicle(color, w=2.0, l=4.5, h=1.4) {
   return mesh;
 }
 
-// ── 내 차 (ego) — 청록, 도로 아래 차로 (z>0 가 진행방향 기준 우측)
+// ── 내 차 (ego) — Tesla 비주얼 톤: 청록 발광 + 외곽 글로우
 const ego = makeVehicle(0x00C8FF);
-ego.position.set(-15, 0, 3);
+ego.position.set(0, 0, 3);
 ego.userData.label = 'EGO';
+ego.material.emissiveIntensity = 0.45;
 scene.add(ego);
+// ego 외곽 글로우 링
+const egoGlow = new THREE.Mesh(
+  new THREE.RingGeometry(1.8, 2.3, 32),
+  new THREE.MeshBasicMaterial({ color: 0x00C8FF, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
+);
+egoGlow.rotation.x = -Math.PI / 2; egoGlow.position.y = 0.05;
+scene.add(egoGlow);
 
-// 다른 차량들 (동적 — 실시간 검출 결과로 갱신될 자리)
-const otherVehicles = [];
-function spawnNPC(color, x, z, w, l) {
-  const v = makeVehicle(color, w, l);
-  v.position.set(x, 0, z);
-  scene.add(v); otherVehicles.push(v);
-  return v;
+// Tesla 시그니처 — ego 전방 예측 경로 (3D 화살표 strip)
+function makeEgoPath() {
+  const g = new THREE.Group();
+  // 부드러운 강조 strip — 6개 segment
+  for (let i = 0; i < 8; i++) {
+    const w = 1.6 - i * 0.08, alpha = 0.55 - i * 0.06;
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, 2.0),
+      new THREE.MeshBasicMaterial({ color: 0x00C8FF, transparent: true, opacity: alpha, side: THREE.DoubleSide })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(2.5 + i * 2.4, 0.06, 0);
+    g.add(m);
+  }
+  return g;
 }
-spawnNPC(0xFFB020, 8, 3, 2.0, 4.5);     // 앞 차
-spawnNPC(0xFF4040, -3, 3, 2.4, 7.0);    // 트럭 (위험)
-spawnNPC(0x888888, -22, -3, 2.0, 4.5);  // 반대편 차
+const egoPath = makeEgoPath();
+egoPath.position.copy(ego.position); egoPath.position.x = 0; egoPath.position.z = 3;
+scene.add(egoPath);
 
-// 보행자 (작은 빨강 박스 — 사각지대)
-const ped = new THREE.Mesh(
-  new THREE.BoxGeometry(0.5, 1.7, 0.5),
-  new THREE.MeshStandardMaterial({ color: 0xFF4040, emissive: 0xFF4040, emissiveIntensity: 0.6 })
-);
-ped.position.set(2, 0.85, -5);
-scene.add(ped);
-// 위험 펄스 링
-const pedRing = new THREE.Mesh(
-  new THREE.RingGeometry(0.8, 1.0, 32),
-  new THREE.MeshBasicMaterial({ color: 0xFF4040, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
-);
-pedRing.rotation.x = -Math.PI / 2; pedRing.position.set(2, 0.05, -5);
-scene.add(pedRing);
+// ── v8: 실 카메라 검출 결과로 동적 생성되는 점유물 풀
+//      class별 색/모양/실측 사이즈 (LUT)
+const CLASS_LUT = {
+  'person':     { color: 0xFF4040, w: 0.5,  l: 0.5,  h: 1.7, isPed: true,  label: '보행자' },
+  'bicycle':    { color: 0xFFB020, w: 0.6,  l: 1.7,  h: 1.2, isPed: true,  label: '자전거' },
+  'motorcycle': { color: 0xFFB020, w: 0.8,  l: 2.0,  h: 1.3, isPed: false, label: '이륜' },
+  'car':        { color: 0x00C8FF, w: 1.8,  l: 4.5,  h: 1.5, isPed: false, label: '승용' },
+  'bus':        { color: 0x7C3AED, w: 2.5,  l: 11.0, h: 3.0, isPed: false, label: '버스' },
+  'truck':      { color: 0xFF6B6B, w: 2.4,  l: 7.0,  h: 2.6, isPed: false, label: '화물' },
+};
+// 검출 → 3D 객체 풀 (id → mesh, ring, label)
+const occMap = new Map();   // tracker_id -> {mesh, ring, label, lastSeen, dist}
+let trackId = 0;
+const occGroup = new THREE.Group(); scene.add(occGroup);
 
-// ── 위험 점수 표시판 (3D world space billboard)
+// v8.1 2026-05-18: 객체 모양 살리기 — 비디오 ROI 크롭을 텍스처로 씌운 빌보드
+//   BoxGeometry 대신 PlaneGeometry + 카메라 픽셀 텍스처로 실제 객체 모양 유지.
+function makeOccObject(cls) {
+  const lut = CLASS_LUT[cls] || CLASS_LUT['car'];
+  // 1) 빌보드 (실 객체 픽셀) — width/height 는 트랙 갱신 시 box 비율에 맞춤
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = 256; cropCanvas.height = 256;
+  const cropCtx = cropCanvas.getContext('2d');
+  // 초기 채움 (검출 첫 프레임 전 placeholder)
+  cropCtx.fillStyle = 'rgba(20,28,46,0.6)'; cropCtx.fillRect(0,0,256,256);
+  cropCtx.strokeStyle = '#' + lut.color.toString(16).padStart(6,'0');
+  cropCtx.lineWidth = 6; cropCtx.strokeRect(3,3,250,250);
+  cropCtx.fillStyle = '#' + lut.color.toString(16).padStart(6,'0');
+  cropCtx.font = 'bold 60px sans-serif'; cropCtx.textAlign='center';
+  cropCtx.fillText(lut.label, 128, 145);
+  const cropTex = new THREE.CanvasTexture(cropCanvas);
+  cropTex.colorSpace = THREE.SRGBColorSpace;
+  // SpriteMaterial — depthWrite: false 로 가까운 객체가 먼 객체를 가리지 않게
+  const billMat = new THREE.SpriteMaterial({ map: cropTex, transparent: true, depthWrite: false });
+  const billboard = new THREE.Sprite(billMat);
+  // 초기 스케일은 LUT (트래커가 box AR 로 갱신)
+  billboard.scale.set(lut.w, lut.h, 1);
+  billboard.position.y = lut.h / 2;
+  billboard.userData = { isCropBillboard: true };
+
+  // 2) 그라운드 링 (점유 위치 마킹) — 클래스 색
+  const ringGeo = new THREE.RingGeometry(Math.max(lut.w, lut.l) * 0.55, Math.max(lut.w, lut.l) * 0.78, 36);
+  const ringMat = new THREE.MeshBasicMaterial({ color: lut.color, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(ringGeo, ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05;
+
+  // 3) 상단 라벨 (cls + 거리) — Tesla 풍 minimal
+  const lc = document.createElement('canvas'); lc.width = 220; lc.height = 70;
+  const lcx = lc.getContext('2d');
+  const lTex = new THREE.CanvasTexture(lc); lTex.colorSpace = THREE.SRGBColorSpace;
+  const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: lTex, depthWrite: false }));
+  labelSprite.scale.set(1.8, 0.6, 1); labelSprite.position.y = lut.h + 0.85;
+
+  const group = new THREE.Group();
+  group.add(billboard); group.add(ring); group.add(labelSprite);
+  group.userData = {
+    lut, cls,
+    billboard, billMat, cropCanvas, cropCtx, cropTex,
+    labelSprite, labelCanvas: lc, labelCtx: lcx, labelTex: lTex,
+    ring, ringMat,
+  };
+  // 첫 라벨 그리기
+  updateOccLabel(group, 0);
+  return group;
+}
+
+// 박스 영역을 비디오에서 크롭 → 트랙 텍스처에 그림 + 비율 맞춰 빌보드 스케일
+function updateOccCrop(group, video, box) {
+  const { lut, billboard, cropCanvas, cropCtx, cropTex } = group.userData;
+  // box = [x, y, w, h] in video coords
+  const sx = Math.max(0, box[0]), sy = Math.max(0, box[1]);
+  const sw = Math.max(2, Math.min(video.videoWidth - sx, box[2]));
+  const sh = Math.max(2, Math.min(video.videoHeight - sy, box[3]));
+  // 캔버스 비율 = box 비율 (왜곡 방지 — pad 처리)
+  const ar = sw / sh;
+  const C = 256;
+  cropCanvas.width = C; cropCanvas.height = C;
+  cropCtx.clearRect(0,0,C,C);
+  // 비디오 ROI 를 캔버스 중앙에 비율 유지로 fit
+  let dw, dh;
+  if (ar >= 1) { dw = C; dh = C / ar; }
+  else         { dh = C; dw = C * ar; }
+  const dx = (C - dw) / 2, dy = (C - dh) / 2;
+  // 어두운 배경 + 채도 강조 효과는 가벼운 outline 으로
+  cropCtx.fillStyle = 'rgba(0,0,0,0)'; cropCtx.fillRect(0,0,C,C);
+  try { cropCtx.drawImage(video, sx, sy, sw, sh, dx, dy, dw, dh); }
+  catch (e) { /* video not ready */ }
+  // 색상 outline (클래스 색)
+  cropCtx.strokeStyle = '#' + lut.color.toString(16).padStart(6,'0');
+  cropCtx.lineWidth = 4; cropCtx.strokeRect(dx + 2, dy + 2, dw - 4, dh - 4);
+  cropTex.needsUpdate = true;
+  // 빌보드 스케일을 box AR + 실측 크기로 맞춤 (가로폭 lut.w 기준)
+  const targetW = lut.w * 1.05;
+  const targetH = targetW / ar;
+  billboard.scale.set(targetW, Math.max(0.6, Math.min(targetH, lut.h * 1.4)), 1);
+  billboard.position.y = billboard.scale.y / 2;
+}
+
+function updateOccLabel(group, distM) {
+  const { lut, labelCanvas: c, labelCtx: ctx, labelTex: tex } = group.userData;
+  ctx.clearRect(0,0,c.width, c.height);
+  // pill bg
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.beginPath();
+  const r = 12;
+  ctx.moveTo(r, 0); ctx.lineTo(c.width-r, 0);
+  ctx.quadraticCurveTo(c.width, 0, c.width, r);
+  ctx.lineTo(c.width, c.height-r);
+  ctx.quadraticCurveTo(c.width, c.height, c.width-r, c.height);
+  ctx.lineTo(r, c.height); ctx.quadraticCurveTo(0, c.height, 0, c.height-r);
+  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0); ctx.closePath();
+  ctx.fill();
+  // color stripe (left)
+  ctx.fillStyle = '#' + lut.color.toString(16).padStart(6,'0');
+  ctx.fillRect(0, 6, 5, c.height - 12);
+  // label
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign='left';
+  ctx.fillText(lut.label, 14, 28);
+  // distance
+  const col = distM < 6 ? '#FF6B6B' : (distM < 15 ? '#FFB020' : '#7CC8B0');
+  ctx.font = 'bold 18px monospace'; ctx.fillStyle = col;
+  ctx.fillText(distM.toFixed(1) + 'm', 14, 56);
+  tex.needsUpdate = true;
+}
+
+// 위험 빌보드 (3D world space)
 function makeRiskBillboard() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256; canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = 'rgba(255,68,68,0.95)'; ctx.fillRect(0,0,256,128);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('⚠ 위험 0.74', 128, 50);
-  ctx.font = '14px sans-serif';
-  ctx.fillText('5.7초 안에 충돌', 128, 80);
-  ctx.fillText('즉시 정지', 128, 100);
-  const tex = new THREE.CanvasTexture(canvas);
+  const c = document.createElement('canvas'); c.width = 280; c.height = 140;
+  const cx = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false }));
-  sprite.scale.set(4, 2, 1);
-  return sprite;
+  sprite.scale.set(4.5, 2.2, 1);
+  return { sprite, canvas: c, ctx: cx, tex };
 }
-const riskBoard = makeRiskBillboard();
-riskBoard.position.set(2, 3.0, -5);
+function drawRiskBillboard(rb, risk, ttc, action) {
+  const { canvas: c, ctx, tex } = rb;
+  ctx.clearRect(0,0,c.width,c.height);
+  const danger = risk >= 0.6;
+  const warn = risk >= 0.35;
+  ctx.fillStyle = danger ? 'rgba(255,68,68,0.95)' : (warn ? 'rgba(255,176,32,0.92)' : 'rgba(0,224,154,0.85)');
+  ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillText('⚠ 위험 ' + risk.toFixed(2), c.width/2, 46);
+  ctx.font = '16px sans-serif';
+  ctx.fillText(ttc ? (ttc.toFixed(1) + '초 안에 도달') : '안전 거리 확보', c.width/2, 80);
+  ctx.font = 'bold 17px sans-serif';
+  ctx.fillText(action, c.width/2, 110);
+  tex.needsUpdate = true;
+}
+const riskBoardObj = makeRiskBillboard();
+const riskBoard = riskBoardObj.sprite;
+riskBoard.position.set(0, 4.0, 0);
 scene.add(riskBoard);
 
-// ── 카메라 (폰 후면) — getUserMedia
+// ═══════════════════════════════════════════════════════════════
+// v8 2026-05-18: 실 카메라 + COCO-SSD 실시간 검출 → 3D 점유 배치
+//   MetroEyes 스타일 — 폰 후면 카메라가 진짜 BEV 입력
+// ═══════════════════════════════════════════════════════════════
 const camVideo = document.getElementById('cam');
 const pip = document.getElementById('pip');
 const noticeEl = document.getElementById('notice');
@@ -235,7 +375,14 @@ function notify(msg, ms = 3500) {
   noticeEl.textContent = msg; noticeEl.classList.add('show');
   setTimeout(() => noticeEl.classList.remove('show'), ms);
 }
-let camStream = null;
+
+// 검출 오버레이 캔버스 (PiP 위에 박스 그림)
+const overlayCanvas = document.createElement('canvas');
+overlayCanvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;';
+pip.appendChild(overlayCanvas);
+const overlayCtx = overlayCanvas.getContext('2d');
+
+let camStream = null; let camReady = false;
 async function startCamera() {
   try {
     camStream = await navigator.mediaDevices.getUserMedia({
@@ -244,61 +391,209 @@ async function startCamera() {
     });
     camVideo.srcObject = camStream;
     pip.style.display = 'block';
-    notify('카메라 활성화 · 후면', 2000);
+    notify('카메라 활성화 · 검출 모델 로드 중…', 2200);
+    await new Promise(r => camVideo.onloadedmetadata = r);
+    overlayCanvas.width = camVideo.videoWidth; overlayCanvas.height = camVideo.videoHeight;
+    camReady = true;
   } catch (e) {
-    notify('카메라 접근 거부됨 — 시뮬레이션 모드');
+    notify('카메라 접근 거부됨 — 시뮬 모드로 폴백', 4500);
+    camReady = false;
   }
 }
 async function stopCamera() {
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
-  pip.style.display = 'none';
+  pip.style.display = 'none'; camReady = false;
 }
 document.getElementById('btn-cam').onclick = () => {
-  if (camStream) { stopCamera(); }
-  else { startCamera(); }
+  if (camStream) stopCamera(); else startCamera();
 };
-// 자동 시작 시도
 startCamera();
 
-// ── /fusion/intersection 폴링 (실 데이터 → 메트릭 패널)
+// ── COCO-SSD 로드 + 검출 루프
+let model = null;
+(async () => {
+  try {
+    // lite_mobilenet_v2: 작고 빠름 (모바일 안 안 5-15 FPS)
+    model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+    notify('검출 모델 준비 완료 · 실시간 BEV 가동', 2500);
+  } catch (e) {
+    notify('검출 모델 로드 실패 — 네트워크 확인', 4500);
+  }
+})();
+
+// ── 픽셀 → 3D 월드 좌표 (단순 호모그래피)
+//   가정: 폰 1.5m 높이, 약간 아래 기울임 (대시보드 마운트 풍).
+//   bottom_y / video_h → 1에 가까울수록 가까움.
+//   center_x → 가로 위치는 거리에 비례.
+const VIDEO_H = 720, VIDEO_W = 1280;
+const MAX_DIST = 35;       // 가장 먼 검출 30~35m
+const MIN_DIST = 1.5;      // 가장 가까운 검출 1.5m
+const LATERAL_SCALE = 0.5; // 화면 좌우 50%당 거리에 비례 lateral
+function pixelToBev(box, vw, vh) {
+  // box: [x, y, w, h] in pixel coords (top-left origin)
+  const bx = box[0] + box[2] / 2;       // bottom-center x
+  const by = box[1] + box[3];           // bottom y
+  const ny = by / vh;                   // 0~1, bottom = 1
+  const nx = bx / vw - 0.5;             // -0.5 ~ 0.5
+  // 깊이는 ny^1.6 비선형 (원근감)
+  const t = Math.max(0, Math.min(1, ny));
+  const dist = MIN_DIST + (1 - Math.pow(1 - t, 1.6)) * (MAX_DIST - MIN_DIST);
+  const lateral = nx * dist * 2 * LATERAL_SCALE;
+  // ego 차량 좌표계: ego가 (0,0,3)에 있고 진행방향은 +x (오른쪽).
+  //   카메라 정면이 ego 의 +x 방향. 그래서 검출된 forward 거리 = +x 오프셋.
+  //   lateral 은 -z 방향에 매핑 (도로폭 16, 차로 폭 4m 가정).
+  return {
+    worldX: ego.position.x + dist,    // forward = +x
+    worldZ: ego.position.z - lateral, // lateral
+    dist,
+  };
+}
+
+// IoU 기반 간단 트래커 (이전 검출과 위치 가까우면 같은 ID)
+const TRACK_DECAY_MS = 1500;
+function nearestExistingTrack(cls, worldX, worldZ) {
+  let best = null, bestD = 4.0;
+  for (const [id, t] of occMap.entries()) {
+    if (t.cls !== cls) continue;
+    const dx = t.worldX - worldX, dz = t.worldZ - worldZ;
+    const d = Math.hypot(dx, dz);
+    if (d < bestD) { bestD = d; best = id; }
+  }
+  return best;
+}
+
+let lastInfer = 0, INFER_MS = 220;
+let lastRisk = 0, lastTTC = null, lastVehN = 0, lastPedN = 0;
+async function inferFrame(now) {
+  if (!camReady || !model) return;
+  if (now - lastInfer < INFER_MS) return;
+  lastInfer = now;
+  let predictions;
+  try { predictions = await model.detect(camVideo, 10); }
+  catch (e) { return; }
+
+  const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+  // 오버레이 클리어
+  overlayCtx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
+  overlayCtx.lineWidth = 2; overlayCtx.font = 'bold 12px sans-serif';
+
+  let vehN = 0, pedN = 0; let minDist = Infinity; let closestIsPed = false;
+  const seen = new Set();
+  for (const p of predictions) {
+    if (p.score < 0.45) continue;
+    const cls = p.class;
+    const lut = CLASS_LUT[cls];
+    if (!lut) continue;
+    if (lut.isPed) pedN++; else vehN++;
+    const { worldX, worldZ, dist } = pixelToBev(p.bbox, vw, vh);
+    if (dist < minDist) { minDist = dist; closestIsPed = lut.isPed; }
+
+    // 트래커
+    let id = nearestExistingTrack(cls, worldX, worldZ);
+    let track = id != null ? occMap.get(id) : null;
+    if (!track) {
+      id = ++trackId;
+      const obj = makeOccObject(cls);
+      occGroup.add(obj);
+      track = { obj, cls, worldX, worldZ, dist, lastSeen: now };
+      occMap.set(id, track);
+    } else {
+      // smoothing
+      track.worldX = track.worldX * 0.55 + worldX * 0.45;
+      track.worldZ = track.worldZ * 0.55 + worldZ * 0.45;
+      track.dist = dist; track.lastSeen = now;
+    }
+    seen.add(id);
+
+    // 3D 갱신
+    track.obj.position.x = track.worldX;
+    track.obj.position.z = track.worldZ;
+    updateOccCrop(track.obj, camVideo, p.bbox);   // 실 픽셀 텍스처 갱신 (모양 보존)
+    updateOccLabel(track.obj, dist);
+
+    // 박스 오버레이
+    overlayCtx.strokeStyle = '#' + lut.color.toString(16).padStart(6,'0');
+    overlayCtx.strokeRect(p.bbox[0], p.bbox[1], p.bbox[2], p.bbox[3]);
+    overlayCtx.fillStyle = 'rgba(0,0,0,0.7)';
+    overlayCtx.fillRect(p.bbox[0], p.bbox[1] - 18, Math.min(p.bbox[2], 120), 16);
+    overlayCtx.fillStyle = '#fff';
+    overlayCtx.fillText(lut.label + ' ' + dist.toFixed(1) + 'm', p.bbox[0] + 3, p.bbox[1] - 5);
+  }
+  // 안 보인 트랙은 시간 지나면 풀에서 제거
+  for (const [id, t] of [...occMap.entries()]) {
+    if (now - t.lastSeen > TRACK_DECAY_MS) {
+      occGroup.remove(t.obj);
+      const ud = t.obj.userData;
+      if (ud) {
+        if (ud.cropTex) ud.cropTex.dispose();
+        if (ud.labelTex) ud.labelTex.dispose();
+        if (ud.billMat) ud.billMat.dispose();
+        if (ud.ringMat) ud.ringMat.dispose();
+        if (ud.ring && ud.ring.geometry) ud.ring.geometry.dispose();
+      }
+      occMap.delete(id);
+    }
+  }
+
+  // ── 위험도 계산: 최근접 객체까지 거리 + 클래스
+  let risk = 0; let ttc = null; let action = '안전 거리 확보';
+  if (isFinite(minDist)) {
+    const base = closestIsPed ? Math.max(0, 1 - minDist / 20) : Math.max(0, 1 - minDist / 25);
+    risk = closestIsPed ? Math.min(1, base * 1.3) : Math.min(1, base);
+    // ttc — ego 60km/h 기준
+    const v = 60 / 3.6; // m/s
+    if (minDist > 2 && v > 0) ttc = minDist / v;
+    if (risk >= 0.7) action = '즉시 정지';
+    else if (risk >= 0.4) action = '감속 + 주의';
+    else action = '안전 거리 확보';
+  }
+  lastRisk = risk; lastTTC = ttc; lastVehN = vehN; lastPedN = pedN;
+  drawRiskBillboard(riskBoardObj, risk, ttc, action);
+  // 빌보드 위치: 가장 가까운 점유물 위
+  if (isFinite(minDist)) {
+    let closestId = null, closestD = Infinity;
+    for (const [id, t] of occMap.entries()) {
+      if (t.dist < closestD) { closestD = t.dist; closestId = id; }
+    }
+    if (closestId != null) {
+      const t = occMap.get(closestId);
+      riskBoard.position.set(t.worldX, 3.5, t.worldZ);
+    }
+  } else {
+    riskBoard.position.set(0, 3.8, 0);
+  }
+  // 메트릭 패널 갱신
+  document.getElementById('m-veh').textContent = vehN;
+  document.getElementById('m-ped').textContent = pedN;
+  document.getElementById('m-risk').textContent = risk.toFixed(2);
+  document.getElementById('m-lead').textContent = ttc ? (ttc.toFixed(1) + 's') : '— s';
+}
+
+// ── /fusion/intersection 폴링 (배경 데이터 — 융합 위험 prior 가산)
+let fusionRiskPrior = 0;
 async function pollFusion() {
   try {
     const r = await fetch('https://auraview.allthatai.kr/fusion/intersection/1007');
     if (!r.ok) return;
     const j = await r.json();
-    const s = j.fusion_summary || {};
-    const risk = (s.fusion_risk_score ?? 0).toFixed(2);
-    document.getElementById('m-risk').textContent = risk;
-    document.getElementById('m-veh').textContent = otherVehicles.length;
-    document.getElementById('m-ped').textContent = '1';
-    document.getElementById('m-lead').textContent = '3.38s';
+    fusionRiskPrior = (j.fusion_summary?.fusion_risk_score) ?? 0;
   } catch (e) {}
 }
 pollFusion();
-setInterval(pollFusion, 8000);
+setInterval(pollFusion, 10000);
 
 // ── Animation loop
 let last = performance.now(); let frames = 0; let fpsAcc = 0;
-function tick() {
-  const now = performance.now(); const dt = (now - last) / 1000; last = now;
+function tick(now) {
+  if (!now) now = performance.now();
+  const dt = (now - last) / 1000; last = now;
   frames++; fpsAcc += dt;
   if (fpsAcc >= 0.5) {
     document.getElementById('fps').textContent = `${Math.round(frames / fpsAcc)} fps`;
     frames = 0; fpsAcc = 0;
   }
-  // 차량 움직임 (간단 시뮬)
-  otherVehicles[0].position.x -= dt * 1.5;
-  otherVehicles[2].position.x -= dt * 1.0;
-  if (otherVehicles[0].position.x < -55) otherVehicles[0].position.x = 55;
-  if (otherVehicles[2].position.x < -55) otherVehicles[2].position.x = 55;
-  // ego 도 천천히
-  ego.position.x += dt * 1.2;
-  if (ego.position.x > 30) ego.position.x = -20;
-  // 보행자 펄스
-  const t = (now / 1000) % 1.5;
-  pedRing.scale.setScalar(1 + t * 1.5);
-  pedRing.material.opacity = 0.7 * (1 - t / 1.5);
-  // 위험 패널 카메라 향함
+  // 검출 (비동기 — await 안에서 자체 throttle)
+  inferFrame(now);
   riskBoard.lookAt(camera.position);
   ctrls.update();
   renderer.render(scene, camera);

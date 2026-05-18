@@ -152,6 +152,13 @@ class _FleetHomeState extends State<FleetHome>
   ObjectDetector? _objDetector;
   bool _mlkitBusy = false;
 
+  // v9.2 2026-05-18: BEV WebView 컨트롤러 (검출 결과를 JS aurDetect() 로 push)
+  WebViewController? _bevWvCtrl;
+  // v9.3 2026-05-18: ML Kit 검출 결과 보관 (Flutter 네이티브 BEV 오버레이용)
+  //   각 항목: { cls, box[x,y,w,h], score, vw, vh }
+  List<Map<String, dynamic>> _bevDetections = const [];
+  int _bevImgW = 1280, _bevImgH = 720;
+
   // ★ DEMO 시나리오 모드 — 사용자가 명시적으로 켤 때만 활성 (기본 OFF)
   // OFF: LIVE 모드 — 카메라 frame → 클라이언트 voxel (실제 환경)
   // ON:  DEMO 모드 — 서버 4 시나리오 자동 순환 (실내 시연용)
@@ -308,6 +315,12 @@ class _FleetHomeState extends State<FleetHome>
           } catch (_) {} finally {
             _mlkitBusy = false;
           }
+        }
+
+        // 2.5) v9.2: ★★ /bev3d/ WebView 로 검출 결과 push (실시간 3D 빌보드)
+        //   file delete 전에 await — push 가 ML Kit + JPEG 디코드 + runJavaScript 까지 처리
+        if (_bevWvCtrl != null) {
+          await _pushDetectionsToBev(shot.path, bytes);
         }
 
         // 3) 임시 파일 정리
@@ -551,6 +564,58 @@ class _FleetHomeState extends State<FleetHome>
     }
   }
 
+  // v9.2 2026-05-18: ML Kit 검출 → Flutter 네이티브 BEV 오버레이용 state + (옵션) WebView push.
+  //   사람/차량 bbox 를 저장 → _LiveBevTilted 가 perspective transform 위에 박스 그림.
+  Future<void> _pushDetectionsToBev(String imagePath, Uint8List bytes) async {
+    if (_objDetector == null) return;
+    try {
+      final inputImage = InputImage.fromFilePath(imagePath);
+      final objects = await _objDetector!.processImage(inputImage);
+      final src = img.decodeJpg(bytes);
+      if (src == null) return;
+      final imgW = src.width, imgH = src.height;
+      final imgArea = (imgW * imgH).toDouble();
+      final dets = <Map<String, dynamic>>[];
+      for (final obj in objects) {
+        final box = obj.boundingBox;
+        final w = (box.right - box.left).abs();
+        final h = (box.bottom - box.top).abs();
+        final pixelArea = w * h;
+        final areaRatio = pixelArea / imgArea;
+        if (areaRatio < 0.012) continue;     // 1.2% 미만 skip (작은 노이즈)
+        if (areaRatio > 0.8) continue;
+        if (w < 24 || h < 24) continue;
+        final aspect = h / w;
+        if (aspect < 0.20 || aspect > 5.0) continue;
+        final cls = aspect > 1.4 ? 'person' : 'car';
+        double score = 0.6;
+        if (obj.labels.isNotEmpty) {
+          score = obj.labels.first.confidence;
+        }
+        dets.add({
+          'cls': cls,
+          'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()],
+          'score': score,
+        });
+      }
+      // Flutter 네이티브 BEV 오버레이용 state 저장
+      if (mounted) {
+        setState(() {
+          _bevDetections = dets;
+          _bevImgW = imgW; _bevImgH = imgH;
+        });
+      }
+      // (옵션) WebView 가 살아있을 때 push 도 진행 (legacy WebView BEV 화면 호환)
+      final wv = _bevWvCtrl;
+      if (wv != null) {
+        final payload = jsonEncode({'detections': dets, 'vw': imgW, 'vh': imgH});
+        try {
+          await wv.runJavaScript('window.aurDetect && window.aurDetect($payload)');
+        } catch (_) {}
+      }
+    } catch (_) {/* skip frame */}
+  }
+
   double _estimateOcclusionScore() {
     final flat = _bev?['grid_flat'];
     if (flat is! List || flat.length != 1600) return 0.30;
@@ -731,7 +796,7 @@ class _FleetHomeState extends State<FleetHome>
       if (_shadowOn) {
         _ticker ??= Timer.periodic(kShadowInterval, (_) => _shadowTick());
       }
-      _bevTimer ??= Timer.periodic(const Duration(seconds: 5), (_) => _fetchBev());
+      _bevTimer ??= Timer.periodic(const Duration(milliseconds: 1500), (_) => _fetchBev());
       _pollServerTimer ??= Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
       _refreshLocation();
     }
@@ -776,9 +841,9 @@ class _FleetHomeState extends State<FleetHome>
     _pollServer();
     _pollServerTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
 
-    // BEV 자동 시작 (5초 주기) — LIVE: 카메라 voxelize 만, DEMO: + 서버 시나리오
+    // v9.2: BEV 자동 시작 (1.5초 주기 — WebView 3D 빌보드 라이브 갱신 위해 단축)
     _fetchBev();
-    _bevTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchBev());
+    _bevTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) => _fetchBev());
     // 시나리오 회전 타이머는 demoScenario 토글 시에만 시작 (_toggleDemoScenario)
 
     if (mounted) setState(() => _initing = false);
@@ -1203,22 +1268,31 @@ class _FleetHomeState extends State<FleetHome>
                           intersectionId: _autoIntersectionId ?? _intersectionId,
                           intersectionName: _autoIntersectionName,
                           onSettingsTap: _openDetailSheet,
+                          onRecToggleTap: _toggleShadow,
                         ),
                   ),
                   const SizedBox(height: 10),
 
-                  // v9 2026-05-18: 메인 라이브 BEV = /bev3d/ WebView (실 카메라 + COCO-SSD + 3D 점유)
-                  //   기존 _BevPanel CustomPainter voxel 폐기. MetroEyes 식 실시간 3D BEV 가 곧 메인.
+                  // v9.5 2026-05-18: 테슬라 식 voxel BEV (도로 그림 제거, 순수 occupancy voxel)
+                  //   _bev.grid_flat (40x40 voxel) + class_grid_flat (ML Kit 검출 결과) 가
+                  //   _Bev3DVoxelPainter 에서 3D 큐브 클러스터로 렌더.
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: _LiveBev3D(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 80),
+                      child: _BevPanel(
+                        bev: _demoScenarioOn ? (_serverBev ?? _bev) : _bev,
                         fusion: _fusion,
                         busLive: _busLive,
+                        demoMode: _demoScenarioOn,
+                        scenarioLabel: _demoScenarioOn
+                            ? (_scnLabels[_scnList[_scnIdx % _scnList.length]] ?? '')
+                            : null,
+                        onToggleDemo: _toggleDemoScenario,
+                        fillScreen: true,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 0),
                 ],
               ),
             ),
@@ -1314,12 +1388,13 @@ class _FleetHomeState extends State<FleetHome>
                 child: Center(child: _LiveBadge(reason: _reasonKo(_lastReason))),
               ),
 
-            // 7) 하단 드라이브 버튼
+            // v9.4: 주행 시작 버튼 복원 (사용자 요구) — 시스템 네비 위에 안전 배치
             SafeArea(
+              minimum: const EdgeInsets.only(bottom: 8),
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 18),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: _DriveButton(
                     on: _shadowOn,
                     onTap: _toggleShadow,
@@ -3224,6 +3299,7 @@ class _IdleStatusCard extends StatelessWidget {
   final String? intersectionId;
   final String? intersectionName;
   final VoidCallback? onSettingsTap;
+  final VoidCallback? onRecToggleTap;   // v9.3: 헤더 REC 토글
   const _IdleStatusCard({
     required this.uploads,
     required this.captures,
@@ -3231,6 +3307,7 @@ class _IdleStatusCard extends StatelessWidget {
     this.intersectionId,
     this.intersectionName,
     this.onSettingsTap,
+    this.onRecToggleTap,
   });
 
   @override
@@ -4956,6 +5033,574 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// v9.4 2026-05-18: 테슬라 식 합성 3D BEV (CustomPainter)
+//   - 카메라 영상은 별도 PiP 로만 표시. BEV 는 검출 결과를 합성 도로 위에 박스로.
+//   - 위에서 비스듬히 본 시점 (BEV-ish 3D perspective)
+//   - 검출 사이 1.5s 간격 → smooth interpolation (60fps Ticker)
+//   - 차량/보행자 색상 구분, 거리 ring, ego 진행 경로 fade
+// ═══════════════════════════════════════════════════════════════
+class _TeslaBev extends StatefulWidget {
+  final List<Map<String, dynamic>> detections;
+  final int imgW;
+  final int imgH;
+  const _TeslaBev({required this.detections, required this.imgW, required this.imgH});
+  @override
+  State<_TeslaBev> createState() => _TeslaBevState();
+}
+
+class _BevObj {
+  String cls; double x, y;        // BEV 좌표 (도로 평면, -1..1 lateral, 0..1 forward)
+  double tx, ty;                  // target (검출 갱신 시 set, 매 프레임 보간)
+  double conf;
+  double phase;                   // 펄스용
+  _BevObj({required this.cls, required this.x, required this.y, required this.conf, required this.phase})
+      : tx = x, ty = y;
+}
+
+class _TeslaBevState extends State<_TeslaBev> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  final List<_BevObj> _objs = [];
+  double _t = 0;
+  double _lastFrameMs = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((d) {
+      final ms = d.inMicroseconds / 1000.0;
+      final dt = _lastFrameMs == 0 ? 0.016 : ((ms - _lastFrameMs) / 1000.0).clamp(0.0, 0.05);
+      _lastFrameMs = ms;
+      _t = ms / 1000.0;
+      // 보간
+      for (final o in _objs) {
+        o.x = o.x * (1 - dt * 6.0) + o.tx * dt * 6.0;
+        o.y = o.y * (1 - dt * 6.0) + o.ty * dt * 6.0;
+      }
+      if (mounted) setState(() {});
+    });
+    _ticker.start();
+    _syncFromDetections();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TeslaBev old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.detections, widget.detections)) {
+      _syncFromDetections();
+    }
+  }
+
+  // 검출 → BEV 좌표로 매핑 (bbox bottom_y → forward dist, bottom_x → lateral)
+  void _syncFromDetections() {
+    final ds = widget.detections; if (ds.isEmpty) {
+      // 검출 없으면 점진 fade-out (안 그리면 자동 사라짐 — 그냥 비움)
+      _objs.clear();
+      return;
+    }
+    final iw = widget.imgW.toDouble(), ih = widget.imgH.toDouble();
+    final mapped = <_BevObj>[];
+    for (final d in ds) {
+      final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
+      final bx = box[0] + box[2] / 2, by = box[1] + box[3];
+      final ny = (by / ih).clamp(0.0, 1.0);     // 1 = 카메라 아래(가까움), 0 = 위(멀음)
+      final nx = ((bx / iw) - 0.5) * 2.0;       // -1..1 lateral
+      // forward: 0(near)..1(far). 비선형으로 원근감
+      final forward = 1.0 - math.pow(ny, 1.6).toDouble();
+      mapped.add(_BevObj(
+        cls: d['cls']?.toString() ?? 'car',
+        x: nx, y: forward, conf: (d['score'] as num?)?.toDouble() ?? 0.6,
+        phase: (math.Random().nextDouble()) * 6.28,
+      ));
+    }
+    // 기존 트랙과 매칭 (간단: 가장 가까운 거 매치)
+    final newList = <_BevObj>[];
+    final used = <int>{};
+    for (final m in mapped) {
+      double bestD = 0.25; int bestI = -1;
+      for (int i = 0; i < _objs.length; i++) {
+        if (used.contains(i)) continue;
+        final o = _objs[i];
+        if (o.cls != m.cls) continue;
+        final d = math.sqrt(math.pow(o.x - m.x, 2) + math.pow(o.y - m.y, 2));
+        if (d < bestD) { bestD = d; bestI = i; }
+      }
+      if (bestI >= 0) {
+        final o = _objs[bestI];
+        o.tx = m.x; o.ty = m.y; o.conf = m.conf;
+        newList.add(o); used.add(bestI);
+      } else {
+        newList.add(m);
+      }
+    }
+    _objs..clear()..addAll(newList);
+  }
+
+  @override
+  void dispose() { _ticker.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [Color(0xFF0A1422), Color(0xFF03070D)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _accent.withValues(alpha: 0.20), width: 0.8),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Stack(fit: StackFit.expand, children: [
+          // 1) Tesla 식 합성 BEV
+          RepaintBoundary(child: CustomPaint(
+            painter: _TeslaBevPainter(objs: _objs, t: _t),
+            size: Size.infinite,
+          )),
+          // 2) 좌상단 LIVE 라벨
+          Positioned(left: 10, top: 8, child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xCC0D1520),
+              borderRadius: BorderRadius.circular(99),
+              border: Border.all(color: _safe.withValues(alpha: 0.40), width: 0.8),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 7, height: 7, decoration: BoxDecoration(
+                color: _safe, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
+              )),
+              const SizedBox(width: 6),
+              Text('LIVE BEV', style: TextStyle(color: _safe, fontSize: 10,
+                fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+              const SizedBox(width: 8),
+              Text('· ${_objs.length} 검출',
+                style: TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          )),
+        ]),
+      ),
+    );
+  }
+}
+
+class _TeslaBevPainter extends CustomPainter {
+  final List<_BevObj> objs;
+  final double t;
+  _TeslaBevPainter({required this.objs, required this.t});
+
+  // 정규화 BEV (x: -1..1 lateral, y: 0..1 forward) → 화면 좌표 (3D perspective)
+  Offset _project(double x, double y, Size size) {
+    final w = size.width, h = size.height;
+    // forward y → 화면 y (위쪽이 멀음). 원근: y=0 가까이(아래) lateral 폭 = w*0.85, y=1 멀리(위) = w*0.18
+    final cy = h * (0.92 - y * 0.78);
+    final lateralScale = 0.5 + (1 - y) * 0.35;  // 가까울수록 lateral 폭 넓음
+    final cx = w / 2 + x * w * lateralScale;
+    return Offset(cx, cy);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+
+    // 1) 도로 (사다리꼴 그라디언트)
+    final road = Path()
+      ..moveTo(w * 0.50 - w * 0.09, h * 0.14)
+      ..lineTo(w * 0.50 + w * 0.09, h * 0.14)
+      ..lineTo(w * 0.50 + w * 0.42, h * 0.95)
+      ..lineTo(w * 0.50 - w * 0.42, h * 0.95)
+      ..close();
+    final roadPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [Color(0xFF111B2C), Color(0xFF1A2740)],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+    canvas.drawPath(road, roadPaint);
+
+    // 2) 가운데 노란 점선
+    final centerLine = Paint()..color = const Color(0xFFFFD93D)..strokeWidth = 3..strokeCap = StrokeCap.round;
+    for (int i = 0; i < 18; i++) {
+      final y0 = 0.14 + i * 0.046;
+      final y1 = y0 + 0.022;
+      if (y1 > 0.95) break;
+      final p0 = Offset(w / 2, h * y0);
+      final p1 = Offset(w / 2, h * y1);
+      // 거리 따라 fade (가까울수록 진함)
+      centerLine.color = const Color(0xFFFFD93D).withValues(alpha: 0.30 + (y0 - 0.14) * 0.85);
+      canvas.drawLine(p0, p1, centerLine);
+    }
+
+    // 3) 좌우 차선 라인 (얇은 흰)
+    final sideLine = Paint()..color = Colors.white.withValues(alpha: 0.18)..strokeWidth = 1.5;
+    canvas.drawLine(
+      Offset(w * 0.50 - w * 0.09, h * 0.14),
+      Offset(w * 0.50 - w * 0.42, h * 0.95),
+      sideLine);
+    canvas.drawLine(
+      Offset(w * 0.50 + w * 0.09, h * 0.14),
+      Offset(w * 0.50 + w * 0.42, h * 0.95),
+      sideLine);
+
+    // 4) ego 진행 경로 (cyan strip, 펄스 fade)
+    final pathPaint = Paint()..strokeCap = StrokeCap.round..strokeWidth = 5;
+    for (int i = 0; i < 6; i++) {
+      final y0 = 0.85 - i * 0.07;
+      final y1 = y0 - 0.035;
+      final alpha = 0.55 - i * 0.08 + 0.05 * math.sin(t * 2 + i);
+      pathPaint.color = const Color(0xFF00C8FF).withValues(alpha: alpha.clamp(0.0, 0.6));
+      canvas.drawLine(Offset(w / 2, h * y0), Offset(w / 2, h * y1), pathPaint);
+    }
+
+    // 5) ego 차량 (cyan, 아래 가까이)
+    final egoCenter = _project(0, 0.0, size);
+    _drawVehicleBlock(canvas, egoCenter, 0.0, 'ego', 1.0, isEgo: true);
+
+    // 6) 검출 객체 (보간된 위치)
+    // 가까운 것 먼저 그리도록 정렬
+    final sorted = [...objs];
+    sorted.sort((a, b) => a.y.compareTo(b.y));
+    for (final o in sorted) {
+      final p = _project(o.x.clamp(-0.95, 0.95), o.y.clamp(0.0, 0.92), size);
+      _drawVehicleBlock(canvas, p, o.y, o.cls, o.conf, phase: o.phase);
+    }
+
+    // 7) 거리 ring 가이드 (5m / 15m / 30m at y=0.15, 0.4, 0.7)
+    final ringPaint = Paint()..style = PaintingStyle.stroke..strokeWidth = 1
+      ..color = Colors.white.withValues(alpha: 0.06);
+    for (final yNorm in [0.15, 0.4, 0.7]) {
+      final cy = h * (0.92 - yNorm * 0.78);
+      canvas.drawCircle(Offset(w / 2, h), w * (0.40 - yNorm * 0.24), ringPaint);
+    }
+  }
+
+  void _drawVehicleBlock(Canvas canvas, Offset center, double forwardNorm, String cls, double conf,
+                         {bool isEgo = false, double phase = 0}) {
+    final isPed = cls == 'person';
+    final scale = 1.0 - forwardNorm * 0.7;     // 멀수록 작음
+    final w = (isPed ? 18.0 : 38.0) * scale;
+    final hBox = (isPed ? 30.0 : 22.0) * scale;
+    final col = isEgo ? const Color(0xFF00C8FF)
+              : isPed ? const Color(0xFFFF4040)
+              : const Color(0xFFA095FF);
+    // 그림자
+    final shadow = Paint()
+      ..color = Colors.black.withValues(alpha: 0.5)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4);
+    final rect = Rect.fromCenter(center: center.translate(0, 3), width: w, height: hBox * 0.7);
+    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(3)), shadow);
+    // 바닥 글로우 (밝은 ring)
+    final ring = Paint()..color = col.withValues(alpha: 0.30);
+    canvas.drawCircle(center.translate(0, hBox * 0.45), w * 0.65, ring);
+    // 메인 바디
+    final body = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [col.withValues(alpha: 1.0), col.withValues(alpha: 0.75)],
+      ).createShader(Rect.fromCenter(center: center, width: w, height: hBox));
+    final bodyRect = Rect.fromCenter(center: center, width: w, height: hBox);
+    canvas.drawRRect(RRect.fromRectAndRadius(bodyRect, const Radius.circular(4)), body);
+    // 외곽선 (밝은 strokes)
+    final stroke = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2..color = col;
+    canvas.drawRRect(RRect.fromRectAndRadius(bodyRect, const Radius.circular(4)), stroke);
+    // 위험 펄스 (보행자에만)
+    if (isPed) {
+      final pulse = 1.0 + 0.4 * math.sin(t * 3.5 + phase);
+      final pulseP = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5
+        ..color = col.withValues(alpha: 0.55 / pulse);
+      canvas.drawCircle(center, w * 1.2 * pulse, pulseP);
+    }
+    // 라벨 (cls + 거리 추정)
+    if (!isEgo) {
+      // forward 0..1 → 1.5m ~ 35m
+      final distM = 1.5 + (1 - (1 - forwardNorm).clamp(0.0, 1.0)) * 0 + forwardNorm * 35.0;
+      // forwardNorm 0=가까움(1.5m), 1=멀음 (35m). 다시 정리:
+      // 우리는 _project 에서 y는 forward (0=가까운 카메라 앞, 1=먼). 그래서 거리는 1.5 + 33.5*y
+      final dM = 1.5 + 33.5 * forwardNorm;
+      final tp = TextPainter(
+        text: TextSpan(children: [
+          TextSpan(text: isPed ? '👤 ' : '🚗 ',
+            style: const TextStyle(fontSize: 11)),
+          TextSpan(text: '${dM.toStringAsFixed(1)}m',
+            style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900,
+              backgroundColor: col.withValues(alpha: 0.85))),
+        ]),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - hBox * 0.85 - tp.height));
+    } else {
+      final tp = TextPainter(
+        text: TextSpan(text: 'EGO',
+          style: TextStyle(color: col, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - hBox * 0.75 - tp.height));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TeslaBevPainter old) => true;   // ticker 가 매 프레임 호출
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v9.3 2026-05-18: REC 토글 칩 (헤더에서 작게)
+// ═══════════════════════════════════════════════════════════════
+class _RecToggleChip extends StatelessWidget {
+  final bool on;
+  final VoidCallback? onTap;
+  const _RecToggleChip({required this.on, this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    final col = on ? _danger : _muted;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 11),
+        decoration: BoxDecoration(
+          color: on ? _danger.withValues(alpha: 0.18) : Colors.transparent,
+          border: Border.all(color: col.withValues(alpha: 0.55), width: 1.2),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: on ? [BoxShadow(color: _danger.withValues(alpha: 0.35), blurRadius: 10)] : null,
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 9, height: 9, decoration: BoxDecoration(
+              color: col, shape: BoxShape.circle,
+              boxShadow: on ? [BoxShadow(color: _danger, blurRadius: 6)] : null,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(on ? 'REC' : 'OFF',
+            style: TextStyle(color: col, fontSize: 11,
+              fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+        ]),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v9.3 2026-05-18: 메인 라이브 BEV — Flutter 네이티브 perspective transform.
+//   실 카메라 프레임을 3D 회전 + perspective → MetroEyes 식 BEV 시점.
+//   위에 ML Kit 검출 박스 직접 오버레이 (BEV 좌표계로 매핑).
+//   "실제 보이는 화면을 BEV 로 보여달라" 요구 반영.
+// ═══════════════════════════════════════════════════════════════
+class _LiveBevTilted extends StatelessWidget {
+  final CameraController? camera;
+  final List<Map<String, dynamic>> detections;
+  final int imgW;
+  final int imgH;
+  const _LiveBevTilted({
+    required this.camera,
+    required this.detections,
+    required this.imgW,
+    required this.imgH,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (ctx, c) {
+      final w = c.maxWidth, h = c.maxHeight;
+      // BEV perspective transform: 위쪽을 멀리, 아래쪽을 가까이 — 카메라를 위에서 비스듬히 본 효과
+      final m = Matrix4.identity()
+        ..setEntry(3, 2, 0.0014)        // 원근감
+        ..rotateX(-0.62);                // 위쪽이 화면 안쪽으로 (≈ 35.5°)
+      return Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF050810),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _accent.withValues(alpha: 0.20), width: 0.8),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(fit: StackFit.expand, children: [
+            // 1) 카메라 perspective 변환 (실제 보이는 화면을 BEV 시점으로)
+            //    SizedBox 크기를 키워서 변환 후에도 캔버스를 가득 채우게.
+            if (camera != null && camera!.value.isInitialized)
+              Positioned.fill(
+                child: OverflowBox(
+                  alignment: Alignment.center,
+                  minWidth: w * 1.4, maxWidth: w * 1.4,
+                  minHeight: h * 1.8, maxHeight: h * 1.8,
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: m,
+                    child: _FullCameraPreview(controller: camera!),
+                  ),
+                ),
+              )
+            else
+              Container(color: const Color(0xFF080C14), child: Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.no_photography, size: 28, color: _muted),
+                  const SizedBox(height: 6),
+                  Text('카메라 초기화 중…',
+                    style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
+                ]),
+              )),
+
+            // 2) BEV 그리드 + 차선 가이드 (Tesla 풍 ego 진행 경로)
+            IgnorePointer(child: CustomPaint(
+              size: Size(w, h),
+              painter: _BevGuidePainter(),
+            )),
+
+            // 3) ML Kit 검출 박스 오버레이 (BEV 좌표계)
+            //    카메라 frame 좌표(imgW, imgH) → 변환된 BEV 캔버스 좌표 매핑
+            IgnorePointer(child: CustomPaint(
+              size: Size(w, h),
+              painter: _BevDetectionsPainter(
+                detections: detections,
+                imgW: imgW, imgH: imgH,
+                transform: m,
+                centerAlign: Alignment.center,
+                camW: w * 1.4, camH: h * 1.8,
+              ),
+            )),
+
+            // 4) 좌상단 LIVE 표시
+            Positioned(left: 10, top: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xCC0D1520),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: _safe.withValues(alpha: 0.40), width: 0.8),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 7, height: 7, decoration: BoxDecoration(
+                  color: _safe, shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
+                )),
+                const SizedBox(width: 6),
+                Text('LIVE BEV', style: TextStyle(color: _safe, fontSize: 10,
+                  fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                const SizedBox(width: 8),
+                Text('· ${detections.length} 검출',
+                  style: TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w700)),
+              ]),
+            )),
+
+            // 5) 우상단 ego 정보 (속도/위험)
+            Positioned(right: 10, top: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: _accent.withValues(alpha: 0.30), width: 0.8),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.speed, size: 11, color: _accent),
+                const SizedBox(width: 4),
+                Text('0 km/h', style: TextStyle(color: _accent, fontSize: 10,
+                  fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+              ]),
+            )),
+          ]),
+        ),
+      );
+    });
+  }
+}
+
+// BEV 가이드 라인 (도로 차선 + ego 진행 경로 + 거리 원)
+class _BevGuidePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    // ego 진행 경로 (가운데 세로 가이드, fade)
+    for (int i = 0; i < 8; i++) {
+      final t = i / 7.0;
+      final dy = h - 30 - i * 50.0;
+      if (dy < 60) break;
+      final p = Paint()
+        ..color = const Color(0xFF00C8FF).withValues(alpha: 0.55 - t * 0.45)
+        ..strokeWidth = 4 - t * 2.5
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(w / 2, dy), Offset(w / 2, dy - 30), p);
+    }
+    // 거리 원 (5/10/20m)
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.white.withValues(alpha: 0.10)
+      ..strokeWidth = 1;
+    for (final r in [80.0, 160.0, 260.0]) {
+      canvas.drawCircle(Offset(w / 2, h - 10), r, ringPaint);
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _BevGuidePainter oldDelegate) => false;
+}
+
+// 검출 박스 BEV 오버레이 — frame 좌표를 같은 perspective transform 으로 매핑
+class _BevDetectionsPainter extends CustomPainter {
+  final List<Map<String, dynamic>> detections;
+  final int imgW, imgH;
+  final Matrix4 transform;
+  final Alignment centerAlign;
+  final double camW, camH;
+  _BevDetectionsPainter({
+    required this.detections, required this.imgW, required this.imgH,
+    required this.transform, required this.centerAlign,
+    required this.camW, required this.camH,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    // 카메라 OverflowBox 가 (camW, camH) 로 그려졌고 Transform alignment center.
+    final scaleX = camW / imgW;
+    final scaleY = camH / imgH;
+    // OverflowBox 가 (w/2 - camW/2, h/2 - camH/2) 부터 시작
+    final xOffset = (w - camW) / 2;
+    final yOffset = (h - camH) / 2;
+
+    canvas.save();
+    canvas.translate(w / 2, h / 2);
+    canvas.transform(transform.storage);
+    canvas.translate(-w / 2, -h / 2);
+
+    for (final d in detections) {
+      final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
+      final cls = d['cls']?.toString() ?? 'car';
+      final isPed = cls == 'person';
+      final left = xOffset + box[0] * scaleX;
+      final top = yOffset + box[1] * scaleY;
+      final bw = box[2] * scaleX;
+      final bh = box[3] * scaleY;
+      final col = isPed ? _danger : _accent;
+      final stroke = Paint()
+        ..style = PaintingStyle.stroke
+        ..color = col
+        ..strokeWidth = 2.2;
+      final fill = Paint()
+        ..style = PaintingStyle.fill
+        ..color = col.withValues(alpha: 0.16);
+      final rect = Rect.fromLTWH(left, top, bw, bh);
+      final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(6));
+      canvas.drawRRect(rrect, fill);
+      canvas.drawRRect(rrect, stroke);
+
+      // 라벨 텍스트 (cls + 면적)
+      final tp = TextPainter(
+        text: TextSpan(
+          text: isPed ? '👤 보행자' : '🚗 차량',
+          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900,
+            backgroundColor: col.withValues(alpha: 0.85)),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(left + 3, top + 3));
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _BevDetectionsPainter oldDelegate) =>
+      oldDelegate.detections != detections;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // v9 2026-05-18: 메인 라이브 BEV — /bev3d/ WebView 인라인 임베드.
 //   목적: 메인 화면이 곧 MetroEyes 식 실시간 3D BEV (별도 진입 X).
 //   기능:
@@ -4968,7 +5613,8 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
 class _LiveBev3D extends StatefulWidget {
   final Map<String, dynamic>? fusion;
   final Map<String, dynamic>? busLive;
-  const _LiveBev3D({this.fusion, this.busLive});
+  final void Function(WebViewController controller)? onControllerReady;
+  const _LiveBev3D({this.fusion, this.busLive, this.onControllerReady});
   @override
   State<_LiveBev3D> createState() => _LiveBev3DState();
 }
@@ -4997,6 +5643,7 @@ class _LiveBev3DState extends State<_LiveBev3D> {
     }
     ctrl.loadRequest(Uri.parse(_url));
     _wv = ctrl;
+    widget.onControllerReady?.call(ctrl);
   }
 
   @override
@@ -5005,8 +5652,8 @@ class _LiveBev3DState extends State<_LiveBev3D> {
       decoration: BoxDecoration(
         color: const Color(0xFF0A1018),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _accent.withValues(alpha: 0.30), width: 1.2),
-        boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 18, spreadRadius: 0.5)],
+        // v9.2: 패딩 줄이고 더 edge-to-edge 느낌
+        border: Border.all(color: _accent.withValues(alpha: 0.20), width: 0.8),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),

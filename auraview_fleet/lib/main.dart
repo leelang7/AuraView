@@ -1285,6 +1285,7 @@ class _FleetHomeState extends State<FleetHome>
                         detections: _bevDetections,
                         imgW: _bevImgW,
                         imgH: _bevImgH,
+                        bev: _bev,  // v9.7: grid_flat voxel layer 입력
                       ),
                     ),
                   ),
@@ -5715,7 +5716,8 @@ class _TeslaBevV2 extends StatefulWidget {
   final List<Map<String, dynamic>> detections;
   final int imgW;
   final int imgH;
-  const _TeslaBevV2({required this.detections, required this.imgW, required this.imgH});
+  final Map<String, dynamic>? bev;   // v9.7: grid_flat (40x40 voxel occupancy)
+  const _TeslaBevV2({required this.detections, required this.imgW, required this.imgH, this.bev});
   @override
   State<_TeslaBevV2> createState() => _TeslaBevV2State();
 }
@@ -5811,7 +5813,7 @@ class _TeslaBevV2State extends State<_TeslaBevV2> with SingleTickerProviderState
         borderRadius: BorderRadius.circular(15),
         child: Stack(fit: StackFit.expand, children: [
           RepaintBoundary(child: CustomPaint(
-            painter: _TeslaBevV2Painter(objs: _objs, t: _t),
+            painter: _TeslaBevV2Painter(objs: _objs, t: _t, bev: widget.bev),
             size: Size.infinite,
           )),
           Positioned(left: 10, top: 8, child: Container(
@@ -5853,7 +5855,8 @@ class _BevObj2 {
 class _TeslaBevV2Painter extends CustomPainter {
   final List<_BevObj2> objs;
   final double t;
-  _TeslaBevV2Painter({required this.objs, required this.t});
+  final Map<String, dynamic>? bev;
+  _TeslaBevV2Painter({required this.objs, required this.t, this.bev});
 
   Offset _project(double x, double y, Size size) {
     final w = size.width, h = size.height;
@@ -5881,6 +5884,50 @@ class _TeslaBevV2Painter extends CustomPainter {
       gridP.color = const Color(0xFF00C8FF).withValues(alpha: lateral == 0 ? 0.16 : 0.07);
       gridP.strokeWidth = lateral == 0 ? 1.5 : 0.8;
       canvas.drawLine(near, far, gridP);
+    }
+
+    // ── 1.5) v9.7 Voxel 점유 cloud (grid_flat 40x40 → 3D 큐브)
+    if (bev != null) {
+      final gridRaw = bev!['grid_flat'];
+      final clsRaw = bev!['class_grid_flat'];
+      if (gridRaw is List && gridRaw.length == 1600) {
+        const rows = 40, cols = 40;
+        for (int r = 0; r < rows; r++) {
+          for (int c = 0; c < cols; c++) {
+            final v = (gridRaw[r * cols + c] as num).toDouble();
+            if (v < 0.18) continue;   // 임계 미만 skip
+            // 그리드 → BEV 좌표
+            final lat = (c / (cols - 1) - 0.5) * 1.7;     // -0.85 ~ 0.85
+            final fwd = r / (rows - 1);                    // 0(near) ~ 1(far)
+            final p = _project(lat, fwd, size);
+            // 클래스 색상 (class_grid_flat 있으면 우선)
+            int cls = 0;
+            if (clsRaw is List && clsRaw.length == 1600) {
+              cls = (clsRaw[r * cols + c] as num).toInt();
+            }
+            Color col;
+            if (cls == 4) {
+              col = const Color(0xFFFF6688);   // person → 핑크
+            } else if (cls == 1) {
+              col = const Color(0xFFA095FF);   // vehicle → 보라
+            } else {
+              col = const Color(0xFF00C8FF);   // edge/motion → cyan
+            }
+            final alpha = (v * 0.85).clamp(0.05, 0.95);
+            final scale = (1.0 - fwd * 0.65).clamp(0.30, 1.0);
+            final cubeSize = 4.5 * scale * (1 + v * 0.4);
+            // 큐브 (사각형 + 상단 하이라이트로 입체감)
+            canvas.drawRect(
+              Rect.fromCenter(center: p, width: cubeSize * 1.6, height: cubeSize * 1.6),
+              Paint()..color = col.withValues(alpha: alpha));
+            // 위쪽 면 (하이라이트)
+            canvas.drawRect(
+              Rect.fromLTWH(p.dx - cubeSize * 0.80, p.dy - cubeSize * 0.80,
+                cubeSize * 1.6, cubeSize * 0.4),
+              Paint()..color = col.withValues(alpha: alpha * 0.45));
+          }
+        }
+      }
     }
 
     // ── 2) 거리 라벨

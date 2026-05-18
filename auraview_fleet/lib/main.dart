@@ -5886,48 +5886,37 @@ class _TeslaBevV2Painter extends CustomPainter {
       canvas.drawLine(near, far, gridP);
     }
 
-    // ── 1.5) v9.7 Voxel 점유 cloud (grid_flat 40x40 → 3D 큐브)
-    if (bev != null) {
-      final gridRaw = bev!['grid_flat'];
-      final clsRaw = bev!['class_grid_flat'];
-      if (gridRaw is List && gridRaw.length == 1600) {
-        const rows = 40, cols = 40;
-        for (int r = 0; r < rows; r++) {
-          for (int c = 0; c < cols; c++) {
-            final v = (gridRaw[r * cols + c] as num).toDouble();
-            if (v < 0.18) continue;   // 임계 미만 skip
-            // 그리드 → BEV 좌표
-            final lat = (c / (cols - 1) - 0.5) * 1.7;     // -0.85 ~ 0.85
-            final fwd = r / (rows - 1);                    // 0(near) ~ 1(far)
-            final p = _project(lat, fwd, size);
-            // 클래스 색상 (class_grid_flat 있으면 우선)
-            int cls = 0;
-            if (clsRaw is List && clsRaw.length == 1600) {
-              cls = (clsRaw[r * cols + c] as num).toInt();
-            }
-            Color col;
-            if (cls == 4) {
-              col = const Color(0xFFFF6688);   // person → 핑크
-            } else if (cls == 1) {
-              col = const Color(0xFFA095FF);   // vehicle → 보라
-            } else {
-              col = const Color(0xFF00C8FF);   // edge/motion → cyan
-            }
-            final alpha = (v * 0.85).clamp(0.05, 0.95);
-            final scale = (1.0 - fwd * 0.65).clamp(0.30, 1.0);
-            final cubeSize = 4.5 * scale * (1 + v * 0.4);
-            // 큐브 (사각형 + 상단 하이라이트로 입체감)
-            canvas.drawRect(
-              Rect.fromCenter(center: p, width: cubeSize * 1.6, height: cubeSize * 1.6),
-              Paint()..color = col.withValues(alpha: alpha));
-            // 위쪽 면 (하이라이트)
-            canvas.drawRect(
-              Rect.fromLTWH(p.dx - cubeSize * 0.80, p.dy - cubeSize * 0.80,
-                cubeSize * 1.6, cubeSize * 0.4),
-              Paint()..color = col.withValues(alpha: alpha * 0.45));
-          }
-        }
-      }
+    // ── 1.5) v9.8: Tesla 식 차선 (도로 위 2 흰 부드러운 곡선 + 노랑 중앙 점선)
+    //   voxel cloud 폐기 — Tesla 실 AP 에는 voxel cloud 없음. 부드러운 차선과 차량 실루엣만.
+    final laneP = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    // 좌 차선
+    final leftLane = Path()
+      ..moveTo(_project(-0.30, 0.0, size).dx, _project(-0.30, 0.0, size).dy)
+      ..lineTo(_project(-0.13, 1.0, size).dx, _project(-0.13, 1.0, size).dy);
+    laneP.shader = LinearGradient(
+      begin: Alignment.bottomCenter, end: Alignment.topCenter,
+      colors: [Colors.white.withValues(alpha: 0.55), Colors.white.withValues(alpha: 0.0)],
+    ).createShader(Rect.fromLTWH(0, 0, w, h));
+    laneP.strokeWidth = 3.5;
+    canvas.drawPath(leftLane, laneP);
+    // 우 차선
+    final rightLane = Path()
+      ..moveTo(_project(0.30, 0.0, size).dx, _project(0.30, 0.0, size).dy)
+      ..lineTo(_project(0.13, 1.0, size).dx, _project(0.13, 1.0, size).dy);
+    canvas.drawPath(rightLane, laneP);
+    // 노랑 중앙 점선 (대시 dash)
+    final dashP = Paint()
+      ..color = const Color(0xFFFFD93D)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    for (int i = 0; i < 10; i++) {
+      final y0n = 0.05 + i * 0.085;
+      final y1n = y0n + 0.045;
+      if (y1n > 0.85) break;
+      final p0 = _project(0, y0n, size);
+      final p1 = _project(0, y1n, size);
+      dashP.color = const Color(0xFFFFD93D).withValues(alpha: 0.65 - i * 0.06);
+      canvas.drawLine(p0, p1, dashP);
     }
 
     // ── 2) 거리 라벨
@@ -5977,37 +5966,103 @@ class _TeslaBevV2Painter extends CustomPainter {
     }
   }
 
+  // v9.8: Tesla 실 AP 식 ego (위에서 본 차량 실루엣 - 차체 + 창문 + 바퀴 + 그림자)
   void _drawEgo(Canvas canvas, Size size) {
     final p = _project(0, 0.0, size);
-    final bw = 38.0, bh = 22.0;
-    final col = const Color(0xFF00C8FF);
-    final shadow = Paint()..color = Colors.black.withValues(alpha: 0.45)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: p.translate(0, 6), width: bw + 4, height: bh * 0.6),
-      const Radius.circular(3)), shadow);
-    canvas.drawCircle(p.translate(0, bh * 0.4), bw * 0.75,
-      Paint()..color = col.withValues(alpha: 0.30));
-    final body = Paint()..shader = LinearGradient(
-      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-      colors: [col, col.withValues(alpha: 0.75)],
-    ).createShader(Rect.fromCenter(center: p, width: bw, height: bh));
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: p, width: bw, height: bh),
-      const Radius.circular(5)), body);
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: p.translate(0, -bh * 0.05), width: bw * 0.7, height: bh * 0.40),
-      const Radius.circular(2)), Paint()..color = Colors.black.withValues(alpha: 0.45));
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: p, width: bw, height: bh),
-      const Radius.circular(5)),
-      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.4..color = col);
+    _drawTeslaCar(canvas, p, scale: 1.0, col: const Color(0xFF00C8FF), isEgo: true);
+    // EGO 라벨
     final tp = TextPainter(
-      text: TextSpan(text: 'EGO', style: TextStyle(
-        color: col, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+      text: TextSpan(text: 'EGO',
+        style: TextStyle(color: const Color(0xFF00C8FF), fontSize: 9,
+          fontWeight: FontWeight.w900, letterSpacing: 1.5)),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy + bh * 0.65));
+    tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy + 30));
+  }
+
+  // 위에서 본 차량 (top-down) — Tesla AP 차량 아이콘 스타일
+  //   - 차체: 둥근 모서리 사각형 (gradient)
+  //   - 창문: 앞/뒤 어두운 사다리꼴
+  //   - 바퀴: 네 모서리 작은 어두운 사각형
+  //   - 헤드라이트/테일라이트: 노랑/빨강 작은 점
+  //   - 그라운드 그림자 + 글로우
+  void _drawTeslaCar(Canvas canvas, Offset center,
+      {required double scale, required Color col, bool isEgo = false, double alpha = 1.0}) {
+    // 차량 dim (top-down Tesla 비율): 가로 4 : 세로 1.85
+    final w = 30.0 * scale, h = 14.0 * scale;
+    final colDark = HSLColor.fromColor(col).withLightness(
+      (HSLColor.fromColor(col).lightness - 0.20).clamp(0.10, 0.90)).toColor();
+
+    // 그라운드 그림자
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center.translate(0, h * 0.55), width: w * 1.10, height: h * 0.5),
+      const Radius.circular(4)),
+      Paint()..color = Colors.black.withValues(alpha: 0.45 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    // 그라운드 글로우
+    canvas.drawCircle(center.translate(0, h * 0.35), w * 0.55,
+      Paint()..color = col.withValues(alpha: 0.25 * alpha));
+
+    // 차체 (rounded rect)
+    final bodyRect = Rect.fromCenter(center: center, width: w, height: h);
+    final bodyRRect = RRect.fromRectAndCorners(bodyRect,
+      topLeft: Radius.circular(h * 0.30),
+      topRight: Radius.circular(h * 0.30),
+      bottomLeft: Radius.circular(h * 0.45),
+      bottomRight: Radius.circular(h * 0.45));
+    canvas.drawRRect(bodyRRect,
+      Paint()..shader = LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [col.withValues(alpha: alpha), colDark.withValues(alpha: alpha)],
+      ).createShader(bodyRect));
+
+    // 4 바퀴 (모서리 검은 사각형)
+    final wheelP = Paint()..color = const Color(0xFF0A0E15).withValues(alpha: alpha);
+    final wRad = h * 0.18;
+    final wheelW = w * 0.07, wheelH = h * 0.45;
+    for (final dx in [-w * 0.42, w * 0.42]) {
+      for (final dy in [-h * 0.28, h * 0.28]) {
+        canvas.drawRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: center.translate(dx, dy), width: wheelW, height: wheelH),
+          Radius.circular(wRad * 0.3)), wheelP);
+      }
+    }
+
+    // 앞 창문 (사다리꼴 어두운, 위쪽이 좁음 → 앞 방향 = 위)
+    final winFront = Path()
+      ..moveTo(center.dx - w * 0.32, center.dy - h * 0.08)
+      ..lineTo(center.dx - w * 0.26, center.dy - h * 0.30)
+      ..lineTo(center.dx + w * 0.26, center.dy - h * 0.30)
+      ..lineTo(center.dx + w * 0.32, center.dy - h * 0.08)
+      ..close();
+    canvas.drawPath(winFront, Paint()..color = const Color(0xFF06121E).withValues(alpha: 0.85 * alpha));
+    // 뒷 창문 (작게)
+    final winRear = Path()
+      ..moveTo(center.dx - w * 0.30, center.dy + h * 0.10)
+      ..lineTo(center.dx - w * 0.24, center.dy + h * 0.26)
+      ..lineTo(center.dx + w * 0.24, center.dy + h * 0.26)
+      ..lineTo(center.dx + w * 0.30, center.dy + h * 0.10)
+      ..close();
+    canvas.drawPath(winRear, Paint()..color = const Color(0xFF06121E).withValues(alpha: 0.85 * alpha));
+
+    // 가운데 보닛/지붕 분리 라인 (얇은 밝은 선)
+    canvas.drawLine(
+      Offset(center.dx - w * 0.42, center.dy),
+      Offset(center.dx + w * 0.42, center.dy),
+      Paint()..color = Colors.white.withValues(alpha: 0.18 * alpha)..strokeWidth = 0.6);
+
+    // 헤드라이트 (앞 = 위, 노랑) / 테일라이트 (뒤 = 아래, 빨강) — ego 도 동일
+    final hl = Paint()..color = const Color(0xFFFFD93D).withValues(alpha: 0.9 * alpha);
+    canvas.drawCircle(Offset(center.dx - w * 0.36, center.dy - h * 0.42), 1.5 * scale + 0.6, hl);
+    canvas.drawCircle(Offset(center.dx + w * 0.36, center.dy - h * 0.42), 1.5 * scale + 0.6, hl);
+    final tl = Paint()..color = const Color(0xFFFF4040).withValues(alpha: 0.85 * alpha);
+    canvas.drawCircle(Offset(center.dx - w * 0.36, center.dy + h * 0.42), 1.3 * scale + 0.5, tl);
+    canvas.drawCircle(Offset(center.dx + w * 0.36, center.dy + h * 0.42), 1.3 * scale + 0.5, tl);
+
+    // 외곽선
+    canvas.drawRRect(bodyRRect,
+      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2
+        ..color = col.withValues(alpha: alpha));
   }
 
   void _drawPersonSilhouette(Canvas canvas, Offset p, double forwardNorm, double alpha, double phase) {
@@ -6069,67 +6124,19 @@ class _TeslaBevV2Painter extends CustomPainter {
     tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - bodyH * 0.75 - tp.height - 4));
   }
 
+  // v9.8: 검출 차량도 Tesla 식 top-down 실루엣 (ego 와 동일 모양, 색만 다름)
   void _drawVehicle3D(Canvas canvas, Offset p, double forwardNorm, double alpha) {
-    final scale = 1.0 - forwardNorm * 0.72;
-    final w = 42.0 * scale, h = 26.0 * scale;
-    final col = const Color(0xFFA095FF);
-    final colDark = const Color(0xFF5E55A8);
-
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: p.translate(0, h * 0.45), width: w + 6, height: h * 0.45),
-      const Radius.circular(3)),
-      Paint()..color = Colors.black.withValues(alpha: 0.5 * alpha)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
-
-    canvas.drawCircle(p.translate(0, h * 0.4), w * 0.65,
-      Paint()..color = col.withValues(alpha: 0.28 * alpha));
-
-    final sidePath = Path()
-      ..moveTo(p.dx - w * 0.50, p.dy + h * 0.20)
-      ..lineTo(p.dx - w * 0.45, p.dy + h * 0.40)
-      ..lineTo(p.dx + w * 0.45, p.dy + h * 0.40)
-      ..lineTo(p.dx + w * 0.50, p.dy + h * 0.20)
-      ..close();
-    canvas.drawPath(sidePath, Paint()..color = colDark.withValues(alpha: alpha));
-
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: p, width: w, height: h),
-      const Radius.circular(5)),
-      Paint()..shader = LinearGradient(
-        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [col.withValues(alpha: alpha), col.withValues(alpha: 0.70 * alpha)],
-      ).createShader(Rect.fromCenter(center: p, width: w, height: h)));
-
-    final winPath = Path()
-      ..moveTo(p.dx - w * 0.36, p.dy - h * 0.05)
-      ..lineTo(p.dx - w * 0.32, p.dy - h * 0.32)
-      ..lineTo(p.dx + w * 0.32, p.dy - h * 0.32)
-      ..lineTo(p.dx + w * 0.36, p.dy - h * 0.05)
-      ..close();
-    canvas.drawPath(winPath, Paint()..color = Colors.black.withValues(alpha: 0.45 * alpha));
-
-    canvas.drawLine(Offset(p.dx - w * 0.36, p.dy + h * 0.10),
-      Offset(p.dx + w * 0.36, p.dy + h * 0.10),
-      Paint()..color = Colors.white.withValues(alpha: 0.18 * alpha)..strokeWidth = 1);
-
-    final hp = Paint()..color = const Color(0xFFFFD93D).withValues(alpha: 0.85 * alpha);
-    canvas.drawCircle(Offset(p.dx - w * 0.32, p.dy - h * 0.42), 1.6 * scale + 0.5, hp);
-    canvas.drawCircle(Offset(p.dx + w * 0.32, p.dy - h * 0.42), 1.6 * scale + 0.5, hp);
-
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: p, width: w, height: h),
-      const Radius.circular(5)),
-      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2
-        ..color = col.withValues(alpha: alpha));
-
+    final scale = 1.0 - forwardNorm * 0.70;
+    _drawTeslaCar(canvas, p, scale: scale, col: const Color(0xFFA095FF), alpha: alpha);
+    // 라벨
     final distM = 1.5 + 33.5 * forwardNorm;
     final tp = TextPainter(
       text: TextSpan(text: '🚗 ${distM.toStringAsFixed(1)}m',
         style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900,
-          backgroundColor: col.withValues(alpha: 0.85 * alpha))),
+          backgroundColor: const Color(0xFFA095FF).withValues(alpha: 0.85 * alpha))),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - h * 0.85 - tp.height));
+    tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - 14 * scale - tp.height - 4));
   }
 
   @override

@@ -1273,22 +1273,18 @@ class _FleetHomeState extends State<FleetHome>
                   ),
                   const SizedBox(height: 10),
 
-                  // v9.5 2026-05-18: 테슬라 식 voxel BEV (도로 그림 제거, 순수 occupancy voxel)
-                  //   _bev.grid_flat (40x40 voxel) + class_grid_flat (ML Kit 검출 결과) 가
-                  //   _Bev3DVoxelPainter 에서 3D 큐브 클러스터로 렌더.
+                  // v9.6 2026-05-19: 테슬라 식 BEV v2 - 검출 객체별 실루엣 (사람=person-shape, 차량=car-shape)
+                  //   - 거리감 개선: 비선형 perspective, 5/15/30m 거리 ring
+                  //   - 사람 모양: 머리(원) + 몸(트라페즈) + 다리(다리 라인)
+                  //   - 차량 모양: 입체 박스 + 창문 + 글로우
+                  //   - 부드러운 60fps 보간
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(8, 0, 8, 80),
-                      child: _BevPanel(
-                        bev: _demoScenarioOn ? (_serverBev ?? _bev) : _bev,
-                        fusion: _fusion,
-                        busLive: _busLive,
-                        demoMode: _demoScenarioOn,
-                        scenarioLabel: _demoScenarioOn
-                            ? (_scnLabels[_scnList[_scnIdx % _scnList.length]] ?? '')
-                            : null,
-                        onToggleDemo: _toggleDemoScenario,
-                        fillScreen: true,
+                      child: _TeslaBevV2(
+                        detections: _bevDetections,
+                        imgW: _bevImgW,
+                        imgH: _bevImgH,
                       ),
                     ),
                   ),
@@ -5704,4 +5700,391 @@ class _LiveBev3DState extends State<_LiveBev3D> {
       ),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v9.6 2026-05-19: 테슬라 식 BEV v2
+//   사용자 요구: "사람 모양으로 나오게 할 수 없냐고", "거리감도 아예 다르고 UI/UX 갈아엎어라"
+//   - 사람: 머리(원) + 몸통(트라페즈) + 다리 — 진짜 사람 실루엣
+//   - 차량: 3D 박스 + 창문 + 보닛 + 그림자 + 글로우
+//   - 거리감: 비선형 perspective + 거리 ring 5/15/30/50m
+//   - perspective 그리드 바닥 (Tesla 시그니처)
+//   - 60fps Ticker + smooth 보간
+// ═══════════════════════════════════════════════════════════════
+class _TeslaBevV2 extends StatefulWidget {
+  final List<Map<String, dynamic>> detections;
+  final int imgW;
+  final int imgH;
+  const _TeslaBevV2({required this.detections, required this.imgW, required this.imgH});
+  @override
+  State<_TeslaBevV2> createState() => _TeslaBevV2State();
+}
+
+class _TeslaBevV2State extends State<_TeslaBevV2> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  final List<_BevObj2> _objs = [];
+  double _t = 0;
+  double _lastMs = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((d) {
+      final ms = d.inMicroseconds / 1000.0;
+      final dt = _lastMs == 0 ? 0.016 : ((ms - _lastMs) / 1000.0).clamp(0.0, 0.05);
+      _lastMs = ms;
+      _t = ms / 1000.0;
+      bool dirty = false;
+      for (int i = _objs.length - 1; i >= 0; i--) {
+        final o = _objs[i];
+        final ox = o.x, oy = o.y;
+        o.x = o.x * (1 - dt * 5.5) + o.tx * dt * 5.5;
+        o.y = o.y * (1 - dt * 5.5) + o.ty * dt * 5.5;
+        if ((o.x - ox).abs() > 0.0005 || (o.y - oy).abs() > 0.0005) dirty = true;
+        if (_t - o.lastSeen > 1.8) {
+          o.alpha = (o.alpha * (1 - dt * 2.5)).clamp(0.0, 1.0);
+          if (o.alpha < 0.05) { _objs.removeAt(i); dirty = true; continue; }
+        } else {
+          o.alpha = (o.alpha + dt * 4.0).clamp(0.0, 1.0);
+        }
+      }
+      if (mounted && (dirty || _objs.isNotEmpty)) setState(() {});
+    });
+    _ticker.start();
+    _syncFromDetections();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TeslaBevV2 old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.detections, widget.detections)) _syncFromDetections();
+  }
+
+  void _syncFromDetections() {
+    final ds = widget.detections;
+    final iw = widget.imgW.toDouble(), ih = widget.imgH.toDouble();
+    final now = _t;
+    final used = <int>{};
+    for (final d in ds) {
+      final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
+      final bx = box[0] + box[2] / 2, by = box[1] + box[3];
+      final ny = (by / ih).clamp(0.0, 1.0);
+      final nx = ((bx / iw) - 0.5) * 2.0;
+      final forward = math.pow(1.0 - ny, 1.8).toDouble();
+      final cls = d['cls']?.toString() ?? 'car';
+      double bestD = 0.30; int bestI = -1;
+      for (int i = 0; i < _objs.length; i++) {
+        if (used.contains(i)) continue;
+        final o = _objs[i]; if (o.cls != cls) continue;
+        final dd = math.sqrt(math.pow(o.tx - nx, 2) + math.pow(o.ty - forward, 2));
+        if (dd < bestD) { bestD = dd; bestI = i; }
+      }
+      if (bestI >= 0) {
+        final o = _objs[bestI];
+        o.tx = nx; o.ty = forward;
+        o.conf = (d['score'] as num?)?.toDouble() ?? 0.6;
+        o.lastSeen = now; used.add(bestI);
+      } else {
+        _objs.add(_BevObj2(cls: cls, x: nx, y: forward, tx: nx, ty: forward,
+          conf: (d['score'] as num?)?.toDouble() ?? 0.6,
+          phase: math.Random().nextDouble() * 6.28,
+          lastSeen: now, alpha: 0.0));
+      }
+    }
+  }
+
+  @override
+  void dispose() { _ticker.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const RadialGradient(
+          center: Alignment(0, 0.9), radius: 1.2,
+          colors: [Color(0xFF0B1320), Color(0xFF040810)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _accent.withValues(alpha: 0.20), width: 0.8),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Stack(fit: StackFit.expand, children: [
+          RepaintBoundary(child: CustomPaint(
+            painter: _TeslaBevV2Painter(objs: _objs, t: _t),
+            size: Size.infinite,
+          )),
+          Positioned(left: 10, top: 8, child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+              border: Border.all(color: _safe.withValues(alpha: 0.40), width: 0.8),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 7, height: 7, decoration: BoxDecoration(
+                color: _safe, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
+              )),
+              const SizedBox(width: 6),
+              Text('LIVE BEV', style: TextStyle(color: _safe, fontSize: 10,
+                fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+              const SizedBox(width: 8),
+              Builder(builder: (_) {
+                int p = 0, v = 0;
+                for (final o in _objs) { if (o.cls == 'person') p++; else v++; }
+                return Text('· 사람 $p · 차량 $v',
+                  style: TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w800));
+              }),
+            ]),
+          )),
+        ]),
+      ),
+    );
+  }
+}
+
+class _BevObj2 {
+  String cls; double x, y, tx, ty, conf, phase, lastSeen, alpha;
+  _BevObj2({required this.cls, required this.x, required this.y,
+    required this.tx, required this.ty, required this.conf,
+    required this.phase, required this.lastSeen, required this.alpha});
+}
+
+class _TeslaBevV2Painter extends CustomPainter {
+  final List<_BevObj2> objs;
+  final double t;
+  _TeslaBevV2Painter({required this.objs, required this.t});
+
+  Offset _project(double x, double y, Size size) {
+    final w = size.width, h = size.height;
+    final cy = h * (0.92 - y * 0.82);
+    final lateralScale = 0.50 + (1 - y) * 0.38;
+    final cx = w / 2 + x * w * lateralScale;
+    return Offset(cx, cy);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+
+    // ── 1) perspective 그리드 바닥
+    final gridP = Paint()..strokeWidth = 1;
+    for (final yNorm in [0.10, 0.30, 0.55, 0.80]) {
+      final yPx = h * (0.92 - yNorm * 0.82);
+      final scale = 0.50 + (1 - yNorm) * 0.38;
+      gridP.color = const Color(0xFF00C8FF).withValues(alpha: 0.06 + (1 - yNorm) * 0.10);
+      canvas.drawLine(Offset(w / 2 - w * scale, yPx), Offset(w / 2 + w * scale, yPx), gridP);
+    }
+    for (final lateral in [-0.85, -0.45, 0.0, 0.45, 0.85]) {
+      final near = _project(lateral, 0.0, size);
+      final far = _project(lateral * 0.30, 1.0, size);
+      gridP.color = const Color(0xFF00C8FF).withValues(alpha: lateral == 0 ? 0.16 : 0.07);
+      gridP.strokeWidth = lateral == 0 ? 1.5 : 0.8;
+      canvas.drawLine(near, far, gridP);
+    }
+
+    // ── 2) 거리 라벨
+    final labels = [[0.10, '5m'], [0.30, '15m'], [0.55, '30m'], [0.80, '50m+']];
+    for (final entry in labels) {
+      final yNorm = entry[0] as double;
+      final txt = entry[1] as String;
+      final yPx = h * (0.92 - yNorm * 0.82);
+      final scale = 0.50 + (1 - yNorm) * 0.38;
+      final tp = TextPainter(
+        text: TextSpan(text: txt, style: TextStyle(
+          color: const Color(0xFF5A7A9A).withValues(alpha: 0.75), fontSize: 9,
+          fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(w / 2 - w * scale - tp.width - 4, yPx - tp.height / 2));
+    }
+
+    // ── 3) Ego 진행 경로
+    final pathP = Paint()..strokeCap = StrokeCap.round;
+    for (int i = 0; i < 7; i++) {
+      final y0n = 0.02 + i * 0.075;
+      final y1n = y0n + 0.04;
+      if (y1n > 0.55) break;
+      final p0 = _project(0, y0n, size);
+      final p1 = _project(0, y1n, size);
+      final base = 0.55 - i * 0.06;
+      final alpha = base + 0.10 * math.sin(t * 2.5 + i * 0.6);
+      pathP.color = const Color(0xFF00C8FF).withValues(alpha: alpha.clamp(0.0, 0.7));
+      pathP.strokeWidth = 5 - i * 0.4;
+      canvas.drawLine(p0, p1, pathP);
+    }
+
+    // ── 4) Ego
+    _drawEgo(canvas, size);
+
+    // ── 5) 검출 객체
+    final sorted = [...objs];
+    sorted.sort((a, b) => b.y.compareTo(a.y));
+    for (final o in sorted) {
+      final p = _project(o.x.clamp(-0.92, 0.92), o.y.clamp(0.0, 0.95), size);
+      if (o.cls == 'person') {
+        _drawPersonSilhouette(canvas, p, o.y, o.alpha, o.phase);
+      } else {
+        _drawVehicle3D(canvas, p, o.y, o.alpha);
+      }
+    }
+  }
+
+  void _drawEgo(Canvas canvas, Size size) {
+    final p = _project(0, 0.0, size);
+    final bw = 38.0, bh = 22.0;
+    final col = const Color(0xFF00C8FF);
+    final shadow = Paint()..color = Colors.black.withValues(alpha: 0.45)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: p.translate(0, 6), width: bw + 4, height: bh * 0.6),
+      const Radius.circular(3)), shadow);
+    canvas.drawCircle(p.translate(0, bh * 0.4), bw * 0.75,
+      Paint()..color = col.withValues(alpha: 0.30));
+    final body = Paint()..shader = LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: [col, col.withValues(alpha: 0.75)],
+    ).createShader(Rect.fromCenter(center: p, width: bw, height: bh));
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: p, width: bw, height: bh),
+      const Radius.circular(5)), body);
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: p.translate(0, -bh * 0.05), width: bw * 0.7, height: bh * 0.40),
+      const Radius.circular(2)), Paint()..color = Colors.black.withValues(alpha: 0.45));
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: p, width: bw, height: bh),
+      const Radius.circular(5)),
+      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.4..color = col);
+    final tp = TextPainter(
+      text: TextSpan(text: 'EGO', style: TextStyle(
+        color: col, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy + bh * 0.65));
+  }
+
+  void _drawPersonSilhouette(Canvas canvas, Offset p, double forwardNorm, double alpha, double phase) {
+    final scale = 1.0 - forwardNorm * 0.70;
+    final headR = 6.0 * scale;
+    final bodyH = 26.0 * scale;
+    final bodyW = 12.0 * scale;
+    final legH = 14.0 * scale;
+    final col = const Color(0xFFFF4040);
+
+    final pulse = 1.0 + 0.35 * math.sin(t * 3.2 + phase);
+    canvas.drawCircle(p.translate(0, headR * 0.5), (headR + bodyW * 0.7) * pulse,
+      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5
+        ..color = col.withValues(alpha: (0.55 / pulse) * alpha));
+
+    canvas.drawOval(Rect.fromCenter(
+      center: p.translate(0, bodyH * 0.4), width: bodyW * 1.6, height: bodyW * 0.7),
+      Paint()..color = Colors.black.withValues(alpha: 0.5 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+
+    final legP = Paint()..color = col.withValues(alpha: 0.85 * alpha)
+      ..strokeCap = StrokeCap.round..strokeWidth = bodyW * 0.30;
+    canvas.drawLine(Offset(p.dx - bodyW * 0.20, p.dy + bodyH * 0.10),
+      Offset(p.dx - bodyW * 0.20, p.dy + bodyH * 0.10 + legH), legP);
+    canvas.drawLine(Offset(p.dx + bodyW * 0.20, p.dy + bodyH * 0.10),
+      Offset(p.dx + bodyW * 0.20, p.dy + bodyH * 0.10 + legH), legP);
+
+    final bodyPath = Path()
+      ..moveTo(p.dx - bodyW * 0.50, p.dy - bodyH * 0.30)
+      ..lineTo(p.dx + bodyW * 0.50, p.dy - bodyH * 0.30)
+      ..lineTo(p.dx + bodyW * 0.32, p.dy + bodyH * 0.20)
+      ..lineTo(p.dx - bodyW * 0.32, p.dy + bodyH * 0.20)
+      ..close();
+    canvas.drawPath(bodyPath, Paint()..shader = LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: [col.withValues(alpha: alpha), col.withValues(alpha: 0.75 * alpha)],
+    ).createShader(Rect.fromCenter(center: p, width: bodyW, height: bodyH)));
+
+    final armP = Paint()..color = col.withValues(alpha: 0.85 * alpha)
+      ..strokeCap = StrokeCap.round..strokeWidth = bodyW * 0.22;
+    canvas.drawLine(Offset(p.dx - bodyW * 0.50, p.dy - bodyH * 0.25),
+      Offset(p.dx - bodyW * 0.75, p.dy - bodyH * 0.05), armP);
+    canvas.drawLine(Offset(p.dx + bodyW * 0.50, p.dy - bodyH * 0.25),
+      Offset(p.dx + bodyW * 0.75, p.dy - bodyH * 0.05), armP);
+
+    canvas.drawCircle(Offset(p.dx, p.dy - bodyH * 0.45), headR,
+      Paint()..color = col.withValues(alpha: alpha));
+    canvas.drawCircle(Offset(p.dx, p.dy - bodyH * 0.45), headR * 1.4,
+      Paint()..color = col.withValues(alpha: 0.55 * alpha)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, headR * 0.5));
+
+    final distM = 1.5 + 33.5 * forwardNorm;
+    final tp = TextPainter(
+      text: TextSpan(text: '👤 ${distM.toStringAsFixed(1)}m',
+        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900,
+          backgroundColor: col.withValues(alpha: 0.85 * alpha))),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - bodyH * 0.75 - tp.height - 4));
+  }
+
+  void _drawVehicle3D(Canvas canvas, Offset p, double forwardNorm, double alpha) {
+    final scale = 1.0 - forwardNorm * 0.72;
+    final w = 42.0 * scale, h = 26.0 * scale;
+    final col = const Color(0xFFA095FF);
+    final colDark = const Color(0xFF5E55A8);
+
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: p.translate(0, h * 0.45), width: w + 6, height: h * 0.45),
+      const Radius.circular(3)),
+      Paint()..color = Colors.black.withValues(alpha: 0.5 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+
+    canvas.drawCircle(p.translate(0, h * 0.4), w * 0.65,
+      Paint()..color = col.withValues(alpha: 0.28 * alpha));
+
+    final sidePath = Path()
+      ..moveTo(p.dx - w * 0.50, p.dy + h * 0.20)
+      ..lineTo(p.dx - w * 0.45, p.dy + h * 0.40)
+      ..lineTo(p.dx + w * 0.45, p.dy + h * 0.40)
+      ..lineTo(p.dx + w * 0.50, p.dy + h * 0.20)
+      ..close();
+    canvas.drawPath(sidePath, Paint()..color = colDark.withValues(alpha: alpha));
+
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: p, width: w, height: h),
+      const Radius.circular(5)),
+      Paint()..shader = LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [col.withValues(alpha: alpha), col.withValues(alpha: 0.70 * alpha)],
+      ).createShader(Rect.fromCenter(center: p, width: w, height: h)));
+
+    final winPath = Path()
+      ..moveTo(p.dx - w * 0.36, p.dy - h * 0.05)
+      ..lineTo(p.dx - w * 0.32, p.dy - h * 0.32)
+      ..lineTo(p.dx + w * 0.32, p.dy - h * 0.32)
+      ..lineTo(p.dx + w * 0.36, p.dy - h * 0.05)
+      ..close();
+    canvas.drawPath(winPath, Paint()..color = Colors.black.withValues(alpha: 0.45 * alpha));
+
+    canvas.drawLine(Offset(p.dx - w * 0.36, p.dy + h * 0.10),
+      Offset(p.dx + w * 0.36, p.dy + h * 0.10),
+      Paint()..color = Colors.white.withValues(alpha: 0.18 * alpha)..strokeWidth = 1);
+
+    final hp = Paint()..color = const Color(0xFFFFD93D).withValues(alpha: 0.85 * alpha);
+    canvas.drawCircle(Offset(p.dx - w * 0.32, p.dy - h * 0.42), 1.6 * scale + 0.5, hp);
+    canvas.drawCircle(Offset(p.dx + w * 0.32, p.dy - h * 0.42), 1.6 * scale + 0.5, hp);
+
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: p, width: w, height: h),
+      const Radius.circular(5)),
+      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2
+        ..color = col.withValues(alpha: alpha));
+
+    final distM = 1.5 + 33.5 * forwardNorm;
+    final tp = TextPainter(
+      text: TextSpan(text: '🚗 ${distM.toStringAsFixed(1)}m',
+        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900,
+          backgroundColor: col.withValues(alpha: 0.85 * alpha))),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - h * 0.85 - tp.height));
+  }
+
+  @override
+  bool shouldRepaint(covariant _TeslaBevV2Painter old) => true;
 }

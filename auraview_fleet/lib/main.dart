@@ -1273,19 +1273,17 @@ class _FleetHomeState extends State<FleetHome>
                   ),
                   const SizedBox(height: 10),
 
-                  // v9.6 2026-05-19: 테슬라 식 BEV v2 - 검출 객체별 실루엣 (사람=person-shape, 차량=car-shape)
-                  //   - 거리감 개선: 비선형 perspective, 5/15/30m 거리 ring
-                  //   - 사람 모양: 머리(원) + 몸(트라페즈) + 다리(다리 라인)
-                  //   - 차량 모양: 입체 박스 + 창문 + 글로우
-                  //   - 부드러운 60fps 보간
+                  // v10 2026-05-19: 제로베이스 재설계 — Tesla 컴퓨터 모니터 식 split
+                  //   상단: 라이브 카메라 + ML Kit 검출 박스 (실제 보이는 화면)
+                  //   하단: 순수 BEV (차선/도로 그림 X, 거리 그리드 + 검출 객체 실루엣만)
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(8, 0, 8, 80),
-                      child: _TeslaBevV2(
+                      child: _CameraBevSplit(
+                        camera: _cam,
                         detections: _bevDetections,
                         imgW: _bevImgW,
                         imgH: _bevImgH,
-                        bev: _bev,  // v9.7: grid_flat voxel layer 입력
                       ),
                     ),
                   ),
@@ -1295,63 +1293,7 @@ class _FleetHomeState extends State<FleetHome>
             ),
 
             // 4) 카메라 PiP — 좌하단 (140×100). 권한 없으면 _CameraPlaceholder.
-            // v9 fix: Flutter native 카메라 PiP 복구 (WebView는 카메라 안 쓰니까 충돌 없음).
-            //   WebView 는 ?embed=fleet 로 카메라 안 잡고 3D 씬만 렌더. 실 카메라는 여기서.
-            if (_cam == null || !_cam!.value.isInitialized)
-              Positioned(
-                left: 14, bottom: 100,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: const Color(0xEE0D1520),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _danger.withValues(alpha: 0.55), width: 1.2),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.no_photography, size: 14, color: _danger),
-                    const SizedBox(width: 6),
-                    Text('카메라 권한\n필요',
-                         style: TextStyle(color: _danger, fontSize: 10, fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.6, height: 1.2)),
-                  ]),
-                ),
-              )
-            else if (_cam != null && _cam!.value.isInitialized)
-              Positioned(
-                left: 14, bottom: 100,
-                child: Container(
-                  width: 140, height: 100,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _accent.withValues(alpha: 0.45), width: 1.2),
-                    boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.22), blurRadius: 14)],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(9),
-                    child: Stack(fit: StackFit.expand, children: [
-                      _FullCameraPreview(controller: _cam!),
-                      Positioned(
-                        top: 4, left: 6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
-                          ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Container(width: 5, height: 5, decoration: BoxDecoration(
-                              color: _shadowOn ? _safe : _muted, shape: BoxShape.circle,
-                              boxShadow: _shadowOn ? [BoxShadow(color: _safe, blurRadius: 4)] : null,
-                            )),
-                            const SizedBox(width: 4),
-                            Text('CAM', style: TextStyle(color: _accent, fontSize: 8,
-                                                         fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                          ]),
-                        ),
-                      ),
-                    ]),
-                  ),
-                ),
-              ),
+            // v10: 별도 PiP 제거 — 카메라가 _CameraBevSplit 상단에 메인으로 들어감
 
             // 5) 캡처 펄스 링 (BEV 위에 깜빡)
             AnimatedBuilder(
@@ -3412,21 +3354,7 @@ class _IdleStatusCard extends StatelessWidget {
                                  fontWeight: FontWeight.w900, height: 1.0))),
           ),
         )),
-        const SizedBox(width: 8),
-        // 설정 버튼 (눈에 띄게)
-        GestureDetector(
-          onTap: onSettingsTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: _accent.withValues(alpha: 0.15),
-              border: Border.all(color: _accent.withValues(alpha: 0.50), width: 1.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.tune, color: _accent, size: 20),
-          ),
-        ),
+        // v10: 중복 ⚙ 설정 버튼 제거 (상단 헤더에 이미 있음). ★ 만 유지.
       ]),
     ),
     );
@@ -5030,6 +4958,487 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// v10 2026-05-19: 제로베이스 재설계
+//   사용자 지적 "실시간 카메라에 보이는걸 화면에 BEV로 표현해야",
+//                "차선 중앙이 아니면 저게 성립될리가 없는데",
+//                "테슬라 컴퓨터 모니터랑 디자인 패턴 등 다 다시해라",
+//                "지금 모든 디자인 제로베이스에서 출발"
+//   결정:
+//     • 차선/도로/주행가능구역 그림 전부 폐기 (실 데이터 없으면 그리지 X)
+//     • Tesla 컴퓨터 모니터 split: 상단 카메라(실보임) + 하단 BEV(검출 객체)
+//     • BEV 는 거리 grid 와 검출 silhouette 만 — 합성 도로 X
+// ═══════════════════════════════════════════════════════════════
+class _CameraBevSplit extends StatefulWidget {
+  final CameraController? camera;
+  final List<Map<String, dynamic>> detections;
+  final int imgW;
+  final int imgH;
+  const _CameraBevSplit({
+    required this.camera, required this.detections,
+    required this.imgW, required this.imgH,
+  });
+  @override
+  State<_CameraBevSplit> createState() => _CameraBevSplitState();
+}
+
+class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  final List<_BevObj2> _objs = [];
+  double _t = 0;
+  double _lastMs = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((d) {
+      final ms = d.inMicroseconds / 1000.0;
+      final dt = _lastMs == 0 ? 0.016 : ((ms - _lastMs) / 1000.0).clamp(0.0, 0.05);
+      _lastMs = ms;
+      _t = ms / 1000.0;
+      bool dirty = false;
+      for (int i = _objs.length - 1; i >= 0; i--) {
+        final o = _objs[i];
+        final ox = o.x, oy = o.y;
+        o.x = o.x * (1 - dt * 5.5) + o.tx * dt * 5.5;
+        o.y = o.y * (1 - dt * 5.5) + o.ty * dt * 5.5;
+        if ((o.x - ox).abs() > 0.0005 || (o.y - oy).abs() > 0.0005) dirty = true;
+        if (_t - o.lastSeen > 1.8) {
+          o.alpha = (o.alpha * (1 - dt * 2.5)).clamp(0.0, 1.0);
+          if (o.alpha < 0.05) { _objs.removeAt(i); dirty = true; continue; }
+        } else {
+          o.alpha = (o.alpha + dt * 4.0).clamp(0.0, 1.0);
+        }
+      }
+      if (mounted && (dirty || _objs.isNotEmpty)) setState(() {});
+    });
+    _ticker.start();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CameraBevSplit old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.detections, widget.detections)) _sync();
+  }
+
+  void _sync() {
+    final ds = widget.detections;
+    final iw = widget.imgW.toDouble(), ih = widget.imgH.toDouble();
+    final now = _t;
+    final used = <int>{};
+    for (final d in ds) {
+      final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
+      final bx = box[0] + box[2] / 2, by = box[1] + box[3];
+      final ny = (by / ih).clamp(0.0, 1.0);
+      final nx = ((bx / iw) - 0.5) * 2.0;
+      final forward = math.pow(1.0 - ny, 1.8).toDouble();
+      final cls = d['cls']?.toString() ?? 'car';
+      double bestD = 0.30; int bestI = -1;
+      for (int i = 0; i < _objs.length; i++) {
+        if (used.contains(i)) continue;
+        final o = _objs[i]; if (o.cls != cls) continue;
+        final dd = math.sqrt(math.pow(o.tx - nx, 2) + math.pow(o.ty - forward, 2));
+        if (dd < bestD) { bestD = dd; bestI = i; }
+      }
+      if (bestI >= 0) {
+        final o = _objs[bestI];
+        o.tx = nx; o.ty = forward;
+        o.conf = (d['score'] as num?)?.toDouble() ?? 0.6;
+        o.lastSeen = now; used.add(bestI);
+      } else {
+        _objs.add(_BevObj2(cls: cls, x: nx, y: forward, tx: nx, ty: forward,
+          conf: (d['score'] as num?)?.toDouble() ?? 0.6,
+          phase: math.Random().nextDouble() * 6.28,
+          lastSeen: now, alpha: 0.0));
+      }
+    }
+  }
+
+  @override
+  void dispose() { _ticker.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    int pc = 0, vc = 0;
+    for (final o in _objs) { if (o.cls == 'person') pc++; else vc++; }
+
+    return Column(children: [
+      // ── 상단 절반: 카메라 + ML Kit 박스 ────────────────────
+      Expanded(flex: 5, child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0A1018),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _accent.withValues(alpha: 0.25), width: 1),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(fit: StackFit.expand, children: [
+            // 카메라
+            if (widget.camera != null && widget.camera!.value.isInitialized)
+              _FullCameraPreview(controller: widget.camera!)
+            else
+              Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.no_photography, size: 36, color: _muted),
+                const SizedBox(height: 8),
+                Text('카메라 권한 필요',
+                  style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w800)),
+              ])),
+            // 검출 박스 오버레이
+            if (widget.camera != null && widget.camera!.value.isInitialized)
+              IgnorePointer(child: CustomPaint(
+                size: Size.infinite,
+                painter: _CamBoxPainter(
+                  detections: widget.detections,
+                  imgW: widget.imgW, imgH: widget.imgH,
+                ),
+              )),
+            // 좌상단 라벨
+            Positioned(left: 10, top: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: _danger.withValues(alpha: 0.40), width: 0.8),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 6, height: 6, decoration: BoxDecoration(
+                  color: _danger, shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: _danger, blurRadius: 5)],
+                )),
+                const SizedBox(width: 6),
+                Text('CAM · LIVE',
+                  style: TextStyle(color: _danger, fontSize: 10,
+                    fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+              ]),
+            )),
+            // 우상단 검출 카운트
+            Positioned(right: 10, top: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: _accent.withValues(alpha: 0.30), width: 0.8),
+              ),
+              child: Text('검출 ${widget.detections.length}',
+                style: TextStyle(color: _accent, fontSize: 10,
+                  fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            )),
+          ]),
+        ),
+      )),
+      // ── 하단 절반: 카메라 프레임을 BEV로 워프 (IPM Inverse Perspective Mapping)
+      //   사용자 요구: "실카메라로 보이는거를 bev로 렌더하라고"
+      //   - Transform.Matrix4 + rotateX → 카메라 ground 영역을 top-down 처럼 펼침
+      //   - 그 위에 ML Kit 검출 박스도 동일 변환 + 거리 grid 오버레이
+      Expanded(flex: 5, child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF040810),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _safe.withValues(alpha: 0.30), width: 1),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: LayoutBuilder(builder: (ctx, c) {
+            final bw = c.maxWidth, bh = c.maxHeight;
+            // IPM 행렬: 카메라 평면을 ground 로 펼침
+            // rotateX(-θ): top 이 안으로 들어가 (먼 거리), bottom 이 앞으로 (가까운 거리)
+            // perspective entry: setEntry(3,2,k) — 작을수록 vanishing 약함
+            final ipm = Matrix4.identity()
+              ..setEntry(3, 2, 0.0014)
+              ..rotateX(-1.20);   // -68.8° 강한 forward tilt = BEV 효과
+            return Stack(fit: StackFit.expand, children: [
+              // 카메라 프레임을 IPM 으로 변환
+              if (widget.camera != null && widget.camera!.value.isInitialized)
+                Positioned.fill(child: OverflowBox(
+                  alignment: Alignment.center,
+                  minWidth: bw * 1.8, maxWidth: bw * 1.8,
+                  minHeight: bh * 3.0, maxHeight: bh * 3.0,
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: ipm,
+                    child: _FullCameraPreview(controller: widget.camera!),
+                  ),
+                )),
+              // 도로 darkening 오버레이 (BEV 분위기)
+              Positioned.fill(child: DecoratedBox(
+                decoration: BoxDecoration(gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Colors.black.withValues(alpha: 0.55), Colors.black.withValues(alpha: 0.15)],
+                )),
+              )),
+              // 거리 grid + 검출 silhouette 오버레이
+              IgnorePointer(child: CustomPaint(
+                size: Size.infinite,
+                painter: _CleanBevPainter(objs: _objs, t: _t),
+              )),
+              // 라벨
+              Positioned(left: 10, top: 8, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+                  border: Border.all(color: _safe.withValues(alpha: 0.40), width: 0.8),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 6, height: 6, decoration: BoxDecoration(
+                    color: _safe, shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: _safe, blurRadius: 5)],
+                  )),
+                  const SizedBox(width: 6),
+                  Text('BEV (IPM) · 카메라 워프',
+                    style: TextStyle(color: _safe, fontSize: 10,
+                      fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                ]),
+              )),
+              Positioned(right: 10, top: 8, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text('👤 $pc · 🚗 $vc',
+                  style: TextStyle(color: _muted, fontSize: 10,
+                    fontWeight: FontWeight.w800)),
+              )),
+            ]);
+          }),
+        ),
+      )),
+    ]);
+  }
+}
+
+// 카메라 위 ML Kit 박스 오버레이 페인터
+class _CamBoxPainter extends CustomPainter {
+  final List<Map<String, dynamic>> detections;
+  final int imgW, imgH;
+  _CamBoxPainter({required this.detections, required this.imgW, required this.imgH});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sx = size.width / imgW;
+    final sy = size.height / imgH;
+    for (final d in detections) {
+      final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
+      final cls = d['cls']?.toString() ?? 'car';
+      final isPed = cls == 'person';
+      final col = isPed ? const Color(0xFFFF4040) : const Color(0xFFA095FF);
+      final r = Rect.fromLTWH(box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy);
+      // 박스
+      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)),
+        Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = col);
+      // 라벨 배경 + 텍스트
+      final lab = isPed ? '👤 보행자' : '🚗 차량';
+      final tp = TextPainter(
+        text: TextSpan(text: lab, style: const TextStyle(
+          color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final labRect = Rect.fromLTWH(r.left, r.top - tp.height - 4, tp.width + 10, tp.height + 4);
+      canvas.drawRRect(RRect.fromRectAndRadius(labRect, const Radius.circular(3)),
+        Paint()..color = col.withValues(alpha: 0.92));
+      tp.paint(canvas, Offset(r.left + 5, r.top - tp.height - 2));
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _CamBoxPainter old) =>
+      old.detections != detections;
+}
+
+// 깨끗한 BEV 페인터 (도로 X, 거리 grid + ego + 검출 silhouette 만)
+class _CleanBevPainter extends CustomPainter {
+  final List<_BevObj2> objs;
+  final double t;
+  _CleanBevPainter({required this.objs, required this.t});
+
+  Offset _project(double x, double y, Size size) {
+    final w = size.width, h = size.height;
+    final cy = h * (0.88 - y * 0.78);
+    final lateralScale = 0.52 + (1 - y) * 0.35;
+    final cx = w / 2 + x * w * lateralScale;
+    return Offset(cx, cy);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+
+    // ── 가로 거리 grid (cyan 옅음)
+    final gp = Paint()..strokeWidth = 1;
+    final labels = [
+      [0.10, '5m'], [0.30, '15m'], [0.55, '30m'], [0.80, '50m+'],
+    ];
+    for (final entry in labels) {
+      final yNorm = entry[0] as double;
+      final txt = entry[1] as String;
+      final yPx = h * (0.88 - yNorm * 0.78);
+      final scale = 0.52 + (1 - yNorm) * 0.35;
+      gp.color = const Color(0xFF00C8FF).withValues(alpha: 0.10 + (1 - yNorm) * 0.10);
+      canvas.drawLine(Offset(w / 2 - w * scale * 0.92, yPx),
+        Offset(w / 2 + w * scale * 0.92, yPx), gp);
+      // 거리 텍스트
+      final tp = TextPainter(
+        text: TextSpan(text: txt, style: TextStyle(
+          color: const Color(0xFF5A7A9A).withValues(alpha: 0.75), fontSize: 9,
+          fontWeight: FontWeight.w800)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(w / 2 - w * scale * 0.92 - tp.width - 4, yPx - tp.height / 2));
+    }
+
+    // ── Ego (cyan top-down 차량 silhouette)
+    final pEgo = _project(0, 0.0, size);
+    _drawTopDownCarLocal(canvas, pEgo, 1.0, const Color(0xFF00C8FF), 1.0);
+    final tpEgo = TextPainter(
+      text: TextSpan(text: 'EGO', style: TextStyle(
+        color: const Color(0xFF00C8FF), fontSize: 9,
+        fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tpEgo.paint(canvas, Offset(pEgo.dx - tpEgo.width / 2, pEgo.dy + 30));
+
+    // ── 검출 객체
+    final sorted = [...objs];
+    sorted.sort((a, b) => b.y.compareTo(a.y));
+    for (final o in sorted) {
+      final p = _project(o.x.clamp(-0.92, 0.92), o.y.clamp(0.0, 0.95), size);
+      final scale = (1.0 - o.y * 0.70).clamp(0.30, 1.0);
+      // v10.1: Tesla AI Day 식 3D voxel 클러스터 (검출 객체 위치에 cube column)
+      _drawVoxelCluster(canvas, p, scale, o.cls, o.alpha);
+      if (o.cls == 'person') {
+        _drawPersonLocal(canvas, p, scale, o.alpha, o.phase);
+      } else {
+        _drawTopDownCarLocal(canvas, p, scale, const Color(0xFFA095FF), o.alpha);
+      }
+      final distM = 1.5 + 33.5 * o.y;
+      final tp = TextPainter(
+        text: TextSpan(text: '${o.cls == "person" ? "👤" : "🚗"} ${distM.toStringAsFixed(1)}m',
+          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900,
+            backgroundColor: (o.cls == 'person' ? const Color(0xFFFF4040) : const Color(0xFFA095FF))
+              .withValues(alpha: 0.85 * o.alpha))),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - 22 * scale - tp.height));
+    }
+  }
+
+  // v10.1: Tesla AI Day 식 voxel 클러스터 — 검출 객체 자리에 3D 큐브 컬럼
+  //   사람: 좁고 높은 컬럼 (3x6 큐브 ≈ 사람 윤곽 voxelize)
+  //   차량: 넓고 낮은 큐브 클러스터 (5x3 ≈ 차량 ground footprint voxelize)
+  void _drawVoxelCluster(Canvas canvas, Offset c, double scale, String cls, double alpha) {
+    final isPed = cls == 'person';
+    final col = isPed ? const Color(0xFFFF4040) : const Color(0xFFA095FF);
+    final cubeSize = (isPed ? 3.5 : 4.2) * scale;
+    final cols = isPed ? 3 : 5;
+    final rows = isPed ? 5 : 3;
+    // 컬럼별로 약간씩 offset → voxelize 느낌
+    for (int r = 0; r < rows; r++) {
+      for (int co = 0; co < cols; co++) {
+        // 외곽 cell skip (사람=중앙 columns 만, 차량=직사각)
+        if (isPed) {
+          // 사람: 정 중앙 1열은 머리(상단) + 몸통(중) + 다리 끝(아래) — 셀 패턴
+          if (r == 0 && co != 1) continue;  // 머리 1개만
+          if (r >= 3 && (co == 0 || co == 2)) continue;  // 다리는 좌우 2 column
+        }
+        final dx = (co - (cols - 1) / 2) * cubeSize * 1.05;
+        final dy = (r - (rows - 1) / 2) * cubeSize * 0.95 - (isPed ? cubeSize * 1.0 : cubeSize * 0.5);
+        final pos = c.translate(dx, dy);
+        // 큐브 본체
+        final cubeAlpha = alpha * (0.45 + 0.55 * (1 - r / rows));   // 위쪽 cube 더 흐림
+        canvas.drawRect(
+          Rect.fromCenter(center: pos, width: cubeSize, height: cubeSize),
+          Paint()..color = col.withValues(alpha: cubeAlpha));
+        // 위쪽 하이라이트 (입체감)
+        canvas.drawRect(
+          Rect.fromLTWH(pos.dx - cubeSize / 2, pos.dy - cubeSize / 2,
+            cubeSize, cubeSize * 0.30),
+          Paint()..color = col.withValues(alpha: cubeAlpha * 0.55));
+        // 외곽선
+        canvas.drawRect(
+          Rect.fromCenter(center: pos, width: cubeSize, height: cubeSize),
+          Paint()..style = PaintingStyle.stroke..strokeWidth = 0.6
+            ..color = Colors.white.withValues(alpha: cubeAlpha * 0.5));
+      }
+    }
+  }
+
+  // 로컬 top-down 차량 (외부 _drawTeslaCar 와 동일 로직 축약 인라인)
+  void _drawTopDownCarLocal(Canvas canvas, Offset c, double scale, Color col, double alpha) {
+    final w = 30.0 * scale, h = 14.0 * scale;
+    final colDark = HSLColor.fromColor(col).withLightness(
+      (HSLColor.fromColor(col).lightness - 0.20).clamp(0.10, 0.90)).toColor();
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: c.translate(0, h * 0.55), width: w * 1.10, height: h * 0.5),
+      const Radius.circular(4)),
+      Paint()..color = Colors.black.withValues(alpha: 0.45 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    canvas.drawCircle(c.translate(0, h * 0.35), w * 0.55,
+      Paint()..color = col.withValues(alpha: 0.25 * alpha));
+    final bodyRect = Rect.fromCenter(center: c, width: w, height: h);
+    final bodyRRect = RRect.fromRectAndCorners(bodyRect,
+      topLeft: Radius.circular(h * 0.30), topRight: Radius.circular(h * 0.30),
+      bottomLeft: Radius.circular(h * 0.45), bottomRight: Radius.circular(h * 0.45));
+    canvas.drawRRect(bodyRRect, Paint()..shader = LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: [col.withValues(alpha: alpha), colDark.withValues(alpha: alpha)],
+    ).createShader(bodyRect));
+    // 바퀴
+    final wp = Paint()..color = const Color(0xFF0A0E15).withValues(alpha: alpha);
+    for (final dx in [-w * 0.42, w * 0.42]) {
+      for (final dy in [-h * 0.28, h * 0.28]) {
+        canvas.drawRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: c.translate(dx, dy), width: w * 0.07, height: h * 0.45),
+          Radius.circular(h * 0.05)), wp);
+      }
+    }
+    // 창문
+    canvas.drawPath(Path()
+      ..moveTo(c.dx - w * 0.32, c.dy - h * 0.08)
+      ..lineTo(c.dx - w * 0.26, c.dy - h * 0.30)
+      ..lineTo(c.dx + w * 0.26, c.dy - h * 0.30)
+      ..lineTo(c.dx + w * 0.32, c.dy - h * 0.08)..close(),
+      Paint()..color = const Color(0xFF06121E).withValues(alpha: 0.85 * alpha));
+    // 헤드라이트
+    final hl = Paint()..color = const Color(0xFFFFD93D).withValues(alpha: 0.9 * alpha);
+    canvas.drawCircle(Offset(c.dx - w * 0.36, c.dy - h * 0.42), 1.5 * scale + 0.6, hl);
+    canvas.drawCircle(Offset(c.dx + w * 0.36, c.dy - h * 0.42), 1.5 * scale + 0.6, hl);
+    canvas.drawRRect(bodyRRect,
+      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2
+        ..color = col.withValues(alpha: alpha));
+  }
+
+  // 로컬 사람 silhouette (위에 _drawPersonSilhouette 와 동일 축약)
+  void _drawPersonLocal(Canvas canvas, Offset p, double scale, double alpha, double phase) {
+    final headR = 6.0 * scale, bodyH = 26.0 * scale, bodyW = 12.0 * scale, legH = 14.0 * scale;
+    final col = const Color(0xFFFF4040);
+    final pulse = 1.0 + 0.35 * math.sin(t * 3.2 + phase);
+    canvas.drawCircle(p.translate(0, headR * 0.5), (headR + bodyW * 0.7) * pulse,
+      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5
+        ..color = col.withValues(alpha: (0.55 / pulse) * alpha));
+    canvas.drawOval(Rect.fromCenter(
+      center: p.translate(0, bodyH * 0.4), width: bodyW * 1.6, height: bodyW * 0.7),
+      Paint()..color = Colors.black.withValues(alpha: 0.5 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+    final legP = Paint()..color = col.withValues(alpha: 0.85 * alpha)
+      ..strokeCap = StrokeCap.round..strokeWidth = bodyW * 0.30;
+    canvas.drawLine(Offset(p.dx - bodyW * 0.20, p.dy + bodyH * 0.10),
+      Offset(p.dx - bodyW * 0.20, p.dy + bodyH * 0.10 + legH), legP);
+    canvas.drawLine(Offset(p.dx + bodyW * 0.20, p.dy + bodyH * 0.10),
+      Offset(p.dx + bodyW * 0.20, p.dy + bodyH * 0.10 + legH), legP);
+    final bodyPath = Path()
+      ..moveTo(p.dx - bodyW * 0.50, p.dy - bodyH * 0.30)
+      ..lineTo(p.dx + bodyW * 0.50, p.dy - bodyH * 0.30)
+      ..lineTo(p.dx + bodyW * 0.32, p.dy + bodyH * 0.20)
+      ..lineTo(p.dx - bodyW * 0.32, p.dy + bodyH * 0.20)..close();
+    canvas.drawPath(bodyPath, Paint()..shader = LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: [col.withValues(alpha: alpha), col.withValues(alpha: 0.75 * alpha)],
+    ).createShader(Rect.fromCenter(center: p, width: bodyW, height: bodyH)));
+    canvas.drawCircle(Offset(p.dx, p.dy - bodyH * 0.45), headR,
+      Paint()..color = col.withValues(alpha: alpha));
+  }
+
+  @override
+  bool shouldRepaint(covariant _CleanBevPainter old) => true;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // v9.4 2026-05-18: 테슬라 식 합성 3D BEV (CustomPainter)
 //   - 카메라 영상은 별도 PiP 로만 표시. BEV 는 검출 결과를 합성 도로 위에 박스로.
 //   - 위에서 비스듬히 본 시점 (BEV-ish 3D perspective)
@@ -5878,46 +6287,40 @@ class _TeslaBevV2Painter extends CustomPainter {
       gridP.color = const Color(0xFF00C8FF).withValues(alpha: 0.06 + (1 - yNorm) * 0.10);
       canvas.drawLine(Offset(w / 2 - w * scale, yPx), Offset(w / 2 + w * scale, yPx), gridP);
     }
-    for (final lateral in [-0.85, -0.45, 0.0, 0.45, 0.85]) {
-      final near = _project(lateral, 0.0, size);
-      final far = _project(lateral * 0.30, 1.0, size);
-      gridP.color = const Color(0xFF00C8FF).withValues(alpha: lateral == 0 ? 0.16 : 0.07);
-      gridP.strokeWidth = lateral == 0 ? 1.5 : 0.8;
-      canvas.drawLine(near, far, gridP);
-    }
+    // v9.9: radial 라인 제거 (차선과 시각적 충돌). 가로 거리 라인만 유지.
 
-    // ── 1.5) v9.8: Tesla 식 차선 (도로 위 2 흰 부드러운 곡선 + 노랑 중앙 점선)
-    //   voxel cloud 폐기 — Tesla 실 AP 에는 voxel cloud 없음. 부드러운 차선과 차량 실루엣만.
-    final laneP = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    // 좌 차선
-    final leftLane = Path()
-      ..moveTo(_project(-0.30, 0.0, size).dx, _project(-0.30, 0.0, size).dy)
-      ..lineTo(_project(-0.13, 1.0, size).dx, _project(-0.13, 1.0, size).dy);
-    laneP.shader = LinearGradient(
-      begin: Alignment.bottomCenter, end: Alignment.topCenter,
-      colors: [Colors.white.withValues(alpha: 0.55), Colors.white.withValues(alpha: 0.0)],
-    ).createShader(Rect.fromLTWH(0, 0, w, h));
-    laneP.strokeWidth = 3.5;
-    canvas.drawPath(leftLane, laneP);
-    // 우 차선
-    final rightLane = Path()
-      ..moveTo(_project(0.30, 0.0, size).dx, _project(0.30, 0.0, size).dy)
-      ..lineTo(_project(0.13, 1.0, size).dx, _project(0.13, 1.0, size).dy);
-    canvas.drawPath(rightLane, laneP);
-    // 노랑 중앙 점선 (대시 dash)
-    final dashP = Paint()
-      ..color = const Color(0xFFFFD93D)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
-    for (int i = 0; i < 10; i++) {
-      final y0n = 0.05 + i * 0.085;
-      final y1n = y0n + 0.045;
-      if (y1n > 0.85) break;
-      final p0 = _project(0, y0n, size);
-      final p1 = _project(0, y1n, size);
-      dashP.color = const Color(0xFFFFD93D).withValues(alpha: 0.65 - i * 0.06);
-      canvas.drawLine(p0, p1, dashP);
-    }
+    // ── 1.5) v9.9: Tesla AP 실 시각화 — 주행가능구역 폴리곤 + 평행 차선
+    //   원근감 그리드 위에 옅은 회색 주행가능구역(drivable area) 폴리곤.
+    //   차선은 평행하게 (한 점으로 수렴 X — 그건 철길임).
+    final laneL = -0.22, laneR = 0.22;
+    // 주행가능 폴리곤 (옅은 흰/회 fill)
+    final drivable = Path()
+      ..moveTo(_project(laneL * 1.4, 0.0, size).dx, _project(laneL * 1.4, 0.0, size).dy)
+      ..lineTo(_project(laneR * 1.4, 0.0, size).dx, _project(laneR * 1.4, 0.0, size).dy)
+      ..lineTo(_project(laneR * 1.0, 1.0, size).dx, _project(laneR * 1.0, 1.0, size).dy)
+      ..lineTo(_project(laneL * 1.0, 1.0, size).dx, _project(laneL * 1.0, 1.0, size).dy)
+      ..close();
+    canvas.drawPath(drivable, Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.bottomCenter, end: Alignment.topCenter,
+        colors: [Colors.white.withValues(alpha: 0.06), Colors.white.withValues(alpha: 0.01)],
+      ).createShader(Rect.fromLTWH(0, 0, w, h)));
+
+    // 좌/우 차선 (Tesla 흰 굵은 선) — 평행에 가깝게
+    final lanePaint = Paint()
+      ..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeWidth = 3.5
+      ..shader = LinearGradient(
+        begin: Alignment.bottomCenter, end: Alignment.topCenter,
+        colors: [Colors.white.withValues(alpha: 0.75), Colors.white.withValues(alpha: 0.10)],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+    canvas.drawPath(Path()
+      ..moveTo(_project(laneL * 1.4, 0.0, size).dx, _project(laneL * 1.4, 0.0, size).dy)
+      ..lineTo(_project(laneL * 1.0, 1.0, size).dx, _project(laneL * 1.0, 1.0, size).dy),
+      lanePaint);
+    canvas.drawPath(Path()
+      ..moveTo(_project(laneR * 1.4, 0.0, size).dx, _project(laneR * 1.4, 0.0, size).dy)
+      ..lineTo(_project(laneR * 1.0, 1.0, size).dx, _project(laneR * 1.0, 1.0, size).dy),
+      lanePaint);
 
     // ── 2) 거리 라벨
     final labels = [[0.10, '5m'], [0.30, '15m'], [0.55, '30m'], [0.80, '50m+']];

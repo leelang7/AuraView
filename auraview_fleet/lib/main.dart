@@ -26,6 +26,7 @@ import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
@@ -3300,10 +3301,10 @@ class _IdleStatusCard extends StatelessWidget {
           ],
         ),
         const SizedBox(width: 10),
-        // v6 2026-05-18: MetroEyes 3D BEV 진입점
+        // v7 2026-05-18: AuraView 자체 3D BEV (Three.js + 실시간 카메라) 진입점
         Builder(builder: (ctx) => GestureDetector(
           onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
-            builder: (_) => const MetroEyesBevScreen(),
+            builder: (_) => const AuraView3DBevScreen(),
           )),
           behavior: HitTestBehavior.opaque,
           child: Container(
@@ -4710,31 +4711,43 @@ class _OnboardPage extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// v6 2026-05-18: MetroEyes 3D BEV 임베드 (Flutter WebView)
+// v7 2026-05-18: AuraView 자체 3D BEV (Three.js + 폰 카메라 getUserMedia)
+//   - 페이지: https://auraview.allthatai.kr/bev3d/
+//   - WebView 안에서 후면 카메라(getUserMedia) 호출 → PiP + Three.js 렌더
+//   - /fusion/intersection/1007 폴링으로 우측 메트릭 패널 갱신
 // ═══════════════════════════════════════════════════════════════
-class MetroEyesBevScreen extends StatefulWidget {
-  const MetroEyesBevScreen({super.key});
+class AuraView3DBevScreen extends StatefulWidget {
+  const AuraView3DBevScreen({super.key});
   @override
-  State<MetroEyesBevScreen> createState() => _MetroEyesBevScreenState();
+  State<AuraView3DBevScreen> createState() => _AuraView3DBevScreenState();
 }
 
-class _MetroEyesBevScreenState extends State<MetroEyesBevScreen> {
+class _AuraView3DBevScreenState extends State<AuraView3DBevScreen> {
   late final WebViewController _wv;
   int _progress = 0;
   bool _loaded = false;
-  static const _url = 'https://leelang7.github.io/MetroEyes/frontend/operator_web/realbev.html';
+  static const _url = 'https://auraview.allthatai.kr/bev3d/';
 
   @override
   void initState() {
     super.initState();
-    _wv = WebViewController()
+    final ctrl = WebViewController();
+    ctrl
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(_bg)
       ..setNavigationDelegate(NavigationDelegate(
         onProgress: (p) => setState(() => _progress = p),
         onPageFinished: (_) => setState(() => _loaded = true),
-      ))
-      ..loadRequest(Uri.parse(_url));
+      ));
+    // Android: getUserMedia 자동 허용 (앱 자체 카메라 권한은 네이티브 단에서 이미 받음)
+    final platform = ctrl.platform;
+    if (platform is AndroidWebViewController) {
+      AndroidWebViewController.enableDebugging(false);
+      platform.setMediaPlaybackRequiresUserGesture(false);
+      platform.setOnPlatformPermissionRequest((req) => req.grant());
+    }
+    ctrl.loadRequest(Uri.parse(_url));
+    _wv = ctrl;
   }
 
   @override
@@ -4745,9 +4758,9 @@ class _MetroEyesBevScreenState extends State<MetroEyesBevScreen> {
         backgroundColor: _surface,
         elevation: 0,
         title: const Row(children: [
-          Icon(Icons.view_in_ar, color: _accent, size: 20),
+          Icon(Icons.view_in_ar, color: _accent2, size: 20),
           SizedBox(width: 8),
-          Text('MetroEyes 3D BEV',
+          Text('AuraView 3D BEV',
               style: TextStyle(color: _text, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
         ]),
         actions: [
@@ -4762,7 +4775,7 @@ class _MetroEyesBevScreenState extends State<MetroEyesBevScreen> {
           child: !_loaded ? LinearProgressIndicator(
             value: _progress / 100,
             backgroundColor: _surface,
-            valueColor: AlwaysStoppedAnimation(_accent),
+            valueColor: AlwaysStoppedAnimation(_accent2),
             minHeight: 2,
           ) : const SizedBox(height: 2),
         ),
@@ -4774,12 +4787,12 @@ class _MetroEyesBevScreenState extends State<MetroEyesBevScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: _accent, strokeWidth: 2.5),
+                CircularProgressIndicator(color: _accent2, strokeWidth: 2.5),
                 const SizedBox(height: 18),
-                Text('MetroEyes 실시간 3D BEV 로딩…',
+                Text('AuraView 실시간 3D BEV 로딩…',
                     style: TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                Text('지하철·버스 실 카메라 분석 (homography 보정)',
+                Text('후면 카메라 + Three.js 3D 위험도 시각화',
                     style: TextStyle(color: _muted.withValues(alpha: 0.6), fontSize: 11)),
               ],
             ),

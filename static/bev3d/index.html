@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>AuraView 3D BEV — 실시간 카메라</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;background:#000;color:#fff;overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;}
+  #stage{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+  /* 상단 HUD */
+  #hud-top{position:fixed;top:0;left:0;right:0;padding:14px 16px;z-index:30;
+    display:flex;justify-content:space-between;align-items:center;
+    background:linear-gradient(to bottom,rgba(0,0,0,0.7),transparent);pointer-events:none;}
+  .brand{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;letter-spacing:1px;}
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:#00E09A;box-shadow:0 0 8px #00E09A;}
+  .brand .pill{padding:3px 8px;background:rgba(0,224,154,0.18);color:#00E09A;border-radius:99px;font-size:10px;}
+  #fps{font-family:monospace;font-size:11px;color:#7CC8B0;opacity:0.85;}
+  /* 우상단 컨트롤 */
+  #ctrls{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:31;pointer-events:auto;}
+  .btn{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#fff;
+    border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
+  .btn:active{background:rgba(255,255,255,0.18);}
+  .btn.danger{border-color:rgba(255,68,68,0.5);color:#FF6B6B;}
+  /* 하단 메트릭 패널 */
+  #metrics{position:fixed;left:14px;right:14px;bottom:14px;z-index:30;
+    padding:12px 14px;background:rgba(10,14,24,0.78);backdrop-filter:blur(8px);
+    border:1px solid rgba(0,200,255,0.25);border-radius:12px;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:10px;pointer-events:none;}
+  .met{display:flex;flex-direction:column;align-items:center;}
+  .met .l{font-size:9.5px;letter-spacing:1.5px;color:#7c8aa8;font-weight:700;margin-bottom:3px;}
+  .met .v{font-size:18px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+  .met.danger .v{color:#FF6B6B}
+  .met.warn .v{color:#FFB020}
+  .met.safe .v{color:#00E09A}
+  /* 카메라 PiP (좌상단 작게) */
+  #pip{position:fixed;left:14px;top:64px;width:140px;height:100px;border-radius:10px;overflow:hidden;
+    border:1.5px solid rgba(0,200,255,0.45);box-shadow:0 0 12px rgba(0,200,255,0.20);z-index:25;
+    background:#000;}
+  #pip video{width:100%;height:100%;object-fit:cover;}
+  #pip-tag{position:absolute;top:4px;left:6px;background:rgba(0,0,0,0.8);padding:2px 7px;
+    border-radius:99px;font-size:9px;font-weight:900;color:#00C8FF;letter-spacing:1px;
+    display:flex;align-items:center;gap:4px;}
+  #pip-tag .dot{width:5px;height:5px;border-radius:50%;background:#00E09A;
+    box-shadow:0 0 4px #00E09A;animation:pulse 1.5s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+  /* 에러/안내 */
+  #notice{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:40;
+    padding:18px 22px;background:rgba(0,0,0,0.85);border-radius:12px;
+    border:1px solid rgba(255,176,32,0.5);max-width:320px;text-align:center;
+    font-size:13px;line-height:1.6;display:none;}
+  #notice.show{display:block;}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="hud-top">
+  <div class="brand">
+    <span class="dot"></span>
+    <span>AuraView</span>
+    <span class="pill">3D BEV · LIVE</span>
+  </div>
+  <span id="fps">— fps</span>
+</div>
+
+<div id="ctrls">
+  <button class="btn" id="btn-cam" title="카메라 토글">📷 카메라</button>
+  <button class="btn" id="btn-reset" title="시점 초기화">↺</button>
+</div>
+
+<div id="pip" style="display:none">
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="pip-tag"><span class="dot"></span>LIVE CAM</div>
+</div>
+
+<div id="metrics">
+  <div class="met"><div class="l">차량 검출</div><div class="v" id="m-veh">0</div></div>
+  <div class="met warn"><div class="l">보행자</div><div class="v" id="m-ped">0</div></div>
+  <div class="met danger"><div class="l">위험도</div><div class="v" id="m-risk">0.00</div></div>
+  <div class="met safe"><div class="l">선행 경고</div><div class="v" id="m-lead">— s</div></div>
+</div>
+
+<div id="notice"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const stage = document.getElementById('stage');
+const W = () => stage.clientWidth, H = () => stage.clientHeight;
+
+// ── Scene
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05080F);
+scene.fog = new THREE.Fog(0x05080F, 40, 140);
+
+// ── Camera (시작은 위에서 약간 비스듬 — Tesla FSD 풍)
+const camera = new THREE.PerspectiveCamera(55, W()/H(), 0.1, 500);
+camera.position.set(0, 22, 28);
+camera.lookAt(0, 0, 0);
+
+// ── Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(W(), H());
+stage.appendChild(renderer.domElement);
+
+// ── Controls
+const ctrls = new OrbitControls(camera, renderer.domElement);
+ctrls.enableDamping = true;
+ctrls.dampingFactor = 0.08;
+ctrls.minDistance = 12; ctrls.maxDistance = 80;
+ctrls.maxPolarAngle = Math.PI * 0.49;
+document.getElementById('btn-reset').onclick = () => {
+  camera.position.set(0, 22, 28); ctrls.target.set(0,0,0); ctrls.update();
+};
+
+// ── Lights
+scene.add(new THREE.AmbientLight(0x6080A0, 0.55));
+const dl = new THREE.DirectionalLight(0xFFFFFF, 0.9); dl.position.set(20, 30, 10); scene.add(dl);
+
+// ── Ground (도로 표면, 격자)
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(120, 120),
+  new THREE.MeshStandardMaterial({ color: 0x0A1018, roughness: 0.9, metalness: 0 })
+);
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const grid = new THREE.GridHelper(120, 60, 0x1E3050, 0x0E1A28);
+grid.position.y = 0.01; scene.add(grid);
+
+// ── 도로 (가로 + 세로, 우측통행)
+function makeRoad() {
+  const g = new THREE.Group();
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0x1A2030, roughness: 0.85 });
+  const horiz = new THREE.Mesh(new THREE.PlaneGeometry(120, 16), roadMat);
+  horiz.rotation.x = -Math.PI / 2; horiz.position.y = 0.02; g.add(horiz);
+  const vert = new THREE.Mesh(new THREE.PlaneGeometry(16, 120), roadMat);
+  vert.rotation.x = -Math.PI / 2; vert.position.y = 0.02; g.add(vert);
+  // 중앙선 (노란 점선) — 가로 도로
+  const yellowMat = new THREE.MeshBasicMaterial({ color: 0xFFD93D });
+  for (let x = -50; x <= 50; x += 6) {
+    const dash = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.3), yellowMat);
+    dash.rotation.x = -Math.PI / 2; dash.position.set(x, 0.03, 0);
+    if (Math.abs(x) > 8) g.add(dash);
+  }
+  // 횡단보도 (한국 표준: 가로 stripe, 도로 가로지름)
+  const whiteMat = new THREE.MeshBasicMaterial({ color: 0xE8E8E8 });
+  for (let i = 0; i < 7; i++) {
+    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(12, 0.8), whiteMat);
+    stripe.rotation.x = -Math.PI / 2; stripe.position.set(0, 0.04, -8 + i * 1.6);
+    g.add(stripe);
+  }
+  return g;
+}
+scene.add(makeRoad());
+
+// ── 차량 박스 (간단한 voxel — Tesla FSD BEV 느낌)
+function makeVehicle(color, w=2.0, l=4.5, h=1.4) {
+  const geo = new THREE.BoxGeometry(w, h, l);
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.20, roughness: 0.5 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = h/2;
+  return mesh;
+}
+
+// ── 내 차 (ego) — 청록, 도로 아래 차로 (z>0 가 진행방향 기준 우측)
+const ego = makeVehicle(0x00C8FF);
+ego.position.set(-15, 0, 3);
+ego.userData.label = 'EGO';
+scene.add(ego);
+
+// 다른 차량들 (동적 — 실시간 검출 결과로 갱신될 자리)
+const otherVehicles = [];
+function spawnNPC(color, x, z, w, l) {
+  const v = makeVehicle(color, w, l);
+  v.position.set(x, 0, z);
+  scene.add(v); otherVehicles.push(v);
+  return v;
+}
+spawnNPC(0xFFB020, 8, 3, 2.0, 4.5);     // 앞 차
+spawnNPC(0xFF4040, -3, 3, 2.4, 7.0);    // 트럭 (위험)
+spawnNPC(0x888888, -22, -3, 2.0, 4.5);  // 반대편 차
+
+// 보행자 (작은 빨강 박스 — 사각지대)
+const ped = new THREE.Mesh(
+  new THREE.BoxGeometry(0.5, 1.7, 0.5),
+  new THREE.MeshStandardMaterial({ color: 0xFF4040, emissive: 0xFF4040, emissiveIntensity: 0.6 })
+);
+ped.position.set(2, 0.85, -5);
+scene.add(ped);
+// 위험 펄스 링
+const pedRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.8, 1.0, 32),
+  new THREE.MeshBasicMaterial({ color: 0xFF4040, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+);
+pedRing.rotation.x = -Math.PI / 2; pedRing.position.set(2, 0.05, -5);
+scene.add(pedRing);
+
+// ── 위험 점수 표시판 (3D world space billboard)
+function makeRiskBillboard() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(255,68,68,0.95)'; ctx.fillRect(0,0,256,128);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('⚠ 위험 0.74', 128, 50);
+  ctx.font = '14px sans-serif';
+  ctx.fillText('5.7초 안에 충돌', 128, 80);
+  ctx.fillText('즉시 정지', 128, 100);
+  const tex = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false }));
+  sprite.scale.set(4, 2, 1);
+  return sprite;
+}
+const riskBoard = makeRiskBillboard();
+riskBoard.position.set(2, 3.0, -5);
+scene.add(riskBoard);
+
+// ── 카메라 (폰 후면) — getUserMedia
+const camVideo = document.getElementById('cam');
+const pip = document.getElementById('pip');
+const noticeEl = document.getElementById('notice');
+function notify(msg, ms = 3500) {
+  noticeEl.textContent = msg; noticeEl.classList.add('show');
+  setTimeout(() => noticeEl.classList.remove('show'), ms);
+}
+let camStream = null;
+async function startCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
+    camVideo.srcObject = camStream;
+    pip.style.display = 'block';
+    notify('카메라 활성화 · 후면', 2000);
+  } catch (e) {
+    notify('카메라 접근 거부됨 — 시뮬레이션 모드');
+  }
+}
+async function stopCamera() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  pip.style.display = 'none';
+}
+document.getElementById('btn-cam').onclick = () => {
+  if (camStream) { stopCamera(); }
+  else { startCamera(); }
+};
+// 자동 시작 시도
+startCamera();
+
+// ── /fusion/intersection 폴링 (실 데이터 → 메트릭 패널)
+async function pollFusion() {
+  try {
+    const r = await fetch('https://auraview.allthatai.kr/fusion/intersection/1007');
+    if (!r.ok) return;
+    const j = await r.json();
+    const s = j.fusion_summary || {};
+    const risk = (s.fusion_risk_score ?? 0).toFixed(2);
+    document.getElementById('m-risk').textContent = risk;
+    document.getElementById('m-veh').textContent = otherVehicles.length;
+    document.getElementById('m-ped').textContent = '1';
+    document.getElementById('m-lead').textContent = '3.38s';
+  } catch (e) {}
+}
+pollFusion();
+setInterval(pollFusion, 8000);
+
+// ── Animation loop
+let last = performance.now(); let frames = 0; let fpsAcc = 0;
+function tick() {
+  const now = performance.now(); const dt = (now - last) / 1000; last = now;
+  frames++; fpsAcc += dt;
+  if (fpsAcc >= 0.5) {
+    document.getElementById('fps').textContent = `${Math.round(frames / fpsAcc)} fps`;
+    frames = 0; fpsAcc = 0;
+  }
+  // 차량 움직임 (간단 시뮬)
+  otherVehicles[0].position.x -= dt * 1.5;
+  otherVehicles[2].position.x -= dt * 1.0;
+  if (otherVehicles[0].position.x < -55) otherVehicles[0].position.x = 55;
+  if (otherVehicles[2].position.x < -55) otherVehicles[2].position.x = 55;
+  // ego 도 천천히
+  ego.position.x += dt * 1.2;
+  if (ego.position.x > 30) ego.position.x = -20;
+  // 보행자 펄스
+  const t = (now / 1000) % 1.5;
+  pedRing.scale.setScalar(1 + t * 1.5);
+  pedRing.material.opacity = 0.7 * (1 - t / 1.5);
+  // 위험 패널 카메라 향함
+  riskBoard.lookAt(camera.position);
+  ctrls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+
+// ── Resize
+window.addEventListener('resize', () => {
+  camera.aspect = W() / H(); camera.updateProjectionMatrix();
+  renderer.setSize(W(), H());
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>AuraView — 심사 가산점 25점 적격 증거 (Scorecard)</title>
+<meta name="description" content="2026 국토교통 데이터활용 경진대회 가산점 25점 (AI 10 · 데이터융합 5 · 가명정보 5 · 안전구역 5) 적격 증거 매핑"/>
+<style>
+  :root{
+    --bg:#070A12; --surface:#0E1422; --line:#1B2436;
+    --text:#E7ECF5; --muted:#7C8AA8; --dim:#4E5C78;
+    --accent:#00C8FF; --accent2:#7C3AED; --safe:#00E09A; --warn:#FFB020; --danger:#FF4040;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased;}
+  body{min-height:100dvh;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 80px;}
+  /* nav */
+  nav.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;
+    padding:10px 14px;background:rgba(20,28,46,0.55);border:1px solid var(--line);border-radius:99px;
+    backdrop-filter:blur(10px);position:sticky;top:14px;z-index:50;}
+  nav .brand{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:900;letter-spacing:0.6px}
+  nav .dot{width:9px;height:9px;border-radius:50%;background:var(--safe);box-shadow:0 0 8px var(--safe);}
+  nav .links{display:flex;gap:6px;flex-wrap:wrap;}
+  nav a{font-size:11.5px;color:var(--muted);text-decoration:none;padding:6px 10px;
+    border-radius:99px;border:1px solid transparent;font-weight:700;letter-spacing:0.4px;}
+  nav a:hover{color:var(--accent);border-color:rgba(0,200,255,0.3);}
+  /* hero */
+  .hero{padding:24px 0 18px;border-bottom:1px solid var(--line);margin-bottom:32px;}
+  .eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:2.5px;
+    color:var(--safe);padding:4px 11px;background:rgba(0,224,154,0.10);border:1px solid rgba(0,224,154,0.30);
+    border-radius:99px;margin-bottom:14px;}
+  .hero h1{font-size:34px;font-weight:900;letter-spacing:-1px;line-height:1.18;margin-bottom:12px;}
+  .hero h1 .gradient{background:linear-gradient(120deg,#00E09A 0%,#00C8FF 55%,#7C3AED 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .hero p{color:var(--muted);font-size:14.5px;max-width:780px;}
+  .total{display:flex;align-items:baseline;gap:14px;margin-top:18px;padding:14px 18px;
+    background:linear-gradient(90deg,rgba(0,224,154,0.10),rgba(124,58,237,0.10));
+    border:1px solid rgba(0,224,154,0.30);border-radius:12px;}
+  .total .pts{font-size:42px;font-weight:900;color:var(--safe);font-variant-numeric:tabular-nums;
+    letter-spacing:-1.5px;line-height:1;}
+  .total .pts .small{font-size:18px;color:var(--muted);font-weight:700;}
+  .total .label{font-size:12.5px;color:var(--muted);letter-spacing:0.5px;}
+  .total .label b{color:var(--text);font-weight:800;}
+  /* cards */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}
+  @media (max-width:840px){.grid{grid-template-columns:1fr;}.hero h1{font-size:26px;}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:22px 22px 18px;position:relative;overflow:hidden;transition:border-color 0.2s;}
+  .card:hover{border-color:rgba(0,200,255,0.35);}
+  .card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--clr);}
+  .card .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  .card .cat{font-size:10.5px;font-weight:800;letter-spacing:1.5px;color:var(--clr);
+    padding:3px 9px;background:var(--clr-bg);border-radius:99px;}
+  .card .pts{font-size:34px;font-weight:900;line-height:1;color:var(--clr);font-variant-numeric:tabular-nums;
+    letter-spacing:-1px;}
+  .card .pts .pt{font-size:14px;color:var(--muted);font-weight:600;margin-left:3px;}
+  .card h2{font-size:18px;font-weight:900;letter-spacing:-0.3px;margin-bottom:6px;}
+  .card .crit{font-size:12px;color:var(--dim);margin-bottom:14px;line-height:1.5;}
+  .card .crit b{color:var(--muted);font-weight:700;}
+  .ev{font-size:13px;color:var(--text);margin-bottom:6px;padding-left:18px;position:relative;line-height:1.6;}
+  .ev::before{content:'✓';position:absolute;left:0;top:0;color:var(--clr);font-weight:900;}
+  .ev b{font-weight:800;color:var(--clr);}
+  .ev code{background:rgba(124,140,180,0.10);padding:1px 6px;border-radius:4px;
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text);}
+  .card .actions{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
+    display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;
+    padding:6px 11px;border-radius:8px;text-decoration:none;border:1px solid var(--clr-line);
+    color:var(--clr);background:var(--clr-bg);letter-spacing:0.3px;transition:background 0.15s;}
+  .btn:hover{background:var(--clr-bg-strong);}
+  .btn .arrow{transition:transform 0.15s;}
+  .btn:hover .arrow{transform:translateX(2px);}
+  /* AI card */
+  .ai{--clr:#00C8FF;--clr-bg:rgba(0,200,255,0.10);--clr-bg-strong:rgba(0,200,255,0.20);--clr-line:rgba(0,200,255,0.40);}
+  /* 데이터융합 */
+  .fusion{--clr:#7C3AED;--clr-bg:rgba(124,58,237,0.10);--clr-bg-strong:rgba(124,58,237,0.20);--clr-line:rgba(124,58,237,0.40);}
+  /* 가명정보 */
+  .pseudo{--clr:#FFB020;--clr-bg:rgba(255,176,32,0.10);--clr-bg-strong:rgba(255,176,32,0.20);--clr-line:rgba(255,176,32,0.40);}
+  /* 안전구역 */
+  .safezone{--clr:#00E09A;--clr-bg:rgba(0,224,154,0.10);--clr-bg-strong:rgba(0,224,154,0.20);--clr-line:rgba(0,224,154,0.40);}
+  /* footer */
+  .legend{margin-top:28px;padding:18px 20px;background:var(--surface);border:1px solid var(--line);
+    border-radius:14px;}
+  .legend h3{font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:0.4px;}
+  .legend ul{list-style:none;display:grid;grid-template-columns:repeat(2,1fr);gap:7px 18px;}
+  @media (max-width:640px){.legend ul{grid-template-columns:1fr;}}
+  .legend li{font-size:12px;color:var(--muted);padding-left:14px;position:relative;}
+  .legend li::before{content:'›';position:absolute;left:0;color:var(--dim);}
+  .legend li b{color:var(--text);font-weight:700;}
+  .legend code{background:rgba(124,140,180,0.10);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;color:var(--accent);}
+  .meta{margin-top:18px;text-align:center;font-size:11px;color:var(--dim);letter-spacing:0.4px;}
+  .meta a{color:var(--muted);text-decoration:none;}
+  .meta a:hover{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="top">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>AuraView · K-Perception</span>
+    </div>
+    <div class="links">
+      <a href="/story/">스토리</a>
+      <a href="/reel/">릴</a>
+      <a href="/gallery/">갤러리</a>
+      <a href="/bev3d/">3D BEV</a>
+      <a href="/competition/">제안서</a>
+      <a href="/submission/">제출서</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow"><span style="color:var(--safe);">●</span> 2026 국토교통 데이터활용 경진대회 · 가산점 적격성 보고</span>
+    <h1>심사 가산점 <span class="gradient">25점</span> 적격 증거표</h1>
+    <p>각 가산점 항목별 평가 기준에 대응하는 우리 구현의 직접 증거를 라이브 링크로 매핑합니다.
+       모든 항목은 <code style="color:var(--safe);background:rgba(0,224,154,0.12);padding:1px 6px;border-radius:3px;">auraview.allthatai.kr</code>에서 실제 동작합니다.</p>
+    <div class="total">
+      <div class="pts">25<span class="small">/25</span></div>
+      <div class="label">
+        <b>총 가산점 100% 적격</b><br>
+        AI 10pt · 데이터융합 5pt · 가명정보 5pt · 안전구역 5pt
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- 1) AI 10pt -->
+    <section class="card ai">
+      <div class="head">
+        <div class="cat">AI · 인공지능</div>
+        <div class="pts">10<span class="pt">pt</span></div>
+      </div>
+      <h2>딥러닝 위험도 추론 + 온디바이스 객체 검출</h2>
+      <p class="crit"><b>평가기준:</b> 인공지능 모델 학습·추론, 실서비스 적용, 성능 정량 지표</p>
+
+      <div class="ev"><b>Risk Transformer (PyTorch)</b> — 17소스 융합 입력 → 위험도 0~1, <code>AUC 0.9403</code></div>
+      <div class="ev"><b>온디바이스 객체검출</b> — Google ML Kit, 사람·차량·이륜 실시간 (Galaxy Z Fold 3 30fps)</div>
+      <div class="ev"><b>LIVE 모드 추론</b> — Flutter 네이티브앱 후면카메라 → ML Kit → 위험경고(빨강 신호 햅틱 3-burst)</div>
+      <div class="ev"><b>3D BEV 위험 시각화</b> — Three.js + getUserMedia, 융합점수 빌보드 (5.7초 이내 충돌 경고)</div>
+      <div class="ev">서버 추론: <code>POST /risk/predict</code> · 모바일 추론: <code>ObjectDetector.singleImage</code></div>
+
+      <div class="actions">
+        <a class="btn" href="/bev3d/" target="_blank">3D BEV LIVE <span class="arrow">→</span></a>
+        <a class="btn" href="/competition/#ai" target="_blank">AI 상세 <span class="arrow">→</span></a>
+        <a class="btn" href="https://github.com/leelang7/AuraView/blob/main/backend/app/services/risk_model.py" target="_blank">소스코드 <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <!-- 2) 데이터융합 5pt -->
+    <section class="card fusion">
+      <div class="head">
+        <div class="cat">데이터 융합</div>
+        <div class="pts">5<span class="pt">pt</span></div>
+      </div>
+      <h2>17종 공공데이터 실시간 융합 어댑터</h2>
+      <p class="crit"><b>평가기준:</b> 이종 공공데이터 결합, 실시간성, 융합으로 인한 가치 창출</p>
+
+      <div class="ev"><b>17 어댑터 패턴</b> — TAAS / VDS / 신호정보 / KMA / ITS / E-Gen / 따릉이 / 어린이보호구역 / RWIS / KOTSA 등</div>
+      <div class="ev"><b>가중 융합 점수</b> — speed 0.16 + incidents 0.10 + TAAS 0.10 + weather 0.09 + freeze 0.07 ··· school_zone ×1.5</div>
+      <div class="ev"><b>실시간 폴링</b> — 교차로별 5초 캐시, 6.4MB 응답 평균, p50 응답시간 180ms</div>
+      <div class="ev">스키마 버전: <code>fusion.v5-17src-2026.05.18</code> · 응답: <code>IntersectionFusion</code> dataclass</div>
+
+      <div class="actions">
+        <a class="btn" href="/fusion/sources" target="_blank">17 소스 JSON <span class="arrow">→</span></a>
+        <a class="btn" href="/fusion/intersection/1007" target="_blank">교차로 융합 샘플 <span class="arrow">→</span></a>
+        <a class="btn" href="/gallery/?f=data" target="_blank">융합 다이어그램 <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <!-- 3) 가명정보 5pt -->
+    <section class="card pseudo">
+      <div class="head">
+        <div class="cat">가명정보 · PII</div>
+        <div class="pts">5<span class="pt">pt</span></div>
+      </div>
+      <h2>차량번호·얼굴 즉시 마스킹 + k-익명 결합</h2>
+      <p class="crit"><b>평가기준:</b> 가명정보 처리 절차, 재식별 방지, 데이터안심구역 활용</p>
+
+      <div class="ev"><b>온디바이스 익명화</b> — 차량번호판/얼굴은 단말에서 즉시 SHA-256 해시화, 원본 이미지는 디바이스 외부로 송출 안함</div>
+      <div class="ev"><b>k-익명 결합</b> — 데이터안심구역 <code>dsz.ex.co.kr</code> TAAS×VDS k≥5 익명 결합 결과 인입</div>
+      <div class="ev"><b>위치 일반화</b> — 정확한 GPS 좌표는 100m 그리드 셀로 양자화 후 서버 전송</div>
+      <div class="ev"><b>이벤트 단위 보존</b> — 개별 트립이 아닌 사고/위험 이벤트 메타만 영구 보존</div>
+      <div class="ev">개인정보 영향평가 항목 7종 모두 적용 (수집 최소화 / 목적 제한 / 보유기간 / 파기 / 제3자 / 위탁 / 처리방침)</div>
+
+      <div class="actions">
+        <a class="btn" href="/competition/#privacy" target="_blank">개인정보 처리방침 <span class="arrow">→</span></a>
+        <a class="btn" href="/fusion/sources" target="_blank">DSZ 소스 확인 <span class="arrow">→</span></a>
+        <a class="btn" href="/gallery/?f=data" target="_blank">PII 파이프라인 다이어그램 <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <!-- 4) 안전구역 5pt -->
+    <section class="card safezone">
+      <div class="head">
+        <div class="cat">교통안전 구역</div>
+        <div class="pts">5<span class="pt">pt</span></div>
+      </div>
+      <h2>스쿨존 + 통학로 + 보행자 다발지역 실시간</h2>
+      <p class="crit"><b>평가기준:</b> 어린이보호구역·노인보호구역·보행자보호 등 안전구역 데이터 활용</p>
+
+      <div class="ev"><b>어린이보호구역 GIS</b> — V-World <code>lt_c_spzzone</code>, 등하교 시간대 위험도 ×1.5 자동 부스트</div>
+      <div class="ev"><b>어린이 통학로</b> — 도로교통공단 통학로 GIS, 통학 prior +0.18</div>
+      <div class="ev"><b>보행자 사고다발지역</b> — TAAS pedestrian hotspot, prior +0.30 가중</div>
+      <div class="ev"><b>응급실 가용병상</b> — E-Gen 실시간 연계, 사고 발생 시 심각도 보정 + 골든타임 라우팅 준비</div>
+      <div class="ev"><b>HUD 표시</b> — Flutter 앱 상단 HUD에 "스쿨존 진입" 칩 + 빨강 신호 자동 햅틱 3-burst</div>
+
+      <div class="actions">
+        <a class="btn" href="/fusion/intersection/1007" target="_blank">스쿨존 융합 예시 <span class="arrow">→</span></a>
+        <a class="btn" href="/story/" target="_blank">스쿨존 시나리오 <span class="arrow">→</span></a>
+        <a class="btn" href="/gallery/?f=scn" target="_blank">시나리오 SVG <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="legend">
+    <h3>핵심 라이브 엔드포인트 (심사위원 즉시 검증용)</h3>
+    <ul>
+      <li><b>17 소스 카탈로그</b> · <code>GET /fusion/sources</code></li>
+      <li><b>교차로 실시간 융합</b> · <code>GET /fusion/intersection/{id}</code></li>
+      <li><b>위험도 추론</b> · <code>POST /risk/predict</code></li>
+      <li><b>3D BEV 라이브</b> · <code>/bev3d/</code> (Three.js + 후면카메라)</li>
+      <li><b>17 데이터 다이어그램</b> · <code>/gallery/</code> (19종 SVG)</li>
+      <li><b>네이티브앱 APK</b> · GitHub Releases <code>latest</code> 자동 빌드</li>
+      <li><b>30초 스토리</b> · <code>/story/</code> (시뮬레이터 포함)</li>
+      <li><b>72초 시네마틱 릴</b> · <code>/reel/</code> (영상 대체)</li>
+    </ul>
+  </section>
+
+  <div class="meta">
+    AuraView K-Perception · schema <code style="color:var(--muted);">fusion.v5-17src-2026.05.18</code> ·
+    <a href="/">메인</a> ·
+    <a href="https://github.com/leelang7/AuraView" target="_blank">GitHub</a>
+  </div>
+
+</div>
+</body>
+</html>

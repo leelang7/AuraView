@@ -1842,6 +1842,12 @@ class _CityInfoLine extends StatelessWidget {
     final double inspBoost = (summary?['inspection_risk_boost'] is num) ? (summary!['inspection_risk_boost'] as num).toDouble() : 0.0;
     final double inspFailRate = (summary?['inspection_fail_rate_district'] is num) ? (summary!['inspection_fail_rate_district'] as num).toDouble() : 0.0;
 
+    // v6 2026-05-18: 19-source (KOTSA DTG + 소방청 119 출동)
+    final double dtgBoost = (summary?['dtg_risk_boost'] is num) ? (summary!['dtg_risk_boost'] as num).toDouble() : 0.0;
+    final double dtgDanger = (summary?['dtg_danger_score'] is num) ? (summary!['dtg_danger_score'] as num).toDouble() : 0.0;
+    final double nfaSeverityMul = (summary?['nfa_severity_multiplier'] is num) ? (summary!['nfa_severity_multiplier'] as num).toDouble() : 1.0;
+    final bool goldenAtRisk = (summary?['golden_time_at_risk'] == true);
+
     final showSchoolZone = inSchoolZone && szMul > 1.0;
     final showBlackIce = blackIce || freezeBoost > 0.05;
     final showPedHotspot = inPedHotspot && pedBoost > 0.05;
@@ -1850,6 +1856,8 @@ class _CityInfoLine extends StatelessWidget {
     final showEv = nearEv && evDwelling >= 0.7;
     final showSurface = surfaceBoost > 0.05 || lowVis;
     final showInsp = inspBoost > 0.02;
+    final showDtg = dtgBoost > 0.03 || dtgDanger > 0.6;
+    final showGolden = goldenAtRisk || nfaSeverityMul > 1.10;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1949,7 +1957,21 @@ class _CityInfoLine extends StatelessWidget {
               Text('검사부적합 ${(inspFailRate*100).toStringAsFixed(1)}%',
                 style: const TextStyle(color: Color(0xFFA095FF), fontSize: 10, fontWeight: FontWeight.w700)),
             ]),
-          // v5 배지: N종 융합 (17까지 확장)
+          // v6: KOTSA DTG 사업용 차량 위험운전 (택시·버스·화물 ▲평균)
+          if (showDtg)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.local_taxi, size: 11, color: const Color(0xFFFFB020)), const SizedBox(width: 3),
+              Text('DTG ${dtgDanger.toStringAsFixed(2)} +${(dtgBoost*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFFFFB020), fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v6: 119 골든타임 (평균 도착 > 7분)
+          if (showGolden)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.emergency, size: 11, color: const Color(0xFFFF6B6B)), const SizedBox(width: 3),
+              Text('119 ×${nfaSeverityMul.toStringAsFixed(2)}',
+                style: const TextStyle(color: Color(0xFFFF6B6B), fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v6 배지: N종 융합 (19까지 확장)
           if (sourcesFused >= 7)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -1958,7 +1980,7 @@ class _CityInfoLine extends StatelessWidget {
                 border: Border.all(color: _safe.withValues(alpha: 0.45), width: 0.8),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text('${sourcesFused}src v${sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2"))}',
+              child: Text('${sourcesFused}src v${sourcesFused >= 19 ? "6" : (sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2")))}',
                 style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
             ),
           // v2: BIS 실시간 버스 표시 (반경 150m 내 차량 수)
@@ -3321,6 +3343,29 @@ class _IdleStatusCard extends StatelessWidget {
             child: Center(child: Text('3D',
                 style: TextStyle(color: _accent2, fontSize: 12,
                                  fontWeight: FontWeight.w900, letterSpacing: 0.4))),
+          ),
+        )),
+        const SizedBox(width: 8),
+        // v7.4 2026-05-18: 심사위원 가산점 모드 (⭐ → /scorecard webview)
+        Builder(builder: (ctx) => GestureDetector(
+          onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
+            builder: (_) => const _JudgeModeScreen(),
+          )),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [_safe.withValues(alpha: 0.30), _accent2.withValues(alpha: 0.20)],
+              ),
+              border: Border.all(color: _safe.withValues(alpha: 0.60), width: 1.2),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: _safe.withValues(alpha: 0.30), blurRadius: 9)],
+            ),
+            child: Center(child: Text('★',
+                style: TextStyle(color: _safe, fontSize: 18,
+                                 fontWeight: FontWeight.w900, height: 1.0))),
           ),
         )),
         const SizedBox(width: 8),
@@ -4797,6 +4842,143 @@ class _AuraView3DBevScreenState extends State<AuraView3DBevScreen> {
               ],
             ),
           ),
+      ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v7.4 2026-05-18: 심사위원 가산점 모드 (★)
+//   - 4탭: ⭐ 가산점 25점 · 🔒 PII · 🛡️ 안전구역 · 🎬 스토리
+//   - 각 탭은 WebView 로 https://auraview.allthatai.kr/{path}/ 로드
+// ═══════════════════════════════════════════════════════════════
+class _JudgeModeScreen extends StatefulWidget {
+  const _JudgeModeScreen();
+  @override
+  State<_JudgeModeScreen> createState() => _JudgeModeScreenState();
+}
+
+class _JudgeModeScreenState extends State<_JudgeModeScreen> {
+  int _tab = 0;
+  late WebViewController _wv;
+  int _progress = 0;
+  bool _loaded = false;
+
+  static const _tabs = <Map<String, String>>[
+    {'name': '가산점 25점', 'icon': '★', 'url': 'https://auraview.allthatai.kr/scorecard/'},
+    {'name': 'PII 데모', 'icon': '🔒', 'url': 'https://auraview.allthatai.kr/privacy/'},
+    {'name': '안전구역',   'icon': '🛡', 'url': 'https://auraview.allthatai.kr/safezone/'},
+    {'name': '스토리',     'icon': '📖', 'url': 'https://auraview.allthatai.kr/story/'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final ctrl = WebViewController();
+    ctrl
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(_bg)
+      ..setNavigationDelegate(NavigationDelegate(
+        onProgress: (p) => setState(() => _progress = p),
+        onPageStarted: (_) => setState(() { _loaded = false; _progress = 0; }),
+        onPageFinished: (_) => setState(() => _loaded = true),
+      ));
+    final platform = ctrl.platform;
+    if (platform is AndroidWebViewController) {
+      platform.setMediaPlaybackRequiresUserGesture(false);
+      platform.setOnPlatformPermissionRequest((req) => req.grant());
+    }
+    ctrl.loadRequest(Uri.parse(_tabs[0]['url']!));
+    _wv = ctrl;
+  }
+
+  void _select(int i) {
+    if (i == _tab) return;
+    setState(() { _tab = i; _loaded = false; });
+    _wv.loadRequest(Uri.parse(_tabs[i]['url']!));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        backgroundColor: _surface,
+        elevation: 0,
+        title: Row(children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(
+            color: _safe, shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
+          )),
+          const SizedBox(width: 8),
+          const Text('심사위원 모드 · 가산점 25점',
+              style: TextStyle(color: _text, fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+        ]),
+        actions: [
+          IconButton(icon: Icon(Icons.refresh, color: _muted), onPressed: () => _wv.reload()),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(2),
+          child: !_loaded ? LinearProgressIndicator(
+            value: _progress / 100, backgroundColor: _surface,
+            valueColor: AlwaysStoppedAnimation(_safe), minHeight: 2,
+          ) : const SizedBox(height: 2),
+        ),
+      ),
+      body: Column(children: [
+        // Tabs
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: _surface,
+            border: Border(bottom: BorderSide(color: _surface2, width: 0.5)),
+          ),
+          child: Row(
+            children: List.generate(_tabs.length, (i) {
+              final t = _tabs[i]; final on = i == _tab;
+              return Expanded(child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: GestureDetector(
+                  onTap: () => _select(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: on ? _safe.withValues(alpha: 0.15) : Colors.transparent,
+                      border: Border.all(
+                        color: on ? _safe.withValues(alpha: 0.6) : _surface2,
+                        width: on ? 1.2 : 0.7),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text(t['icon']!, style: const TextStyle(fontSize: 16, height: 1)),
+                      const SizedBox(height: 3),
+                      Text(t['name']!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: on ? _safe : _muted,
+                          fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.2),
+                      ),
+                    ]),
+                  ),
+                ),
+              ));
+            }),
+          ),
+        ),
+        Expanded(child: Stack(children: [
+          WebViewWidget(controller: _wv),
+          if (!_loaded)
+            Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              CircularProgressIndicator(color: _safe, strokeWidth: 2.5),
+              const SizedBox(height: 16),
+              Text('${_tabs[_tab]['name']} 로딩…',
+                style: TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(_tabs[_tab]['url']!,
+                style: TextStyle(color: _muted.withValues(alpha: 0.5), fontSize: 10)),
+            ])),
+        ])),
       ]),
     );
   }

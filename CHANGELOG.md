@@ -5,6 +5,56 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.14 — 외부 데이터 17종 확장 + Flutter HUD + 시뮬레이터 v5 동기화 (2026-05-18)
+
+### Added — 외부 데이터 15 → 17종 확장
+- **도로 노면 상태 (RWIS)** — `data.ex.co.kr/openapi/rwisapi` · EX_OPEN_KEY 재사용 (신규 키 불필요)
+  - 4 station fixture (강남대로/성수대교/광화문/잠실대교)
+  - `surface_risk_boost` : dry=0 / wet=0.10 / snow=0.22 / frost·ice=0.35
+  - `low_visibility_flag` (시정 < 2000m)
+- **KOTSA 자동차검사통계** — `apis.data.go.kr/B552014/InspectionStats`
+  - 시군구별 부적합률 (강남/송파/중구/성동 fixture)
+  - `inspection_risk_boost` : 부적합률 1%p 초과 시 +0.04
+  - 잠재 사고 위험 지표 (제동·배기·타이어 등)
+- 신규 엔드포인트: `GET /fusion/road-surface`, `/fusion/vehicle-inspection`
+- `IntersectionFusion` 17 sources + fusion_summary 신규 5필드
+- 위험점수 재가중 (속도0.16 + 돌발0.10 + ... + 노면0.07 + 검사0.05)
+- `schema_version: fusion.v5-17src-2026.05.18`
+
+### Updated — Flutter `_CityInfoLine` v5
+- 🛣️ 도로 노면 신호 (RWIS) — frost/ice → 결빙, snow → 적설, wet → 습윤
+- 🔧 자동차검사 부적합 신호 (KOTSA) — 시군구 부적합률 표시
+- 배지 v5 추가 (sourcesFused ≥17)
+
+### Updated — /story 인터랙티브 시뮬레이터 v5
+- 슬라이더 8 → 10 (surface 0-35%, inspection 0-8%)
+- 프리셋 5종 모두 v5 키 추가 (ice_bicycle: surface=35%, rush_er: insp=4%)
+- 가중치 식 17-source 동기화 (backend 정합)
+
+### Updated — 사용자 노출 카피 일괄 갱신
+- 7 파일 일괄 갱신 (story/reel/competition/kiosk/slides/landing/README)
+- "15종 공공데이터" → "17종 공공데이터"
+- "15-Source Fusion" → "17-Source Fusion"
+- "15 입력" / "15-source HUD" → 17
+
+### Added — backend 신규 엔드포인트
+- `GET /metrics/visuals` — 19 SVG 자동 인덱스 (카테고리/크기/URL)
+
+### Tests (101 → 103 passed)
+- `test_fusion_sources_lists_seventeen` (전 _fifteen 교체)
+- `test_fusion_intersection_returns_seventeen_sources_v5` (전 _v4 교체)
+- `test_fusion_road_surface_endpoint` (신규)
+- `test_fusion_vehicle_inspection_endpoint` (신규)
+- `test_data_attribution_lists_17_public_sources` (전 _15_ 교체)
+
+### Why
+- 가점 데이터융합 5점 강화: 17종 = 한국 도로 인프라가 측정 중인 거의 모든 신호
+- 도로 노면 = 결빙·블랙아이스 정확도 ↑ (KMA 파생 + RWIS 직접)
+- 자동차검사 = 잠재 사고 위험 차량 사전 식별 (정비 부적합 차량 ↑ 사고 위험 ↑)
+- 모든 추가 데이터가 API 키 1개 (SERVICE_KEY 또는 EX_OPEN_KEY) 로 작동
+
+---
+
 ## v0.13 — 19 SVG + 8 페이지 진입점 + Flutter 앱 전면 개선 (2026-05-17~18)
 
 ### Added — 시각자료 4종 신규 (16 → 19 SVG)

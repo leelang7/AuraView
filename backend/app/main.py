@@ -201,6 +201,7 @@ _mount_static(app, ["static", "bev3d"], "/bev3d")        # v7 2026-05-18: AuraVi
 _mount_static(app, ["static", "scorecard"], "/scorecard")  # v7 2026-05-18: 심사 가산점 25점 적격 증거표 (judge-facing)
 _mount_static(app, ["static", "privacy"], "/privacy")    # v7 2026-05-18: 가명정보 처리 파이프라인 라이브 데모 (5pt 실증)
 _mount_static(app, ["static", "safezone"], "/safezone")  # v7 2026-05-18: 안전구역 라이브 대시보드 (5pt 실증)
+_mount_static(app, ["static", "policy"], "/policy")      # v8 2026-05-18: 수집→통계분석→정책의사결정 (Tesla fleet)
 _mount_static(app, ["static"], "/static")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)

@@ -582,11 +582,12 @@ class _FleetHomeState extends State<FleetHome>
         final h = (box.bottom - box.top).abs();
         final pixelArea = w * h;
         final areaRatio = pixelArea / imgArea;
-        if (areaRatio < 0.012) continue;     // 1.2% 미만 skip (작은 노이즈)
-        if (areaRatio > 0.8) continue;
-        if (w < 24 || h < 24) continue;
+        // v10.3: filter 완화 — 작은 객체도 잡음 (1.2% → 0.4%)
+        if (areaRatio < 0.004) continue;
+        if (areaRatio > 0.85) continue;
+        if (w < 16 || h < 16) continue;
         final aspect = h / w;
-        if (aspect < 0.20 || aspect > 5.0) continue;
+        if (aspect < 0.15 || aspect > 6.0) continue;
         final cls = aspect > 1.4 ? 'person' : 'car';
         double score = 0.6;
         if (obj.labels.isNotEmpty) {
@@ -1238,9 +1239,10 @@ class _FleetHomeState extends State<FleetHome>
             SafeArea(
               child: Column(
                 children: [
-                  // 1) 상단 status bar
+                  // v11 2026-05-19: 전면 디자인 개편 — _IdleStatusCard 폐기, 단일 slim 헤더
+                  //   1줄 헤더: AuraView · speed · 검출 · uploads · 위험알림 · ⚙
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
                     child: _UnifiedStatusBar(
                       shadowOn: _shadowOn,
                       uploads: _uploads,
@@ -1249,36 +1251,22 @@ class _FleetHomeState extends State<FleetHome>
                       onSettingsTap: _openDetailSheet,
                     ),
                   ),
-                  const SizedBox(height: 8),
-
-                  // 2) Alert HUD 또는 Idle 카드 (조건부)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: _altSignal != null
-                      ? _SignalHud(
-                          altSignal: _altSignal!,
-                          intersectionName: _autoIntersectionName ??
-                              (_intersectionId != null ? '교차로 $_intersectionId' : ''),
-                          pulse: _lastReason == 'signal_occluded',
-                        )
-                      : _IdleStatusCard(
-                          uploads: _uploads,
-                          captures: _captures,
-                          shadowOn: _shadowOn,
-                          intersectionId: _autoIntersectionId ?? _intersectionId,
-                          intersectionName: _autoIntersectionName,
-                          onSettingsTap: _openDetailSheet,
-                          onRecToggleTap: _toggleShadow,
-                        ),
+                  // 위험 신호가 있을 때만 SignalHud 컴팩트 표시
+                  if (_altSignal != null) Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                    child: _SignalHud(
+                      altSignal: _altSignal!,
+                      intersectionName: _autoIntersectionName ??
+                          (_intersectionId != null ? '교차로 $_intersectionId' : ''),
+                      pulse: _lastReason == 'signal_occluded',
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
 
-                  // v10 2026-05-19: 제로베이스 재설계 — Tesla 컴퓨터 모니터 식 split
-                  //   상단: 라이브 카메라 + ML Kit 검출 박스 (실제 보이는 화면)
-                  //   하단: 순수 BEV (차선/도로 그림 X, 거리 그리드 + 검출 객체 실루엣만)
+                  // BEV split — 화면 거의 전체 사용 (하단 floating REC 자리만 비움)
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 80),
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 56),
                       child: _CameraBevSplit(
                         camera: _cam,
                         detections: _bevDetections,
@@ -1327,17 +1315,14 @@ class _FleetHomeState extends State<FleetHome>
                 child: Center(child: _LiveBadge(reason: _reasonKo(_lastReason))),
               ),
 
-            // v9.4: 주행 시작 버튼 복원 (사용자 요구) — 시스템 네비 위에 안전 배치
+            // v11 2026-05-19: 큰 _DriveButton 폐기 → 하단 floating REC pill (소형)
             SafeArea(
-              minimum: const EdgeInsets.only(bottom: 8),
+              minimum: const EdgeInsets.only(bottom: 6),
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: _DriveButton(
-                    on: _shadowOn,
-                    onTap: _toggleShadow,
-                  ),
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: _RecPill(on: _shadowOn, onTap: _toggleShadow),
                 ),
               ),
             ),
@@ -6518,4 +6503,47 @@ class _TeslaBevV2Painter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TeslaBevV2Painter old) => true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v11 2026-05-19: floating REC pill (옛 _DriveButton 큰 거 폐기, 작은 알약)
+// ═══════════════════════════════════════════════════════════════
+class _RecPill extends StatelessWidget {
+  final bool on;
+  final VoidCallback? onTap;
+  const _RecPill({required this.on, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final col = on ? _danger : _accent;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: on ? _danger.withValues(alpha: 0.20) : _accent.withValues(alpha: 0.15),
+          border: Border.all(color: col.withValues(alpha: 0.65), width: 1.4),
+          borderRadius: BorderRadius.circular(99),
+          boxShadow: on
+            ? [BoxShadow(color: _danger.withValues(alpha: 0.45), blurRadius: 14)]
+            : [BoxShadow(color: _accent.withValues(alpha: 0.25), blurRadius: 8)],
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 9, height: 9, decoration: BoxDecoration(
+              color: col, shape: BoxShape.circle,
+              boxShadow: on ? [BoxShadow(color: _danger, blurRadius: 6)] : null,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(on ? 'REC · 모니터링 중' : '▶ 모니터링 시작',
+            style: TextStyle(color: col, fontSize: 12,
+              fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+        ]),
+      ),
+    );
+  }
 }

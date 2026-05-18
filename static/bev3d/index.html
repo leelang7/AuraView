@@ -94,6 +94,30 @@
 <!-- AI 상태 (로딩 / 백엔드 / 검출 카운트) -->
 <div id="ai-status"><span class="led"></span><span id="ai-text">AI 대기 중</span></div>
 
+<script>
+// v9 2026-05-18: ?embed=fleet 임베드 모드 — Flutter 메인 BEV 로 사용될 때 외곽 chrome 숨김
+(function () {
+  const p = new URLSearchParams(location.search);
+  if (p.get('embed') === 'fleet') {
+    document.body.classList.add('embed-fleet');
+    const style = document.createElement('style');
+    style.textContent = `
+      .embed-fleet #hud-top { padding: 6px 10px; }
+      .embed-fleet .brand span:nth-child(2) { display: none; }   /* "AuraView" 숨김 */
+      .embed-fleet .brand .pill { padding: 2px 6px; font-size: 9px; }
+      .embed-fleet #ctrls { top: 6px; right: 8px; }
+      .embed-fleet #ctrls .btn { padding: 3px 8px; font-size: 10px; }
+      .embed-fleet #ai-status { top: 32px; right: 8px; padding: 3px 8px; font-size: 9.5px; }
+      .embed-fleet #pip { width: 110px; height: 80px; top: 50px; left: 10px; }
+      .embed-fleet #metrics { padding: 9px 11px; bottom: 8px; left: 8px; right: 8px; }
+      .embed-fleet #metrics .met .l { font-size: 8.5px; }
+      .embed-fleet #metrics .met .v { font-size: 15px; }
+    `;
+    document.head.appendChild(style);
+  }
+})();
+</script>
+
 <div id="ctrls">
   <button class="btn" id="btn-cam" title="카메라 토글">📷 카메라</button>
   <button class="btn" id="btn-reset" title="시점 초기화">↺</button>

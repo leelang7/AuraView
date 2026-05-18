@@ -1207,20 +1207,14 @@ class _FleetHomeState extends State<FleetHome>
                   ),
                   const SizedBox(height: 10),
 
-                  // 3) ★ BEV 메인 화면 (Tesla 모니터 스타일) — Expanded로 가용 공간 모두 사용
+                  // v9 2026-05-18: 메인 라이브 BEV = /bev3d/ WebView (실 카메라 + COCO-SSD + 3D 점유)
+                  //   기존 _BevPanel CustomPainter voxel 폐기. MetroEyes 식 실시간 3D BEV 가 곧 메인.
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: _BevPanel(
-                        bev: _demoScenarioOn ? (_serverBev ?? _bev) : _bev,
+                      child: _LiveBev3D(
                         fusion: _fusion,
                         busLive: _busLive,
-                        demoMode: _demoScenarioOn,
-                        scenarioLabel: _demoScenarioOn
-                            ? (_scnLabels[_scnList[_scnIdx % _scnList.length]] ?? '')
-                            : null,
-                        onToggleDemo: _toggleDemoScenario,
-                        fillScreen: true,
                       ),
                     ),
                   ),
@@ -1230,63 +1224,24 @@ class _FleetHomeState extends State<FleetHome>
             ),
 
             // 4) 카메라 PiP — 좌하단 (140×100). 권한 없으면 _CameraPlaceholder.
+            // v9: 카메라 PiP 폐기 — /bev3d/ WebView 내부에 이미 카메라 PiP + 검출 박스 오버레이가 있음.
+            //     별도 Flutter CameraPreview 폴백은 유지하되 _cam 초기화 안 됐을 때만 작은 안내로 표시.
             if (_cam == null || !_cam!.value.isInitialized)
               Positioned(
-                left: 14, bottom: 100,
+                right: 14, top: 100,
                 child: Container(
-                  width: 220, height: 240,
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xEE0D1520),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _danger.withValues(alpha: 0.55), width: 1.5),
-                    boxShadow: [BoxShadow(color: _danger.withValues(alpha: 0.20), blurRadius: 12)],
+                    color: const Color(0xCC0D1520),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: _danger.withValues(alpha: 0.55), width: 1),
                   ),
-                  child: const ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(11)),
-                    child: _CameraPlaceholder(),
-                  ),
-                ),
-              )
-            else if (_cam != null && _cam!.value.isInitialized)
-              Positioned(
-                left: 14, bottom: 100,
-                child: GestureDetector(
-                  onTap: () { /* 추후: 풀스크린 토글 */ },
-                  child: Container(
-                    width: 140, height: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _accent.withValues(alpha: 0.40), width: 1.2),
-                      boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 12)],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(9),
-                      child: Stack(fit: StackFit.expand, children: [
-                        _FullCameraPreview(controller: _cam!),
-                        Positioned(
-                          top: 4, left: 6,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xCC0D1520),
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Container(
-                                width: 5, height: 5,
-                                decoration: BoxDecoration(
-                                  color: _shadowOn ? _safe : _muted, shape: BoxShape.circle,
-                                  boxShadow: _shadowOn ? [BoxShadow(color: _safe, blurRadius: 4)] : null,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text('CAM', style: TextStyle(color: _accent, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                            ]),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.no_photography, size: 12, color: _danger),
+                    const SizedBox(width: 5),
+                    Text('카메라 권한 필요',
+                         style: TextStyle(color: _danger, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.6)),
+                  ]),
                 ),
               ),
 
@@ -3323,29 +3278,7 @@ class _IdleStatusCard extends StatelessWidget {
           ],
         ),
         const SizedBox(width: 10),
-        // v7 2026-05-18: AuraView 자체 3D BEV (Three.js + 실시간 카메라) 진입점
-        Builder(builder: (ctx) => GestureDetector(
-          onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
-            builder: (_) => const AuraView3DBevScreen(),
-          )),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
-                colors: [_accent2.withValues(alpha: 0.30), _accent.withValues(alpha: 0.18)],
-              ),
-              border: Border.all(color: _accent2.withValues(alpha: 0.60), width: 1.2),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [BoxShadow(color: _accent2.withValues(alpha: 0.25), blurRadius: 8)],
-            ),
-            child: Center(child: Text('3D',
-                style: TextStyle(color: _accent2, fontSize: 12,
-                                 fontWeight: FontWeight.w900, letterSpacing: 0.4))),
-          ),
-        )),
-        const SizedBox(width: 8),
+        // v9 2026-05-18: "3D" 버튼 제거 — 메인 라이브 화면 자체가 3D BEV이므로 별도 진입점 불필요.
         // v7.4 2026-05-18: 심사위원 가산점 모드 (⭐ → /scorecard webview)
         Builder(builder: (ctx) => GestureDetector(
           onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
@@ -4981,6 +4914,110 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
             ])),
         ])),
       ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v9 2026-05-18: 메인 라이브 BEV — /bev3d/ WebView 인라인 임베드.
+//   목적: 메인 화면이 곧 MetroEyes 식 실시간 3D BEV (별도 진입 X).
+//   기능:
+//     • 후면 카메라 + COCO-SSD on-device 검출 (TF.js webgl/cpu)
+//     • 검출 박스 영역 비디오 픽셀을 텍스처화 → 3D 빌보드 (객체 모양 보존)
+//     • 위험 빌보드 + 메트릭 패널 + AI 상태 LED — 모두 WebView 내부에
+//   외부 HUD (Flutter side):
+//     • _SignalHud · _CityInfoLine · _DriveButton 가 위에 겹쳐 표시
+// ═══════════════════════════════════════════════════════════════
+class _LiveBev3D extends StatefulWidget {
+  final Map<String, dynamic>? fusion;
+  final Map<String, dynamic>? busLive;
+  const _LiveBev3D({this.fusion, this.busLive});
+  @override
+  State<_LiveBev3D> createState() => _LiveBev3DState();
+}
+
+class _LiveBev3DState extends State<_LiveBev3D> {
+  late final WebViewController _wv;
+  int _progress = 0;
+  bool _loaded = false;
+  static const _url = 'https://auraview.allthatai.kr/bev3d/?embed=fleet';
+
+  @override
+  void initState() {
+    super.initState();
+    final ctrl = WebViewController();
+    ctrl
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0xFF0A1018))
+      ..setNavigationDelegate(NavigationDelegate(
+        onProgress: (p) => setState(() => _progress = p),
+        onPageFinished: (_) => setState(() => _loaded = true),
+      ));
+    final platform = ctrl.platform;
+    if (platform is AndroidWebViewController) {
+      platform.setMediaPlaybackRequiresUserGesture(false);
+      platform.setOnPlatformPermissionRequest((req) => req.grant());
+    }
+    ctrl.loadRequest(Uri.parse(_url));
+    _wv = ctrl;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A1018),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _accent.withValues(alpha: 0.30), width: 1.2),
+        boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 18, spreadRadius: 0.5)],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Stack(fit: StackFit.expand, children: [
+          WebViewWidget(controller: _wv),
+          // 로딩 인디케이터 (위쪽 가장자리)
+          if (!_loaded)
+            Positioned(left: 0, right: 0, top: 0, child: LinearProgressIndicator(
+              value: _progress / 100,
+              backgroundColor: const Color(0xFF121A2A),
+              valueColor: AlwaysStoppedAnimation(_accent),
+              minHeight: 2,
+            )),
+          // 로딩 중 중앙 안내
+          if (!_loaded)
+            Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                CircularProgressIndicator(color: _accent, strokeWidth: 2.5),
+                const SizedBox(height: 14),
+                Text('실시간 3D BEV 시작…',
+                  style: TextStyle(color: _text.withValues(alpha: 0.85), fontSize: 13, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 3),
+                Text('카메라 + COCO-SSD on-device 검출',
+                  style: TextStyle(color: _muted, fontSize: 10.5, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          // 상단 좌측 라벨 (Flutter 측에서 표시 — WebView 내부 라벨이 가려지지 않게 우측 정렬도 무방)
+          Positioned(
+            left: 12, top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xCC0D1520),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: _accent.withValues(alpha: 0.35), width: 0.8),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 7, height: 7, decoration: BoxDecoration(
+                  color: _safe, shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
+                )),
+                const SizedBox(width: 6),
+                Text('LIVE BEV', style: TextStyle(color: _accent, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+              ]),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 }

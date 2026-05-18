@@ -462,6 +462,37 @@
 </div>
 
 <script>
+// v10 2026-05-19: /policy/stats 라이브 페치 + count-up KPI 애니메이션
+(async function loadStats() {
+  try {
+    const r = await fetch('/policy/stats');
+    if (!r.ok) return;
+    const j = await r.json();
+    if (j.kpi) {
+      const k = j.kpi;
+      // 1.2s count-up
+      countUp('kpi-fleet', k.fleet_count || 0, 1100);
+      countUp('kpi-events', k.events_total || 0, 1300);
+      countUp('kpi-hot', k.hot_grids || 0, 1100);
+      countUp('kpi-rec', k.recommendations_active || 0, 900);
+    }
+  } catch (e) {}
+})();
+function countUp(id, target, ms) {
+  const el = document.getElementById(id); if (!el) return;
+  const t0 = performance.now();
+  const start = 0;
+  function tick(now) {
+    const u = Math.min(1, (now - t0) / ms);
+    const easeOut = 1 - Math.pow(1 - u, 2.5);
+    const v = Math.floor(start + (target - start) * easeOut);
+    el.textContent = v.toLocaleString();
+    if (u < 1) requestAnimationFrame(tick);
+    else el.textContent = target.toLocaleString();
+  }
+  requestAnimationFrame(tick);
+}
+
 // ── time-of-day × weekday heatmap cells (random-but-seeded)
 (function () {
   const cells = document.getElementById('cells');

@@ -5125,80 +5125,54 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
           ]),
         ),
       )),
-      // ── 하단 절반: 카메라 프레임을 BEV로 워프 (IPM Inverse Perspective Mapping)
-      //   사용자 요구: "실카메라로 보이는거를 bev로 렌더하라고"
-      //   - Transform.Matrix4 + rotateX → 카메라 ground 영역을 top-down 처럼 펼침
-      //   - 그 위에 ML Kit 검출 박스도 동일 변환 + 거리 grid 오버레이
+      // ── 하단 절반: 순수 합성 3D BEV (IPM affine 워프 폐기)
+      //   사용자 지적: "이거는 걍 아핀변환해서 보여주는거 아니냐?"
+      //   진짜 3D BEV = monocular depth NN. 그건 무거우니 ML Kit bbox bottom-y로
+      //   거리 추정 → 합성 3D 씬에 Tesla AI Day 식 voxel cluster 배치.
       Expanded(flex: 5, child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF040810),
+          gradient: const RadialGradient(
+            center: Alignment(0, 0.9), radius: 1.2,
+            colors: [Color(0xFF0B1320), Color(0xFF040810)],
+          ),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: _safe.withValues(alpha: 0.30), width: 1),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(13),
-          child: LayoutBuilder(builder: (ctx, c) {
-            final bw = c.maxWidth, bh = c.maxHeight;
-            // IPM 행렬: 카메라 평면을 ground 로 펼침
-            // rotateX(-θ): top 이 안으로 들어가 (먼 거리), bottom 이 앞으로 (가까운 거리)
-            // perspective entry: setEntry(3,2,k) — 작을수록 vanishing 약함
-            final ipm = Matrix4.identity()
-              ..setEntry(3, 2, 0.0014)
-              ..rotateX(-1.20);   // -68.8° 강한 forward tilt = BEV 효과
-            return Stack(fit: StackFit.expand, children: [
-              // 카메라 프레임을 IPM 으로 변환
-              if (widget.camera != null && widget.camera!.value.isInitialized)
-                Positioned.fill(child: OverflowBox(
-                  alignment: Alignment.center,
-                  minWidth: bw * 1.8, maxWidth: bw * 1.8,
-                  minHeight: bh * 3.0, maxHeight: bh * 3.0,
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: ipm,
-                    child: _FullCameraPreview(controller: widget.camera!),
-                  ),
+          child: Stack(fit: StackFit.expand, children: [
+            RepaintBoundary(child: CustomPaint(
+              size: Size.infinite,
+              painter: _CleanBevPainter(objs: _objs, t: _t),
+            )),
+            // 라벨
+            Positioned(left: 10, top: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: _safe.withValues(alpha: 0.40), width: 0.8),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 6, height: 6, decoration: BoxDecoration(
+                  color: _safe, shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: _safe, blurRadius: 5)],
                 )),
-              // 도로 darkening 오버레이 (BEV 분위기)
-              Positioned.fill(child: DecoratedBox(
-                decoration: BoxDecoration(gradient: LinearGradient(
-                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                  colors: [Colors.black.withValues(alpha: 0.55), Colors.black.withValues(alpha: 0.15)],
-                )),
-              )),
-              // 거리 grid + 검출 silhouette 오버레이
-              IgnorePointer(child: CustomPaint(
-                size: Size.infinite,
-                painter: _CleanBevPainter(objs: _objs, t: _t),
-              )),
-              // 라벨
-              Positioned(left: 10, top: 8, child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
-                  border: Border.all(color: _safe.withValues(alpha: 0.40), width: 0.8),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 6, height: 6, decoration: BoxDecoration(
-                    color: _safe, shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: _safe, blurRadius: 5)],
-                  )),
-                  const SizedBox(width: 6),
-                  Text('BEV (IPM) · 카메라 워프',
-                    style: TextStyle(color: _safe, fontSize: 10,
-                      fontWeight: FontWeight.w900, letterSpacing: 1.0)),
-                ]),
-              )),
-              Positioned(right: 10, top: 8, child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text('👤 $pc · 🚗 $vc',
-                  style: TextStyle(color: _muted, fontSize: 10,
-                    fontWeight: FontWeight.w800)),
-              )),
-            ]);
-          }),
+                const SizedBox(width: 6),
+                Text('3D BEV · 합성 + 검출 voxel',
+                  style: TextStyle(color: _safe, fontSize: 10,
+                    fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+              ]),
+            )),
+            Positioned(right: 10, top: 8, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text('👤 $pc · 🚗 $vc',
+                style: TextStyle(color: _muted, fontSize: 10,
+                  fontWeight: FontWeight.w800)),
+            )),
+          ]),
         ),
       )),
     ]);

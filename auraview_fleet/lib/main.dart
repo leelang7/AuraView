@@ -25,6 +25,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
@@ -1834,13 +1835,13 @@ class _CityInfoLine extends StatelessWidget {
     final showInsp = inspBoost > 0.02;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Wrap(
-        spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.traffic, size: 11, color: _accent), const SizedBox(width: 3),
-            Text(sigState, style: const TextStyle(color: _text, fontSize: 10)),
+            Icon(Icons.traffic, size: 13, color: _accent), const SizedBox(width: 4),
+            Text(sigState, style: const TextStyle(color: _text, fontSize: 12, fontWeight: FontWeight.w700)),
           ]),
           Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.speed, size: 11, color: _accent), const SizedBox(width: 3),
@@ -3282,7 +3283,30 @@ class _IdleStatusCard extends StatelessWidget {
             ]),
           ],
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
+        // v6 2026-05-18: MetroEyes 3D BEV 진입점
+        Builder(builder: (ctx) => GestureDetector(
+          onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
+            builder: (_) => const MetroEyesBevScreen(),
+          )),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [_accent2.withValues(alpha: 0.30), _accent.withValues(alpha: 0.18)],
+              ),
+              border: Border.all(color: _accent2.withValues(alpha: 0.60), width: 1.2),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: _accent2.withValues(alpha: 0.25), blurRadius: 8)],
+            ),
+            child: Center(child: Text('3D',
+                style: TextStyle(color: _accent2, fontSize: 12,
+                                 fontWeight: FontWeight.w900, letterSpacing: 0.4))),
+          ),
+        )),
+        const SizedBox(width: 8),
         // 설정 버튼 (눈에 띄게)
         GestureDetector(
           onTap: onSettingsTap,
@@ -4660,6 +4684,86 @@ class _OnboardPage extends StatelessWidget {
             textAlign: TextAlign.center),
         ],
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v6 2026-05-18: MetroEyes 3D BEV 임베드 (Flutter WebView)
+// ═══════════════════════════════════════════════════════════════
+class MetroEyesBevScreen extends StatefulWidget {
+  const MetroEyesBevScreen({super.key});
+  @override
+  State<MetroEyesBevScreen> createState() => _MetroEyesBevScreenState();
+}
+
+class _MetroEyesBevScreenState extends State<MetroEyesBevScreen> {
+  late final WebViewController _wv;
+  int _progress = 0;
+  bool _loaded = false;
+  static const _url = 'https://leelang7.github.io/MetroEyes/frontend/operator_web/realbev.html';
+
+  @override
+  void initState() {
+    super.initState();
+    _wv = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(_bg)
+      ..setNavigationDelegate(NavigationDelegate(
+        onProgress: (p) => setState(() => _progress = p),
+        onPageFinished: (_) => setState(() => _loaded = true),
+      ))
+      ..loadRequest(Uri.parse(_url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        backgroundColor: _surface,
+        elevation: 0,
+        title: const Row(children: [
+          Icon(Icons.view_in_ar, color: _accent, size: 20),
+          SizedBox(width: 8),
+          Text('MetroEyes 3D BEV',
+              style: TextStyle(color: _text, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+        ]),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: _muted),
+            tooltip: '새로고침',
+            onPressed: () => _wv.reload(),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(2),
+          child: !_loaded ? LinearProgressIndicator(
+            value: _progress / 100,
+            backgroundColor: _surface,
+            valueColor: AlwaysStoppedAnimation(_accent),
+            minHeight: 2,
+          ) : const SizedBox(height: 2),
+        ),
+      ),
+      body: Stack(children: [
+        WebViewWidget(controller: _wv),
+        if (!_loaded)
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: _accent, strokeWidth: 2.5),
+                const SizedBox(height: 18),
+                Text('MetroEyes 실시간 3D BEV 로딩…',
+                    style: TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text('지하철·버스 실 카메라 분석 (homography 보정)',
+                    style: TextStyle(color: _muted.withValues(alpha: 0.6), fontSize: 11)),
+              ],
+            ),
+          ),
+      ]),
     );
   }
 }

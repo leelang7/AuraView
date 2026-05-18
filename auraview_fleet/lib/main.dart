@@ -1224,24 +1224,61 @@ class _FleetHomeState extends State<FleetHome>
             ),
 
             // 4) 카메라 PiP — 좌하단 (140×100). 권한 없으면 _CameraPlaceholder.
-            // v9: 카메라 PiP 폐기 — /bev3d/ WebView 내부에 이미 카메라 PiP + 검출 박스 오버레이가 있음.
-            //     별도 Flutter CameraPreview 폴백은 유지하되 _cam 초기화 안 됐을 때만 작은 안내로 표시.
+            // v9 fix: Flutter native 카메라 PiP 복구 (WebView는 카메라 안 쓰니까 충돌 없음).
+            //   WebView 는 ?embed=fleet 로 카메라 안 잡고 3D 씬만 렌더. 실 카메라는 여기서.
             if (_cam == null || !_cam!.value.isInitialized)
               Positioned(
-                right: 14, top: 100,
+                left: 14, bottom: 100,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
-                    color: const Color(0xCC0D1520),
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(color: _danger.withValues(alpha: 0.55), width: 1),
+                    color: const Color(0xEE0D1520),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _danger.withValues(alpha: 0.55), width: 1.2),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.no_photography, size: 12, color: _danger),
-                    const SizedBox(width: 5),
-                    Text('카메라 권한 필요',
-                         style: TextStyle(color: _danger, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.6)),
+                    Icon(Icons.no_photography, size: 14, color: _danger),
+                    const SizedBox(width: 6),
+                    Text('카메라 권한\n필요',
+                         style: TextStyle(color: _danger, fontSize: 10, fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.6, height: 1.2)),
                   ]),
+                ),
+              )
+            else if (_cam != null && _cam!.value.isInitialized)
+              Positioned(
+                left: 14, bottom: 100,
+                child: Container(
+                  width: 140, height: 100,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _accent.withValues(alpha: 0.45), width: 1.2),
+                    boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.22), blurRadius: 14)],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: Stack(fit: StackFit.expand, children: [
+                      _FullCameraPreview(controller: _cam!),
+                      Positioned(
+                        top: 4, left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Container(width: 5, height: 5, decoration: BoxDecoration(
+                              color: _shadowOn ? _safe : _muted, shape: BoxShape.circle,
+                              boxShadow: _shadowOn ? [BoxShadow(color: _safe, blurRadius: 4)] : null,
+                            )),
+                            const SizedBox(width: 4),
+                            Text('CAM', style: TextStyle(color: _accent, fontSize: 8,
+                                                         fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                          ]),
+                        ),
+                      ),
+                    ]),
+                  ),
                 ),
               ),
 

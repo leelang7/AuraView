@@ -95,23 +95,25 @@
 <div id="ai-status"><span class="led"></span><span id="ai-text">AI 대기 중</span></div>
 
 <script>
-// v9 2026-05-18: ?embed=fleet 임베드 모드 — Flutter 메인 BEV 로 사용될 때 외곽 chrome 숨김
+// v9 2026-05-18: ?embed=fleet 임베드 모드 — Flutter 메인 BEV 로 사용될 때:
+//   1) Flutter native CameraController가 카메라 HW 점유 중이라 getUserMedia 충돌 → 시도 안 함
+//   2) Flutter 가 별도 PiP/HUD/메트릭 표시 → WebView 외곽 chrome / PiP / metrics 모두 숨김
+//   3) 3D 씬만 렌더 (서버 fusion 폴링 + Flutter 가 추후 JSChannel 로 검출 push)
+window.AURA_EMBED = false;
 (function () {
   const p = new URLSearchParams(location.search);
   if (p.get('embed') === 'fleet') {
+    window.AURA_EMBED = true;
     document.body.classList.add('embed-fleet');
     const style = document.createElement('style');
     style.textContent = `
       .embed-fleet #hud-top { padding: 6px 10px; }
       .embed-fleet .brand span:nth-child(2) { display: none; }   /* "AuraView" 숨김 */
       .embed-fleet .brand .pill { padding: 2px 6px; font-size: 9px; }
-      .embed-fleet #ctrls { top: 6px; right: 8px; }
-      .embed-fleet #ctrls .btn { padding: 3px 8px; font-size: 10px; }
-      .embed-fleet #ai-status { top: 32px; right: 8px; padding: 3px 8px; font-size: 9.5px; }
-      .embed-fleet #pip { width: 110px; height: 80px; top: 50px; left: 10px; }
-      .embed-fleet #metrics { padding: 9px 11px; bottom: 8px; left: 8px; right: 8px; }
-      .embed-fleet #metrics .met .l { font-size: 8.5px; }
-      .embed-fleet #metrics .met .v { font-size: 15px; }
+      .embed-fleet #ctrls { display: none; }                      /* 컨트롤 숨김 (Flutter 가 처리) */
+      .embed-fleet #ai-status { display: none; }                  /* AI 상태 칩 숨김 */
+      .embed-fleet #pip { display: none !important; }             /* 내부 PiP 숨김 (Flutter native PiP 사용) */
+      .embed-fleet #metrics { display: none; }                    /* 메트릭 패널 숨김 (Flutter HUD 사용) */
     `;
     document.head.appendChild(style);
   }
@@ -426,6 +428,11 @@ const overlayCtx = overlayCanvas.getContext('2d');
 
 let camStream = null; let camReady = false;
 async function startCamera() {
+  // 임베드 모드: Flutter native 가 카메라 HW 점유 중. WebView 카메라 시도 X.
+  if (window.AURA_EMBED) {
+    camReady = false;
+    return;
+  }
   try {
     camStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -446,9 +453,11 @@ async function stopCamera() {
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
   pip.style.display = 'none'; camReady = false;
 }
-document.getElementById('btn-cam').onclick = () => {
-  if (camStream) stopCamera(); else startCamera();
-};
+if (!window.AURA_EMBED) {
+  document.getElementById('btn-cam').onclick = () => {
+    if (camStream) stopCamera(); else startCamera();
+  };
+}
 startCamera();
 
 // ── AI 상태 배지 헬퍼
@@ -464,6 +473,9 @@ function setAi(state, text) {
 let model = null;
 let aiBackend = null;
 (async () => {
+  // 임베드 모드: 검출은 Flutter native 가 ML Kit으로 수행 → JSChannel(aurDetect)로 push.
+  // WebView 측은 TF.js/모델 로드 안 함 (메모리·배터리 절약).
+  if (window.AURA_EMBED) return;
   // 1) TF.js 사용 가능 여부
   if (typeof tf === 'undefined' || typeof cocoSsd === 'undefined') {
     setAi('err', 'TF.js 로드 실패 (CDN/네트워크)');
@@ -648,6 +660,85 @@ async function inferFrame(now) {
   document.getElementById('m-risk').textContent = risk.toFixed(2);
   document.getElementById('m-lead').textContent = ttc ? (ttc.toFixed(1) + 's') : '— s';
 }
+
+// ── v9 JSChannel detection receiver — Flutter ML Kit 검출 결과를 받아 3D 씬에 반영
+//    Flutter 가 window.aurDetect({ class, box: [x,y,w,h], score, vw, vh }) 를 setInterval 로 호출.
+window.aurDetect = function (payload) {
+  if (!payload || !payload.detections) return;
+  const vw = payload.vw || 1280, vh = payload.vh || 720;
+  const now = performance.now();
+  let vehN = 0, pedN = 0; let minDist = Infinity; let closestIsPed = false;
+  const seen = new Set();
+  for (const d of payload.detections) {
+    const cls = d.cls || 'car';
+    const lut = CLASS_LUT[cls];
+    if (!lut) continue;
+    if (lut.isPed) pedN++; else vehN++;
+    const { worldX, worldZ, dist } = pixelToBev(d.box, vw, vh);
+    if (dist < minDist) { minDist = dist; closestIsPed = lut.isPed; }
+    let id = nearestExistingTrack(cls, worldX, worldZ);
+    let track = id != null ? occMap.get(id) : null;
+    if (!track) {
+      id = ++trackId;
+      const obj = makeOccObject(cls);
+      occGroup.add(obj);
+      track = { obj, cls, worldX, worldZ, dist, lastSeen: now };
+      occMap.set(id, track);
+    } else {
+      track.worldX = track.worldX * 0.55 + worldX * 0.45;
+      track.worldZ = track.worldZ * 0.55 + worldZ * 0.45;
+      track.dist = dist; track.lastSeen = now;
+    }
+    seen.add(id);
+    track.obj.position.x = track.worldX;
+    track.obj.position.z = track.worldZ;
+    updateOccLabel(track.obj, dist);
+  }
+  // decay
+  for (const [id, t] of [...occMap.entries()]) {
+    if (now - t.lastSeen > TRACK_DECAY_MS) {
+      occGroup.remove(t.obj);
+      const ud = t.obj.userData;
+      if (ud) {
+        if (ud.cropTex) ud.cropTex.dispose();
+        if (ud.labelTex) ud.labelTex.dispose();
+        if (ud.billMat) ud.billMat.dispose();
+        if (ud.ringMat) ud.ringMat.dispose();
+        if (ud.ring && ud.ring.geometry) ud.ring.geometry.dispose();
+      }
+      occMap.delete(id);
+    }
+  }
+  // 위험도 + 빌보드
+  let risk = 0; let ttc = null; let action = '안전 거리 확보';
+  if (isFinite(minDist)) {
+    const base = closestIsPed ? Math.max(0, 1 - minDist / 20) : Math.max(0, 1 - minDist / 25);
+    risk = closestIsPed ? Math.min(1, base * 1.3) : Math.min(1, base);
+    const v = 60 / 3.6; if (minDist > 2 && v > 0) ttc = minDist / v;
+    if (risk >= 0.7) action = '즉시 정지';
+    else if (risk >= 0.4) action = '감속 + 주의';
+  }
+  drawRiskBillboard(riskBoardObj, risk, ttc, action);
+  if (isFinite(minDist)) {
+    let cid = null, cd = Infinity;
+    for (const [id, t] of occMap.entries()) {
+      if (t.dist < cd) { cd = t.dist; cid = id; }
+    }
+    if (cid != null) {
+      const t = occMap.get(cid);
+      riskBoard.position.set(t.worldX, 3.5, t.worldZ);
+    }
+  } else {
+    riskBoard.position.set(0, 3.8, 0);
+  }
+  // 임베드 모드에서도 통계 노출 (Flutter HUD 에서 활용 가능)
+  if (!window.AURA_EMBED) {
+    const elV = document.getElementById('m-veh'); if (elV) elV.textContent = vehN;
+    const elP = document.getElementById('m-ped'); if (elP) elP.textContent = pedN;
+    const elR = document.getElementById('m-risk'); if (elR) elR.textContent = risk.toFixed(2);
+    const elL = document.getElementById('m-lead'); if (elL) elL.textContent = ttc ? (ttc.toFixed(1) + 's') : '— s';
+  }
+};
 
 // ── /fusion/intersection 폴링 (배경 데이터 — 융합 위험 prior 가산)
 let fusionRiskPrior = 0;

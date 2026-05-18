@@ -75,12 +75,12 @@
 
   <!-- ── TITLE AREA ──────────────────────────────────────────── -->
   <text x="600" y="38" text-anchor="middle" font-size="28" font-weight="900" fill="#E8EDF8">
-    15종 공공데이터 →
+    17종 공공데이터 →
     <tspan fill="#00E09A"> 한 응답</tspan>
     <tspan fill="#E8EDF8">으로 융합</tspan>
   </text>
   <text x="600" y="58" text-anchor="middle" font-size="12" fill="#666">
-    fusion.v4-15src-2026.05.16 · GET /fusion/intersection/{id}
+    fusion.v5-17src-2026.05.18 · GET /fusion/intersection/{id}
   </text>
 
   <!-- ── SECTION LABELS ──────────────────────────────────────── -->
@@ -222,6 +222,28 @@
     <text x="228" y="398" text-anchor="middle" font-size="18">⚡</text>
     <text x="228" y="413" text-anchor="middle" font-size="10" fill="#C8D4E8">EV 충전소</text>
     <text x="228" y="426" text-anchor="middle" font-size="7" fill="#445">한국환경공단</text>
+  </g>
+
+  <!-- Card 16: 도로 노면 (RWIS) — v5 2026-05-18 NEW -->
+  <g>
+    <rect x="18" y="442" width="80" height="60" rx="6" fill="#1A1F2E" stroke="#6BE3FF" stroke-width="1.5"/>
+    <rect x="18" y="442" width="80" height="4" rx="2" fill="#6BE3FF" opacity="0.9"/>
+    <text x="58" y="468" text-anchor="middle" font-size="18">🛣️</text>
+    <text x="58" y="483" text-anchor="middle" font-size="10" fill="#C8D4E8">도로 노면</text>
+    <text x="58" y="495" text-anchor="middle" font-size="7" fill="#6BE3FF">RWIS ★ v5</text>
+  </g>
+  <!-- Card 17: KOTSA 자동차검사 — v5 2026-05-18 NEW -->
+  <g>
+    <rect x="103" y="442" width="80" height="60" rx="6" fill="#1A1F2E" stroke="#A095FF" stroke-width="1.5"/>
+    <rect x="103" y="442" width="80" height="4" rx="2" fill="#A095FF" opacity="0.9"/>
+    <text x="143" y="468" text-anchor="middle" font-size="18">🔧</text>
+    <text x="143" y="483" text-anchor="middle" font-size="10" fill="#C8D4E8">자동차검사</text>
+    <text x="143" y="495" text-anchor="middle" font-size="7" fill="#A095FF">KOTSA ★ v5</text>
+  </g>
+  <!-- Flow lines from new cards to engine -->
+  <g stroke="#00E09A" stroke-width="1" stroke-dasharray="4 4" fill="none" opacity="0.35">
+    <path d="M98,472 C320,472 400,360 490,360"/>
+    <path d="M183,472 C340,472 410,360 490,360"/>
   </g>
 
   <!-- ═══════════════════════════════════════════════════════════
@@ -412,7 +434,7 @@
 
   <!-- Schema -->
   <text x="600" y="397" text-anchor="middle" font-size="8" fill="#509070">schema_version:</text>
-  <text x="600" y="410" text-anchor="middle" font-size="9" fill="#00E09A">fusion.v4-15src</text>
+  <text x="600" y="410" text-anchor="middle" font-size="9" fill="#00E09A">fusion.v5-17src</text>
 
   <!-- Divider -->
   <line x1="510" y1="420" x2="690" y2="420" stroke="#00E09A" stroke-width="0.5" opacity="0.3"/>
@@ -534,7 +556,7 @@
     AuraView · 2026 국토교통 데이터활용 경진대회 · 15종 공공데이터 실시간 융합 플랫폼
   </text>
   <text x="600" y="656" text-anchor="middle" font-size="9" fill="#303550">
-    GET /fusion/intersection/{id} · schema_version: fusion.v4-15src · © 2026 ThinkU Team
+    GET /fusion/intersection/{id} · schema_version: fusion.v5-17src · © 2026 ThinkU Team
   </text>
 
   <!-- Corner decorations -->

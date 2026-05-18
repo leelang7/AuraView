@@ -1469,34 +1469,50 @@ class _DriveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // v6 2026-05-18: 디자인 개선 — 모니터링 중 (녹색·펄스 dot), 정지 시 (안내 cyan)
+    final activeStartColor  = const Color(0xFF00E09A);   // 안전 녹
+    final activeEndColor    = const Color(0xFF00A872);
+    final inactiveStartColor = const Color(0xFF00C8FF);
+    final inactiveEndColor  = const Color(0xFF0080B0);
+    final startColor = on ? activeStartColor : inactiveStartColor;
+    final endColor   = on ? activeEndColor   : inactiveEndColor;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        width: 240, height: 64,
+        duration: const Duration(milliseconds: 240),
+        width: 260, height: 64,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: on
-                ? [const Color(0xFF005580), const Color(0xFF003344)]
-                : [const Color(0xFF00C8FF), const Color(0xFF0078A8)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [startColor, endColor],
           ),
-          borderRadius: BorderRadius.circular(32),
+          borderRadius: BorderRadius.circular(34),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1.2),
           boxShadow: [
-            BoxShadow(
-              color: (on ? _accent : _safe).withValues(alpha: 0.45),
-              blurRadius: 24, spreadRadius: 1,
-            ),
+            BoxShadow(color: startColor.withValues(alpha: 0.55), blurRadius: 28, spreadRadius: 1),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 6)),
           ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(on ? Icons.stop_rounded : Icons.directions_car_filled_rounded,
-                 size: 26, color: Colors.white),
-            const SizedBox(width: 10),
-            Text(on ? '주행 중지' : '주행 시작',
-                 style: const TextStyle(color: Colors.white, fontSize: 18,
-                                        fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+            if (on) ...[
+              // 모니터링 중 — 펄스 dot
+              Container(
+                width: 10, height: 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.85), blurRadius: 8)],
+                ),
+              ),
+              const SizedBox(width: 12),
+            ] else
+              const Icon(Icons.play_arrow_rounded, size: 28, color: Colors.white),
+            if (!on) const SizedBox(width: 6),
+            Text(on ? '주행 모니터링 중' : '주행 시작',
+                 style: const TextStyle(color: Colors.white, fontSize: 17,
+                                        fontWeight: FontWeight.w900, letterSpacing: 1.0)),
           ],
         ),
       ),
@@ -3399,18 +3415,19 @@ class _SignalHudState extends State<_SignalHud>
             children: [
               Row(
                 children: [
-                  // 신호 아이콘 (정지/주행)
+                  // 신호 아이콘 (정지/주행) — 크기 키움
                   Container(
-                    width: 38, height: 38,
+                    width: 48, height: 48,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: iconBg.withValues(alpha: 0.20),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: iconBg.withValues(alpha: 0.60)),
+                      color: iconBg.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: iconBg.withValues(alpha: 0.70), width: 1.5),
+                      boxShadow: [BoxShadow(color: iconBg.withValues(alpha: 0.40), blurRadius: 10)],
                     ),
-                    child: Text(iconLabel, style: const TextStyle(fontSize: 20)),
+                    child: Text(iconLabel, style: const TextStyle(fontSize: 26)),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   // 교차로명 + 상태
                   Expanded(
                     child: Column(
@@ -3419,14 +3436,14 @@ class _SignalHudState extends State<_SignalHud>
                         Text(
                           widget.intersectionName.isEmpty ? '근접 교차로 자동 감지 대기' : widget.intersectionName,
                           maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Color(0xFFE2EAF5), fontSize: 13.5, fontWeight: FontWeight.w800),
+                          style: const TextStyle(color: Color(0xFFE2EAF5), fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: -0.3),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
                           '$state' +
                           (remain != null ? ' · 남은 ${remain}초' : '') +
                           ' · risk $risk',
-                          style: TextStyle(color: mainColor, fontSize: 10.5, fontFamily: 'monospace', fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                          style: TextStyle(color: mainColor, fontSize: 12, fontFamily: 'monospace', fontWeight: FontWeight.w800, letterSpacing: 0.5),
                         ),
                       ],
                     ),
@@ -3434,26 +3451,30 @@ class _SignalHudState extends State<_SignalHud>
                 ],
               ),
               if (guide.isNotEmpty) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.32),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border(left: BorderSide(color: mainColor, width: 3)),
+                    color: Colors.black.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border(left: BorderSide(color: mainColor, width: 4)),
                   ),
                   child: Text(
                     guide,
-                    style: const TextStyle(color: Color(0xFFE2EAF5), fontSize: 12.5, height: 1.35, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Color(0xFFE2EAF5), fontSize: 14, height: 1.45, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
               if (action.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  '권고 · $action',
-                  style: TextStyle(color: mainColor.withValues(alpha: 0.85), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.3),
-                ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Icon(Icons.arrow_forward_rounded, size: 14, color: mainColor.withValues(alpha: 0.85)),
+                  const SizedBox(width: 4),
+                  Expanded(child: Text(
+                    action,
+                    style: TextStyle(color: mainColor.withValues(alpha: 0.95), fontSize: 12.5, fontWeight: FontWeight.w800, letterSpacing: 0.3),
+                  )),
+                ]),
               ],
             ],
           ),

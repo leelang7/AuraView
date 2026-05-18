@@ -5,6 +5,33 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.15 — MetroEyes 3D BEV WebView 통합 + Flutter UI 디테일 개선 (2026-05-18)
+
+### Added — MetroEyes 3D BEV 통합 (사용자 다른 GitHub 프로젝트 결합)
+- `webview_flutter ^4.10.0` 신규 의존성
+- **`MetroEyesBevScreen`** StatefulWidget — `https://leelang7.github.io/MetroEyes/frontend/operator_web/realbev.html` 풀스크린 임베드
+  - NavigationDelegate LinearProgressIndicator (로딩 진행률)
+  - 로딩 중 spinner + "MetroEyes 실시간 3D BEV 로딩…" 안내
+  - AppBar 새로고침 버튼
+  - 다크 배경 통일
+- **헤더 우측 신규 "3D" 보라 그라디언트 버튼** (`_IdleStatusCard` 설정 버튼 옆)
+  - Navigator push → MetroEyesBevScreen
+  - 글로우 효과 (#A095FF accent2)
+
+### Updated — Flutter UI 디테일 (사용자 "조잡하다" 피드백)
+- **`_CityInfoLine` 칩** 폰트 10→12pt, 아이콘 11→13, spacing 8→10, runSpacing 4→6, weight w700 추가
+- **`_SignalHud` 카드** 신호 아이콘 38→48px, 교차로명 13.5→16pt(w900), 상태 10.5→12pt(w800), 안내 박스 폰트 12.5→14pt(w700), 좌측 보더 3→4px, 권고 라인 ↗ 아이콘 + 12.5pt(w800)
+- **`_DriveButton` 알약** 260px 폭, 녹색 그라디언트 (모니터링 중), 펄스 dot, 흰 글로우 보더, 이중 그림자
+
+### Why
+- MetroEyes 결합 = 운전자 폰에서 차량 BEV (AuraView) + 대중교통 BEV (MetroEyes) 동시 접근 → "한국 도로 전체 통합 인지" 차별점
+- 사용자 직접 폰 사용 시 폰트 가독성 + 시각적 무게감 부족 해소
+
+### 빌드/설치
+- app-release.apk 86.4MB · adb install -r Success (Galaxy Z Fold 3, Android 15)
+
+---
+
 ## v0.14 — 외부 데이터 17종 확장 + Flutter HUD + 시뮬레이터 v5 동기화 (2026-05-18)
 
 ### Added — 외부 데이터 15 → 17종 확장

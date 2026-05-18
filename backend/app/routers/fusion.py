@@ -58,6 +58,9 @@ def list_sources():
         # v5 2026-05-18: 15 → 17종 확장
         {"id": "road_surface",       "name": "도로 노면 상태 (RWIS)",         "origin": "data.ex.co.kr/openapi/rwisapi",          "gain": "노면 위험 (frost +0.35)",         "added": "v5-2026.05.18"},
         {"id": "vehicle_inspection", "name": "KOTSA 자동차검사통계",          "origin": "apis.data.go.kr/B552014/InspectionStats", "gain": "구별 부적합률 → 잠재 위험", "added": "v5-2026.05.18"},
+        # v6 2026-05-18: 17 → 19종 확장
+        {"id": "dtg",                "name": "KOTSA DTG 디지털운행기록",        "origin": "apis.data.go.kr/B552014/DtgStats",       "gain": "사업용 차량 위험운전 +0.10",   "added": "v6-2026.05.18"},
+        {"id": "nfa_dispatch",       "name": "소방청 119 교통사고 출동",        "origin": "apis.data.go.kr/1661000/TfcAcdntDsptch", "gain": "사고 심각도 + 골든타임 라우팅", "added": "v6-2026.05.18"},
     ]
     for s in sources:
         meta = fresh.get(s["id"]) or {}
@@ -68,7 +71,7 @@ def list_sources():
     return {
         "sources": sources,
         "count": len(sources),
-        "schema_version": "fusion.v5-17src-2026.05.18",
+        "schema_version": "fusion.v6-19src-2026.05.18",
         "checked_at": now_ts.isoformat() + "Z",
     }
 
@@ -147,6 +150,19 @@ def fusion_road_surface(lat: float = Query(37.5665), lon: float = Query(126.9780
 def fusion_vehicle_inspection(district: str = Query("강남구")):
     """KOTSA 시군구별 자동차검사 부적합률 → 잠재 사고 위험 지표."""
     return public_api.fetch_vehicle_inspection(district=district)
+
+
+# v6 2026-05-18: 17 → 19종 확장
+@router.get("/dtg")
+def fusion_dtg(vehicle_type: str = Query("법인택시")):
+    """KOTSA DTG 디지털운행기록 — 사업용 차량 위험운전 지표 (택시·버스·화물)."""
+    return public_api.fetch_dtg_stats(vehicle_type=vehicle_type)
+
+
+@router.get("/nfa-dispatch")
+def fusion_nfa_dispatch(sido: str = Query("서울특별시")):
+    """소방청 119 교통사고 출동 통계 — 사고 심각도 prior + 골든타임 라우팅."""
+    return public_api.fetch_nfa_dispatch(sido=sido)
 
 
 @router.get("/intersection/{intersection_id}")

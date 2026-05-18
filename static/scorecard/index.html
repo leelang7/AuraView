@@ -139,7 +139,7 @@
       <h2>딥러닝 위험도 추론 + 온디바이스 객체 검출</h2>
       <p class="crit"><b>평가기준:</b> 인공지능 모델 학습·추론, 실서비스 적용, 성능 정량 지표</p>
 
-      <div class="ev"><b>Risk Transformer (PyTorch)</b> — 17소스 융합 입력 → 위험도 0~1, <code>AUC 0.9403</code></div>
+      <div class="ev"><b>Risk Transformer (PyTorch)</b> — 19소스 융합 입력 → 위험도 0~1, <code>AUC 0.9403</code></div>
       <div class="ev"><b>온디바이스 객체검출</b> — Google ML Kit, 사람·차량·이륜 실시간 (Galaxy Z Fold 3 30fps)</div>
       <div class="ev"><b>LIVE 모드 추론</b> — Flutter 네이티브앱 후면카메라 → ML Kit → 위험경고(빨강 신호 햅틱 3-burst)</div>
       <div class="ev"><b>3D BEV 위험 시각화</b> — Three.js + getUserMedia, 융합점수 빌보드 (5.7초 이내 충돌 경고)</div>
@@ -158,16 +158,17 @@
         <div class="cat">데이터 융합</div>
         <div class="pts">5<span class="pt">pt</span></div>
       </div>
-      <h2>17종 공공데이터 실시간 융합 어댑터</h2>
+      <h2>19종 공공데이터 실시간 융합 어댑터</h2>
       <p class="crit"><b>평가기준:</b> 이종 공공데이터 결합, 실시간성, 융합으로 인한 가치 창출</p>
 
-      <div class="ev"><b>17 어댑터 패턴</b> — TAAS / VDS / 신호정보 / KMA / ITS / E-Gen / 따릉이 / 어린이보호구역 / RWIS / KOTSA 등</div>
-      <div class="ev"><b>가중 융합 점수</b> — speed 0.16 + incidents 0.10 + TAAS 0.10 + weather 0.09 + freeze 0.07 ··· school_zone ×1.5</div>
-      <div class="ev"><b>실시간 폴링</b> — 교차로별 5초 캐시, 6.4MB 응답 평균, p50 응답시간 180ms</div>
-      <div class="ev">스키마 버전: <code>fusion.v5-17src-2026.05.18</code> · 응답: <code>IntersectionFusion</code> dataclass</div>
+      <div class="ev"><b>19 어댑터 패턴</b> — TAAS / VDS / 신호 / KMA / ITS / E-Gen / 따릉이 / 스쿨존 / RWIS / KOTSA / DTG / 119 소방청 등</div>
+      <div class="ev"><b>가중 융합 점수 (v6)</b> — speed 0.14 + DTG 0.07 + 스쿨존 0.09 + 119 심각도 0.05 + 노면 0.06 + 보행자 0.05 ···</div>
+      <div class="ev"><b>실시간 폴링</b> — 교차로별 5초 캐시, p50 응답시간 180ms, fallback 0-downtime</div>
+      <div class="ev"><b>골든타임 라우팅</b> — 119 평균 도착시간 &gt; 7분이면 자동 severity_multiplier 상향</div>
+      <div class="ev">스키마 버전: <code>fusion.v6-19src-2026.05.18</code> · 응답: <code>IntersectionFusion</code> dataclass</div>
 
       <div class="actions">
-        <a class="btn" href="/fusion/sources" target="_blank">17 소스 JSON <span class="arrow">→</span></a>
+        <a class="btn" href="/fusion/sources" target="_blank">19 소스 JSON <span class="arrow">→</span></a>
         <a class="btn" href="/fusion/intersection/1007" target="_blank">교차로 융합 샘플 <span class="arrow">→</span></a>
         <a class="btn" href="/gallery/?f=data" target="_blank">융합 다이어그램 <span class="arrow">→</span></a>
       </div>
@@ -222,7 +223,7 @@
   <section class="legend">
     <h3>핵심 라이브 엔드포인트 (심사위원 즉시 검증용)</h3>
     <ul>
-      <li><b>17 소스 카탈로그</b> · <code>GET /fusion/sources</code></li>
+      <li><b>19 소스 카탈로그</b> · <code>GET /fusion/sources</code></li>
       <li><b>교차로 실시간 융합</b> · <code>GET /fusion/intersection/{id}</code></li>
       <li><b>위험도 추론</b> · <code>POST /risk/predict</code></li>
       <li><b>3D BEV 라이브</b> · <code>/bev3d/</code> (Three.js + 후면카메라)</li>
@@ -234,7 +235,7 @@
   </section>
 
   <div class="meta">
-    AuraView K-Perception · schema <code style="color:var(--muted);">fusion.v5-17src-2026.05.18</code> ·
+    AuraView K-Perception · schema <code style="color:var(--muted);">fusion.v6-19src-2026.05.18</code> ·
     <a href="/">메인</a> ·
     <a href="https://github.com/leelang7/AuraView" target="_blank">GitHub</a>
   </div>

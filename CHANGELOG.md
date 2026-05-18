@@ -5,6 +5,53 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.16 — 가산점 25점 적격 증거 페이지 + 19종 융합 + 자체 3D BEV (2026-05-18)
+
+### Added — judge-facing 페이지 4종 신규
+- **`/scorecard/`** — 가산점 25점 적격 증거표 1-page (AI 10 + 데이터융합 5 + 가명정보 5 + 안전구역 5)
+  - 카테고리별 색상 카드 (cyan / purple / orange / green)
+  - 각 카드: 평가기준 → 구현 5개 증거 → 라이브 링크 버튼
+  - 하단: 심사위원 즉시 검증 라이브 엔드포인트 8개 카탈로그
+- **`/bev3d/`** — AuraView 자체 Three.js 3D BEV (MetroEyes URL 폐기)
+  - importmap three@0.170.0 + OrbitControls (zoom 12-80)
+  - 한국 우측통행 도로 + 황색 점선 + 가로 횡단보도 + ego/NPC/보행자 펄스
+  - getUserMedia 후면 카메라 PiP 좌상단 140×100
+  - `/fusion/intersection/1007` 8초 폴링 → 하단 메트릭 (vehicles/peds/risk/lead)
+- **`/privacy/`** — 가명정보 처리 라이브 데모 (5pt 실증)
+  - 5단계 PII 파이프라인 시각화 + Before/After SVG (번호판/얼굴 블러)
+  - SHA-256 라이브 해시 (Web Crypto API · 브라우저 내)
+  - 100m GPS 양자화 + k-익명 결합 테이블 (k≥5 / k<5 SUPPRESS)
+  - 개인정보 영향평가 7대 항목 체크리스트
+- **`/safezone/`** — 안전구역 라이브 대시보드 (5pt 실증)
+  - SVG 인터랙티브 맵: 스쿨존 폴리곤 ×1.5 / 통학로 / 보행자 hotspot / E-Gen
+  - 위험순위 상위 6개소 카드 + 융합 가중표
+
+### Added — 17 → 19종 데이터 융합 확장 (v6)
+- **`#18 KOTSA DTG`** (`apis.data.go.kr/B552014/DtgStats`) — 사업용 차량 디지털운행기록
+  - 택시·시내버스·전세버스·화물차 4종, 급가속/급감속/과속 per 100km
+  - `danger_score` 0.48~0.71 → `dtg_risk_boost` 최대 +0.10
+- **`#19 소방청 119 출동`** (`apis.data.go.kr/1661000/TfcAcdntDsptchInfo`) — 교통사고 출동 통계
+  - 시도별 평균 도착시간 / severe/fatal share
+  - 평균 도착 > 7분 시 자동 `severity_multiplier` 상향 (골든타임 라우팅)
+- 융합 가중치 v6 재조정: speed 0.14 + DTG 0.07 + 스쿨존 0.09 + 119 심각도 0.05 + 노면 0.06 + 보행자 0.05 ···
+- 신규 필드 5개: `dtg_danger_score`, `dtg_risk_boost`, `nfa_severity_multiplier`, `nfa_severity_risk_boost`, `golden_time_at_risk`
+- `schema_version`: `fusion.v6-19src-2026.05.18`
+- 신규 엔드포인트: `GET /fusion/dtg` + `GET /fusion/nfa-dispatch`
+
+### Updated — Flutter 네이티브앱 v7
+- `MetroEyesBevScreen` → `AuraView3DBevScreen` 전면 교체
+- URL: `https://auraview.allthatai.kr/bev3d/` (자체 호스팅)
+- `AndroidWebViewController.setOnPlatformPermissionRequest((r) => r.grant())` — WebView getUserMedia 자동 허용
+- `setMediaPlaybackRequiresUserGesture(false)` — 자동 카메라 시작
+- `webview_flutter_android ^4.0.0` 명시적 의존성 추가
+- 상단 nav 핀 추가 (`/story/`, `/gallery/`): `⭐ 가산점 25점` / `🎮 3D BEV` / `🔒 PII 데모` / `🛡️ 안전구역`
+
+### Fixed
+- MetroEyes 전체 운영자 페이지(지하철/버스 대시보드) 통째로 임베드한 실수 → 3D 시각화만 적용한 자체 페이지로 교체
+- 폰 후면 카메라가 WebView 안에서 동작하지 않던 문제 → `setOnPlatformPermissionRequest((r) => r.grant())` 처리
+
+---
+
 ## v0.15 — MetroEyes 3D BEV WebView 통합 + Flutter UI 디테일 개선 (2026-05-18)
 
 ### Added — MetroEyes 3D BEV 통합 (사용자 다른 GitHub 프로젝트 결합)

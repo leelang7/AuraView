@@ -853,7 +853,121 @@ def fetch_vehicle_inspection(district: str = "강남구") -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (17-source v5 2026-05-18)
+# 18. KOTSA Digital Tachograph (DTG) — v6 2026-05-18
+#     사업용 차량 운행기록계 (택시·버스·화물) 급가속·급감속·과속 집계
+# ──────────────────────────────────────────────────────────────────────
+
+KOTSA_DTG_BASE_URL = os.getenv("KOTSA_DTG_BASE_URL", "https://apis.data.go.kr/B552014/DtgStats")
+KOTSA_DTG_KEY = os.getenv("KOTSA_DTG_KEY", os.getenv("SERVICE_KEY", ""))
+
+_DTG_FALLBACK = {
+    "source": "KOTSA DTG 디지털운행기록 (stub — KOTSA_DTG_KEY 미설정)",
+    "year": 2024, "month": 4,
+    "by_vehicle_type": [
+        {"type": "법인택시", "fleet_size": 31_240, "harsh_brake_per_100km": 4.2, "harsh_accel_per_100km": 3.1, "overspeed_per_100km": 0.9, "danger_score": 0.62},
+        {"type": "시내버스", "fleet_size":  7_810, "harsh_brake_per_100km": 5.6, "harsh_accel_per_100km": 2.8, "overspeed_per_100km": 0.4, "danger_score": 0.55},
+        {"type": "전세버스", "fleet_size":  4_120, "harsh_brake_per_100km": 3.4, "harsh_accel_per_100km": 2.1, "overspeed_per_100km": 1.2, "danger_score": 0.48},
+        {"type": "화물차",   "fleet_size": 18_530, "harsh_brake_per_100km": 6.9, "harsh_accel_per_100km": 3.8, "overspeed_per_100km": 2.1, "danger_score": 0.71},
+    ],
+    "national_avg_danger_score": 0.59,
+}
+
+
+def fetch_dtg_stats(vehicle_type: str = "법인택시") -> Dict[str, Any]:
+    """KOTSA Digital Tachograph 운행기록 — 사업용차량 위험운전 지표."""
+    url = f"{KOTSA_DTG_BASE_URL}/getDtgByType"
+    params = {"serviceKey": KOTSA_DTG_KEY, "type": vehicle_type, "year": 2024, "month": 4, "format": "json"}
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("dtg", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("KOTSA DTG API failed: %s", exc)
+        _record_fetch("dtg", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
+
+    by_t = _DTG_FALLBACK["by_vehicle_type"]
+    matched = next((v for v in by_t if v["type"] == vehicle_type), by_t[0])
+    danger = matched.get("danger_score", 0.59)
+    nat_avg = _DTG_FALLBACK["national_avg_danger_score"]
+    # 위험운전 지표 1.0 = +0.10, 0.5 = +0.05
+    dtg_boost = max(0.0, min(0.10, (danger - 0.3) * 0.15))
+    return {
+        **_DTG_FALLBACK,
+        "matched": matched,
+        "derived": {
+            "vehicle_type": vehicle_type,
+            "danger_score": danger,
+            "danger_score_national": nat_avg,
+            "above_national_avg": danger > nat_avg,
+            "dtg_risk_boost": round(dtg_boost, 3),
+            "dominant_violation": "급감속" if matched.get("harsh_brake_per_100km", 0) > 5 else "과속",
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 19. 소방청 119 교통사고 출동 통계 — v6 2026-05-18
+#     119 출동 데이터로 사고 심각도 + 골든타임 라우팅 보강
+# ──────────────────────────────────────────────────────────────────────
+
+NFA_BASE_URL = os.getenv("NFA_BASE_URL", "https://apis.data.go.kr/1661000/TfcAcdntDsptchInfo")
+NFA_KEY = os.getenv("NFA_KEY", os.getenv("SERVICE_KEY", ""))
+
+_NFA_FALLBACK = {
+    "source": "소방청 119 출동 통계 (stub — NFA_KEY 미설정)",
+    "year": 2024,
+    "by_sido": [
+        {"sido": "서울특별시", "tfc_dispatches": 124_812, "avg_arrival_min": 6.4, "severe_share": 0.083, "fatal_share": 0.007},
+        {"sido": "경기도",     "tfc_dispatches": 198_234, "avg_arrival_min": 7.9, "severe_share": 0.094, "fatal_share": 0.011},
+        {"sido": "부산광역시", "tfc_dispatches":  41_312, "avg_arrival_min": 6.8, "severe_share": 0.088, "fatal_share": 0.009},
+    ],
+}
+
+
+def fetch_nfa_dispatch(sido: str = "서울특별시") -> Dict[str, Any]:
+    """소방청 교통사고 119 출동 통계 — 사고심각도 prior + 골든타임 라우팅."""
+    url = f"{NFA_BASE_URL}/getDispatchBySido"
+    params = {"serviceKey": NFA_KEY, "sido": sido, "year": 2024, "format": "json"}
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("nfa_dispatch", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("NFA dispatch API failed: %s", exc)
+        _record_fetch("nfa_dispatch", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
+
+    by_s = _NFA_FALLBACK["by_sido"]
+    matched = next((s for s in by_s if s["sido"] == sido), by_s[0])
+    arrival = matched.get("avg_arrival_min", 7.0)
+    severe = matched.get("severe_share", 0.08)
+    fatal = matched.get("fatal_share", 0.01)
+    # 평균 도착시간이 길수록 골든타임 보호 필요 → severity_multiplier 상향
+    severity_mul = 1.0 + min(0.40, max(0.0, (arrival - 5.0) * 0.05))
+    # 사망률이 높을수록 사고 심각도 prior 가중
+    severe_boost = round(min(0.06, fatal * 6.0 + severe * 0.2), 3)
+    return {
+        **_NFA_FALLBACK,
+        "matched": matched,
+        "derived": {
+            "sido": sido,
+            "avg_arrival_min": arrival,
+            "severity_multiplier": round(severity_mul, 3),
+            "severe_share": severe,
+            "fatal_share": fatal,
+            "severity_risk_boost": severe_boost,
+            "golden_time_at_risk": arrival > 7.0,
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (19-source v6 2026-05-18)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -879,6 +993,9 @@ class IntersectionFusion:
     # v5 2026-05-18: 17-source 확장
     road_surface: Dict[str, Any]
     vehicle_inspection: Dict[str, Any]
+    # v6 2026-05-18: 19-source 확장
+    dtg: Dict[str, Any]
+    nfa_dispatch: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -939,34 +1056,47 @@ class IntersectionFusion:
         insp_boost      = float(insp_derived.get("inspection_risk_boost", 0.0))
         fail_rate_d     = float(insp_derived.get("fail_rate_district", 0.0))
 
-        # 17종 통합 위험 점수
-        # 가중치: 속도0.16 + 돌발0.10 + TAAS0.10 + 기상0.09 + ER0.05 + 자전거0.05
-        #         + 결빙0.07 + 보행자다발0.05 + 스쿨존0.10 + 통학로0.05 + 미세먼지0.03
-        #         + EV0.03 + 도로노면0.07 + 자동차검사0.05
+        # NEW v6 2026-05-18: DTG · 119 소방청 출동 신호 추출
+        dtg_derived = self.dtg.get("derived", {}) if isinstance(self.dtg, dict) else {}
+        nfa_derived = self.nfa_dispatch.get("derived", {}) if isinstance(self.nfa_dispatch, dict) else {}
+        dtg_boost      = float(dtg_derived.get("dtg_risk_boost", 0.0))
+        dtg_danger     = float(dtg_derived.get("danger_score", 0.0))
+        severity_mul_nfa = float(nfa_derived.get("severity_multiplier", 1.0))
+        severity_boost  = float(nfa_derived.get("severity_risk_boost", 0.0))
+        golden_at_risk  = bool(nfa_derived.get("golden_time_at_risk", False))
+
+        # 19종 통합 위험 점수 (v6)
+        # 가중치 재조정: 속도0.14 + 돌발0.09 + TAAS0.09 + 기상0.08 + ER0.04 + 자전거0.04
+        #         + 결빙0.06 + 보행자다발0.05 + 스쿨존0.09 + 통학로0.05 + 미세먼지0.03
+        #         + EV0.02 + 도로노면0.06 + 자동차검사0.04 + DTG0.07 + 119출동0.05
         base = (
-            (1.0 - min(avg_speed, 80) / 80) * 0.16 +
-            min(incident_count, 3) / 3 * 0.10 +
-            min(taas_count, 7) / 7 * 0.10 +
-            wet_boost * 0.09 +
-            er_load * 0.05 +
-            bike_boost * 0.05 +
-            freeze_boost * 0.07 +
+            (1.0 - min(avg_speed, 80) / 80) * 0.14 +
+            min(incident_count, 3) / 3 * 0.09 +
+            min(taas_count, 7) / 7 * 0.09 +
+            wet_boost * 0.08 +
+            er_load * 0.04 +
+            bike_boost * 0.04 +
+            freeze_boost * 0.06 +
             ped_boost * 0.05 +
-            (sz_multiplier - 1.0) * 0.10 +
+            (sz_multiplier - 1.0) * 0.09 +
             walk_boost * 0.05 +
             air_boost * 0.03 +
-            ev_dwelling * 0.03 +
-            surface_boost * 0.07 +
-            insp_boost * 0.05
+            ev_dwelling * 0.02 +
+            surface_boost * 0.06 +
+            insp_boost * 0.04 +
+            dtg_boost * 0.07 +
+            severity_boost * 0.05
         )
         base *= sz_multiplier if in_school_zone else 1.0
+        # 119 골든타임 위험 시 추가 multiplier
+        if golden_at_risk: base *= severity_mul_nfa
         risk_score = min(1.0, round(base, 3))
 
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 17,
-                "schema_version": "fusion.v5-17src-2026.05.18",
+                "sources_fused": 19,
+                "schema_version": "fusion.v6-19src-2026.05.18",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
@@ -997,6 +1127,12 @@ class IntersectionFusion:
                 "low_visibility_flag": low_vis_flag,
                 "inspection_fail_rate_district": fail_rate_d,
                 "inspection_risk_boost": insp_boost,
+                # v6 신규 5필드 (DTG + 119 출동)
+                "dtg_danger_score": dtg_danger,
+                "dtg_risk_boost": dtg_boost,
+                "nfa_severity_multiplier": severity_mul_nfa,
+                "nfa_severity_risk_boost": severity_boost,
+                "golden_time_at_risk": golden_at_risk,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",
@@ -1021,6 +1157,9 @@ class IntersectionFusion:
                 # v5 신규 2종
                 "road_surface":        {"provider": "한국도로공사 RWIS 노면상태",       "data": self.road_surface},
                 "vehicle_inspection":  {"provider": "KOTSA 자동차검사통계",             "data": self.vehicle_inspection},
+                # v6 신규 2종
+                "dtg":                 {"provider": "KOTSA 디지털운행기록 (DTG)",       "data": self.dtg},
+                "nfa_dispatch":        {"provider": "소방청 119 교통사고 출동",         "data": self.nfa_dispatch},
             },
         }
 
@@ -1089,4 +1228,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         # v5 2026-05-18
         road_surface=fetch_road_surface(lat=lat0, lon=lon0, radius_m=2000.0),
         vehicle_inspection=fetch_vehicle_inspection(district="강남구"),
+        # v6 2026-05-18
+        dtg=fetch_dtg_stats(vehicle_type="법인택시"),
+        nfa_dispatch=fetch_nfa_dispatch(sido="서울특별시"),
     )

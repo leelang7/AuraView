@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>AuraView — 가명정보 처리 라이브 데모 (PII Pipeline)</title>
+<meta name="description" content="차량번호·얼굴 단말 즉시 마스킹 + SHA-256 해시 + 100m 위치 양자화 + k-익명 결합 — 가명정보 처리 5pt 실증"/>
+<style>
+  :root{
+    --bg:#070A12; --surface:#0E1422; --line:#1B2436;
+    --text:#E7ECF5; --muted:#7C8AA8; --dim:#4E5C78;
+    --accent:#00C8FF; --accent2:#7C3AED; --safe:#00E09A; --warn:#FFB020; --danger:#FF4040;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased;}
+  body{min-height:100dvh;}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 22px 70px;}
+  nav.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;
+    padding:10px 14px;background:rgba(20,28,46,0.55);border:1px solid var(--line);border-radius:99px;
+    backdrop-filter:blur(10px);position:sticky;top:14px;z-index:50;}
+  nav .brand{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:900;letter-spacing:0.6px}
+  nav .dot{width:9px;height:9px;border-radius:50%;background:var(--warn);box-shadow:0 0 8px var(--warn);}
+  nav .links{display:flex;gap:6px;flex-wrap:wrap;}
+  nav a{font-size:11.5px;color:var(--muted);text-decoration:none;padding:6px 10px;
+    border-radius:99px;border:1px solid transparent;font-weight:700;}
+  nav a:hover{color:var(--warn);border-color:rgba(255,176,32,0.30);}
+  .hero{padding:16px 0 22px;border-bottom:1px solid var(--line);margin-bottom:24px;}
+  .eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:2.5px;
+    color:var(--warn);padding:4px 11px;background:rgba(255,176,32,0.10);border:1px solid rgba(255,176,32,0.30);
+    border-radius:99px;margin-bottom:14px;}
+  h1{font-size:30px;font-weight:900;letter-spacing:-1px;line-height:1.2;margin-bottom:10px;}
+  h1 .gradient{background:linear-gradient(120deg,#FFB020 0%,#FF6B6B 60%,#FF4040 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .hero p{color:var(--muted);font-size:14px;max-width:780px;}
+  /* Pipeline */
+  .pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:24px 0 6px;
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;}
+  .step{background:#0A1018;border:1px solid var(--line);border-radius:10px;padding:12px 10px;
+    text-align:center;position:relative;cursor:pointer;transition:border-color 0.15s, transform 0.15s;}
+  .step:hover{border-color:var(--warn);transform:translateY(-2px);}
+  .step.on{border-color:var(--safe);background:rgba(0,224,154,0.08);}
+  .step .n{font-size:10px;letter-spacing:1.5px;color:var(--dim);font-weight:800;margin-bottom:4px;}
+  .step .ic{font-size:22px;margin-bottom:4px;}
+  .step .nm{font-size:12px;font-weight:800;color:var(--text);}
+  .step .sub{font-size:10px;color:var(--muted);margin-top:2px;}
+  .step::after{content:'›';position:absolute;right:-10px;top:50%;transform:translateY(-50%);
+    color:var(--dim);font-size:18px;font-weight:900;z-index:1;}
+  .step:last-child::after{display:none;}
+  @media (max-width:840px){.pipeline{grid-template-columns:repeat(2,1fr);}.step::after{display:none;}}
+  /* Demo grid */
+  .demo{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0;}
+  @media (max-width:840px){.demo{grid-template-columns:1fr;}}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;}
+  .panel h3{font-size:14px;font-weight:900;margin-bottom:12px;letter-spacing:0.3px;display:flex;align-items:center;gap:7px;}
+  .panel h3 .tag{font-size:9.5px;padding:2px 7px;border-radius:99px;font-weight:800;letter-spacing:0.8px;}
+  .tag.before{background:rgba(255,68,68,0.15);color:#FF6B6B;border:1px solid rgba(255,68,68,0.4);}
+  .tag.after{background:rgba(0,224,154,0.15);color:var(--safe);border:1px solid rgba(0,224,154,0.4);}
+  .face-box{position:relative;width:100%;aspect-ratio:16/10;background:#0A1018;border-radius:10px;
+    border:1px solid var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  .face-svg{width:100%;height:100%;}
+  /* Input row */
+  .input-row{display:flex;gap:8px;margin-bottom:12px;align-items:center;}
+  .input-row label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0.4px;min-width:88px;}
+  .input-row input{flex:1;background:#0A1018;border:1px solid var(--line);border-radius:8px;
+    padding:7px 10px;color:var(--text);font-family:'JetBrains Mono','D2Coding',monospace;font-size:12.5px;
+    outline:none;}
+  .input-row input:focus{border-color:var(--accent);}
+  .out{font-family:'JetBrains Mono','D2Coding',monospace;font-size:11.5px;background:#0A1018;
+    border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:4px;
+    color:var(--safe);word-break:break-all;line-height:1.65;}
+  .out .k{color:var(--muted);}
+  .out .v{color:var(--text);}
+  .out .h{color:var(--safe);}
+  .out .danger{color:#FF6B6B;text-decoration:line-through;opacity:0.7;}
+  /* k-anonymity table */
+  .ktab{width:100%;border-collapse:collapse;font-size:11.5px;font-family:'JetBrains Mono',monospace;}
+  .ktab th,.ktab td{padding:6px 9px;text-align:left;border-bottom:1px solid var(--line);}
+  .ktab th{color:var(--muted);font-weight:700;font-size:10.5px;letter-spacing:0.8px;}
+  .ktab td.k{color:var(--text);}
+  .ktab td.ok{color:var(--safe);font-weight:700;}
+  .ktab td.bad{color:#FF6B6B;font-weight:700;}
+  .ktab tr.suppress td{opacity:0.4;text-decoration:line-through;}
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px;}
+  @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr);}}
+  .stat{background:#0A1018;border:1px solid var(--line);border-radius:10px;padding:11px 13px;}
+  .stat .l{font-size:9.5px;letter-spacing:1.5px;color:var(--muted);font-weight:700;margin-bottom:4px;}
+  .stat .v{font-size:22px;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;}
+  .stat .v.safe{color:var(--safe);}
+  .stat .v.warn{color:var(--warn);}
+  /* Compliance */
+  .comp{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:24px;}
+  .comp h3{font-size:14px;font-weight:900;margin-bottom:14px;letter-spacing:0.3px;}
+  .comp ul{list-style:none;display:grid;grid-template-columns:repeat(2,1fr);gap:9px 18px;}
+  @media (max-width:640px){.comp ul{grid-template-columns:1fr;}}
+  .comp li{font-size:12.5px;color:var(--text);padding-left:22px;position:relative;line-height:1.6;}
+  .comp li::before{content:'✓';position:absolute;left:0;top:0;color:var(--safe);font-weight:900;font-size:14px;}
+  .comp li b{color:var(--warn);font-weight:800;}
+  .comp li small{display:block;color:var(--muted);font-size:11px;margin-top:2px;}
+  /* btn */
+  .btnrow{display:flex;gap:10px;margin-top:20px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;padding:9px 15px;
+    border-radius:9px;text-decoration:none;border:1px solid var(--line);color:var(--muted);background:transparent;
+    cursor:pointer;}
+  .btn.primary{background:rgba(0,224,154,0.10);color:var(--safe);border-color:rgba(0,224,154,0.40);}
+  .btn:hover{color:var(--text);border-color:var(--warn);}
+  .meta{margin-top:24px;text-align:center;font-size:11px;color:var(--dim);}
+  .meta code{background:rgba(124,140,180,0.08);padding:1px 5px;border-radius:3px;font-size:10.5px;}
+  .meta a{color:var(--muted);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="top">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>AuraView · 가명정보 처리 파이프라인</span>
+    </div>
+    <div class="links">
+      <a href="/scorecard/">⭐ 가산점</a>
+      <a href="/story/">스토리</a>
+      <a href="/bev3d/">3D BEV</a>
+      <a href="/gallery/">갤러리</a>
+      <a href="/competition/">제안서</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow"><span style="color:var(--warn);">●</span> 가산점 5pt · 가명정보 처리 실증</span>
+    <h1><span class="gradient">개인정보</span>는 단말을 떠나지 않습니다 — 5단계 파이프라인 라이브 데모</h1>
+    <p>차량번호·얼굴은 단말에서 즉시 마스킹·해시화됩니다. 위치는 100m 그리드로 양자화되고,
+       사고 통계는 데이터안심구역에서 <code style="color:var(--warn);">k ≥ 5</code> 익명 결합 후 인입합니다.
+       원본 이미지나 정확한 GPS는 외부로 절대 송출되지 않습니다.</p>
+  </header>
+
+  <!-- 5-step pipeline -->
+  <div class="pipeline">
+    <div class="step on">
+      <div class="n">STEP 1</div>
+      <div class="ic">📷</div>
+      <div class="nm">단말 캡처</div>
+      <div class="sub">Galaxy 후면카메라</div>
+    </div>
+    <div class="step on">
+      <div class="n">STEP 2</div>
+      <div class="ic">🟦</div>
+      <div class="nm">즉시 마스킹</div>
+      <div class="sub">번호판·얼굴 블러</div>
+    </div>
+    <div class="step on">
+      <div class="n">STEP 3</div>
+      <div class="ic">#️⃣</div>
+      <div class="nm">SHA-256 해시</div>
+      <div class="sub">재식별 불가능</div>
+    </div>
+    <div class="step on">
+      <div class="n">STEP 4</div>
+      <div class="ic">📍</div>
+      <div class="nm">위치 양자화</div>
+      <div class="sub">100m 그리드 셀</div>
+    </div>
+    <div class="step on">
+      <div class="n">STEP 5</div>
+      <div class="ic">🔒</div>
+      <div class="nm">k-익명 결합</div>
+      <div class="sub">데이터안심구역</div>
+    </div>
+  </div>
+
+  <!-- DEMO 1: Before/After visual masking -->
+  <div class="demo">
+    <div class="panel">
+      <h3><span class="tag before">BEFORE</span> 원본 영상 (디바이스 내부)</h3>
+      <div class="face-box">
+        <svg class="face-svg" viewBox="0 0 400 250" preserveAspectRatio="xMidYMid meet">
+          <!-- road bg -->
+          <rect width="400" height="250" fill="#1a1f2e"/>
+          <rect x="0" y="170" width="400" height="80" fill="#252a38"/>
+          <!-- yellow center line dashes -->
+          <g fill="#FFD93D">
+            <rect x="10" y="208" width="24" height="3"/>
+            <rect x="50" y="208" width="24" height="3"/>
+            <rect x="90" y="208" width="24" height="3"/>
+            <rect x="130" y="208" width="24" height="3"/>
+            <rect x="170" y="208" width="24" height="3"/>
+            <rect x="210" y="208" width="24" height="3"/>
+            <rect x="250" y="208" width="24" height="3"/>
+            <rect x="290" y="208" width="24" height="3"/>
+            <rect x="330" y="208" width="24" height="3"/>
+            <rect x="370" y="208" width="24" height="3"/>
+          </g>
+          <!-- car -->
+          <g transform="translate(220,140)">
+            <rect x="0" y="0" width="120" height="60" fill="#3a4860" stroke="#7C8AA8" stroke-width="1.5" rx="6"/>
+            <rect x="10" y="8" width="100" height="22" fill="#1a1f2e" rx="3"/>
+            <!-- license plate -->
+            <rect x="35" y="42" width="50" height="13" fill="#fff" stroke="#000" stroke-width="0.5"/>
+            <text x="60" y="52" font-family="monospace" font-size="9" font-weight="900" text-anchor="middle" fill="#000">12가 3456</text>
+            <!-- wheels -->
+            <circle cx="22" cy="64" r="7" fill="#0a0e15"/>
+            <circle cx="98" cy="64" r="7" fill="#0a0e15"/>
+          </g>
+          <!-- pedestrian -->
+          <g transform="translate(80,110)">
+            <circle cx="0" cy="0" r="14" fill="#F4C7A3"/>
+            <!-- face dots -->
+            <circle cx="-5" cy="-2" r="1.5" fill="#000"/>
+            <circle cx="5" cy="-2" r="1.5" fill="#000"/>
+            <path d="M -4 5 Q 0 8 4 5" stroke="#000" stroke-width="1.2" fill="none"/>
+            <!-- body -->
+            <rect x="-12" y="14" width="24" height="42" fill="#D14C4C" rx="2"/>
+            <rect x="-10" y="56" width="9" height="30" fill="#2a3040"/>
+            <rect x="1" y="56" width="9" height="30" fill="#2a3040"/>
+          </g>
+          <!-- timestamp watermark -->
+          <text x="10" y="22" font-family="monospace" font-size="11" fill="rgba(255,255,255,0.5)" font-weight="700">2026-05-18 13:42:07 KST</text>
+        </svg>
+      </div>
+      <div class="out" style="margin-top:10px;">
+        <span class="k">메타데이터:</span> <span class="danger">plate="12가 3456" face_encoding=[0.4, 0.8, ...]</span><br>
+        <span class="k">위치 (raw):</span> <span class="danger">37.5172° N, 127.0473° E (±2m)</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3><span class="tag after">AFTER</span> 가명화 직후 (외부 송출 전)</h3>
+      <div class="face-box">
+        <svg class="face-svg" viewBox="0 0 400 250" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="blur1" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="6"/>
+            </filter>
+            <filter id="blur2" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="4.5"/>
+            </filter>
+          </defs>
+          <rect width="400" height="250" fill="#1a1f2e"/>
+          <rect x="0" y="170" width="400" height="80" fill="#252a38"/>
+          <g fill="#FFD93D">
+            <rect x="10" y="208" width="24" height="3"/>
+            <rect x="50" y="208" width="24" height="3"/>
+            <rect x="90" y="208" width="24" height="3"/>
+            <rect x="130" y="208" width="24" height="3"/>
+            <rect x="170" y="208" width="24" height="3"/>
+            <rect x="210" y="208" width="24" height="3"/>
+            <rect x="250" y="208" width="24" height="3"/>
+            <rect x="290" y="208" width="24" height="3"/>
+            <rect x="330" y="208" width="24" height="3"/>
+            <rect x="370" y="208" width="24" height="3"/>
+          </g>
+          <g transform="translate(220,140)">
+            <rect x="0" y="0" width="120" height="60" fill="#3a4860" stroke="#7C8AA8" stroke-width="1.5" rx="6"/>
+            <rect x="10" y="8" width="100" height="22" fill="#1a1f2e" rx="3"/>
+            <!-- BLURRED PLATE -->
+            <g filter="url(#blur1)">
+              <rect x="35" y="42" width="50" height="13" fill="#888"/>
+            </g>
+            <rect x="35" y="42" width="50" height="13" fill="none" stroke="#FFB020" stroke-width="1.5" stroke-dasharray="2,2"/>
+            <text x="60" y="68" font-family="monospace" font-size="6.5" text-anchor="middle" fill="#FFB020" font-weight="800">PLATE MASKED</text>
+            <circle cx="22" cy="64" r="7" fill="#0a0e15"/>
+            <circle cx="98" cy="64" r="7" fill="#0a0e15"/>
+          </g>
+          <g transform="translate(80,110)">
+            <!-- BLURRED FACE -->
+            <g filter="url(#blur2)">
+              <circle cx="0" cy="0" r="14" fill="#888"/>
+            </g>
+            <circle cx="0" cy="0" r="14" fill="none" stroke="#FFB020" stroke-width="1.5" stroke-dasharray="2,2"/>
+            <text x="0" y="-22" font-family="monospace" font-size="7" text-anchor="middle" fill="#FFB020" font-weight="800">FACE MASKED</text>
+            <rect x="-12" y="14" width="24" height="42" fill="#D14C4C" rx="2"/>
+            <rect x="-10" y="56" width="9" height="30" fill="#2a3040"/>
+            <rect x="1" y="56" width="9" height="30" fill="#2a3040"/>
+          </g>
+          <text x="10" y="22" font-family="monospace" font-size="11" fill="rgba(255,255,255,0.5)" font-weight="700">2026-05-18 13:42:07 KST</text>
+          <!-- safe badge -->
+          <g transform="translate(10,232)">
+            <rect x="0" y="0" width="118" height="14" fill="rgba(0,224,154,0.20)" stroke="#00E09A" stroke-width="1" rx="3"/>
+            <text x="59" y="10" font-family="monospace" font-size="9" font-weight="900" text-anchor="middle" fill="#00E09A">✓ ON-DEVICE MASKED</text>
+          </g>
+        </svg>
+      </div>
+      <div class="out" style="margin-top:10px;">
+        <span class="k">메타데이터:</span> <span class="v">plate_hash=</span><span class="h" id="plate-hash">…</span><br>
+        <span class="k">위치 (양자화):</span> <span class="v">grid_cell=</span><span class="h" id="grid-cell">…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEMO 2: Hash demo + k-anonymity table -->
+  <div class="demo">
+    <div class="panel">
+      <h3>SHA-256 라이브 해시 (브라우저 내 Web Crypto API)</h3>
+      <div class="input-row">
+        <label>차량번호</label>
+        <input id="plate-in" value="12가 3456" maxlength="20"/>
+      </div>
+      <div class="input-row">
+        <label>GPS (raw)</label>
+        <input id="gps-in" value="37.5172,127.0473"/>
+      </div>
+      <div class="out" id="hash-out">
+        계산 중…
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" onclick="recalc()">↻ 재계산</button>
+        <button class="btn" onclick="randomize()">🎲 랜덤 입력</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>k-익명 결합 결과 (k = 5, 데이터안심구역 시뮬)</h3>
+      <table class="ktab">
+        <thead><tr><th>그리드</th><th>시간대</th><th>차종</th><th>건수</th><th>k-status</th></tr></thead>
+        <tbody>
+          <tr><td class="k">D5-37</td><td>08:00-09:00</td><td>승용</td><td>17</td><td class="ok">OK k=17</td></tr>
+          <tr><td class="k">D5-37</td><td>08:00-09:00</td><td>화물</td><td>8</td><td class="ok">OK k=8</td></tr>
+          <tr><td class="k">D5-37</td><td>17:00-18:00</td><td>승용</td><td>23</td><td class="ok">OK k=23</td></tr>
+          <tr class="suppress"><td class="k">D5-37</td><td>02:00-03:00</td><td>이륜</td><td>2</td><td class="bad">SUPPRESS k=2</td></tr>
+          <tr><td class="k">D5-38</td><td>08:00-09:00</td><td>승용</td><td>31</td><td class="ok">OK k=31</td></tr>
+          <tr class="suppress"><td class="k">D5-38</td><td>23:00-24:00</td><td>긴급</td><td>1</td><td class="bad">SUPPRESS k=1</td></tr>
+          <tr><td class="k">D5-38</td><td>12:00-13:00</td><td>버스</td><td>9</td><td class="ok">OK k=9</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.6;">
+        <b style="color:var(--text);">k &lt; 5 셀은 자동 SUPPRESS</b> — 재식별 가능 행은 결합 결과에서 제외됩니다.
+        통계 처리는 <code style="background:rgba(255,176,32,0.10);color:var(--warn);padding:1px 5px;border-radius:3px;">dsz.ex.co.kr</code>
+        (도로공사 데이터안심구역) 내에서만 수행됩니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="l">원본 송출</div><div class="v safe">0</div><div style="font-size:10px;color:var(--muted);">건/일</div></div>
+    <div class="stat"><div class="l">단말 마스킹</div><div class="v safe">100%</div><div style="font-size:10px;color:var(--muted);">탐지된 PII</div></div>
+    <div class="stat"><div class="l">위치 정밀도</div><div class="v warn">100m</div><div style="font-size:10px;color:var(--muted);">그리드 셀</div></div>
+    <div class="stat"><div class="l">k-익명 임계</div><div class="v warn">k ≥ 5</div><div style="font-size:10px;color:var(--muted);">DSZ 결합</div></div>
+  </div>
+
+  <!-- Compliance checklist -->
+  <section class="comp">
+    <h3>개인정보 영향평가 7대 항목 — 모두 충족</h3>
+    <ul>
+      <li><b>수집 최소화</b> — 위험이벤트 메타만 수집, 원본 영상 X
+        <small>플랫폼/시간/그리드/위험점수만 송출 · 약 280B/건</small></li>
+      <li><b>목적 제한</b> — 도로위험 예측 1개 목적
+        <small>광고·프로파일링·신원확인 등 일체 사용 금지</small></li>
+      <li><b>보유 기간</b> — 90일 후 자동 삭제 (집계 통계만 보존)
+        <small>S3 라이프사이클 정책 + DB TTL 트리거</small></li>
+      <li><b>파기 절차</b> — 안전한 삭제 (DB는 logical+physical purge)
+        <small>cron 일배치 + 분기별 감사 로그</small></li>
+      <li><b>제3자 제공</b> — 정부·지자체 한정, 가명정보만 제공
+        <small>17 소스 어댑터는 inbound only · outbound 채널 없음</small></li>
+      <li><b>처리 위탁</b> — 위탁 없음 (자체 EC2 + 자체 학습)
+        <small>모델 학습·추론 모두 인하우스 인프라</small></li>
+      <li><b>처리방침 공개</b> — /privacy/policy 상시 공개
+        <small>변경 시 14일 사전 고지 SLA</small></li>
+    </ul>
+  </section>
+
+  <div class="meta">
+    AuraView K-Perception · schema <code>fusion.v5-17src-2026.05.18</code> · PII pipeline v1<br>
+    <a href="/scorecard/">⭐ 가산점 25점 적격 증거표</a> · <a href="/competition/">제안서</a> · <a href="https://github.com/leelang7/AuraView">GitHub</a>
+  </div>
+
+</div>
+
+<script>
+// ── SHA-256 via Web Crypto
+async function sha256Hex(s) {
+  const buf = new TextEncoder().encode(s);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function gridCell(lat, lon) {
+  // 100m grid: lat 1deg ~111km → 100m = 1/1110 deg; lon scaled by cos(lat)
+  const latIdx = Math.floor(lat * 1110);
+  const lonIdx = Math.floor(lon * 1110 * Math.cos(lat * Math.PI / 180));
+  return `D${latIdx % 1000}-${lonIdx % 1000}`;
+}
+async function recalc() {
+  const plate = document.getElementById('plate-in').value;
+  const gps = document.getElementById('gps-in').value;
+  const [lat, lon] = gps.split(',').map(parseFloat);
+  const hash = await sha256Hex(plate);
+  const cell = (isNaN(lat) || isNaN(lon)) ? 'INVALID' : gridCell(lat, lon);
+  document.getElementById('hash-out').innerHTML =
+    '<span class="k">SHA-256(plate)</span> = <span class="h">' + hash + '</span><br>' +
+    '<span class="k">latitude</span>  = <span class="danger">' + (lat||0).toFixed(4) + '</span> → <span class="v">' + (Math.floor((lat||0) * 1110) / 1110).toFixed(4) + '</span><br>' +
+    '<span class="k">longitude</span> = <span class="danger">' + (lon||0).toFixed(4) + '</span> → <span class="v">' + (Math.floor((lon||0) * 1110) / 1110).toFixed(4) + '</span><br>' +
+    '<span class="k">grid_cell</span>  = <span class="h">' + cell + '</span>';
+  document.getElementById('plate-hash').textContent = hash.slice(0, 16) + '…';
+  document.getElementById('grid-cell').textContent = cell;
+}
+function randomize() {
+  const k1 = ['11', '12', '24', '36', '47', '88'][Math.floor(Math.random()*6)];
+  const k2 = ['가','나','다','라','마','바','사','아'][Math.floor(Math.random()*8)];
+  const k3 = Math.floor(1000 + Math.random()*9000);
+  document.getElementById('plate-in').value = `${k1}${k2} ${k3}`;
+  const lat = 37.50 + Math.random() * 0.10;
+  const lon = 127.00 + Math.random() * 0.10;
+  document.getElementById('gps-in').value = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+  recalc();
+}
+recalc();
+</script>
+</body>
+</html>

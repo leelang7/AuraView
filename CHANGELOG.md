@@ -5,6 +5,53 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.18 — 21종 확장 (도로노후+V2X) + Tesla UI/UX 전면 개편 + /policy 라이브 API (2026-05-19)
+
+### Added — 19 → 21종 데이터 융합 확장 (v7)
+- **`#20 행정안전부 도로 노후도`** (`apis.data.go.kr/1741000/RoadAgeStats`) — 노후 포장 비율 + 포트홀 밀도
+  - 시도별 aged_15y_plus_pct + pothole_per_km + crack_index
+  - 노후도 0.30 초과 시 +0.06, 포트홀 평균 초과 시 +0.04 → max +0.10 road_age_risk_boost
+- **`#21 KOTSA 자율주행 데이터허브 (V2X)`** (`apis.data.go.kr/B552014/AvHub`) — HD map + V2X RSU + AV 시범운행
+  - 판교/세종/상암 등 자율주행 시범지구 데이터
+  - av_confidence = HD map 0.7 + V2X RSU 0.3 가중평균
+  - **음의 prior**: V2X 인프라 충분한 구역은 위험 감산 (`av_risk_reduce`)
+- 융합 가중치 v7 재조정: speed 0.13 + 돌발 0.08 + TAAS 0.08 + 기상 0.07 + 노면 0.06 + DTG 0.06 + 도로노후 0.06 + 119 0.05 + 스쿨존 0.08 + 보행 0.05 + 통학로 0.05 + 검사 0.04 + ER 0.04 + 자전거 0.04 + 미세먼지 0.03 + EV 0.02 − av_risk_reduce
+- `schema_version`: `fusion.v7-21src-2026.05.19`
+- 신규 엔드포인트: `GET /fusion/road-age` + `GET /fusion/av-hub`
+
+### Added — Backend /policy/stats endpoint
+- `GET /policy/stats` — 정책의사결정 대시보드용 집계 KPI
+  - kpi (fleet/events/hot_grids/recommendations/CI 95%)
+  - top_hotspots 10개 (rank + name + risk + ci + factors)
+  - recommendations 4종 (schoolzone_new / signal_tuning / enforcement / infra)
+  - time_pattern_2d_24x7 (168 cells = 7days × 24h)
+
+### Updated — /policy/ 전 페이지 라이브 API 기반 (v10.3)
+- 이전: KPI 5개만 페치, hotspots/recs/heatmap 은 하드코딩 HTML
+- 이번: 모든 데이터를 `/policy/stats` API 에서 동적 렌더
+  - `renderHotspots()` / `renderRecs()` / `renderHeatmap()` 함수화
+  - 패널 헤더에 `GET /policy/stats` endpoint URL 노출 (judges 검증용)
+  - escapeHtml() XSS 가드
+- KPI count-up 애니메이션 (easeOut 1.1~1.3s)
+
+### Updated — Flutter 네이티브앱 Tesla 시각언어 전면 적용 (v11.2)
+사용자 지적 "디자인 UI/UX 간지나게 세련되게 테슬라 스타일로":
+- **_UnifiedStatusBar**: BackdropFilter blur 16 + glassmorphism + Tesla 시그니처 큰 숫자 28pt + uppercase tracking
+- **_TeslaChip**: 26px 작은 pill (REC / 업로드 / ONLINE 상태)
+- **_TeslaLabel**: 카메라/BEV 카드 corner badge (글로우 dot + uppercase 9.5pt tracking 1.0)
+- **_RecPill**: Tesla "Engage AP" 풍 (42px, "TAP TO ENGAGE" / "AURA · ENGAGED", 빨강 글로우 spread)
+- BEV 카드 borderRadius 14 → 20, white 8% border, drop shadow (떠있는 느낌)
+- _IdleStatusCard 폐기 → 화면 95% 가 카메라+BEV split
+- 중복 ⚙ 설정 버튼 제거
+- IPM affine 워프 폐기 (사용자: "걍 아핀변환해서 보여주는거 아니냐") → 순수 합성 3D BEV
+- 검출 파이프라인 가시 디버그 pill 추가 (raw=N kept=M / "ML Kit 초기화 실패" 등)
+- ML Kit area filter 완화 (1.2% → 0.4%)
+
+### Static pages
+- /story/ /scorecard/ /privacy/ /policy/ /reel/ /kiosk/ /gallery/ /visuals/fusion_diagram.svg → 19 → 21 일괄 갱신
+
+---
+
 ## v0.17 — Tesla 식 정책 대시보드 + /bev3d 실 카메라 구동 (객체 모양 보존) (2026-05-18)
 
 ### Added — /policy/ 정책의사결정 대시보드 (Tesla fleet → 통계 → 정책)

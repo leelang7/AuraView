@@ -967,7 +967,121 @@ def fetch_nfa_dispatch(sido: str = "서울특별시") -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (19-source v6 2026-05-18)
+# 20. 행정안전부 도로 노후도 통계 (Road Age Index) — v7 2026-05-19
+#     포트홀/균열/노후 포장 비율 — 인프라 위험 prior
+# ──────────────────────────────────────────────────────────────────────
+
+MOIS_ROAD_BASE_URL = os.getenv("MOIS_ROAD_BASE_URL", "https://apis.data.go.kr/1741000/RoadAgeStats")
+MOIS_ROAD_KEY = os.getenv("MOIS_ROAD_KEY", os.getenv("SERVICE_KEY", ""))
+
+_ROAD_AGE_FALLBACK = {
+    "source": "행정안전부 도로 노후도 통계 (stub — MOIS_ROAD_KEY 미설정)",
+    "year": 2024,
+    "by_sido": [
+        {"sido": "서울특별시", "total_km": 8_412, "aged_15y_plus_pct": 0.42, "pothole_per_km": 1.8, "crack_index": 0.31},
+        {"sido": "경기도",     "total_km": 14_215,"aged_15y_plus_pct": 0.38, "pothole_per_km": 1.2, "crack_index": 0.27},
+        {"sido": "부산광역시", "total_km": 3_158, "aged_15y_plus_pct": 0.48, "pothole_per_km": 2.1, "crack_index": 0.36},
+    ],
+    "national_avg_pothole_per_km": 1.5,
+}
+
+
+def fetch_road_age(sido: str = "서울특별시") -> Dict[str, Any]:
+    """행안부 도로 노후도 — 노후 포장 비율 + 포트홀 밀도 → 인프라 위험 prior."""
+    url = f"{MOIS_ROAD_BASE_URL}/getRoadAgeBySido"
+    params = {"serviceKey": MOIS_ROAD_KEY, "sido": sido, "year": 2024, "format": "json"}
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("road_age", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("MOIS road age API failed: %s", exc)
+        _record_fetch("road_age", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
+
+    by_s = _ROAD_AGE_FALLBACK["by_sido"]
+    matched = next((s for s in by_s if s["sido"] == sido), by_s[0])
+    pothole = matched.get("pothole_per_km", 1.5)
+    nat_avg = _ROAD_AGE_FALLBACK["national_avg_pothole_per_km"]
+    aged_pct = matched.get("aged_15y_plus_pct", 0.40)
+    # 노후도 1단위 ↑ → +0.06, 포트홀 평균 초과 ↑ → +0.04
+    road_age_boost = min(0.10, max(0.0, (aged_pct - 0.30) * 0.20 + (pothole - nat_avg) * 0.025))
+    return {
+        **_ROAD_AGE_FALLBACK,
+        "matched": matched,
+        "derived": {
+            "sido": sido,
+            "aged_15y_plus_pct": aged_pct,
+            "pothole_per_km": pothole,
+            "pothole_national_avg": nat_avg,
+            "above_national_avg": pothole > nat_avg,
+            "road_age_risk_boost": round(road_age_boost, 3),
+            "crack_index": matched.get("crack_index", 0.30),
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 21. 한국교통안전공단 자율주행 데이터허브 (V2X / 정밀도로지도) — v7 2026-05-19
+#     V2X 시범운행 데이터, 정밀도로지도 fingerprint → 자율주행 신뢰도 prior
+# ──────────────────────────────────────────────────────────────────────
+
+AV_HUB_BASE_URL = os.getenv("AV_HUB_BASE_URL", "https://apis.data.go.kr/B552014/AvHub")
+AV_HUB_KEY = os.getenv("AV_HUB_KEY", os.getenv("SERVICE_KEY", ""))
+
+_AV_HUB_FALLBACK = {
+    "source": "KOTSA 자율주행 데이터허브 (stub — AV_HUB_KEY 미설정)",
+    "by_region": [
+        {"region": "판교", "hd_map_coverage_pct": 0.95, "v2x_rsu_count": 142, "av_test_km_2024": 32_840, "incident_rate_per_10kkm": 0.4},
+        {"region": "세종", "hd_map_coverage_pct": 0.88, "v2x_rsu_count":  78, "av_test_km_2024": 18_215, "incident_rate_per_10kkm": 0.6},
+        {"region": "상암", "hd_map_coverage_pct": 0.92, "v2x_rsu_count":  64, "av_test_km_2024": 12_456, "incident_rate_per_10kkm": 0.5},
+    ],
+    "national_av_zones": 12,
+}
+
+
+def fetch_av_hub(region: str = "판교") -> Dict[str, Any]:
+    """KOTSA 자율주행 데이터허브 — V2X RSU + HD map + AV 시범운행 통계."""
+    url = f"{AV_HUB_BASE_URL}/getRegionStats"
+    params = {"serviceKey": AV_HUB_KEY, "region": region, "year": 2024, "format": "json"}
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("av_hub", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("AV Hub API failed: %s", exc)
+        _record_fetch("av_hub", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
+
+    by_r = _AV_HUB_FALLBACK["by_region"]
+    matched = next((r for r in by_r if r["region"] == region), by_r[0])
+    hd_cov = matched.get("hd_map_coverage_pct", 0.90)
+    v2x = matched.get("v2x_rsu_count", 60)
+    incident = matched.get("incident_rate_per_10kkm", 0.5)
+    # V2X RSU 50+ & HD map 90+ → 자율주행 신뢰도 ↑ → 위험 ↓ (음의 prior)
+    av_confidence = min(1.0, hd_cov * 0.7 + min(v2x, 200) / 200 * 0.3)
+    av_risk_reduce = round(max(0.0, (av_confidence - 0.5) * 0.10), 3)
+    return {
+        **_AV_HUB_FALLBACK,
+        "matched": matched,
+        "derived": {
+            "region": region,
+            "hd_map_coverage_pct": hd_cov,
+            "v2x_rsu_count": v2x,
+            "av_confidence": round(av_confidence, 3),
+            "av_risk_reduce": av_risk_reduce,
+            "high_v2x_zone": v2x >= 100,
+            "incident_rate_per_10kkm": incident,
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (21-source v7 2026-05-19)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -996,6 +1110,9 @@ class IntersectionFusion:
     # v6 2026-05-18: 19-source 확장
     dtg: Dict[str, Any]
     nfa_dispatch: Dict[str, Any]
+    # v7 2026-05-19: 21-source 확장
+    road_age: Dict[str, Any]
+    av_hub: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -1065,38 +1182,50 @@ class IntersectionFusion:
         severity_boost  = float(nfa_derived.get("severity_risk_boost", 0.0))
         golden_at_risk  = bool(nfa_derived.get("golden_time_at_risk", False))
 
-        # 19종 통합 위험 점수 (v6)
-        # 가중치 재조정: 속도0.14 + 돌발0.09 + TAAS0.09 + 기상0.08 + ER0.04 + 자전거0.04
-        #         + 결빙0.06 + 보행자다발0.05 + 스쿨존0.09 + 통학로0.05 + 미세먼지0.03
-        #         + EV0.02 + 도로노면0.06 + 자동차검사0.04 + DTG0.07 + 119출동0.05
+        # NEW v7 2026-05-19: 도로 노후도 · 자율주행 V2X 데이터허브 신호 추출
+        age_derived = self.road_age.get("derived", {}) if isinstance(self.road_age, dict) else {}
+        av_derived  = self.av_hub.get("derived", {})   if isinstance(self.av_hub, dict)   else {}
+        road_age_boost  = float(age_derived.get("road_age_risk_boost", 0.0))
+        aged_pct        = float(age_derived.get("aged_15y_plus_pct", 0.0))
+        av_confidence   = float(av_derived.get("av_confidence", 0.0))
+        av_risk_reduce  = float(av_derived.get("av_risk_reduce", 0.0))
+        high_v2x_zone   = bool(av_derived.get("high_v2x_zone", False))
+
+        # 21종 통합 위험 점수 (v7)
+        # 가중치 재조정: 속도0.13 + 돌발0.08 + TAAS0.08 + 기상0.07 + ER0.04 + 자전거0.04
+        #         + 결빙0.06 + 보행자다발0.05 + 스쿨존0.08 + 통학로0.05 + 미세먼지0.03
+        #         + EV0.02 + 도로노면0.06 + 자동차검사0.04 + DTG0.06 + 119출동0.05
+        #         + 도로노후0.06 + 자율주행V2X(-) av_risk_reduce 감산
         base = (
-            (1.0 - min(avg_speed, 80) / 80) * 0.14 +
-            min(incident_count, 3) / 3 * 0.09 +
-            min(taas_count, 7) / 7 * 0.09 +
-            wet_boost * 0.08 +
+            (1.0 - min(avg_speed, 80) / 80) * 0.13 +
+            min(incident_count, 3) / 3 * 0.08 +
+            min(taas_count, 7) / 7 * 0.08 +
+            wet_boost * 0.07 +
             er_load * 0.04 +
             bike_boost * 0.04 +
             freeze_boost * 0.06 +
             ped_boost * 0.05 +
-            (sz_multiplier - 1.0) * 0.09 +
+            (sz_multiplier - 1.0) * 0.08 +
             walk_boost * 0.05 +
             air_boost * 0.03 +
             ev_dwelling * 0.02 +
             surface_boost * 0.06 +
             insp_boost * 0.04 +
-            dtg_boost * 0.07 +
-            severity_boost * 0.05
+            dtg_boost * 0.06 +
+            severity_boost * 0.05 +
+            road_age_boost * 0.06
         )
         base *= sz_multiplier if in_school_zone else 1.0
-        # 119 골든타임 위험 시 추가 multiplier
         if golden_at_risk: base *= severity_mul_nfa
+        # 자율주행 V2X RSU 충분한 구역 → 위험 ↓ 감산
+        base = max(0.0, base - av_risk_reduce)
         risk_score = min(1.0, round(base, 3))
 
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 19,
-                "schema_version": "fusion.v6-19src-2026.05.18",
+                "sources_fused": 21,
+                "schema_version": "fusion.v7-21src-2026.05.19",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
@@ -1133,6 +1262,12 @@ class IntersectionFusion:
                 "nfa_severity_multiplier": severity_mul_nfa,
                 "nfa_severity_risk_boost": severity_boost,
                 "golden_time_at_risk": golden_at_risk,
+                # v7 신규 5필드 (도로노후 + V2X 자율주행)
+                "road_aged_15y_plus_pct": aged_pct,
+                "road_age_risk_boost": road_age_boost,
+                "av_confidence": av_confidence,
+                "av_risk_reduce": av_risk_reduce,
+                "high_v2x_zone": high_v2x_zone,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",
@@ -1160,6 +1295,9 @@ class IntersectionFusion:
                 # v6 신규 2종
                 "dtg":                 {"provider": "KOTSA 디지털운행기록 (DTG)",       "data": self.dtg},
                 "nfa_dispatch":        {"provider": "소방청 119 교통사고 출동",         "data": self.nfa_dispatch},
+                # v7 신규 2종
+                "road_age":            {"provider": "행정안전부 도로 노후도",            "data": self.road_age},
+                "av_hub":              {"provider": "KOTSA 자율주행 데이터허브 (V2X)",  "data": self.av_hub},
             },
         }
 
@@ -1231,4 +1369,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         # v6 2026-05-18
         dtg=fetch_dtg_stats(vehicle_type="법인택시"),
         nfa_dispatch=fetch_nfa_dispatch(sido="서울특별시"),
+        # v7 2026-05-19
+        road_age=fetch_road_age(sido="서울특별시"),
+        av_hub=fetch_av_hub(region="판교"),
     )

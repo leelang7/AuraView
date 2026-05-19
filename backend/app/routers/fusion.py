@@ -61,6 +61,9 @@ def list_sources():
         # v6 2026-05-18: 17 → 19종 확장
         {"id": "dtg",                "name": "KOTSA DTG 디지털운행기록",        "origin": "apis.data.go.kr/B552014/DtgStats",       "gain": "사업용 차량 위험운전 +0.10",   "added": "v6-2026.05.18"},
         {"id": "nfa_dispatch",       "name": "소방청 119 교통사고 출동",        "origin": "apis.data.go.kr/1661000/TfcAcdntDsptch", "gain": "사고 심각도 + 골든타임 라우팅", "added": "v6-2026.05.18"},
+        # v7 2026-05-19: 19 → 21종 확장
+        {"id": "road_age",           "name": "행정안전부 도로 노후도",           "origin": "apis.data.go.kr/1741000/RoadAgeStats",   "gain": "노후포장+포트홀 인프라 위험 +0.10", "added": "v7-2026.05.19"},
+        {"id": "av_hub",             "name": "KOTSA 자율주행 데이터허브 (V2X)",  "origin": "apis.data.go.kr/B552014/AvHub",          "gain": "V2X RSU + HD map → 위험 감산", "added": "v7-2026.05.19"},
     ]
     for s in sources:
         meta = fresh.get(s["id"]) or {}
@@ -71,7 +74,7 @@ def list_sources():
     return {
         "sources": sources,
         "count": len(sources),
-        "schema_version": "fusion.v6-19src-2026.05.18",
+        "schema_version": "fusion.v7-21src-2026.05.19",
         "checked_at": now_ts.isoformat() + "Z",
     }
 
@@ -163,6 +166,19 @@ def fusion_dtg(vehicle_type: str = Query("법인택시")):
 def fusion_nfa_dispatch(sido: str = Query("서울특별시")):
     """소방청 119 교통사고 출동 통계 — 사고 심각도 prior + 골든타임 라우팅."""
     return public_api.fetch_nfa_dispatch(sido=sido)
+
+
+# v7 2026-05-19: 19 → 21종 확장
+@router.get("/road-age")
+def fusion_road_age(sido: str = Query("서울특별시")):
+    """행정안전부 도로 노후도 — 노후 포장 비율 + 포트홀 밀도."""
+    return public_api.fetch_road_age(sido=sido)
+
+
+@router.get("/av-hub")
+def fusion_av_hub(region: str = Query("판교")):
+    """KOTSA 자율주행 데이터허브 — V2X RSU + HD map + AV 시범운행 통계."""
+    return public_api.fetch_av_hub(region=region)
 
 
 @router.get("/intersection/{intersection_id}")

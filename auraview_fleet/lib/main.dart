@@ -172,6 +172,13 @@ class _FleetHomeState extends State<FleetHome>
   Position? _prevPos;
   double _totalKm = 0.0;
 
+  // v12.13: 서버 헬시 체크 — schema 버전, live source 수, 마지막 성공 시각, 재시도 backoff
+  String _serverSchema = '';
+  int _serverSourceCount = 0;
+  int _serverLiveSourceCount = 0;
+  DateTime? _lastFusionFetchOk;
+  int _fusionRetryDelay = 1500;   // ms, 실패 시 exponential backoff
+
   // v9.2 2026-05-18: BEV WebView 컨트롤러 (검출 결과를 JS aurDetect() 로 push)
   WebViewController? _bevWvCtrl;
   // v9.3 2026-05-18: ML Kit 검출 결과 보관 (Flutter 네이티브 BEV 오버레이용)
@@ -383,9 +390,18 @@ class _FleetHomeState extends State<FleetHome>
             .timeout(const Duration(seconds: 6));
         if (r.statusCode == 200) {
           final body = jsonDecode(r.body) as Map<String, dynamic>;
-          if (mounted) setState(() => _fusion = body);
+          if (mounted) setState(() {
+            _fusion = body;
+            _lastFusionFetchOk = DateTime.now();
+            _fusionRetryDelay = 1500;   // v12.13: 성공 → backoff 초기화
+          });
+        } else {
+          // v12.13: 비정상 응답 → backoff (5xx 가 흔함)
+          _fusionRetryDelay = (_fusionRetryDelay * 2).clamp(1500, 30000);
         }
-      } catch (_) {}
+      } catch (_) {
+        _fusionRetryDelay = (_fusionRetryDelay * 2).clamp(1500, 30000);
+      }
 
       // 가려진 신호등 대체 안내 — voxel 분석으로 occlusion_score 추정
       try {
@@ -878,6 +894,10 @@ class _FleetHomeState extends State<FleetHome>
           _pos = p;
           _totalKm += addKm;
         });
+        // v12.13: 영속화 (10m 단위로만 저장 — 너무 잦은 쓰기 방지)
+        if (addKm > 0.01) {
+          SharedPreferences.getInstance().then((sp) => sp.setDouble('total_km', _totalKm));
+        }
       }, onError: (_) {});
     } catch (_) {}
   }
@@ -1130,7 +1150,14 @@ class _FleetHomeState extends State<FleetHome>
     _refreshLocation();
     _startLocationStream();
     _pollServer();
-    _pollServerTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
+    _checkFusionHealth();   // v12.13: 서버 schema/live source 헬시 1회
+    _pollServerTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _pollServer();
+      _checkFusionHealth();
+    });
+
+    // v12.13: 저장된 누적 주행거리 복원 (영속화)
+    _totalKm = sp.getDouble('total_km') ?? 0.0;
 
     // v9.2: BEV 자동 시작 (1.5초 주기 — WebView 3D 빌보드 라이브 갱신 위해 단축)
     _fetchBev();
@@ -1171,6 +1198,29 @@ class _FleetHomeState extends State<FleetHome>
     } catch (e) {
       if (mounted) setState(() => _serverError = '연결 안 됨');
     }
+  }
+
+  /// v12.13: /fusion/sources 헬시 체크 (schema 버전 / N/21 live 소스 카운트)
+  ///   bootstrap 1회 + _pollServer 와 함께 주기적으로 호출.
+  Future<void> _checkFusionHealth() async {
+    try {
+      final r = await http.get(Uri.parse('$kApiBase/fusion/sources'))
+          .timeout(const Duration(seconds: 5));
+      if (r.statusCode != 200) return;
+      final j = jsonDecode(r.body) as Map<String, dynamic>;
+      final cnt = (j['count'] as num?)?.toInt() ?? 0;
+      final schema = j['schema_version']?.toString() ?? '';
+      final sources = j['sources'] as List? ?? [];
+      int live = 0;
+      for (final s in sources) {
+        if (s is Map && s['mode'] == 'live') live++;
+      }
+      if (mounted) setState(() {
+        _serverSourceCount = cnt;
+        _serverLiveSourceCount = live;
+        _serverSchema = schema;
+      });
+    } catch (_) {/* 무시 */}
   }
 
   void _toggleShadow() {
@@ -1578,7 +1628,11 @@ class _FleetHomeState extends State<FleetHome>
                         rawDetections: _rawDetections,
                         imgW: _bevImgW,
                         imgH: _bevImgH,
-                        fps: _detectFps,   // v12.12: BEV FPS 표시
+                        fps: _detectFps,
+                        serverLiveSources: _serverLiveSourceCount,
+                        serverTotalSources: _serverSourceCount,
+                        serverSchema: _serverSchema,
+                        lastFusionOk: _lastFusionFetchOk,
                       ),
                     ),
                   ),
@@ -2276,6 +2330,19 @@ class _CityInfoLine extends StatelessWidget {
     final showDtg = dtgBoost > 0.03 || dtgDanger > 0.6;
     final showGolden = goldenAtRisk || nfaSeverityMul > 1.10;
 
+    // v12.13: v7 21-source 신규 필드 추출 + 표시 조건
+    final double roadAgeBoost = (summary?['road_age_risk_boost'] is num) ? (summary!['road_age_risk_boost'] as num).toDouble() : 0.0;
+    final double agedPct      = (summary?['road_aged_15y_plus_pct'] is num) ? (summary!['road_aged_15y_plus_pct'] as num).toDouble() : 0.0;
+    final double avConfidence = (summary?['av_confidence'] is num) ? (summary!['av_confidence'] as num).toDouble() : 0.0;
+    final double avRiskReduce = (summary?['av_risk_reduce'] is num) ? (summary!['av_risk_reduce'] as num).toDouble() : 0.0;
+    final bool highV2xZone    = (summary?['high_v2x_zone'] == true);
+    final bool showRoadAge    = roadAgeBoost > 0.03 || agedPct > 0.40;
+    final bool showAvHub      = highV2xZone || avRiskReduce > 0.02;
+
+    // v12.13: 종합 위험 점수 (대표 표시용)
+    final double fusionRisk   = (summary?['fusion_risk_score'] is num) ? (summary!['fusion_risk_score'] as num).toDouble() : 0.0;
+    final String riskLevel    = summary?['risk_level']?.toString() ?? 'UNKNOWN';
+
     // v12.11: "?" chip 숨김 — 데이터 있을 때만 표시 (비활성 아이콘 제거)
     final hasSig  = sigState != '?';
     final hasVds  = vdsKmh   != '?';
@@ -2285,6 +2352,28 @@ class _CityInfoLine extends StatelessWidget {
       child: Wrap(
         spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          // v12.13: 종합 위험 점수 chip (가장 먼저 — 운전자가 즉시 보게)
+          if (fusionRisk > 0)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: riskLevel == 'HIGH' ? _danger.withValues(alpha: 0.22)
+                       : riskLevel == 'MEDIUM' ? _warn.withValues(alpha: 0.22)
+                       : _safe.withValues(alpha: 0.18),
+                  border: Border.all(
+                    color: (riskLevel == 'HIGH' ? _danger
+                          : riskLevel == 'MEDIUM' ? _warn : _safe).withValues(alpha: 0.55),
+                    width: 0.8),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text('위험 ${fusionRisk.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: riskLevel == 'HIGH' ? _danger
+                         : riskLevel == 'MEDIUM' ? _warn : _safe,
+                    fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.3)),
+              ),
+            ]),
           if (hasSig) Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.traffic, size: 13, color: _accent), const SizedBox(width: 4),
             Text(sigState, style: const TextStyle(color: _text, fontSize: 12, fontWeight: FontWeight.w700)),
@@ -2392,7 +2481,21 @@ class _CityInfoLine extends StatelessWidget {
               Text('119 ×${nfaSeverityMul.toStringAsFixed(2)}',
                 style: const TextStyle(color: Color(0xFFFF6B6B), fontSize: 10, fontWeight: FontWeight.w800)),
             ]),
-          // v6 배지: N종 융합 (19까지 확장)
+          // v12.13: v7 신규 — 도로 노후도 (행안부)
+          if (showRoadAge)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.construction, size: 11, color: const Color(0xFFAAB0BC)), const SizedBox(width: 3),
+              Text('노후 ${(agedPct*100).toStringAsFixed(0)}% +${(roadAgeBoost*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFFAAB0BC), fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          // v12.13: v7 신규 — 자율주행 V2X (KOTSA)
+          if (showAvHub)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.smart_toy, size: 11, color: const Color(0xFF7CE4B0)), const SizedBox(width: 3),
+              Text('V2X ${(avConfidence*100).toStringAsFixed(0)}% −${(avRiskReduce*100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFF7CE4B0), fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v7 배지: N종 융합 (21까지 확장)
           if (sourcesFused >= 7)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -2401,7 +2504,7 @@ class _CityInfoLine extends StatelessWidget {
                 border: Border.all(color: _safe.withValues(alpha: 0.45), width: 0.8),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text('${sourcesFused}src v${sourcesFused >= 19 ? "6" : (sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2")))}',
+              child: Text('${sourcesFused}src v${sourcesFused >= 21 ? "7" : (sourcesFused >= 19 ? "6" : (sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2"))))}',
                 style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
             ),
           // v2: BIS 실시간 버스 표시 (반경 150m 내 차량 수)
@@ -5390,11 +5493,20 @@ class _CameraBevSplit extends StatefulWidget {
   final int imgW;
   final int imgH;
   final double fps;   // v12.12: BEV FPS
+  // v12.13: 서버 헬시 + 스키마 + 마지막 성공
+  final int serverLiveSources;
+  final int serverTotalSources;
+  final String serverSchema;
+  final DateTime? lastFusionOk;
   const _CameraBevSplit({
     required this.camera, required this.detections,
     this.rawDetections = const [],
     required this.imgW, required this.imgH,
     this.fps = 0,
+    this.serverLiveSources = 0,
+    this.serverTotalSources = 0,
+    this.serverSchema = '',
+    this.lastFusionOk,
   });
   @override
   State<_CameraBevSplit> createState() => _CameraBevSplitState();
@@ -5556,6 +5668,22 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
             Positioned(right: 12, top: 10, child: _TeslaLabel(
               icon: Icons.tag_faces_rounded, label: '$pc 보행 · $vc 차량',
               color: (pc + vc) > 0 ? _accent : Colors.white.withValues(alpha: 0.55))),
+            // v12.13: 서버 헬시 배지 (좌하단) — N/21 live + 스키마 v
+            if (widget.serverTotalSources > 0)
+              Positioned(left: 12, bottom: 10, child: _TeslaLabel(
+                icon: Icons.lan_rounded,
+                label: '${widget.serverLiveSources}/${widget.serverTotalSources}'
+                       '${widget.serverSchema.contains("v7") ? " · v7" : (widget.serverSchema.isNotEmpty ? " · ${widget.serverSchema.split("-").first.replaceAll("fusion.", "")}" : "")}',
+                color: widget.serverLiveSources > 0
+                  ? _safe
+                  : Colors.white.withValues(alpha: 0.45))),
+            // v12.13: 마지막 fetch (우하단)
+            if (widget.lastFusionOk != null)
+              Positioned(right: 12, bottom: 10, child: _TeslaLabel(
+                icon: Icons.sync_rounded,
+                label: '${DateTime.now().difference(widget.lastFusionOk!).inSeconds}s',
+                color: DateTime.now().difference(widget.lastFusionOk!).inSeconds < 10
+                  ? _safe : _warn)),
           ]),
         ),
       )),

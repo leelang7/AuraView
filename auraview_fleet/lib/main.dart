@@ -237,10 +237,12 @@ class _FleetHomeState extends State<FleetHome>
     // ML Kit 객체 검출기 초기화 (Android/iOS 만)
     if (!kIsWeb) {
       try {
+        // v12: classifyObjects: true → 더 많은 객체 잡힘 (실내 환경에서도 검출)
+        //   stream 모드로 변경 → 매 호출 빠른 응답
         _objDetector = ObjectDetector(
           options: ObjectDetectorOptions(
-            mode: DetectionMode.single,
-            classifyObjects: false,
+            mode: DetectionMode.stream,
+            classifyObjects: true,
             multipleObjects: true,
           ),
         );
@@ -591,18 +593,20 @@ class _FleetHomeState extends State<FleetHome>
       final imgW = src.width, imgH = src.height;
       final imgArea = (imgW * imgH).toDouble();
       final dets = <Map<String, dynamic>>[];
+      int rejTooSmall = 0, rejTooLarge = 0, rejAspect = 0, rejMinSize = 0;
       for (final obj in objects) {
         final box = obj.boundingBox;
         final w = (box.right - box.left).abs();
         final h = (box.bottom - box.top).abs();
         final pixelArea = w * h;
         final areaRatio = pixelArea / imgArea;
-        // v10.3: filter 완화 — 작은 객체도 잡음 (1.2% → 0.4%)
-        if (areaRatio < 0.004) continue;
-        if (areaRatio > 0.85) continue;
-        if (w < 16 || h < 16) continue;
+        // v12: filter 더 완화 (0.4% → 0.15%) - 실내 작은 물체도 잡음
+        if (areaRatio < 0.0015) { rejTooSmall++; continue; }
+        if (areaRatio > 0.88)   { rejTooLarge++; continue; }
+        if (w < 10 || h < 10)   { rejMinSize++; continue; }
         final aspect = h / w;
-        if (aspect < 0.15 || aspect > 6.0) continue;
+        if (aspect < 0.10 || aspect > 8.0) { rejAspect++; continue; }
+        // aspect 기반: 세로 긴 = 사람, 그 외 = 차량/물체
         final cls = aspect > 1.4 ? 'person' : 'car';
         double score = 0.6;
         if (obj.labels.isNotEmpty) {
@@ -622,9 +626,18 @@ class _FleetHomeState extends State<FleetHome>
           _detectRawN = rawN;
           _detectKeptN = dets.length;
           _detectLastAt = DateTime.now();
-          _detectDebug = rawN == 0
-            ? 'ML Kit raw=0 (이미지에서 객체 미발견)'
-            : 'raw=$rawN kept=${dets.length}';
+          if (rawN == 0) {
+            _detectDebug = 'ML Kit raw=0 (객체 미발견)';
+          } else {
+            // 거부 사유 detail
+            final rej = <String>[];
+            if (rejTooSmall > 0) rej.add('${rejTooSmall}small');
+            if (rejTooLarge > 0) rej.add('${rejTooLarge}big');
+            if (rejMinSize > 0) rej.add('${rejMinSize}<10px');
+            if (rejAspect > 0)  rej.add('${rejAspect}aspect');
+            final rejStr = rej.isEmpty ? '' : ' rej[${rej.join(',')}]';
+            _detectDebug = 'raw=$rawN kept=${dets.length}$rejStr';
+          }
         });
       }
       // (옵션) WebView 가 살아있을 때 push 도 진행 (legacy WebView BEV 화면 호환)
@@ -1507,6 +1520,29 @@ class _UnifiedStatusBar extends StatelessWidget {
               filled: false,
             ),
             const SizedBox(width: 8),
+            // v12: 📖 스토리/심사위원 모드 (5탭 WebView: 가산점/정책/PII/안전/스토리)
+            Builder(builder: (ctx) => GestureDetector(
+              onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
+                builder: (_) => const _JudgeModeScreen(),
+              )),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [_safe.withValues(alpha: 0.30), _accent2.withValues(alpha: 0.20)],
+                  ),
+                  border: Border.all(color: _safe.withValues(alpha: 0.55), width: 1),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [BoxShadow(color: _safe.withValues(alpha: 0.30), blurRadius: 10)],
+                ),
+                child: Center(child: Text('★',
+                  style: TextStyle(color: _safe, fontSize: 18,
+                    fontWeight: FontWeight.w900, height: 1.0))),
+              ),
+            )),
+            const SizedBox(width: 6),
             // ⚙ 설정
             GestureDetector(
               onTap: onSettingsTap,

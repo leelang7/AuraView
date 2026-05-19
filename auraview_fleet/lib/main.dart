@@ -19,7 +19,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:ui' as ui show ImageFilter;
 import 'dart:ui' show FontFeature;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, WriteBuffer;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -152,6 +152,10 @@ class _FleetHomeState extends State<FleetHome>
   // ★ ML Kit 객체 검출 (사람/차량 on-device 인식)
   ObjectDetector? _objDetector;
   bool _mlkitBusy = false;
+  // v12.6: image stream 으로 받는 마지막 프레임 (takePicture 폐기)
+  CameraImage? _lastCameraFrame;
+  bool _imageStreamRunning = false;
+  int _lastStreamProcessAt = 0;
 
   // v9.2 2026-05-18: BEV WebView 컨트롤러 (검출 결과를 JS aurDetect() 로 push)
   WebViewController? _bevWvCtrl;
@@ -307,27 +311,15 @@ class _FleetHomeState extends State<FleetHome>
     } catch (_) {}
   }
 
-  /// 카메라 프레임 → 클라이언트(엣지) voxel 직접 생성. 서버 호출 X.
-  /// + ML Kit 객체 검출 → class_grid_flat 채워서 사람/차량 형상 표시.
+  /// v12.6: takePicture 폐기 (Galaxy Z Fold 3 stuck 회피). 카메라 검출은
+  /// startImageStream → _onCameraFrame → _processFrame 으로 진행.
+  /// _fetchBev 는 fusion/intersection polling 만 담당.
   Future<void> _fetchBev() async {
-    if (_cam == null) {
-      if (mounted) setState(() => _detectDebug = '_fetchBev: _cam=null');
-      return;
-    }
-    if (!_cam!.value.isInitialized) {
-      if (mounted) setState(() => _detectDebug = '_fetchBev: !isInitialized');
-      return;
-    }
-    // v12.5: isTakingPicture 가드 제거 — 플러그인이 stuck 시 timeout 으로 처리
-    if (true) {
+    debugPrint('[AURAVIEW] _fetchBev() called (fusion poll only)');
+    // 카메라 정보는 stream 으로 갱신되니 skip
+    if (false) {  // v12.6: takePicture 경로 비활성
       try {
-        if (mounted) setState(() => _detectDebug = '_fetchBev: takePicture…');
-        // v12.5: 5초 timeout — stuck 방지
-        final shot = await _cam!.takePicture().timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => throw TimeoutException('takePicture 5s'),
-        );
-        if (mounted) setState(() => _detectDebug = '_fetchBev: 캡처OK, decoding…');
+        final shot = await _cam!.takePicture();
         final bytes = await shot.readAsBytes();
         // 1) voxel grid (edge + motion) 생성 — 100% on-device
         final voxel = _voxelizeOnDevice(bytes);
@@ -869,7 +861,13 @@ class _FleetHomeState extends State<FleetHome>
       _bevTimer?.cancel();
       _pollServerTimer?.cancel();
       // v12.1: 백그라운드 진입 시 카메라 HW 해제 (zombie 카메라 점유 방지)
-      try { _cam?.dispose(); } catch (_) {}
+      try {
+        if (_imageStreamRunning) {
+          _cam?.stopImageStream();
+          _imageStreamRunning = false;
+        }
+        _cam?.dispose();
+      } catch (_) {}
       _cam = null;
     } else if (state == AppLifecycleState.resumed) {
       // 백그라운드에서 돌아왔을 때 타이머 재시작 + 카메라 재초기화
@@ -885,7 +883,7 @@ class _FleetHomeState extends State<FleetHome>
     }
   }
 
-  // v12.1: 카메라 초기화 (재시도 가능 — ERROR_MAX_CAMERAS_IN_USE 에 견고)
+  // v12.6: 카메라 초기화 + startImageStream (takePicture 폐기 — Galaxy Z Fold 3 stuck 회피)
   Future<void> _initCamera() async {
     if (_cameras.isEmpty) {
       try { _cameras = await availableCameras(); } catch (_) {}
@@ -898,16 +896,22 @@ class _FleetHomeState extends State<FleetHome>
       (c) => c.lensDirection == CameraLensDirection.back,
       orElse: () => _cameras.first,
     );
-    // 최대 3회 재시도 (1.5s 간격) — ERROR_MAX_CAMERAS_IN_USE 회복
     for (int attempt = 0; attempt < 3; attempt++) {
+      // v12.6: yuv420 포맷 + stream 호환. takePicture 안 씀.
       final controller = CameraController(preferred, ResolutionPreset.medium,
-        enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
+        enableAudio: false, imageFormatGroup: ImageFormatGroup.yuv420);
       try {
         await controller.initialize();
         _cam = controller;
-        if (mounted) setState(() => _detectDebug = '카메라 OK (${attempt+1}/3)');
+        debugPrint('[AURAVIEW] CameraController.initialize() OK, previewSize=${controller.value.previewSize}');
+        // v12.6: startImageStream — 매 프레임 _onCameraFrame() 호출
+        await controller.startImageStream(_onCameraFrame);
+        _imageStreamRunning = true;
+        debugPrint('[AURAVIEW] startImageStream() OK');
+        if (mounted) setState(() => _detectDebug = '카메라 stream OK (${attempt+1}/3)');
         return;
-      } catch (e) {
+      } catch (e, st) {
+        debugPrint('[AURAVIEW] camera init exception: $e\n$st');
         try { await controller.dispose(); } catch (_) {}
         if (mounted) setState(() {
           _detectDebug = '카메라 시도 ${attempt+1}/3 실패: ${e.toString().split(":").first}';
@@ -916,6 +920,106 @@ class _FleetHomeState extends State<FleetHome>
       }
     }
     if (mounted) setState(() => _detectDebug = '카메라 3회 시도 실패 — 다른 앱이 점유 중');
+  }
+
+  // v12.6: ImageStream 콜백 — 매 프레임 호출됨 (높은 빈도)
+  //   throttle 해서 ~3 FPS 만 처리 + ML Kit InputImage.fromBytes 로 직접 변환
+  int _camFrameCount = 0;
+  void _onCameraFrame(CameraImage frame) {
+    _camFrameCount++;
+    if (_camFrameCount <= 3 || _camFrameCount % 30 == 0) {
+      debugPrint('[AURAVIEW] _onCameraFrame #$_camFrameCount, ${frame.width}x${frame.height} planes=${frame.planes.length}');
+    }
+    _lastCameraFrame = frame;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastStreamProcessAt < 330) return;   // ~3 FPS throttle
+    _lastStreamProcessAt = now;
+    _processFrame(frame);
+  }
+
+  // v12.6: stream 프레임 → ML Kit 검출 (InputImage.fromBytes)
+  Future<void> _processFrame(CameraImage frame) async {
+    debugPrint('[AURAVIEW] _processFrame enter, det=${_objDetector != null}, busy=$_mlkitBusy');
+    if (_objDetector == null || _mlkitBusy) return;
+    _mlkitBusy = true;
+    try {
+      // YUV420 NV21 plane 합치기
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final plane in frame.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      final bytes = allBytes.done().buffer.asUint8List();
+      final imgW = frame.width, imgH = frame.height;
+      final inputImage = InputImage.fromBytes(
+        bytes: bytes,
+        metadata: InputImageMetadata(
+          size: Size(imgW.toDouble(), imgH.toDouble()),
+          rotation: InputImageRotation.rotation90deg,
+          format: InputImageFormat.nv21,
+          bytesPerRow: frame.planes[0].bytesPerRow,
+        ),
+      );
+      final objects = await _objDetector!.processImage(inputImage);
+      final rawN = objects.length;
+      final imgArea = (imgW * imgH).toDouble();
+      final dets = <Map<String, dynamic>>[];
+      final raws = <Map<String, dynamic>>[];
+      int rejTooSmall = 0, rejTooLarge = 0, rejAspect = 0, rejMinSize = 0;
+      for (final obj in objects) {
+        final box = obj.boundingBox;
+        final w = (box.right - box.left).abs();
+        final h = (box.bottom - box.top).abs();
+        final pixelArea = w * h;
+        final areaRatio = pixelArea / imgArea;
+        final labelStr = obj.labels.isEmpty
+          ? 'unlabeled'
+          : obj.labels.take(2).map((l) => '${l.text}:${(l.confidence * 100).toInt()}%').join(',');
+        String? rejReason; bool kept = true;
+        if (areaRatio < 0.0015) { rejTooSmall++; kept=false; rejReason='small ${(areaRatio*100).toStringAsFixed(2)}%'; }
+        else if (areaRatio > 0.88) { rejTooLarge++; kept=false; rejReason='big ${(areaRatio*100).toStringAsFixed(0)}%'; }
+        else if (w < 10 || h < 10) { rejMinSize++; kept=false; rejReason='<10px'; }
+        else {
+          final ac = h / w;
+          if (ac < 0.10 || ac > 8.0) { rejAspect++; kept=false; rejReason='aspect ${ac.toStringAsFixed(2)}'; }
+        }
+        raws.add({
+          'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()],
+          'labels': labelStr, 'kept': kept, 'rej': rejReason,
+        });
+        if (!kept) continue;
+        final aspect = h / w;
+        final cls = aspect > 1.4 ? 'person' : 'car';
+        double score = 0.6;
+        if (obj.labels.isNotEmpty) score = obj.labels.first.confidence;
+        dets.add({'cls': cls, 'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()], 'score': score});
+      }
+      if (mounted) {
+        setState(() {
+          _bevDetections = dets;
+          _rawDetections = raws;
+          _bevImgW = imgW; _bevImgH = imgH;
+          _detectRawN = rawN;
+          _detectKeptN = dets.length;
+          _detectLastAt = DateTime.now();
+          if (rawN == 0) {
+            _detectDebug = 'stream raw=0 (객체 미발견)';
+          } else {
+            final rej = <String>[];
+            if (rejTooSmall > 0) rej.add('${rejTooSmall}small');
+            if (rejTooLarge > 0) rej.add('${rejTooLarge}big');
+            if (rejMinSize > 0) rej.add('${rejMinSize}<10px');
+            if (rejAspect > 0)  rej.add('${rejAspect}aspect');
+            final rejStr = rej.isEmpty ? '' : ' rej[${rej.join(',')}]';
+            _detectDebug = 'stream raw=$rawN kept=${dets.length}$rejStr';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _detectDebug =
+        'frame 예외: ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}');
+    } finally {
+      _mlkitBusy = false;
+    }
   }
 
   Future<void> _bootstrap() async {

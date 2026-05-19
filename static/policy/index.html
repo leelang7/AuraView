@@ -153,6 +153,18 @@
        서버는 <code>k≥5 익명 결합</code>으로 통계 처리하고, 시·구·도로 단위로 집계합니다.
        이 대시보드는 <b style="color:var(--text);">지자체·국토부 정책 담당자</b>에게 <b style="color:var(--text);">"어디"</b>에
        스쿨존을 추가하고 <b style="color:var(--text);">"언제"</b> 단속을 강화할지 데이터 기반으로 제안합니다.</p>
+
+    <!-- v0.18.2: 라이브 시스템 상태 strip -->
+    <div id="live-strip" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;
+      padding:9px 12px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.18);
+      border-radius:99px;font-size:10px;letter-spacing:1.5px;font-family:'JetBrains Mono',monospace;font-weight:800;">
+      <span style="color:var(--muted);">SYSTEM LIVE:</span>
+      <span data-probe="/fusion/sources" style="color:var(--muted);">⏳ FUSION</span>
+      <span data-probe="/policy/stats" style="color:var(--muted);">⏳ POLICY</span>
+      <span data-probe="/fusion/intersection/1007" style="color:var(--muted);">⏳ INTERSECTION</span>
+      <span data-probe="/scorecard/" style="color:var(--muted);">⏳ SCORECARD</span>
+      <span id="schema-info" style="color:var(--muted);margin-left:auto;">SCHEMA: ...</span>
+    </div>
   </header>
 
   <!-- Pipeline -->
@@ -516,6 +528,21 @@ function renderHeatmap() {
   }
 }
 renderHeatmap();   // 초기 (fallback 시드 데이터)
+
+// v0.18.2: 라이브 시스템 상태 probe (헤더 strip)
+document.querySelectorAll('[data-probe]').forEach(async (span) => {
+  const url = span.getAttribute('data-probe');
+  const label = span.textContent.replace(/⏳\s*/, '');
+  try {
+    const r = await fetch(url, { method: 'GET' });
+    if (r.ok) { span.style.color = '#00E09A'; span.textContent = '✓ ' + label; }
+    else { span.style.color = '#FFB020'; span.textContent = '△ ' + label + ' ' + r.status; }
+  } catch (e) { span.style.color = '#FF6B6B'; span.textContent = '✗ ' + label; }
+});
+fetch('/fusion/sources').then(r => r.json()).then(j => {
+  const s = document.getElementById('schema-info');
+  if (s && j.schema_version) { s.textContent = j.schema_version.toUpperCase(); s.style.color = '#7C3AED'; }
+}).catch(() => {});
 </script>
 </body>
 </html>

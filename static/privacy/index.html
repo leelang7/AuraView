@@ -134,6 +134,18 @@
     <p>차량번호·얼굴은 단말에서 즉시 마스킹·해시화됩니다. 위치는 100m 그리드로 양자화되고,
        사고 통계는 데이터안심구역에서 <code style="color:var(--warn);">k ≥ 5</code> 익명 결합 후 인입합니다.
        원본 이미지나 정확한 GPS는 외부로 절대 송출되지 않습니다.</p>
+
+    <!-- v0.18.2: 라이브 시스템 상태 strip -->
+    <div id="live-strip" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;
+      padding:9px 12px;background:rgba(255,176,32,0.04);border:1px solid rgba(255,176,32,0.18);
+      border-radius:99px;font-size:10px;letter-spacing:1.5px;font-family:'JetBrains Mono',monospace;font-weight:800;">
+      <span style="color:var(--muted);">SYSTEM LIVE:</span>
+      <span data-probe="/fusion/sources" style="color:var(--muted);">⏳ FUSION</span>
+      <span data-probe="/policy/stats" style="color:var(--muted);">⏳ POLICY</span>
+      <span data-probe="/scorecard/" style="color:var(--muted);">⏳ SCORECARD</span>
+      <span data-probe="/safezone/" style="color:var(--muted);">⏳ SAFEZONE</span>
+      <span id="schema-info" style="color:var(--muted);margin-left:auto;">SCHEMA: ...</span>
+    </div>
   </header>
 
   <!-- 5-step pipeline -->
@@ -406,6 +418,21 @@ function randomize() {
   recalc();
 }
 recalc();
+
+// v0.18.2: 라이브 시스템 상태 probe
+document.querySelectorAll('[data-probe]').forEach(async (span) => {
+  const url = span.getAttribute('data-probe');
+  const label = span.textContent.replace(/⏳\s*/, '');
+  try {
+    const r = await fetch(url, { method: 'GET' });
+    if (r.ok) { span.style.color = '#00E09A'; span.textContent = '✓ ' + label; }
+    else { span.style.color = '#FFB020'; span.textContent = '△ ' + label + ' ' + r.status; }
+  } catch (e) { span.style.color = '#FF6B6B'; span.textContent = '✗ ' + label; }
+});
+fetch('/fusion/sources').then(r => r.json()).then(j => {
+  const s = document.getElementById('schema-info');
+  if (s && j.schema_version) { s.textContent = j.schema_version.toUpperCase(); s.style.color = '#FFB020'; }
+}).catch(() => {});
 </script>
 </body>
 </html>

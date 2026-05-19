@@ -109,6 +109,18 @@
     <h1><span class="gradient">스쿨존</span>에 진입하는 순간 위험도가 1.5배가 됩니다 — 실시간 안전구역 융합</h1>
     <p>어린이보호구역 GIS + 통학로 + 보행자 사고다발지역 + E-Gen 가용병상을 융합해
        어린이·보행자 안전을 적극적으로 보호합니다. 등하교 시간(07-09, 13-15)에는 자동으로 위험도가 부스트됩니다.</p>
+
+    <!-- v0.18.2: 라이브 시스템 상태 strip -->
+    <div id="live-strip" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;
+      padding:9px 12px;background:rgba(0,224,154,0.04);border:1px solid rgba(0,224,154,0.18);
+      border-radius:99px;font-size:10px;letter-spacing:1.5px;font-family:'JetBrains Mono',monospace;font-weight:800;">
+      <span style="color:var(--muted);">SYSTEM LIVE:</span>
+      <span data-probe="/fusion/sources" style="color:var(--muted);">⏳ FUSION</span>
+      <span data-probe="/fusion/intersection/1007" style="color:var(--muted);">⏳ INTERSECTION</span>
+      <span data-probe="/fusion/school-zone" style="color:var(--muted);">⏳ SCHOOL-ZONE</span>
+      <span data-probe="/policy/stats" style="color:var(--muted);">⏳ POLICY</span>
+      <span id="schema-info" style="color:var(--muted);margin-left:auto;">SCHEMA: ...</span>
+    </div>
   </header>
 
   <!-- Top stats -->
@@ -299,6 +311,21 @@ function tick(){
   document.getElementById('time-now').textContent = `${h}:${m} KST`;
 }
 tick(); setInterval(tick, 60000);
+
+// v0.18.2: 라이브 시스템 상태 probe
+document.querySelectorAll('[data-probe]').forEach(async (span) => {
+  const url = span.getAttribute('data-probe');
+  const label = span.textContent.replace(/⏳\s*/, '');
+  try {
+    const r = await fetch(url, { method: 'GET' });
+    if (r.ok) { span.style.color = '#00E09A'; span.textContent = '✓ ' + label; }
+    else { span.style.color = '#FFB020'; span.textContent = '△ ' + label + ' ' + r.status; }
+  } catch (e) { span.style.color = '#FF6B6B'; span.textContent = '✗ ' + label; }
+});
+fetch('/fusion/sources').then(r => r.json()).then(j => {
+  const s = document.getElementById('schema-info');
+  if (s && j.schema_version) { s.textContent = j.schema_version.toUpperCase(); s.style.color = '#00E09A'; }
+}).catch(() => {});
 </script>
 </body>
 </html>

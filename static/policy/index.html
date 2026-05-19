@@ -348,96 +348,17 @@
     <!-- RIGHT: Top hotspots + Recommendations -->
     <div>
       <div class="panel" style="margin-bottom:14px;">
-        <h3>위험 상위 10개 교차로 <span class="sub">신뢰구간 95%</span></h3>
-        <div class="hot-row high">
-          <div><div class="nm">강남대로 · 학동초 정문</div>
-               <div class="sub">스쿨존 ×1.5 · 등교 boost · 보행 17건 / 90d</div></div>
-          <div><div class="risk">0.91</div><div class="ci">CI [0.86 — 0.94]</div></div>
-        </div>
-        <div class="hot-row high">
-          <div><div class="nm">종로 · 청운초 횡단보도</div>
-               <div class="sub">스쿨존 ×1.5 · 차량 47km/h · 통학로</div></div>
-          <div><div class="risk">0.84</div><div class="ci">CI [0.79 — 0.88]</div></div>
-        </div>
-        <div class="hot-row high">
-          <div><div class="nm">서초 · 양재대로 14번출구</div>
-               <div class="sub">DTG 화물 0.71 · TAAS 23건 / 90d</div></div>
-          <div><div class="risk">0.79</div><div class="ci">CI [0.74 — 0.83]</div></div>
-        </div>
-        <div class="hot-row mid">
-          <div><div class="nm">마포 · 신촌역 4번출구</div>
-               <div class="sub">보행 17건 · 우회전 통제 ×1.2</div></div>
-          <div><div class="risk">0.72</div><div class="ci">CI [0.67 — 0.76]</div></div>
-        </div>
-        <div class="hot-row mid">
-          <div><div class="nm">강북 · 미아초 후문</div>
-               <div class="sub">스쿨존 + 노면 결빙 +0.32 · 보행 hotspot</div></div>
-          <div><div class="risk">0.68</div><div class="ci">CI [0.62 — 0.73]</div></div>
-        </div>
-        <div class="hot-row mid">
-          <div><div class="nm">송파 · 잠실역 8번출구</div>
-               <div class="sub">자전거 +0.22 · 따릉이 정차밀집</div></div>
-          <div><div class="risk">0.63</div><div class="ci">CI [0.58 — 0.68]</div></div>
-        </div>
-        <div class="hot-row mid">
-          <div><div class="nm">동대문 · 신설동역 1번출구</div>
-               <div class="sub">PM10 142 · 시정저하 + 119 골든타임</div></div>
-          <div><div class="risk">0.58</div><div class="ci">CI [0.53 — 0.62]</div></div>
-        </div>
-        <div class="hot-row low">
-          <div><div class="nm">은평 · 응암오거리</div>
-               <div class="sub">DTG 시내버스 0.55 · 사고이력 8건 / 90d</div></div>
-          <div><div class="risk">0.42</div><div class="ci">CI [0.37 — 0.47]</div></div>
-        </div>
-        <div class="hot-row low">
-          <div><div class="nm">강서 · 가양역 5번출구</div>
-               <div class="sub">사고이력 6건 · EV 정차 패턴 안정</div></div>
-          <div><div class="risk">0.38</div><div class="ci">CI [0.33 — 0.43]</div></div>
-        </div>
-        <div class="hot-row low">
-          <div><div class="nm">서초 · 양재초 진입로</div>
-               <div class="sub">스쿨존 · 통학로 · 사고이력 1건 / 90d</div></div>
-          <div><div class="risk">0.31</div><div class="ci">CI [0.27 — 0.36]</div></div>
+        <h3>위험 상위 10개 교차로 <span class="sub">신뢰구간 95% · <code style="color:var(--accent);background:rgba(0,200,255,0.08);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:10px;">GET /policy/stats</code></span></h3>
+        <!-- v10.1: API /policy/stats 에서 동적 렌더 -->
+        <div id="hotspots-list">
+          <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">⏳ /policy/stats 페치 중…</div>
         </div>
       </div>
 
       <div class="panel">
-        <h3>데이터 기반 정책 제안 <span class="sub">기대 사고감소 시뮬레이션</span></h3>
-
-        <div class="rec schoolzone">
-          <div class="head">
-            <span class="typ">스쿨존 신설</span>
-            <div class="impact">기대효과<br><b>-32% / 연 4건</b></div>
-          </div>
-          <h4>강남대로 학동초 정문 반경 300m 어린이보호구역 확대</h4>
-          <p>현재 risk <b>0.91</b> · 등교시간 ×1.5 부스트 적중률 92%. 인접 200m 확장 시 보행자 hotspot 17건 중 14건 포함 가능. <b>구간 ×0.5 속도제한 + 단속카메라 1대</b> 권장.</p>
-        </div>
-
-        <div class="rec signal">
-          <div class="head">
-            <span class="typ">신호 조정</span>
-            <div class="impact">기대효과<br><b>-21% / 연 3건</b></div>
-          </div>
-          <h4>청운초 횡단보도 보행 신호 +5초 · 차량 신호 -3초</h4>
-          <p>차량 평균속도 47km/h (제한 30 초과). DTG 사업용 화물 진입 27%. 보행 신호 연장이 충돌 시간창을 9%→4% 로 감소.</p>
-        </div>
-
-        <div class="rec enforce">
-          <div class="head">
-            <span class="typ">단속 강화</span>
-            <div class="impact">기대효과<br><b>-18% / 연 2건</b></div>
-          </div>
-          <h4>금요일 22-02시 강남대로·신촌·잠실 음주단속 격주 운영</h4>
-          <p>주말 야간 위험 평일 야간 대비 +47%. 119 평균 도착시간 8.2분 (골든타임 임계). 단속 강화 시뮬 결과 사고 -18%.</p>
-        </div>
-
-        <div class="rec infra">
-          <div class="head">
-            <span class="typ">인프라 개선</span>
-            <div class="impact">기대효과<br><b>-14% / 연 2건</b></div>
-          </div>
-          <h4>미아초 후문 노면결빙 자동 살포 + LED 시인성 강화</h4>
-          <p>RWIS 결빙 위험 +0.32, 시정 1.5km 미만 야간 27회 / 90d. 자동 염화칼슘 살포 + LED 횡단보도 적용 시 동절기 사고 추세 -42%.</p>
+        <h3>데이터 기반 정책 제안 <span class="sub">기대 사고감소 · <code style="color:var(--accent);background:rgba(0,200,255,0.08);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:10px;">GET /policy/stats</code></span></h3>
+        <div id="rec-list">
+          <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">⏳ /policy/stats 페치 중…</div>
         </div>
       </div>
     </div>
@@ -462,7 +383,8 @@
 </div>
 
 <script>
-// v10 2026-05-19: /policy/stats 라이브 페치 + count-up KPI 애니메이션
+// v10.1 2026-05-19: /policy/stats 라이브 페치 + count-up KPI + hotspots + recs + heatmap
+let _statsTimePattern = null;
 (async function loadStats() {
   try {
     const r = await fetch('/policy/stats');
@@ -470,14 +392,70 @@
     const j = await r.json();
     if (j.kpi) {
       const k = j.kpi;
-      // 1.2s count-up
       countUp('kpi-fleet', k.fleet_count || 0, 1100);
       countUp('kpi-events', k.events_total || 0, 1300);
       countUp('kpi-hot', k.hot_grids || 0, 1100);
       countUp('kpi-rec', k.recommendations_active || 0, 900);
     }
-  } catch (e) {}
+    if (Array.isArray(j.top_hotspots)) renderHotspots(j.top_hotspots);
+    if (Array.isArray(j.recommendations)) renderRecs(j.recommendations);
+    if (Array.isArray(j.time_pattern_2d_24x7)) {
+      _statsTimePattern = j.time_pattern_2d_24x7;
+      // heatmap 함수가 이걸 사용하도록 트리거 (아래 IIFE 가 이미 실행됐을 수 있어 한 번 더)
+      try { renderHeatmap(); } catch (e) {}
+    }
+  } catch (e) {
+    document.getElementById('hotspots-list').innerHTML =
+      '<div style="text-align:center;padding:20px;color:var(--danger);font-size:12px;">❌ API 로드 실패</div>';
+  }
 })();
+
+function renderHotspots(arr) {
+  const wrap = document.getElementById('hotspots-list');
+  if (!wrap) return;
+  wrap.innerHTML = arr.map((h) => {
+    const cls = h.risk >= 0.7 ? 'high' : (h.risk >= 0.5 ? 'mid' : 'low');
+    const ci = (h.ci && h.ci.length === 2) ? `CI [${h.ci[0].toFixed(2)} — ${h.ci[1].toFixed(2)}]` : '';
+    const factors = (h.factors || []).join(' · ');
+    return `<div class="hot-row ${cls}">
+      <div>
+        <div class="nm">${h.rank}. ${escapeHtml(h.name)}</div>
+        <div class="sub">${escapeHtml(factors)}</div>
+      </div>
+      <div>
+        <div class="risk">${h.risk.toFixed(2)}</div>
+        <div class="ci">${ci}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRecs(arr) {
+  const wrap = document.getElementById('rec-list');
+  if (!wrap) return;
+  const typeClassMap = {
+    'schoolzone_new': 'schoolzone',
+    'signal_tuning': 'signal',
+    'enforcement': 'enforce',
+    'infra': 'infra',
+  };
+  wrap.innerHTML = arr.map((r) => {
+    const cls = typeClassMap[r.type] || 'infra';
+    return `<div class="rec ${cls}">
+      <div class="head">
+        <span class="typ">${escapeHtml(r.type_ko || r.type)}</span>
+        <div class="impact">기대효과<br><b>-${r.expected_reduction_pct}% / 연 ${r.expected_accidents_saved_per_year}건</b></div>
+      </div>
+      <h4>${escapeHtml(r.title)}</h4>
+      <p>${escapeHtml(r.rationale)} <b>${escapeHtml(r.intervention || '')}</b></p>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function countUp(id, target, ms) {
   const el = document.getElementById(id); if (!el) return;
   const t0 = performance.now();
@@ -493,25 +471,32 @@ function countUp(id, target, ms) {
   requestAnimationFrame(tick);
 }
 
-// ── time-of-day × weekday heatmap cells (random-but-seeded)
-(function () {
+// v10.1: heatmap — API time_pattern_2d_24x7 우선, 없으면 seeded fallback
+function renderHeatmap() {
   const cells = document.getElementById('cells');
-  const seed = 42;
-  let s = seed;
-  function rnd() { s = (s * 9301 + 49297) % 233280; return s / 233280; }
-  // baseline pattern: high at 07-09, 17-19; weekend nights also high
+  if (!cells) return;
+  cells.innerHTML = '';   // 기존 제거
   const days = 7, hours = 24;
   const cw = 28, ch = 32;
   const x0 = 40, y0 = 25;
+  // API 데이터가 있으면 사용
+  const data = _statsTimePattern;
+  function valueAt(d, h) {
+    if (data) {
+      const found = data.find(c => c.day === d && c.hour === h);
+      if (found) return found.risk;
+    }
+    // fallback seeded
+    let base = 0.15;
+    if (d < 5 && (h >= 7 && h <= 9))   base = 0.70;
+    if (d < 5 && (h >= 17 && h <= 19)) base = 0.78;
+    if (d === 4 && (h >= 22 || h <= 2)) base = 0.85;
+    if (d >= 5 && (h >= 22 || h <= 2))  base = 0.62;
+    return Math.max(0.05, Math.min(0.95, base));
+  }
   for (let d = 0; d < days; d++) {
     for (let h = 0; h < hours; h++) {
-      let base = 0.15;
-      if (d < 5 && (h >= 7 && h <= 9))   base = 0.70;  // 평일 등교
-      if (d < 5 && (h >= 17 && h <= 19)) base = 0.78;  // 평일 퇴근
-      if (d === 4 && (h >= 22 || h <= 2)) base = 0.85; // 금요일 야간
-      if (d >= 5 && (h >= 22 || h <= 2))  base = 0.62; // 주말 야간
-      const v = Math.max(0.05, Math.min(0.95, base + (rnd() - 0.5) * 0.18));
-      // color: green → orange → red
+      const v = valueAt(d, h);
       let col;
       if (v < 0.3)      col = '#003D26';
       else if (v < 0.5) col = '#0F6B40';
@@ -529,7 +514,8 @@ function countUp(id, target, ms) {
       cells.appendChild(r);
     }
   }
-})();
+}
+renderHeatmap();   // 초기 (fallback 시드 데이터)
 </script>
 </body>
 </html>

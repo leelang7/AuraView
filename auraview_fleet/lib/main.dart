@@ -165,6 +165,13 @@ class _FleetHomeState extends State<FleetHome>
   bool _imageStreamRunning = false;
   int _lastStreamProcessAt = 0;
 
+  // v12.12: BEV FPS 카운터 (최근 10 프레임 평균)
+  final List<int> _fpsTimes = [];
+  double _detectFps = 0.0;
+  // v12.12: 총 주행거리 추적 (km)
+  Position? _prevPos;
+  double _totalKm = 0.0;
+
   // v9.2 2026-05-18: BEV WebView 컨트롤러 (검출 결과를 JS aurDetect() 로 push)
   WebViewController? _bevWvCtrl;
   // v9.3 2026-05-18: ML Kit 검출 결과 보관 (Flutter 네이티브 BEV 오버레이용)
@@ -859,7 +866,18 @@ class _FleetHomeState extends State<FleetHome>
         ),
       ).listen((p) {
         if (!mounted) return;
-        setState(() => _pos = p);
+        // v12.12: 직전 위치와 거리 누적 → 총 주행 km (큰 점프 200m+ 는 GPS jitter 로 skip)
+        double addKm = 0;
+        if (_prevPos != null) {
+          final m = Geolocator.distanceBetween(
+            _prevPos!.latitude, _prevPos!.longitude, p.latitude, p.longitude);
+          if (m < 200) addKm = m / 1000.0;
+        }
+        _prevPos = p;
+        setState(() {
+          _pos = p;
+          _totalKm += addKm;
+        });
       }, onError: (_) {});
     } catch (_) {}
   }
@@ -984,6 +1002,14 @@ class _FleetHomeState extends State<FleetHome>
   bool _logFirstFrameOnce = false;
   Future<void> _processFrame(CameraImage frame) async {
     if (_objDetector == null || _mlkitBusy) return;
+    // v12.12: FPS 계산 (최근 10 처리 시각 기록)
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    _fpsTimes.add(nowMs);
+    if (_fpsTimes.length > 10) _fpsTimes.removeAt(0);
+    if (_fpsTimes.length >= 2) {
+      final span = (_fpsTimes.last - _fpsTimes.first) / 1000.0;
+      if (span > 0.01) _detectFps = (_fpsTimes.length - 1) / span;
+    }
     _mlkitBusy = true;
     try {
       final imgW = frame.width, imgH = frame.height;
@@ -1512,6 +1538,7 @@ class _FleetHomeState extends State<FleetHome>
                       uploads: _uploads,
                       online: _serverError.isEmpty,
                       pos: _pos,
+                      totalKm: _totalKm,
                       onSettingsTap: _openDetailSheet,
                     ),
                   ),
@@ -1551,6 +1578,7 @@ class _FleetHomeState extends State<FleetHome>
                         rawDetections: _rawDetections,
                         imgW: _bevImgW,
                         imgH: _bevImgH,
+                        fps: _detectFps,   // v12.12: BEV FPS 표시
                       ),
                     ),
                   ),
@@ -1689,19 +1717,23 @@ class _UnifiedStatusBar extends StatelessWidget {
   final int uploads;
   final bool online;
   final Position? pos;
+  final double totalKm;   // v12.12: 총 주행거리 km
   final VoidCallback? onSettingsTap;
   const _UnifiedStatusBar({
     required this.shadowOn,
     required this.uploads,
     required this.online,
     required this.pos,
+    this.totalKm = 0,
     this.onSettingsTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasGps = pos != null;
-    final speed = hasGps ? (pos!.speed * 3.6).toStringAsFixed(0) : '0';
+    final speedKmh = hasGps ? (pos!.speed * 3.6) : 0.0;
+    final speedStr = speedKmh < 0.5 ? '정지' : speedKmh.toStringAsFixed(0);
+    final speedIsStop = speedKmh < 0.5;
     final brandCol = shadowOn ? _danger : _accent;
     // Tesla 스타일: pure black glass + 큰 숫자 + uppercase tracking + thin divider
     return ClipRRect(
@@ -1741,38 +1773,57 @@ class _UnifiedStatusBar extends StatelessWidget {
             const SizedBox(width: 14),
             Container(width: 1, height: 22, color: Colors.white.withValues(alpha: 0.10)),
             const SizedBox(width: 14),
-            // 속도 — Tesla 시그니처 큰 숫자
-            Text(speed,
-              style: const TextStyle(
-                color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900,
-                fontFeatures: [FontFeature.tabularFigures()],
+            // 속도 — Tesla 시그니처 큰 숫자 (0이면 "정지")
+            Text(speedStr,
+              style: TextStyle(
+                color: speedIsStop ? Colors.white.withValues(alpha: 0.55) : Colors.white,
+                fontSize: speedIsStop ? 18 : 28, fontWeight: FontWeight.w900,
+                fontFeatures: const [FontFeature.tabularFigures()],
                 letterSpacing: -1, height: 1.0,
               )),
-            const SizedBox(width: 4),
-            Text('KM/H',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45), fontSize: 10,
-                fontWeight: FontWeight.w800, letterSpacing: 1.5, height: 1.0,
-              )),
+            if (!speedIsStop) ...[
+              const SizedBox(width: 4),
+              Text('KM/H',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.45), fontSize: 10,
+                  fontWeight: FontWeight.w800, letterSpacing: 1.5, height: 1.0,
+                )),
+            ],
+            // v12.12: 총 주행거리 chip (km, 누적)
+            if (totalKm > 0.05) ...[
+              const SizedBox(width: 10),
+              Container(width: 1, height: 18, color: Colors.white.withValues(alpha: 0.10)),
+              const SizedBox(width: 10),
+              Icon(Icons.route_rounded, size: 12, color: _accent.withValues(alpha: 0.65)),
+              const SizedBox(width: 4),
+              Text(totalKm < 10 ? totalKm.toStringAsFixed(2) : totalKm.toStringAsFixed(1),
+                style: TextStyle(color: _accent.withValues(alpha: 0.85), fontSize: 13,
+                  fontWeight: FontWeight.w800, fontFeatures: const [FontFeature.tabularFigures()],
+                  letterSpacing: -0.2, height: 1.0)),
+              const SizedBox(width: 3),
+              Text('km',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 9,
+                  fontWeight: FontWeight.w800, letterSpacing: 1, height: 1.0)),
+            ],
             const Spacer(),
-            // 우측 인포 chip 3개 (REC · 업로드 · 서버)
+            // 우측 chip — 명확한 한글 라벨
             _TeslaChip(
               icon: shadowOn ? Icons.fiber_manual_record_rounded : Icons.fiber_manual_record_outlined,
-              label: shadowOn ? 'REC' : 'OFF',
+              label: shadowOn ? 'REC' : '대기',
               color: shadowOn ? _danger : Colors.white.withValues(alpha: 0.40),
               filled: shadowOn,
             ),
             const SizedBox(width: 6),
             _TeslaChip(
-              icon: Icons.bookmark_rounded,
-              label: '$uploads',
+              icon: Icons.upload_rounded,
+              label: '기여 $uploads',
               color: uploads > 0 ? _safe : Colors.white.withValues(alpha: 0.40),
               filled: false,
             ),
             const SizedBox(width: 6),
             _TeslaChip(
               icon: online ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-              label: online ? 'ONLINE' : 'OFFLINE',
+              label: online ? '서버' : '오프라인',
               color: online ? _safe : _danger,
               filled: false,
             ),
@@ -5338,10 +5389,12 @@ class _CameraBevSplit extends StatefulWidget {
   final List<Map<String, dynamic>> rawDetections;   // v12.4
   final int imgW;
   final int imgH;
+  final double fps;   // v12.12: BEV FPS
   const _CameraBevSplit({
     required this.camera, required this.detections,
     this.rawDetections = const [],
     required this.imgW, required this.imgH,
+    this.fps = 0,
   });
   @override
   State<_CameraBevSplit> createState() => _CameraBevSplitState();
@@ -5497,7 +5550,9 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
               painter: _CleanBevPainter(objs: _objs, t: _t),
             )),
             Positioned(left: 12, top: 10, child: _TeslaLabel(
-              icon: Icons.view_in_ar_rounded, label: 'BEV · OCCUPANCY', color: _safe)),
+              icon: Icons.view_in_ar_rounded,
+              label: 'BEV · ${widget.fps > 0.5 ? widget.fps.toStringAsFixed(1) : "0"} FPS',
+              color: _safe)),
             Positioned(right: 12, top: 10, child: _TeslaLabel(
               icon: Icons.tag_faces_rounded, label: '$pc 보행 · $vc 차량',
               color: (pc + vc) > 0 ? _accent : Colors.white.withValues(alpha: 0.55))),

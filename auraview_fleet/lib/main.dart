@@ -824,12 +824,18 @@ class _FleetHomeState extends State<FleetHome>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _ticker?.cancel();
       _bevTimer?.cancel();
       _pollServerTimer?.cancel();
+      // v12.1: 백그라운드 진입 시 카메라 HW 해제 (zombie 카메라 점유 방지)
+      try { _cam?.dispose(); } catch (_) {}
+      _cam = null;
     } else if (state == AppLifecycleState.resumed) {
-      // 백그라운드에서 돌아왔을 때 타이머 재시작 (foreground service 미구현 보완)
+      // 백그라운드에서 돌아왔을 때 타이머 재시작 + 카메라 재초기화
+      if (_cam == null) {
+        _initCamera();   // v12.1: 백그라운드 복귀 시 카메라 다시 열기
+      }
       if (_shadowOn) {
         _ticker ??= Timer.periodic(kShadowInterval, (_) => _shadowTick());
       }
@@ -837,6 +843,39 @@ class _FleetHomeState extends State<FleetHome>
       _pollServerTimer ??= Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
       _refreshLocation();
     }
+  }
+
+  // v12.1: 카메라 초기화 (재시도 가능 — ERROR_MAX_CAMERAS_IN_USE 에 견고)
+  Future<void> _initCamera() async {
+    if (_cameras.isEmpty) {
+      try { _cameras = await availableCameras(); } catch (_) {}
+    }
+    if (_cameras.isEmpty) {
+      if (mounted) setState(() => _detectDebug = '카메라 없음 (availableCameras=0)');
+      return;
+    }
+    final preferred = _cameras.firstWhere(
+      (c) => c.lensDirection == CameraLensDirection.back,
+      orElse: () => _cameras.first,
+    );
+    // 최대 3회 재시도 (1.5s 간격) — ERROR_MAX_CAMERAS_IN_USE 회복
+    for (int attempt = 0; attempt < 3; attempt++) {
+      final controller = CameraController(preferred, ResolutionPreset.medium,
+        enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
+      try {
+        await controller.initialize();
+        _cam = controller;
+        if (mounted) setState(() => _detectDebug = '카메라 OK (${attempt+1}/3)');
+        return;
+      } catch (e) {
+        try { await controller.dispose(); } catch (_) {}
+        if (mounted) setState(() {
+          _detectDebug = '카메라 시도 ${attempt+1}/3 실패: ${e.toString().split(":").first}';
+        });
+        await Future.delayed(const Duration(milliseconds: 1500));
+      }
+    }
+    if (mounted) setState(() => _detectDebug = '카메라 3회 시도 실패 — 다른 앱이 점유 중');
   }
 
   Future<void> _bootstrap() async {
@@ -856,22 +895,8 @@ class _FleetHomeState extends State<FleetHome>
       await Permission.locationWhenInUse.request();
     }
 
-    if (_cameras.isNotEmpty) {
-      final preferred = _cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.back,
-        orElse: () => _cameras.first,
-      );
-      final controller = CameraController(
-        preferred,
-        ResolutionPreset.medium,
-        enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
-      );
-      try {
-        await controller.initialize();
-        _cam = controller;
-      } catch (_) {/* leave null */}
-    }
+    // v12.1: 카메라 재시도 가능 초기화 (ERROR_MAX_CAMERAS_IN_USE 회복)
+    await _initCamera();
 
     _refreshLocation();
     _startLocationStream();
@@ -1406,19 +1431,10 @@ class _FullCameraPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final ratio = controller.value.aspectRatio;
-    return ClipRect(
-      child: SizedBox.expand(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: size.width,
-            height: size.width / (1 / ratio),
-            child: CameraPreview(controller),
-          ),
-        ),
-      ),
+    // v12.2: CameraPreview 만 단순 사용 — plugin 이 자체적으로 sizing 처리
+    return Container(
+      color: Colors.black,
+      child: Center(child: CameraPreview(controller)),
     );
   }
 }

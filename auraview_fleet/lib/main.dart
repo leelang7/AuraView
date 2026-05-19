@@ -1525,6 +1525,20 @@ class _FleetHomeState extends State<FleetHome>
                       pulse: _lastReason == 'signal_occluded',
                     ),
                   ),
+                  // v12.10: HUD chips 복원 (TAAS / 우천 / ER / 스쿨존 / BIS / DTG / 119 / src v…)
+                  //   _fusion (intersection 결합) 또는 _busLive 있을 때 chips 자동 노출
+                  if (_fusion != null || _busLive != null) Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.42),
+                        border: Border.all(color: _accent.withValues(alpha: 0.20), width: 0.6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: _CityInfoLine(fusion: _fusion ?? const {}, busLive: _busLive),
+                    ),
+                  ),
                   const SizedBox(height: 6),
 
                   // BEV split — 화면 거의 전체 사용 (하단 floating REC 자리만 비움)

@@ -17,6 +17,7 @@ import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/scheduler.dart';
+import 'dart:ui' as ui show ImageFilter;
 import 'dart:ui' show FontFeature;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -1430,71 +1431,130 @@ class _UnifiedStatusBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasGps = pos != null;
-    final speed = hasGps ? (pos!.speed * 3.6).toStringAsFixed(0) : '—';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: _bg.withValues(alpha: 0.78),
-        border: Border.all(color: _border()),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(children: [
-        // 브랜드 마크 — radial gradient circle + 펄스 (shadow ON 시 글로우)
-        Container(
-          width: 28, height: 28,
+    final speed = hasGps ? (pos!.speed * 3.6).toStringAsFixed(0) : '0';
+    final brandCol = shadowOn ? _danger : _accent;
+    // Tesla 스타일: pure black glass + 큰 숫자 + uppercase tracking + thin divider
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const RadialGradient(
-              colors: [Color(0xFFD8FAFF), _accent, _accent2],
-              stops: [0.0, 0.45, 1.0],
+            gradient: LinearGradient(
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [
+                Colors.black.withValues(alpha: 0.55),
+                Colors.black.withValues(alpha: 0.30),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: (shadowOn ? _safe : _accent).withValues(alpha: 0.55),
-                blurRadius: 14, spreadRadius: 1,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.8),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            // 브랜드 dot — 글로우 (status indicator)
+            Container(
+              width: 10, height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: brandCol,
+                boxShadow: [BoxShadow(color: brandCol, blurRadius: 8)],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text('Aura', style: TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600)),
-        Text('View', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w800)),
-        const Spacer(),
-        // 속도
-        if (hasGps) ...[
-          Text(speed, style: TextStyle(color: _text, fontSize: 14, fontWeight: FontWeight.w800,
-                                       fontFeatures: const [FontFeature.tabularFigures()])),
-          Text('km/h', style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w700,
-                                        letterSpacing: 1)),
-          const SizedBox(width: 14),
-        ],
-        // 기록 카운터
-        Icon(Icons.bookmark_added_rounded, size: 14, color: _safe),
-        const SizedBox(width: 4),
-        Text('$uploads', style: TextStyle(color: _safe, fontSize: 13, fontWeight: FontWeight.w800)),
-        const SizedBox(width: 14),
-        // 서버
-        Icon(online ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-             size: 14, color: online ? _safe : _danger),
-        const SizedBox(width: 12),
-        // ⚙ 설정 버튼 — 우측 끝, 큰 박스 (탭 즉시 시트)
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onSettingsTap,
-          child: Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: _accent.withValues(alpha: 0.18),
-              border: Border.all(color: _accent.withValues(alpha: 0.6), width: 1.5),
-              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.tune_rounded, size: 20, color: _accent),
-          ),
+            const SizedBox(width: 10),
+            // 브랜드 로고
+            const Text('AURAVIEW',
+              style: TextStyle(
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900,
+                letterSpacing: 2.5, height: 1.0,
+              )),
+            const SizedBox(width: 14),
+            Container(width: 1, height: 22, color: Colors.white.withValues(alpha: 0.10)),
+            const SizedBox(width: 14),
+            // 속도 — Tesla 시그니처 큰 숫자
+            Text(speed,
+              style: const TextStyle(
+                color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900,
+                fontFeatures: [FontFeature.tabularFigures()],
+                letterSpacing: -1, height: 1.0,
+              )),
+            const SizedBox(width: 4),
+            Text('KM/H',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.45), fontSize: 10,
+                fontWeight: FontWeight.w800, letterSpacing: 1.5, height: 1.0,
+              )),
+            const Spacer(),
+            // 우측 인포 chip 3개 (REC · 업로드 · 서버)
+            _TeslaChip(
+              icon: shadowOn ? Icons.fiber_manual_record_rounded : Icons.fiber_manual_record_outlined,
+              label: shadowOn ? 'REC' : 'OFF',
+              color: shadowOn ? _danger : Colors.white.withValues(alpha: 0.40),
+              filled: shadowOn,
+            ),
+            const SizedBox(width: 6),
+            _TeslaChip(
+              icon: Icons.bookmark_rounded,
+              label: '$uploads',
+              color: uploads > 0 ? _safe : Colors.white.withValues(alpha: 0.40),
+              filled: false,
+            ),
+            const SizedBox(width: 6),
+            _TeslaChip(
+              icon: online ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+              label: online ? 'ONLINE' : 'OFFLINE',
+              color: online ? _safe : _danger,
+              filled: false,
+            ),
+            const SizedBox(width: 8),
+            // ⚙ 설정
+            GestureDetector(
+              onTap: onSettingsTap,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.tune_rounded, size: 19, color: Colors.white.withValues(alpha: 0.85)),
+              ),
+            ),
+          ]),
         ),
+      ),
+    );
+  }
+  static Color _border() => const Color(0x2200C8FF);
+}
+
+// v11.2 2026-05-19: Tesla 스타일 작은 인포 chip
+class _TeslaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool filled;
+  const _TeslaChip({required this.icon, required this.label, required this.color, this.filled = false});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: filled ? color.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.04),
+        border: Border.all(color: color.withValues(alpha: filled ? 0.55 : 0.18), width: 0.8),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 11, color: color),
+        const SizedBox(width: 4),
+        Text(label,
+          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900,
+            letterSpacing: 1.0, height: 1.0)),
       ]),
     );
   }
-  static Color _border() => const Color(0x4400C8FF);
 }
 
 class _DriveButton extends StatelessWidget {
@@ -5091,16 +5151,20 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
     for (final o in _objs) { if (o.cls == 'person') pc++; else vc++; }
 
     return Column(children: [
-      // ── 상단 절반: 카메라 + ML Kit 박스 ────────────────────
+      // ── 상단 절반: 카메라 + ML Kit 박스 (Tesla 풍 카드)
       Expanded(flex: 5, child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
+        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF0A1018),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _accent.withValues(alpha: 0.25), width: 1),
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 18, offset: const Offset(0, 6)),
+          ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(19),
           child: Stack(fit: StackFit.expand, children: [
             // 카메라
             if (widget.camera != null && widget.camera!.value.isInitialized)
@@ -5121,85 +5185,43 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
                   imgW: widget.imgW, imgH: widget.imgH,
                 ),
               )),
-            // 좌상단 라벨
-            Positioned(left: 10, top: 8, child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: _danger.withValues(alpha: 0.40), width: 0.8),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 6, height: 6, decoration: BoxDecoration(
-                  color: _danger, shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: _danger, blurRadius: 5)],
-                )),
-                const SizedBox(width: 6),
-                Text('CAM · LIVE',
-                  style: TextStyle(color: _danger, fontSize: 10,
-                    fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-              ]),
-            )),
-            // 우상단 검출 카운트
-            Positioned(right: 10, top: 8, child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: _accent.withValues(alpha: 0.30), width: 0.8),
-              ),
-              child: Text('검출 ${widget.detections.length}',
-                style: TextStyle(color: _accent, fontSize: 10,
-                  fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-            )),
+            // 좌상단 Tesla 라벨
+            Positioned(left: 12, top: 10, child: _TeslaLabel(
+              icon: Icons.videocam_rounded, label: 'CAM · LIVE', color: _danger)),
+            // 우상단 검출 카운트 + AI 상태
+            Positioned(right: 12, top: 10, child: _TeslaLabel(
+              icon: Icons.center_focus_strong_rounded,
+              label: '검출 ${widget.detections.length}',
+              color: widget.detections.isNotEmpty ? _accent : Colors.white.withValues(alpha: 0.55))),
           ]),
         ),
       )),
-      // ── 하단 절반: 순수 합성 3D BEV (IPM affine 워프 폐기)
-      //   사용자 지적: "이거는 걍 아핀변환해서 보여주는거 아니냐?"
-      //   진짜 3D BEV = monocular depth NN. 그건 무거우니 ML Kit bbox bottom-y로
-      //   거리 추정 → 합성 3D 씬에 Tesla AI Day 식 voxel cluster 배치.
+      // ── 하단 절반: 순수 합성 3D BEV
       Expanded(flex: 5, child: Container(
         decoration: BoxDecoration(
           gradient: const RadialGradient(
             center: Alignment(0, 0.9), radius: 1.2,
-            colors: [Color(0xFF0B1320), Color(0xFF040810)],
+            colors: [Color(0xFF0A1322), Color(0xFF02050A)],
           ),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _safe.withValues(alpha: 0.30), width: 1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 18, offset: const Offset(0, 6)),
+          ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(19),
           child: Stack(fit: StackFit.expand, children: [
             RepaintBoundary(child: CustomPaint(
               size: Size.infinite,
               painter: _CleanBevPainter(objs: _objs, t: _t),
             )),
-            // 라벨
-            Positioned(left: 10, top: 8, child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: _safe.withValues(alpha: 0.40), width: 0.8),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 6, height: 6, decoration: BoxDecoration(
-                  color: _safe, shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: _safe, blurRadius: 5)],
-                )),
-                const SizedBox(width: 6),
-                Text('3D BEV · 합성 + 검출 voxel',
-                  style: TextStyle(color: _safe, fontSize: 10,
-                    fontWeight: FontWeight.w900, letterSpacing: 1.0)),
-              ]),
-            )),
-            Positioned(right: 10, top: 8, child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xCC0D1520), borderRadius: BorderRadius.circular(99),
-              ),
-              child: Text('👤 $pc · 🚗 $vc',
-                style: TextStyle(color: _muted, fontSize: 10,
-                  fontWeight: FontWeight.w800)),
-            )),
+            Positioned(left: 12, top: 10, child: _TeslaLabel(
+              icon: Icons.view_in_ar_rounded, label: 'BEV · OCCUPANCY', color: _safe)),
+            Positioned(right: 12, top: 10, child: _TeslaLabel(
+              icon: Icons.tag_faces_rounded, label: '$pc 보행 · $vc 차량',
+              color: (pc + vc) > 0 ? _accent : Colors.white.withValues(alpha: 0.55))),
           ]),
         ),
       )),
@@ -6549,6 +6571,44 @@ class _TeslaBevV2Painter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// v11.2 2026-05-19: Tesla 식 코너 라벨 (카메라/BEV 카드 위에)
+// ═══════════════════════════════════════════════════════════════
+class _TeslaLabel extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _TeslaLabel({required this.icon, required this.label, required this.color});
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(99),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.50),
+            border: Border.all(color: color.withValues(alpha: 0.35), width: 0.6),
+            borderRadius: BorderRadius.circular(99),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 6, height: 6, decoration: BoxDecoration(
+              color: color, shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: color, blurRadius: 4)],
+            )),
+            const SizedBox(width: 6),
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(color: color, fontSize: 9.5,
+              fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // v11 2026-05-19: floating REC pill (옛 _DriveButton 큰 거 폐기, 작은 알약)
 // ═══════════════════════════════════════════════════════════════
 class _RecPill extends StatelessWidget {
@@ -6558,33 +6618,43 @@ class _RecPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final col = on ? _danger : _accent;
+    final col = on ? _danger : Colors.white;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 22),
         decoration: BoxDecoration(
-          color: on ? _danger.withValues(alpha: 0.20) : _accent.withValues(alpha: 0.15),
-          border: Border.all(color: col.withValues(alpha: 0.65), width: 1.4),
+          // Tesla "Engage AP" 풍 — pure dark glass + bright accent border
+          gradient: on
+            ? LinearGradient(
+                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [_danger.withValues(alpha: 0.32), _danger.withValues(alpha: 0.18)],
+              )
+            : LinearGradient(
+                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [Colors.white.withValues(alpha: 0.10), Colors.white.withValues(alpha: 0.04)],
+              ),
+          border: Border.all(color: col.withValues(alpha: on ? 0.85 : 0.40), width: 1.4),
           borderRadius: BorderRadius.circular(99),
           boxShadow: on
-            ? [BoxShadow(color: _danger.withValues(alpha: 0.45), blurRadius: 14)]
-            : [BoxShadow(color: _accent.withValues(alpha: 0.25), blurRadius: 8)],
+            ? [BoxShadow(color: _danger.withValues(alpha: 0.55), blurRadius: 18, spreadRadius: 1)]
+            : [BoxShadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 9, height: 9, decoration: BoxDecoration(
+            width: 8, height: 8, decoration: BoxDecoration(
               color: col, shape: BoxShape.circle,
-              boxShadow: on ? [BoxShadow(color: _danger, blurRadius: 6)] : null,
+              boxShadow: [BoxShadow(color: col, blurRadius: 6)],
             ),
           ),
-          const SizedBox(width: 8),
-          Text(on ? 'REC · 모니터링 중' : '▶ 모니터링 시작',
-            style: TextStyle(color: col, fontSize: 12,
-              fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          const SizedBox(width: 10),
+          Text(on ? 'AURA · ENGAGED' : 'TAP TO ENGAGE',
+            style: TextStyle(color: col, fontSize: 11,
+              fontWeight: FontWeight.w900, letterSpacing: 2.0)),
         ]),
       ),
     );

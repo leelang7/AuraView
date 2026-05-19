@@ -120,11 +120,24 @@
     <p>각 가산점 항목별 평가 기준에 대응하는 우리 구현의 직접 증거를 라이브 링크로 매핑합니다.
        모든 항목은 <code style="color:var(--safe);background:rgba(0,224,154,0.12);padding:1px 6px;border-radius:3px;">auraview.allthatai.kr</code>에서 실제 동작합니다.</p>
     <div class="total">
-      <div class="pts">25<span class="small">/25</span></div>
+      <div class="pts"><span id="total-pts">0</span><span class="small">/25</span></div>
       <div class="label">
         <b>총 가산점 100% 적격</b><br>
         AI 10pt · 데이터융합 5pt · 가명정보 5pt · 안전구역 5pt
       </div>
+    </div>
+
+    <!-- v0.18: 라이브 시스템 상태 strip — judges 가 page 로드 직후 API 모두 살아있는지 확인 -->
+    <div id="live-strip" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;
+      padding:9px 12px;background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.18);
+      border-radius:99px;font-size:10px;letter-spacing:1.5px;font-family:'JetBrains Mono',monospace;font-weight:800;">
+      <span style="color:var(--muted);">SYSTEM LIVE:</span>
+      <span data-probe="/fusion/sources" style="color:var(--muted);">⏳ FUSION</span>
+      <span data-probe="/policy/stats" style="color:var(--muted);">⏳ POLICY</span>
+      <span data-probe="/bev3d/" style="color:var(--muted);">⏳ BEV3D</span>
+      <span data-probe="/privacy/" style="color:var(--muted);">⏳ PRIVACY</span>
+      <span data-probe="/safezone/" style="color:var(--muted);">⏳ SAFEZONE</span>
+      <span id="schema-info" style="color:var(--muted);margin-left:auto;">SCHEMA: ...</span>
     </div>
   </header>
 
@@ -228,7 +241,7 @@
       <li><b>위험도 추론</b> · <code>POST /risk/predict</code></li>
       <li><b>3D BEV 라이브</b> · <code>/bev3d/</code> (TF.js + COCO-SSD on-device 검출)</li>
       <li><b>정책의사결정 대시보드</b> · <code>/policy/</code> (수집→통계→정책 4단계)</li>
-      <li><b>17 데이터 다이어그램</b> · <code>/gallery/</code> (19종 SVG)</li>
+      <li><b>21 데이터 다이어그램</b> · <code>/gallery/</code> (21종 SVG)</li>
       <li><b>네이티브앱 APK</b> · GitHub Releases <code>latest</code> 자동 빌드</li>
       <li><b>30초 스토리</b> · <code>/story/</code> (시뮬레이터 포함)</li>
       <li><b>72초 시네마틱 릴</b> · <code>/reel/</code> (영상 대체)</li>
@@ -242,5 +255,49 @@
   </div>
 
 </div>
+
+<script>
+// v0.18: 페이지 로드 시 25점 count-up + 시스템 라이브 상태 확인
+(function () {
+  const el = document.getElementById('total-pts');
+  if (el) {
+    const t0 = performance.now();
+    function tick(now) {
+      const u = Math.min(1, (now - t0) / 1400);
+      const ease = 1 - Math.pow(1 - u, 2.5);
+      el.textContent = Math.floor(25 * ease);
+      if (u < 1) requestAnimationFrame(tick);
+      else el.textContent = '25';
+    }
+    requestAnimationFrame(tick);
+  }
+  // 라이브 시스템 상태 — 각 endpoint HEAD/GET fetch 해서 OK/FAIL 표시
+  document.querySelectorAll('[data-probe]').forEach(async (span) => {
+    const url = span.getAttribute('data-probe');
+    const label = span.textContent.replace(/⏳\s*/, '');
+    try {
+      const r = await fetch(url, { method: 'GET' });
+      if (r.ok) {
+        span.style.color = '#00E09A';
+        span.textContent = '✓ ' + label;
+      } else {
+        span.style.color = '#FFB020';
+        span.textContent = '△ ' + label + ' ' + r.status;
+      }
+    } catch (e) {
+      span.style.color = '#FF6B6B';
+      span.textContent = '✗ ' + label;
+    }
+  });
+  // 스키마 버전 — /fusion/sources 에서 추출
+  fetch('/fusion/sources').then(r => r.json()).then(j => {
+    const s = document.getElementById('schema-info');
+    if (s && j.schema_version) {
+      s.textContent = j.schema_version.toUpperCase();
+      s.style.color = '#00C8FF';
+    }
+  }).catch(() => {});
+})();
+</script>
 </body>
 </html>

@@ -1525,9 +1525,9 @@ class _FleetHomeState extends State<FleetHome>
                       pulse: _lastReason == 'signal_occluded',
                     ),
                   ),
-                  // v12.10: HUD chips 복원 (TAAS / 우천 / ER / 스쿨존 / BIS / DTG / 119 / src v…)
-                  //   _fusion (intersection 결합) 또는 _busLive 있을 때 chips 자동 노출
-                  if (_fusion != null || _busLive != null) Padding(
+                  // v12.10: HUD chips (TAAS/우천/ER/스쿨존/BIS/DTG/119) — 데이터 있을 때만
+                  //   v12.11: _fusion summary 가 비어있으면 strip 자체 안 보임
+                  if (_fusion?['fusion_summary'] != null) Padding(
                     padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1536,7 +1536,7 @@ class _FleetHomeState extends State<FleetHome>
                         border: Border.all(color: _accent.withValues(alpha: 0.20), width: 0.6),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: _CityInfoLine(fusion: _fusion ?? const {}, busLive: _busLive),
+                      child: _CityInfoLine(fusion: _fusion!, busLive: _busLive),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -1777,29 +1777,8 @@ class _UnifiedStatusBar extends StatelessWidget {
               filled: false,
             ),
             const SizedBox(width: 8),
-            // v12: 📖 스토리/심사위원 모드 (5탭 WebView: 가산점/정책/PII/안전/스토리)
-            Builder(builder: (ctx) => GestureDetector(
-              onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
-                builder: (_) => const _JudgeModeScreen(),
-              )),
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [_safe.withValues(alpha: 0.30), _accent2.withValues(alpha: 0.20)],
-                  ),
-                  border: Border.all(color: _safe.withValues(alpha: 0.55), width: 1),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: _safe.withValues(alpha: 0.30), blurRadius: 10)],
-                ),
-                child: Center(child: Text('★',
-                  style: TextStyle(color: _safe, fontSize: 18,
-                    fontWeight: FontWeight.w900, height: 1.0))),
-              ),
-            )),
-            const SizedBox(width: 6),
+            // v12.11: ★ 버튼 제거 — 웹 페이지 wrap 이라 네이티브 기능 아님 (사용자 지적)
+            //   심사 페이지 보고 싶으면 브라우저로 https://auraview.allthatai.kr/scorecard/
             // ⚙ 설정
             GestureDetector(
               onTap: onSettingsTap,
@@ -2246,20 +2225,24 @@ class _CityInfoLine extends StatelessWidget {
     final showDtg = dtgBoost > 0.03 || dtgDanger > 0.6;
     final showGolden = goldenAtRisk || nfaSeverityMul > 1.10;
 
+    // v12.11: "?" chip 숨김 — 데이터 있을 때만 표시 (비활성 아이콘 제거)
+    final hasSig  = sigState != '?';
+    final hasVds  = vdsKmh   != '?';
+    final hasTaas = taas     != '?';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Wrap(
         spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Row(mainAxisSize: MainAxisSize.min, children: [
+          if (hasSig) Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.traffic, size: 13, color: _accent), const SizedBox(width: 4),
             Text(sigState, style: const TextStyle(color: _text, fontSize: 12, fontWeight: FontWeight.w700)),
           ]),
-          Row(mainAxisSize: MainAxisSize.min, children: [
+          if (hasVds) Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.speed, size: 11, color: _accent), const SizedBox(width: 3),
             Text(vdsKmh, style: const TextStyle(color: _text, fontSize: 10)),
           ]),
-          Row(mainAxisSize: MainAxisSize.min, children: [
+          if (hasTaas) Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.warning_amber, size: 11, color: _warn), const SizedBox(width: 3),
             Text('TAAS $taas', style: const TextStyle(color: _text, fontSize: 10)),
           ]),
@@ -3995,7 +3978,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                 ]),
                 const SizedBox(height: 6),
                 const Text(
-                  '운전자가 못 보는 곳을 15종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI. 평균 3.38초 먼저 위험 감지, 매년 21명 보호.',
+                  '운전자가 못 보는 곳을 21종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI. 평균 3.38초 먼저 위험 감지, 매년 21명 보호.',
                   style: TextStyle(color: _text, fontSize: 12, height: 1.55),
                 ),
                 const SizedBox(height: 10),

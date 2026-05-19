@@ -166,6 +166,10 @@ class _FleetHomeState extends State<FleetHome>
   int _detectKeptN = 0;
   DateTime? _detectLastAt;
 
+  // v12.4 2026-05-19: ML Kit raw 박스 (필터 전) — 카메라에 모두 표시
+  //   { box[x,y,w,h], labels: 'A 0.9, B 0.6', kept: true/false, rejReason: '...' }
+  List<Map<String, dynamic>> _rawDetections = const [];
+
   // ★ DEMO 시나리오 모드 — 사용자가 명시적으로 켤 때만 활성 (기본 OFF)
   // OFF: LIVE 모드 — 카메라 frame → 클라이언트 voxel (실제 환경)
   // ON:  DEMO 모드 — 서버 4 시나리오 자동 순환 (실내 시연용)
@@ -237,11 +241,10 @@ class _FleetHomeState extends State<FleetHome>
     // ML Kit 객체 검출기 초기화 (Android/iOS 만)
     if (!kIsWeb) {
       try {
-        // v12: classifyObjects: true → 더 많은 객체 잡힘 (실내 환경에서도 검출)
-        //   stream 모드로 변경 → 매 호출 빠른 응답
+        // v12.4: stream 모드는 ImageStream 용 — single 로 되돌림 (processImage one-shot 호환)
         _objDetector = ObjectDetector(
           options: ObjectDetectorOptions(
-            mode: DetectionMode.stream,
+            mode: DetectionMode.single,
             classifyObjects: true,
             multipleObjects: true,
           ),
@@ -307,9 +310,24 @@ class _FleetHomeState extends State<FleetHome>
   /// 카메라 프레임 → 클라이언트(엣지) voxel 직접 생성. 서버 호출 X.
   /// + ML Kit 객체 검출 → class_grid_flat 채워서 사람/차량 형상 표시.
   Future<void> _fetchBev() async {
-    if (_cam != null && _cam!.value.isInitialized && !_cam!.value.isTakingPicture) {
+    if (_cam == null) {
+      if (mounted) setState(() => _detectDebug = '_fetchBev: _cam=null');
+      return;
+    }
+    if (!_cam!.value.isInitialized) {
+      if (mounted) setState(() => _detectDebug = '_fetchBev: !isInitialized');
+      return;
+    }
+    // v12.5: isTakingPicture 가드 제거 — 플러그인이 stuck 시 timeout 으로 처리
+    if (true) {
       try {
-        final shot = await _cam!.takePicture();
+        if (mounted) setState(() => _detectDebug = '_fetchBev: takePicture…');
+        // v12.5: 5초 timeout — stuck 방지
+        final shot = await _cam!.takePicture().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => throw TimeoutException('takePicture 5s'),
+        );
+        if (mounted) setState(() => _detectDebug = '_fetchBev: 캡처OK, decoding…');
         final bytes = await shot.readAsBytes();
         // 1) voxel grid (edge + motion) 생성 — 100% on-device
         final voxel = _voxelizeOnDevice(bytes);
@@ -338,7 +356,11 @@ class _FleetHomeState extends State<FleetHome>
         if (voxel != null && mounted) {
           setState(() => _bev = voxel);
         }
-      } catch (_) {}
+      } catch (e) {
+        // v12.4 디버그: takePicture 또는 voxelize 예외 화면에 표시
+        if (mounted) setState(() => _detectDebug =
+          'fetchBev 예외: ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}');
+      }
     }
     // 도시정보 결합 (signal/VDS/TAAS) — voxel 위에 라이브 라인 표시용
     // intersection_id 우선순위: 사용자 설정값 → GPS 자동 감지값
@@ -592,6 +614,7 @@ class _FleetHomeState extends State<FleetHome>
       final imgW = src.width, imgH = src.height;
       final imgArea = (imgW * imgH).toDouble();
       final dets = <Map<String, dynamic>>[];
+      final raws = <Map<String, dynamic>>[];   // v12.4: ALL raw boxes for visual debug
       int rejTooSmall = 0, rejTooLarge = 0, rejAspect = 0, rejMinSize = 0;
       for (final obj in objects) {
         final box = obj.boundingBox;
@@ -599,12 +622,29 @@ class _FleetHomeState extends State<FleetHome>
         final h = (box.bottom - box.top).abs();
         final pixelArea = w * h;
         final areaRatio = pixelArea / imgArea;
+        // 라벨 정보 — classifyObjects=true 시 의미 있는 라벨
+        final labelStr = obj.labels.isEmpty
+          ? 'unlabeled'
+          : obj.labels.take(2).map((l) => '${l.text}:${(l.confidence * 100).toInt()}%').join(',');
+        // v12.4: raw 박스 모두 기록 (필터 결과와 사유 포함)
+        String? rejReason;
+        bool kept = true;
         // v12: filter 더 완화 (0.4% → 0.15%) - 실내 작은 물체도 잡음
-        if (areaRatio < 0.0015) { rejTooSmall++; continue; }
-        if (areaRatio > 0.88)   { rejTooLarge++; continue; }
-        if (w < 10 || h < 10)   { rejMinSize++; continue; }
+        if (areaRatio < 0.0015) { rejTooSmall++; kept=false; rejReason='small ${(areaRatio*100).toStringAsFixed(2)}%'; }
+        else if (areaRatio > 0.88) { rejTooLarge++; kept=false; rejReason='big ${(areaRatio*100).toStringAsFixed(0)}%'; }
+        else if (w < 10 || h < 10) { rejMinSize++; kept=false; rejReason='<10px'; }
+        else {
+          final aspectCheck = h / w;
+          if (aspectCheck < 0.10 || aspectCheck > 8.0) { rejAspect++; kept=false; rejReason='aspect ${aspectCheck.toStringAsFixed(2)}'; }
+        }
+        raws.add({
+          'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()],
+          'labels': labelStr,
+          'kept': kept,
+          'rej': rejReason,
+        });
+        if (!kept) continue;
         final aspect = h / w;
-        if (aspect < 0.10 || aspect > 8.0) { rejAspect++; continue; }
         // aspect 기반: 세로 긴 = 사람, 그 외 = 차량/물체
         final cls = aspect > 1.4 ? 'person' : 'car';
         double score = 0.6;
@@ -621,6 +661,7 @@ class _FleetHomeState extends State<FleetHome>
       if (mounted) {
         setState(() {
           _bevDetections = dets;
+          _rawDetections = raws;   // v12.4: 카메라 위 raw 박스 표시용
           _bevImgW = imgW; _bevImgH = imgH;
           _detectRawN = rawN;
           _detectKeptN = dets.length;
@@ -1330,6 +1371,7 @@ class _FleetHomeState extends State<FleetHome>
                       child: _CameraBevSplit(
                         camera: _cam,
                         detections: _bevDetections,
+                        rawDetections: _rawDetections,
                         imgW: _bevImgW,
                         imgH: _bevImgH,
                       ),
@@ -5133,10 +5175,12 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
 class _CameraBevSplit extends StatefulWidget {
   final CameraController? camera;
   final List<Map<String, dynamic>> detections;
+  final List<Map<String, dynamic>> rawDetections;   // v12.4
   final int imgW;
   final int imgH;
   const _CameraBevSplit({
     required this.camera, required this.detections,
+    this.rawDetections = const [],
     required this.imgW, required this.imgH,
   });
   @override
@@ -5250,12 +5294,13 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
                 Text('카메라 권한 필요',
                   style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w800)),
               ])),
-            // 검출 박스 오버레이
+            // v12.4: ML Kit raw 박스 (filter 전/후 다른 색)
             if (widget.camera != null && widget.camera!.value.isInitialized)
               IgnorePointer(child: CustomPaint(
                 size: Size.infinite,
                 painter: _CamBoxPainter(
                   detections: widget.detections,
+                  rawDetections: widget.rawDetections,
                   imgW: widget.imgW, imgH: widget.imgH,
                 ),
               )),
@@ -5303,40 +5348,58 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
   }
 }
 
-// 카메라 위 ML Kit 박스 오버레이 페인터
+// v12.4: 카메라 위 ML Kit 박스 + raw 박스 디버그 오버레이
 class _CamBoxPainter extends CustomPainter {
   final List<Map<String, dynamic>> detections;
+  final List<Map<String, dynamic>> rawDetections;
   final int imgW, imgH;
-  _CamBoxPainter({required this.detections, required this.imgW, required this.imgH});
+  _CamBoxPainter({required this.detections, this.rawDetections = const [],
+    required this.imgW, required this.imgH});
   @override
   void paint(Canvas canvas, Size size) {
-    final sx = size.width / imgW;
-    final sy = size.height / imgH;
-    for (final d in detections) {
+    // 카메라 영상이 FittedBox.cover로 그려졌으므로 imgW/imgH → 화면 비율 매핑
+    // (이 페인터는 카메라 위에 깔리는 overlay 라 같은 cover 매핑 필요)
+    final sensorAR = imgW / imgH;
+    final containerAR = size.width / size.height;
+    double scale, dx = 0, dy = 0;
+    if (containerAR > sensorAR) {
+      // 컨테이너가 더 가로 → 가로 맞춤
+      scale = size.width / imgW;
+      dy = (size.height - imgH * scale) / 2;
+    } else {
+      scale = size.height / imgH;
+      dx = (size.width - imgW * scale) / 2;
+    }
+
+    // 1) raw 박스 모두 그리기 (filter 거부된 것은 옅게)
+    for (final d in rawDetections) {
       final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
-      final cls = d['cls']?.toString() ?? 'car';
-      final isPed = cls == 'person';
-      final col = isPed ? const Color(0xFFFF4040) : const Color(0xFFA095FF);
-      final r = Rect.fromLTWH(box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy);
-      // 박스
-      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)),
-        Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = col);
-      // 라벨 배경 + 텍스트
-      final lab = isPed ? '👤 보행자' : '🚗 차량';
+      final kept = d['kept'] as bool? ?? false;
+      final labels = d['labels']?.toString() ?? '';
+      final rej = d['rej']?.toString();
+      final col = kept ? const Color(0xFF00C8FF) : const Color(0xFFFFB020);
+      final r = Rect.fromLTWH(
+        dx + box[0] * scale, dy + box[1] * scale,
+        box[2] * scale, box[3] * scale);
+      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(3)),
+        Paint()..style = PaintingStyle.stroke..strokeWidth = kept ? 2.4 : 1.2
+          ..color = col.withValues(alpha: kept ? 0.95 : 0.5));
+      // 라벨 (cls 라벨 + 거부 사유 or kept 표시)
+      final tag = kept ? '✓ $labels' : '✗ $rej · $labels';
       final tp = TextPainter(
-        text: TextSpan(text: lab, style: const TextStyle(
-          color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+        text: TextSpan(text: tag, style: TextStyle(
+          color: kept ? Colors.white : const Color(0xFFFFCB6B),
+          fontSize: 9.5, fontWeight: FontWeight.w800,
+          backgroundColor: Colors.black.withValues(alpha: 0.65))),
         textDirection: TextDirection.ltr,
-      )..layout();
-      final labRect = Rect.fromLTWH(r.left, r.top - tp.height - 4, tp.width + 10, tp.height + 4);
-      canvas.drawRRect(RRect.fromRectAndRadius(labRect, const Radius.circular(3)),
-        Paint()..color = col.withValues(alpha: 0.92));
-      tp.paint(canvas, Offset(r.left + 5, r.top - tp.height - 2));
+        maxLines: 1, ellipsis: '…',
+      )..layout(maxWidth: r.width * 1.5);
+      tp.paint(canvas, Offset(r.left, r.top - tp.height - 1));
     }
   }
   @override
   bool shouldRepaint(covariant _CamBoxPainter old) =>
-      old.detections != detections;
+      old.detections != detections || old.rawDetections != rawDetections;
 }
 
 // 깨끗한 BEV 페인터 (도로 X, 거리 grid + ego + 검출 silhouette 만)

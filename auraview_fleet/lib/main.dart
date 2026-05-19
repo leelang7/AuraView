@@ -16,6 +16,8 @@ import 'dart:math';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
+import 'package:camera_android_camerax/camera_android_camerax.dart' as cx;
+import 'package:camera_platform_interface/camera_platform_interface.dart' show CameraPlatform;
 import 'package:flutter/scheduler.dart';
 import 'dart:ui' as ui show ImageFilter;
 import 'dart:ui' show FontFeature;
@@ -55,6 +57,10 @@ late List<CameraDescription> _cameras;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // v12.7: camera_android_camerax 강제 — Galaxy Z Fold 3 camera2 frame 콜백 안 오는 버그 회피
+  if (!kIsWeb) {
+    try { CameraPlatform.instance = cx.AndroidCameraCameraX(); } catch (_) {}
+  }
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,

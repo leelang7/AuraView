@@ -13,6 +13,9 @@ dependencies:
 
   # Camera + media
   camera: ^0.11.2
+  # v12.7 2026-05-19: Galaxy Z Fold 3 + camera_android(camera2) → frame 콜백 안 옴 버그.
+  # camera_android_camerax 로 강제 교체 (CameraX 기반 — 최신 단말 호환 더 좋음).
+  camera_android_camerax: ^0.6.30
   path_provider: ^2.1.4
   image: ^4.5.4
 

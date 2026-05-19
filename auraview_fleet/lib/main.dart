@@ -326,11 +326,10 @@ class _FleetHomeState extends State<FleetHome>
           }
         }
 
-        // 2.5) v9.2: ★★ /bev3d/ WebView 로 검출 결과 push (실시간 3D 빌보드)
-        //   file delete 전에 await — push 가 ML Kit + JPEG 디코드 + runJavaScript 까지 처리
-        if (_bevWvCtrl != null) {
-          await _pushDetectionsToBev(shot.path, bytes);
-        }
+        // 2.5) v12.3: BEV 검출 push — 항상 실행 (WebView 폐기 후 가드 제거)
+        //   _pushDetectionsToBev 가 _bevDetections state 를 갱신 → _CameraBevSplit 가 받아 렌더.
+        //   (이전 _bevWvCtrl != null 가드가 WebView 제거 후에도 남아있어 push 가 영원히 차단됐던 버그)
+        await _pushDetectionsToBev(shot.path, bytes);
 
         // 3) 임시 파일 정리
         if (!kIsWeb) {
@@ -1431,11 +1430,34 @@ class _FullCameraPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // v12.2: CameraPreview 만 단순 사용 — plugin 이 자체적으로 sizing 처리
-    return Container(
-      color: Colors.black,
-      child: Center(child: CameraPreview(controller)),
-    );
+    // v12.3: 카메라가 좁은 세로 띠로 보이는 문제 수정 — FittedBox.cover 로 카드 전체 채움
+    //   카메라 native preview 는 보통 landscape sensor (e.g., 1280×720).
+    //   portrait 화면에 cover 시키려면 가로/세로 비율 뒤집고 BoxFit.cover 로 crop fit.
+    if (!controller.value.isInitialized) return const SizedBox.shrink();
+    final previewSize = controller.value.previewSize;
+    if (previewSize == null) return const SizedBox.shrink();
+    return LayoutBuilder(builder: (ctx, c) {
+      // sensor 가 landscape (가로 길이 > 세로) 인 경우 ar 반전
+      final sensorAR = previewSize.width / previewSize.height;   // > 1 means landscape sensor
+      // portrait 화면 (c.maxWidth < c.maxHeight) 에 보여줄 땐 90° 회전되어 좁은 세로로 보임 → ar 반전
+      final displayAR = 1.0 / sensorAR;   // = h/w of sensor = w/h on screen after rotation
+      return ClipRect(
+        child: SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: displayAR < 1
+                ? c.maxHeight * displayAR
+                : c.maxWidth,
+              height: displayAR < 1
+                ? c.maxHeight
+                : c.maxWidth / displayAR,
+              child: CameraPreview(controller),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }
 

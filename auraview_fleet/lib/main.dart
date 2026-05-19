@@ -33,6 +33,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 
 const String kApiBase = String.fromEnvironment(
   'AURAVIEW_API_BASE',
@@ -157,6 +158,7 @@ class _FleetHomeState extends State<FleetHome>
 
   // ★ ML Kit 객체 검출 (사람/차량 on-device 인식)
   ObjectDetector? _objDetector;
+  ImageLabeler? _imgLabeler;   // v12.9: 더 광범위 카테고리 (Person/Car/Dog 등 400+ labels)
   bool _mlkitBusy = false;
   // v12.6: image stream 으로 받는 마지막 프레임 (takePicture 폐기)
   CameraImage? _lastCameraFrame;
@@ -254,11 +256,13 @@ class _FleetHomeState extends State<FleetHome>
         // v12.4: stream 모드는 ImageStream 용 — single 로 되돌림 (processImage one-shot 호환)
         _objDetector = ObjectDetector(
           options: ObjectDetectorOptions(
-            mode: DetectionMode.single,
+            mode: DetectionMode.stream,
             classifyObjects: true,
             multipleObjects: true,
           ),
         );
+        // v12.9: ImageLabeler — 400+ 라벨 (Person, Car, Dog, Phone, Bottle, Plant 등 광범위)
+        _imgLabeler = ImageLabeler(options: ImageLabelerOptions(confidenceThreshold: 0.4));
       } catch (_) {/* ML Kit 미지원 — 폴백 사용 */}
     }
     _bootstrap();
@@ -903,9 +907,9 @@ class _FleetHomeState extends State<FleetHome>
       orElse: () => _cameras.first,
     );
     for (int attempt = 0; attempt < 3; attempt++) {
-      // v12.6: yuv420 포맷 + stream 호환. takePicture 안 씀.
+      // v12.8: nv21 포맷 직접 시도 (ML Kit Android 가 NV21 expect)
       final controller = CameraController(preferred, ResolutionPreset.medium,
-        enableAudio: false, imageFormatGroup: ImageFormatGroup.yuv420);
+        enableAudio: false, imageFormatGroup: ImageFormatGroup.nv21);
       try {
         await controller.initialize();
         _cam = controller;
@@ -928,6 +932,39 @@ class _FleetHomeState extends State<FleetHome>
     if (mounted) setState(() => _detectDebug = '카메라 3회 시도 실패 — 다른 앱이 점유 중');
   }
 
+  // v12.8: YUV_420_888 → NV21 변환 (ML Kit 가 정확히 받을 수 있게)
+  //   Y plane 그대로 + V/U byte interleave (VU 순서)
+  Uint8List _yuv420ToNv21(CameraImage img) {
+    final int ySize = img.planes[0].bytes.length;
+    final int uSize = img.planes[1].bytes.length;
+    final int vSize = img.planes[2].bytes.length;
+    final out = Uint8List(ySize + uSize + vSize);
+    // Y plane
+    out.setRange(0, ySize, img.planes[0].bytes);
+    // VU interleave (NV21 = Y...YVUVU...VU)
+    final uBytes = img.planes[1].bytes;
+    final vBytes = img.planes[2].bytes;
+    final uvPixelStride = img.planes[1].bytesPerPixel ?? 1;
+    int oi = ySize;
+    // V/U bytes are interleaved if pixelStride==2 (most cases on Android)
+    if (uvPixelStride == 2) {
+      // Plane 2 (V) is the source — VU 인터리브를 위해 V[i] U[i] 페어로
+      // pixelStride=2 인 경우 plane 데이터가 이미 interleaved 형태 (every 2 bytes = V,U or U,V).
+      // Android Camera2 에서는 plane[2] 가 V 먼저 인터리브된 byte buffer 인 경우가 흔함.
+      // 단순화: V plane 을 그대로 (이미 VU interleaved 버퍼) 복사 + 1바이트 더
+      final vLen = math.min(vBytes.length, out.length - oi);
+      out.setRange(oi, oi + vLen, vBytes);
+    } else {
+      // pixelStride=1 인 경우 V/U 각각 분리 — 수동으로 interleave
+      final pairs = math.min(uBytes.length, vBytes.length);
+      for (int i = 0; i < pairs && oi + 1 < out.length; i++) {
+        out[oi++] = vBytes[i];
+        out[oi++] = uBytes[i];
+      }
+    }
+    return out;
+  }
+
   // v12.6: ImageStream 콜백 — 매 프레임 호출됨 (높은 빈도)
   //   throttle 해서 ~3 FPS 만 처리 + ML Kit InputImage.fromBytes 로 직접 변환
   int _camFrameCount = 0;
@@ -943,21 +980,24 @@ class _FleetHomeState extends State<FleetHome>
     _processFrame(frame);
   }
 
-  // v12.6: stream 프레임 → ML Kit 검출 (InputImage.fromBytes)
+  // v12.8: stream 프레임 → ML Kit 검출 (NV21 format direct)
+  bool _logFirstFrameOnce = false;
   Future<void> _processFrame(CameraImage frame) async {
-    debugPrint('[AURAVIEW] _processFrame enter, det=${_objDetector != null}, busy=$_mlkitBusy');
     if (_objDetector == null || _mlkitBusy) return;
     _mlkitBusy = true;
     try {
-      // YUV420 NV21 plane 합치기
-      final WriteBuffer allBytes = WriteBuffer();
-      for (final plane in frame.planes) {
-        allBytes.putUint8List(plane.bytes);
-      }
-      final bytes = allBytes.done().buffer.asUint8List();
       final imgW = frame.width, imgH = frame.height;
+      // v12.8: NV21 format 직접 — 변환 없이 plane[0].bytes 사용
+      //   ImageFormatGroup.nv21 시 plane[0] = 전체 NV21 buffer (Y + VU)
+      final Uint8List nv21 = frame.planes.length == 1
+        ? frame.planes[0].bytes
+        : _yuv420ToNv21(frame);
+      if (!_logFirstFrameOnce) {
+        _logFirstFrameOnce = true;
+        debugPrint('[AURAVIEW] First frame: planes=${frame.planes.length}, W=$imgW H=$imgH, byte0=${nv21[0]}, byte1k=${nv21.length > 1000 ? nv21[1000] : "?"}, byteN=${nv21[nv21.length - 1]}');
+      }
       final inputImage = InputImage.fromBytes(
-        bytes: bytes,
+        bytes: nv21,
         metadata: InputImageMetadata(
           size: Size(imgW.toDouble(), imgH.toDouble()),
           rotation: InputImageRotation.rotation90deg,
@@ -966,6 +1006,13 @@ class _FleetHomeState extends State<FleetHome>
         ),
       );
       final objects = await _objDetector!.processImage(inputImage);
+      // v12.9: ImageLabeler 추가 호출 — frame 전체 라벨 (Person/Car 같은 광범위 카테고리)
+      List<ImageLabel> labelerResults = const [];
+      if (_imgLabeler != null) {
+        try {
+          labelerResults = await _imgLabeler!.processImage(inputImage);
+        } catch (_) {}
+      }
       final rawN = objects.length;
       final imgArea = (imgW * imgH).toDouble();
       final dets = <Map<String, dynamic>>[];
@@ -1007,8 +1054,14 @@ class _FleetHomeState extends State<FleetHome>
           _detectRawN = rawN;
           _detectKeptN = dets.length;
           _detectLastAt = DateTime.now();
-          if (rawN == 0) {
-            _detectDebug = 'stream raw=0 (객체 미발견)';
+          // v12.9: ImageLabeler 결과 포함 디버그
+          final labStr = labelerResults.isEmpty
+            ? ''
+            : ' lab[' + labelerResults.take(3).map((l) => '${l.label}:${(l.confidence*100).toInt()}%').join(',') + ']';
+          if (rawN == 0 && labelerResults.isEmpty) {
+            _detectDebug = 'raw=0 lab=0 (둘 다 미검출)';
+          } else if (rawN == 0) {
+            _detectDebug = 'obj=0$labStr';
           } else {
             final rej = <String>[];
             if (rejTooSmall > 0) rej.add('${rejTooSmall}small');
@@ -1016,7 +1069,7 @@ class _FleetHomeState extends State<FleetHome>
             if (rejMinSize > 0) rej.add('${rejMinSize}<10px');
             if (rejAspect > 0)  rej.add('${rejAspect}aspect');
             final rejStr = rej.isEmpty ? '' : ' rej[${rej.join(',')}]';
-            _detectDebug = 'stream raw=$rawN kept=${dets.length}$rejStr';
+            _detectDebug = 'obj=$rawN/${dets.length}$rejStr$labStr';
           }
         });
       }

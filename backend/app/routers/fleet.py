@@ -128,6 +128,48 @@ def stats():
     }
 
 
+@router.get("/live")
+def live_feed(limit: int = Query(50, ge=1, le=200)):
+    """v12.17: 공개 실시간 fleet 피드 — pseudonymized 이벤트만 (PII 없음).
+
+    /fleet/ 대시보드가 이 endpoint 를 폴링 (5s 주기) → 라이브 마커/피드 갱신.
+    """
+    if not MANIFEST.exists():
+        return {"events": [], "active_devices_5m": 0, "events_1m": 0, "events_total": 0, "unique_devices_all_time": 0}
+    rows = []
+    with MANIFEST.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except Exception:
+                continue
+    rows.reverse()   # 최신 순
+    out = rows[:limit]
+    # 1분 내 이벤트 카운트
+    from datetime import datetime, timedelta
+    one_min_ago = datetime.utcnow() - timedelta(minutes=1)
+    events_1m = 0
+    devices_5m = set()
+    five_min_ago = datetime.utcnow() - timedelta(minutes=5)
+    for r in rows:
+        try:
+            ts = datetime.fromisoformat(r["ts"].replace("Z", ""))
+            if ts > one_min_ago: events_1m += 1
+            if ts > five_min_ago: devices_5m.add(r.get("pseudo_device", ""))
+        except Exception:
+            continue
+    return {
+        "events": out,
+        "events_total": len(rows),
+        "events_1m": events_1m,
+        "active_devices_5m": len(devices_5m),
+        "unique_devices_all_time": len({r.get("pseudo_device") for r in rows}),
+    }
+
+
 @router.post("/auth")
 def admin_auth(token: str = Body(..., embed=True)):
     """토큰 검증 — 프론트가 localStorage 저장 전에 한번 호출."""

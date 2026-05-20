@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>AuraView Fleet — 라이브 수집 대시보드</title>
+<meta name="description" content="AuraView 폰들이 지금 이 순간 수집하고 있는 익명 위험 이벤트 라이브 피드 + 지도"/>
+<style>
+  :root{
+    --bg:#070A12; --surface:#0E1422; --line:#1B2436;
+    --text:#E7ECF5; --muted:#7C8AA8; --dim:#4E5C78;
+    --accent:#00C8FF; --accent2:#7C3AED; --safe:#00E09A; --warn:#FFB020; --danger:#FF4040;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased;}
+  body{min-height:100dvh;}
+  .wrap{max-width:1280px;margin:0 auto;padding:18px 20px 60px;}
+  nav.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;
+    padding:10px 14px;background:rgba(20,28,46,0.55);border:1px solid var(--line);border-radius:99px;
+    backdrop-filter:blur(10px);position:sticky;top:12px;z-index:50;}
+  nav .brand{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:900;letter-spacing:0.5px;}
+  nav .dot{width:9px;height:9px;border-radius:50%;background:var(--safe);
+    box-shadow:0 0 8px var(--safe);animation:pulse 1.5s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.45}}
+  nav .links{display:flex;gap:6px;flex-wrap:wrap;}
+  nav a{font-size:11.5px;color:var(--muted);text-decoration:none;padding:6px 10px;
+    border-radius:99px;border:1px solid transparent;font-weight:700;}
+  nav a:hover{color:var(--accent);border-color:rgba(0,200,255,0.30);}
+  /* Hero stats */
+  .hero{padding:8px 0 16px;border-bottom:1px solid var(--line);margin-bottom:18px;}
+  .eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;letter-spacing:2.5px;
+    color:var(--safe);padding:3px 10px;background:rgba(0,224,154,0.10);border:1px solid rgba(0,224,154,0.30);
+    border-radius:99px;margin-bottom:12px;}
+  h1{font-size:26px;font-weight:900;letter-spacing:-0.8px;line-height:1.18;margin-bottom:6px;}
+  h1 .g{background:linear-gradient(120deg,#00E09A 0%,#00C8FF 55%,#7C3AED 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .hero p{color:var(--muted);font-size:13.5px;}
+  .hero p code{background:rgba(124,140,180,0.08);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px;color:var(--accent);}
+
+  /* Top counters */
+  .counters{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0;}
+  @media (max-width:740px){.counters{grid-template-columns:repeat(2,1fr);}}
+  .ct{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px;
+    position:relative;overflow:hidden;}
+  .ct .l{font-size:9.5px;letter-spacing:1.6px;color:var(--muted);font-weight:700;margin-bottom:4px;}
+  .ct .v{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.5px;color:var(--text);line-height:1.05;}
+  .ct .vs{color:var(--accent2);}
+  .ct .vsafe{color:var(--safe);}
+  .ct .vwarn{color:var(--warn);}
+  .ct .sub{font-size:11px;color:var(--muted);margin-top:2px;font-weight:700;}
+  .ct.pulse::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--safe);
+    animation:bar 2s infinite;}
+  @keyframes bar{0%{opacity:0.3}50%{opacity:1}100%{opacity:0.3}}
+
+  /* Main split */
+  .main{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;}
+  @media (max-width:900px){.main{grid-template-columns:1fr;}}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;}
+  .panel h3{font-size:12.5px;font-weight:900;letter-spacing:0.4px;margin-bottom:10px;
+    display:flex;align-items:center;justify-content:space-between;}
+  .panel h3 .badge{font-size:10px;font-weight:800;letter-spacing:0.6px;padding:3px 8px;border-radius:99px;
+    background:rgba(0,224,154,0.14);color:var(--safe);border:1px solid rgba(0,224,154,0.35);
+    display:inline-flex;align-items:center;gap:5px;}
+  .panel h3 .badge .ring{width:6px;height:6px;border-radius:50%;background:var(--safe);
+    box-shadow:0 0 6px var(--safe);animation:pulse 1.4s infinite;}
+
+  /* Map */
+  .map-box{position:relative;width:100%;aspect-ratio:1.4/1;background:#0A0E18;border-radius:10px;
+    border:1px solid var(--line);overflow:hidden;}
+  .map-box svg{width:100%;height:100%;display:block;}
+  .legend{display:flex;gap:14px;margin-top:8px;font-size:10.5px;color:var(--muted);align-items:center;flex-wrap:wrap;}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;
+    background:var(--safe);box-shadow:0 0 5px var(--safe);}
+  .legend i.warn{background:var(--warn);box-shadow:0 0 5px var(--warn);}
+  .legend i.danger{background:var(--danger);box-shadow:0 0 5px var(--danger);}
+
+  /* Event feed */
+  .feed{max-height:480px;overflow-y:auto;}
+  .feed::-webkit-scrollbar{width:5px;}
+  .feed::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;}
+  .ev{display:grid;grid-template-columns:auto 1fr auto;gap:9px;padding:9px 10px;
+    background:#0A0E18;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;
+    transition:border-color 0.15s;}
+  .ev:hover{border-color:var(--accent);}
+  .ev .ic{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;
+    background:var(--surface);font-size:11px;}
+  .ev .high{background:rgba(255,68,68,0.16);color:var(--danger);}
+  .ev .med{background:rgba(255,176,32,0.16);color:var(--warn);}
+  .ev .low{background:rgba(0,224,154,0.14);color:var(--safe);}
+  .ev .meta{font-size:11px;color:var(--text);font-weight:700;}
+  .ev .meta .sub{display:block;font-size:9.5px;color:var(--muted);font-weight:600;margin-top:1px;letter-spacing:0.2px;font-family:monospace;}
+  .ev .ent{font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;align-self:center;}
+  .ev .ent.high{color:var(--danger);}
+  .ev .ent.med{color:var(--warn);}
+  .ev .ent.low{color:var(--safe);}
+
+  /* New marker animation */
+  @keyframes fadein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+  .ev.new{animation:fadein 0.45s ease-out;}
+
+  /* Reason chip */
+  .reason{font-size:9px;letter-spacing:1px;font-weight:800;padding:2px 6px;border-radius:99px;
+    background:rgba(124,140,180,0.10);color:var(--muted);text-transform:uppercase;display:inline-block;margin-top:3px;}
+  .reason.high_entropy{background:rgba(255,68,68,0.14);color:var(--danger);}
+  .reason.signal_occluded{background:rgba(255,176,32,0.14);color:var(--warn);}
+  .reason.crosswalk_blocked{background:rgba(255,176,32,0.14);color:var(--warn);}
+  .reason.blind_spot_left{background:rgba(160,149,255,0.14);color:#A095FF;}
+  .reason.low_confidence{background:rgba(0,200,255,0.12);color:var(--accent);}
+
+  /* footer */
+  .priv{margin-top:18px;padding:13px 16px;background:var(--surface);border:1px solid rgba(255,176,32,0.30);
+    border-radius:12px;font-size:11.5px;color:var(--muted);line-height:1.55;}
+  .priv b{color:var(--warn);font-weight:800;}
+  .meta{margin-top:14px;text-align:center;font-size:10.5px;color:var(--dim);}
+  .meta a{color:var(--muted);text-decoration:none;}
+  .meta code{background:rgba(124,140,180,0.08);padding:1px 5px;border-radius:3px;font-family:monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="top">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>AuraView · Fleet 라이브</span>
+    </div>
+    <div class="links">
+      <a href="/scorecard/">⭐ 가산점</a>
+      <a href="/policy/">⚖ 정책</a>
+      <a href="/privacy/">🔒 PII</a>
+      <a href="/safezone/">🛡 안전</a>
+      <a href="/bev3d/">🎮 3D BEV</a>
+      <a href="/story/">📖 스토리</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow"><span style="color:var(--safe);">●</span> Tesla 식 fleet → 익명 위험 이벤트 라이브</span>
+    <h1><span class="g">지금 이 순간</span> 폰들이 수집하고 있는 것</h1>
+    <p>AuraView 네이티브앱이 <b style="color:var(--text);">shadow mode</b>로 위험 장면(high_entropy / signal_occluded /
+       blind_spot 등)만 골라 익명 업로드하고 있습니다. 모든 이벤트는 <code>k≥5</code> 익명 결합 + 차량번호/얼굴 단말 마스킹 후
+       서버에 도달합니다. 아래는 <code>/fleet/live</code> API 5초 폴링.</p>
+  </header>
+
+  <!-- Top counters -->
+  <div class="counters">
+    <div class="ct pulse">
+      <div class="l">활성 디바이스 (5분)</div>
+      <div class="v vsafe" id="active-devices">—</div>
+      <div class="sub">실시간 폰</div>
+    </div>
+    <div class="ct">
+      <div class="l">최근 1분 이벤트</div>
+      <div class="v vs" id="events-1m">—</div>
+      <div class="sub">업로드 / min</div>
+    </div>
+    <div class="ct">
+      <div class="l">누적 이벤트</div>
+      <div class="v" id="events-total">—</div>
+      <div class="sub">전체 기여</div>
+    </div>
+    <div class="ct">
+      <div class="l">고유 디바이스</div>
+      <div class="v vwarn" id="unique-devices">—</div>
+      <div class="sub">가명화 ID</div>
+    </div>
+  </div>
+
+  <!-- Main split: map + feed -->
+  <div class="main">
+    <div class="panel">
+      <h3>
+        업로드 위치 지도 (서울)
+        <span class="badge"><span class="ring"></span>LIVE</span>
+      </h3>
+      <div class="map-box">
+        <svg viewBox="0 0 700 500" preserveAspectRatio="xMidYMid meet" id="map">
+          <defs>
+            <pattern id="gridp" x="0" y="0" width="35" height="35" patternUnits="userSpaceOnUse">
+              <path d="M 35 0 L 0 0 0 35" fill="none" stroke="#1A2436" stroke-width="0.4"/>
+            </pattern>
+            <radialGradient id="hi"><stop offset="0%" stop-color="#FF4040" stop-opacity="0.85"/><stop offset="100%" stop-color="#FF4040" stop-opacity="0"/></radialGradient>
+            <radialGradient id="mi"><stop offset="0%" stop-color="#FFB020" stop-opacity="0.75"/><stop offset="100%" stop-color="#FFB020" stop-opacity="0"/></radialGradient>
+            <radialGradient id="lo"><stop offset="0%" stop-color="#00E09A" stop-opacity="0.6"/><stop offset="100%" stop-color="#00E09A" stop-opacity="0"/></radialGradient>
+          </defs>
+          <rect width="700" height="500" fill="#0A0E18"/>
+          <rect width="700" height="500" fill="url(#gridp)"/>
+          <!-- Seoul reference shapes (한강) -->
+          <path d="M 30 280 Q 200 250 350 270 T 670 290" fill="none" stroke="#2A4060" stroke-width="14" opacity="0.6"/>
+          <text x="350" y="270" text-anchor="middle" font-size="11" fill="#5A7A9A" font-weight="800" letter-spacing="2">SEOUL</text>
+          <g id="map-markers"></g>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i class="danger"></i>고위험 (entropy ≥ 0.8)</span>
+        <span><i class="warn"></i>중위험 (0.6-0.8)</span>
+        <span><i></i>일반</span>
+        <span style="margin-left:auto;font-family:monospace;color:var(--dim);">100m 그리드 양자화 적용</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>
+        실시간 이벤트 피드
+        <span class="badge"><span class="ring"></span>5s 폴링</span>
+      </h3>
+      <div class="feed" id="feed">
+        <div style="text-align:center;color:var(--muted);font-size:12px;padding:30px 0;">⏳ /fleet/live 로딩…</div>
+      </div>
+    </div>
+  </div>
+
+  <section class="priv">
+    <b>🔒 익명 처리됨.</b> 차량번호/얼굴은 단말에서 즉시 SHA-256 해시 + 블러 처리 후 외부 송출 안 됨.
+    위치는 100m 그리드 셀로 양자화. 모든 디바이스 ID 는 가명화 (`pseudo_device` 해시) — 원본 device ID 미보관.
+    자세한 처리 방식은 <a href="/privacy/" style="color:var(--accent);text-decoration:none;">/privacy/</a>.
+  </section>
+
+  <div class="meta">
+    AuraView Fleet 라이브 대시보드 v1 · API: <code>GET /fleet/live</code> · 5s 자동 폴링<br>
+    <a href="/scorecard/">⭐ 가산점 25점</a> ·
+    <a href="/policy/">⚖ 정책 대시보드</a> ·
+    <a href="https://github.com/leelang7/AuraView" target="_blank">GitHub</a>
+  </div>
+
+</div>
+
+<script>
+// 서울 지도 좌표 → SVG 변환 (rough Seoul bbox: 37.43~37.70, 126.80~127.20)
+function projectToSvg(lat, lon) {
+  const latMin = 37.43, latMax = 37.70;
+  const lonMin = 126.80, lonMax = 127.20;
+  const x = ((lon - lonMin) / (lonMax - lonMin)) * 700;
+  const y = (1 - (lat - latMin) / (latMax - latMin)) * 500;
+  return { x: Math.max(10, Math.min(690, x)), y: Math.max(10, Math.min(490, y)) };
+}
+
+const lastSeenIds = new Set();
+
+async function refresh() {
+  try {
+    const r = await fetch('/fleet/live?limit=80');
+    if (!r.ok) return;
+    const j = await r.json();
+    document.getElementById('active-devices').textContent = j.active_devices_5m ?? 0;
+    document.getElementById('events-1m').textContent = j.events_1m ?? 0;
+    document.getElementById('events-total').textContent = (j.events_total ?? 0).toLocaleString();
+    document.getElementById('unique-devices').textContent = j.unique_devices_all_time ?? 0;
+    renderMap(j.events || []);
+    renderFeed(j.events || []);
+  } catch (e) {
+    console.error('fleet/live fetch failed', e);
+  }
+}
+
+function renderMap(events) {
+  const g = document.getElementById('map-markers');
+  g.innerHTML = '';
+  events.forEach((ev, i) => {
+    if (ev.lat == null || ev.lon == null) return;
+    const { x, y } = projectToSvg(ev.lat, ev.lon);
+    const ent = ev.entropy || 0;
+    const ring = ent >= 0.8 ? 'hi' : ent >= 0.6 ? 'mi' : 'lo';
+    const col = ent >= 0.8 ? '#FF4040' : ent >= 0.6 ? '#FFB020' : '#00E09A';
+    g.insertAdjacentHTML('beforeend',
+      `<circle cx="${x}" cy="${y}" r="20" fill="url(#${ring})" opacity="${0.8 - i * 0.01}"/>
+       <circle cx="${x}" cy="${y}" r="3.5" fill="${col}" stroke="#fff" stroke-width="0.8"/>`);
+  });
+}
+
+function renderFeed(events) {
+  const feed = document.getElementById('feed');
+  if (events.length === 0) {
+    feed.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:30px 0;">아직 업로드 없음 — 네이티브앱이 shadow mode 로 활성화되면 자동 표시</div>';
+    return;
+  }
+  feed.innerHTML = events.map((ev, i) => {
+    const ent = ev.entropy || 0;
+    const cls = ent >= 0.8 ? 'high' : ent >= 0.6 ? 'med' : 'low';
+    const icon = ent >= 0.8 ? '⚠' : ent >= 0.6 ? '⚡' : '●';
+    const ts = ev.ts ? new Date(ev.ts.endsWith('Z') ? ev.ts : ev.ts + 'Z') : null;
+    const tsStr = ts ? formatTs(ts) : '';
+    const reason = ev.reason || 'unknown';
+    const iid = ev.intersection_id || (ev.lat && ev.lon ? `(${ev.lat.toFixed(3)}, ${ev.lon.toFixed(3)})` : '');
+    const isNew = !lastSeenIds.has(ev.ts + ev.pseudo_device);
+    if (isNew) lastSeenIds.add(ev.ts + ev.pseudo_device);
+    return `<div class="ev ${isNew ? 'new' : ''}">
+      <div class="ic ${cls}">${icon}</div>
+      <div class="meta">
+        <span>${escHtml(ev.pseudo_device || '?').slice(0, 12)}… @ ${escHtml(iid)}</span>
+        <span class="sub">${tsStr}</span>
+        <span class="reason ${escHtml(reason)}">${escHtml(reason)}</span>
+      </div>
+      <div class="ent ${cls}">${ent.toFixed(2)}</div>
+    </div>`;
+  }).join('');
+}
+
+function formatTs(d) {
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  return d.toLocaleString('ko-KR');
+}
+
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

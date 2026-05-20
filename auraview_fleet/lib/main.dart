@@ -225,14 +225,16 @@ class _FleetHomeState extends State<FleetHome>
     {'id': '8033', 'name': '건대입구 로데오', 'lat': 37.5403, 'lon': 127.0700},
   ];
 
-  /// GPS 좌표 기준 가장 가까운 교차로 (반경 800m 이내) 자동 감지.
-  /// 사용자가 settings 에서 intersection_id 를 안 넣어도 HUD 가 동작하도록.
+  /// v12.16: GPS 좌표 기반 동적 교차로 ID — 어디서든 작동.
+  /// 1순위: 800m 내 known 교차로 매칭 (이름 표시 + 정확한 좌표)
+  /// 2순위: GPS 그리드 셀 ID 자동 생성 ("gps-{lat3}-{lon3}", 100m 그리드)
+  /// → fusion API 항상 호출됨 + bbox 로 정확한 좌표 전달 (서버가 동적 fusion 생성)
   void _autoDetectIntersection() {
     final p = _pos;
     if (p == null) return;
     String? bestId;
     String? bestName;
-    double bestDist = 0.8;  // 0.8km 이내만 매칭
+    double bestDist = 0.8;
     for (final it in _knownIntersections) {
       final dKm = _haversineKm(p.latitude, p.longitude,
           (it['lat'] as num).toDouble(), (it['lon'] as num).toDouble());
@@ -241,6 +243,14 @@ class _FleetHomeState extends State<FleetHome>
         bestId = it['id'] as String;
         bestName = it['name'] as String;
       }
+    }
+    // v12.16: known 매칭 실패 시 GPS 그리드 셀 ID 자동 생성 (어디서든 작동)
+    if (bestId == null) {
+      // 100m grid: lat*1000 / lon*1000 — 충분히 안정적인 셀 ID
+      final latIdx = (p.latitude * 1000).round();
+      final lonIdx = (p.longitude * 1000).round();
+      bestId = 'gps-$latIdx-$lonIdx';
+      bestName = '현재 위치 (GPS)';
     }
     if (bestId != _autoIntersectionId && mounted) {
       setState(() {
@@ -386,7 +396,18 @@ class _FleetHomeState extends State<FleetHome>
         : _autoIntersectionId;
     if (iid != null && iid.isNotEmpty) {
       try {
-        final r = await http.get(Uri.parse('$kApiBase/fusion/intersection/$iid'))
+        // v12.16: GPS 가 있으면 bbox 로 정확한 현재 위치 전달 → 서버가 동적 fusion 생성
+        //   intersection_id 는 라벨 역할만 (서버 KNOWN_INTERSECTIONS 에 없어도 OK)
+        String url = '$kApiBase/fusion/intersection/$iid';
+        if (_pos != null) {
+          final lat = _pos!.latitude, lon = _pos!.longitude;
+          const d = 0.005;   // 약 ±550m bbox
+          url += '?bbox_min_lat=${(lat - d).toStringAsFixed(5)}'
+                 '&bbox_max_lat=${(lat + d).toStringAsFixed(5)}'
+                 '&bbox_min_lon=${(lon - d).toStringAsFixed(5)}'
+                 '&bbox_max_lon=${(lon + d).toStringAsFixed(5)}';
+        }
+        final r = await http.get(Uri.parse(url))
             .timeout(const Duration(seconds: 6));
         if (r.statusCode == 200) {
           final body = jsonDecode(r.body) as Map<String, dynamic>;

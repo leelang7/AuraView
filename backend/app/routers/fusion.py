@@ -181,6 +181,28 @@ def fusion_av_hub(region: str = Query("판교")):
     return public_api.fetch_av_hub(region=region)
 
 
+# v12.16: 어디서든 GPS 좌표 기반 동적 fusion — intersection_id 없어도 OK
+@router.get("/here")
+def fusion_here(
+    lat: float = Query(..., description="현재 위도"),
+    lon: float = Query(..., description="현재 경도"),
+    radius_m: float = Query(550.0, description="bbox 반경 m"),
+):
+    """GPS 좌표로 직접 fusion 호출 — intersection_id 자동 생성 (gps-grid-셀).
+
+    네이티브앱이 어디서 사용되든 (8 known intersection 밖이라도) 작동.
+    """
+    # 100m grid cell ID
+    iid = f"gps-{int(lat * 1000)}-{int(lon * 1000)}"
+    d = radius_m / 111000.0   # deg lat 1°≈111km
+    bbox = {
+        "minLat": lat - d, "maxLat": lat + d,
+        "minLon": lon - d, "maxLon": lon + d,
+    }
+    fusion = public_api.fetch_fusion(iid, bbox=bbox)
+    return fusion.to_dict()
+
+
 @router.get("/intersection/{intersection_id}")
 def fusion_intersection(
     intersection_id: str,

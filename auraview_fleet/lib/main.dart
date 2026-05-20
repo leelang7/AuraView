@@ -1134,7 +1134,12 @@ class _FleetHomeState extends State<FleetHome>
       id = 'fleet-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(1 << 32).toRadixString(16)}';
       await sp.setString('device_id', id);
     }
-    _intersectionId = sp.getString('intersection_id');
+    // v12.14: 실증가능 첫 진입 — intersection_id 미설정 시 데모 교차로 "1007" 기본값
+    //   서버 /fusion/intersection/1007 응답과 1:1 매칭되어 화면값 즉시 검증 가능
+    _intersectionId = sp.getString('intersection_id') ?? '1007';
+    if (sp.getString('intersection_id') == null) {
+      await sp.setString('intersection_id', '1007');
+    }
     // v5 2026-05-17: 첫 실행 온보딩 플래그
     _showOnboarding = !(sp.getBool('onboarding_done') ?? false);
     setState(() => _deviceId = id!);
@@ -1202,6 +1207,9 @@ class _FleetHomeState extends State<FleetHome>
 
   /// v12.13: /fusion/sources 헬시 체크 (schema 버전 / N/21 live 소스 카운트)
   ///   bootstrap 1회 + _pollServer 와 함께 주기적으로 호출.
+  ///   v12.14: schema 불일치 경고 추가 (네이티브 expectedSchema vs 서버 응답)
+  static const String _expectedSchemaPrefix = 'fusion.v7-21src';
+  bool _schemaMismatch = false;
   Future<void> _checkFusionHealth() async {
     try {
       final r = await http.get(Uri.parse('$kApiBase/fusion/sources'))
@@ -1215,10 +1223,12 @@ class _FleetHomeState extends State<FleetHome>
       for (final s in sources) {
         if (s is Map && s['mode'] == 'live') live++;
       }
+      final mismatch = !schema.startsWith(_expectedSchemaPrefix);
       if (mounted) setState(() {
         _serverSourceCount = cnt;
         _serverLiveSourceCount = live;
         _serverSchema = schema;
+        _schemaMismatch = mismatch;
       });
     } catch (_) {/* 무시 */}
   }
@@ -4107,6 +4117,97 @@ class _DetailSheetState extends State<_DetailSheet> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // v12.14: 실증 가능 안내 카드 — 브라우저로 API URL 열어 화면값 매칭 검증
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0x3300C8FF), Color(0x2200E09A)],
+              ),
+              border: Border.all(color: const Color(0xFF00C8FF).withValues(alpha: 0.55), width: 1.2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Text('🔬', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('실증 가능 — 화면값 = 서버 응답',
+                    style: TextStyle(color: Color(0xFFB6F0FF), fontSize: 13.5,
+                      fontWeight: FontWeight.w900, letterSpacing: 0.3))),
+                ]),
+                const SizedBox(height: 8),
+                const Text(
+                  '아래 URL 을 브라우저로 열어보시면 네이티브앱 화면의 모든 chip 값 (위험점수/TAAS/스쿨존/DTG/119/노후/V2X 등)이 서버 응답 JSON 과 1:1 일치하는 것을 즉시 확인 가능.',
+                  style: TextStyle(color: _text, fontSize: 11.5, height: 1.5),
+                ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  const Expanded(child: Text(
+                    'auraview.allthatai.kr/fusion/intersection/1007',
+                    style: TextStyle(color: Color(0xFFB6F0FF), fontSize: 10.5,
+                      fontFamily: 'monospace', fontWeight: FontWeight.w700),
+                  )),
+                  GestureDetector(
+                    onTap: () async {
+                      await Clipboard.setData(const ClipboardData(text:
+                        'https://auraview.allthatai.kr/fusion/intersection/1007'));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('🔬 실증 URL 복사됨 — 브라우저로 열어 화면 chip 과 매칭 확인'),
+                          backgroundColor: Color(0xFF003E5C),
+                          duration: Duration(seconds: 3),
+                        ));
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00C8FF), borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.copy, size: 12, color: Color(0xFF0A0E18)),
+                        SizedBox(width: 4),
+                        Text('실증 URL 복사', style: TextStyle(color: Color(0xFF0A0E18),
+                          fontSize: 11, fontWeight: FontWeight.w900)),
+                      ]),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                Row(children: [
+                  const Icon(Icons.science_outlined, size: 12, color: Color(0xFF7CC8B0)),
+                  const SizedBox(width: 4),
+                  const Expanded(child: Text(
+                    '/fusion/sources · 21 종 소스 카탈로그 + schema 검증',
+                    style: TextStyle(color: Color(0xFF7CC8B0), fontSize: 10.5,
+                      fontFamily: 'monospace', fontWeight: FontWeight.w700),
+                  )),
+                  GestureDetector(
+                    onTap: () async {
+                      await Clipboard.setData(const ClipboardData(text:
+                        'https://auraview.allthatai.kr/fusion/sources'));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('/fusion/sources URL 복사됨'),
+                          backgroundColor: Color(0xFF003E5C),
+                          duration: Duration(seconds: 2),
+                        ));
+                      }
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      child: Icon(Icons.copy, size: 13, color: Color(0xFF7CC8B0)),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
 
           // ── v4 2026-05-16: 'AuraView가 뭐예요?' 카드 (처음 보는 사람용) ──
           Container(

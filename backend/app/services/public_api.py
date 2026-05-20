@@ -1332,6 +1332,14 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
     1.신호 · 2.VDS · 3.돌발 · 4.TAAS · 5.ITS · 6.DSZ · 7.기상(KMA) · 8.응급실(NEDIS) · 9.따릉이
     10.스쿨존 GIS · 11.결빙위험 (KMA 파생) · 12.보행자 사고다발
     """
+    # v12.14: 실증가능 — 잘 알려진 데모 교차로 ID 를 강남 대도초 좌표로 매핑
+    #   → /fusion/intersection/1007 응답에 스쿨존/TAAS/등교부스트 등 풍부한 chip 자동 표시
+    DEMO_INTERSECTIONS = {
+        "1007": (37.5081, 127.0440),   # 강남 대도초등학교 정문 (school_zone + pedestrian hotspot fixture)
+        "1008": (37.5163, 127.0398),   # 강남 언북초등학교
+        "1009": (37.5133, 127.1000),   # 송파 잠실초 일대
+    }
+
     nx, ny = 60, 127
     if bbox:
         lat_c = (bbox["minLat"] + bbox["maxLat"]) / 2
@@ -1339,8 +1347,16 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         nx = int(round(60 + (lon_c - 126.9780) * 11.0))
         ny = int(round(127 + (lat_c - 37.5665) * 11.0))
 
-    lat0 = (bbox["minLat"] + bbox["maxLat"]) / 2 if bbox else 37.5665
-    lon0 = (bbox["minLon"] + bbox["maxLon"]) / 2 if bbox else 126.9780
+    if bbox:
+        lat0 = (bbox["minLat"] + bbox["maxLat"]) / 2
+        lon0 = (bbox["minLon"] + bbox["maxLon"]) / 2
+    elif intersection_id in DEMO_INTERSECTIONS:
+        lat0, lon0 = DEMO_INTERSECTIONS[intersection_id]
+        # nx/ny 도 데모 좌표로 재계산
+        nx = int(round(60 + (lon0 - 126.9780) * 11.0))
+        ny = int(round(127 + (lat0 - 37.5665) * 11.0))
+    else:
+        lat0, lon0 = 37.5665, 126.9780
 
     weather_data = fetch_weather(nx=nx, ny=ny)
 

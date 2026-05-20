@@ -1134,11 +1134,13 @@ class _FleetHomeState extends State<FleetHome>
       id = 'fleet-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(1 << 32).toRadixString(16)}';
       await sp.setString('device_id', id);
     }
-    // v12.14: 실증가능 첫 진입 — intersection_id 미설정 시 데모 교차로 "1007" 기본값
-    //   서버 /fusion/intersection/1007 응답과 1:1 매칭되어 화면값 즉시 검증 가능
-    _intersectionId = sp.getString('intersection_id') ?? '1007';
-    if (sp.getString('intersection_id') == null) {
-      await sp.setString('intersection_id', '1007');
+    // v12.15: 실제 운영은 GPS 기반 자동 교차로 감지 (_autoIntersectionId).
+    //   intersection_id 는 사용자가 설정 시트에서 명시 입력했을 때만 사용.
+    //   데모 모드는 명시적 옵트인 (sp 'demo_mode' true 일 때만 "1007" 강제).
+    _intersectionId = sp.getString('intersection_id');
+    final demoMode = sp.getBool('demo_mode') ?? false;
+    if (demoMode && (_intersectionId == null || _intersectionId!.isEmpty)) {
+      _intersectionId = '1007';
     }
     // v5 2026-05-17: 첫 실행 온보딩 플래그
     _showOnboarding = !(sp.getBool('onboarding_done') ?? false);
@@ -4315,6 +4317,48 @@ class _DetailSheetState extends State<_DetailSheet> {
             _KV('현재 위치', '권한 없음 또는 측정 중'),
 
           const SizedBox(height: 18),
+          // v12.15: 데모 실험 모드 토글 — GPS 자동감지 대신 강제로 데모 교차로 사용
+          _SectionTitle('// 데모/실험 모드 (옵트인)'),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: _surface2,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFB020).withValues(alpha: 0.25)),
+            ),
+            child: FutureBuilder<SharedPreferences>(
+              future: SharedPreferences.getInstance(),
+              builder: (ctx, snap) {
+                final sp = snap.data;
+                final on = sp?.getBool('demo_mode') ?? false;
+                return Row(children: [
+                  const Icon(Icons.science_outlined, color: Color(0xFFFFB020), size: 18),
+                  const SizedBox(width: 10),
+                  const Expanded(child: Text(
+                    'GPS 미감지 시 강제로 한양대역 교차로(1007) 데모 데이터 표시',
+                    style: TextStyle(color: _text, fontSize: 12, height: 1.4),
+                  )),
+                  Switch(
+                    value: on,
+                    onChanged: sp == null ? null : (v) async {
+                      await sp.setBool('demo_mode', v);
+                      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                        content: Text(v ? '데모 모드 ON — 앱 재시작 시 1007 강제'
+                                       : '데모 모드 OFF — GPS 자동감지만 사용'),
+                        backgroundColor: const Color(0xFF003E5C),
+                        duration: const Duration(seconds: 2),
+                      ));
+                      // 즉시 반영하려면 setState 가 필요한데 _DetailSheetState 에는 미반영.
+                      // 다음 _fetchBev 사이클에서 자연스럽게 적용됨.
+                    },
+                    activeThumbColor: const Color(0xFFFFB020),
+                  ),
+                ]);
+              },
+            ),
+          ),
+          const SizedBox(height: 18),
+
           _SectionTitle('// V2V 협업 인지'),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

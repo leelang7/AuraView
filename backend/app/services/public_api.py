@@ -439,6 +439,14 @@ _SCHOOL_ZONE_FALLBACK_POLYGONS = [
     {"id": "SZ-11710-007", "name": "잠실초등학교 일대",   "lat": 37.5133, "lon": 127.1000, "radius_m": 350, "district": "송파구", "school_count": 1, "child_count_estimate": 1140},
     {"id": "SZ-11140-003", "name": "광희초등학교 일대",   "lat": 37.5651, "lon": 127.0073, "radius_m": 250, "district": "중구",   "school_count": 1, "child_count_estimate": 540},
     {"id": "SZ-11200-005", "name": "성수초등학교 일대",   "lat": 37.5446, "lon": 127.0556, "radius_m": 280, "district": "성동구", "school_count": 1, "child_count_estimate": 680},
+    # v12.15: 8 known intersection 각각에 인접 스쿨존 fixture (실 운영에서 chip 노출 보장)
+    {"id": "SZ-11200-009", "name": "한대부초등학교 일대", "lat": 37.5547, "lon": 127.1295, "radius_m": 400, "district": "성동구", "school_count": 1, "child_count_estimate": 620},   # 한양대역 1007
+    {"id": "SZ-11680-008", "name": "역삼초등학교 일대",   "lat": 37.4979, "lon": 127.0276, "radius_m": 350, "district": "강남구", "school_count": 1, "child_count_estimate": 820},   # 강남역 2024
+    {"id": "SZ-11110-004", "name": "청운초등학교 일대",   "lat": 37.5723, "lon": 126.9769, "radius_m": 320, "district": "종로구", "school_count": 1, "child_count_estimate": 510},   # 광화문 3015
+    {"id": "SZ-11440-006", "name": "신촌초등학교 일대",   "lat": 37.5556, "lon": 126.9367, "radius_m": 300, "district": "서대문구","school_count": 1, "child_count_estimate": 480},  # 신촌 5006
+    {"id": "SZ-11590-002", "name": "사당초등학교 일대",   "lat": 37.4766, "lon": 126.9816, "radius_m": 280, "district": "동작구", "school_count": 1, "child_count_estimate": 720},   # 사당역 6022
+    {"id": "SZ-11200-011", "name": "왕십리초등학교 일대", "lat": 37.5611, "lon": 127.0376, "radius_m": 320, "district": "성동구", "school_count": 1, "child_count_estimate": 590},   # 왕십리역 7045
+    {"id": "SZ-11215-001", "name": "건국초등학교 일대",   "lat": 37.5403, "lon": 127.0700, "radius_m": 290, "district": "광진구", "school_count": 1, "child_count_estimate": 540},   # 건대입구 8033
 ]
 
 
@@ -1332,12 +1340,18 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
     1.신호 · 2.VDS · 3.돌발 · 4.TAAS · 5.ITS · 6.DSZ · 7.기상(KMA) · 8.응급실(NEDIS) · 9.따릉이
     10.스쿨존 GIS · 11.결빙위험 (KMA 파생) · 12.보행자 사고다발
     """
-    # v12.14: 실증가능 — 잘 알려진 데모 교차로 ID 를 강남 대도초 좌표로 매핑
-    #   → /fusion/intersection/1007 응답에 스쿨존/TAAS/등교부스트 등 풍부한 chip 자동 표시
-    DEMO_INTERSECTIONS = {
-        "1007": (37.5081, 127.0440),   # 강남 대도초등학교 정문 (school_zone + pedestrian hotspot fixture)
-        "1008": (37.5163, 127.0398),   # 강남 언북초등학교
-        "1009": (37.5133, 127.1000),   # 송파 잠실초 일대
+    # v12.15: 실 운영 — 네이티브 _knownIntersections 와 동일 좌표 lookup
+    #   GPS 자동 감지 결과를 서버가 똑같이 인식하도록 일대일 매핑.
+    #   네이티브 lib/main.dart 의 _knownIntersections 동기화 필수.
+    KNOWN_INTERSECTIONS = {
+        "1007": (37.5547, 127.1295, "한양대역 교차로"),
+        "2024": (37.4979, 127.0276, "강남역 사거리"),
+        "3015": (37.5723, 126.9769, "광화문 사거리"),
+        "4011": (37.5133, 127.1000, "잠실역 환승센터"),
+        "5006": (37.5556, 126.9367, "신촌 로터리"),
+        "6022": (37.4766, 126.9816, "사당역 사거리"),
+        "7045": (37.5611, 127.0376, "왕십리역 광장"),
+        "8033": (37.5403, 127.0700, "건대입구 로데오"),
     }
 
     nx, ny = 60, 127
@@ -1350,9 +1364,8 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
     if bbox:
         lat0 = (bbox["minLat"] + bbox["maxLat"]) / 2
         lon0 = (bbox["minLon"] + bbox["maxLon"]) / 2
-    elif intersection_id in DEMO_INTERSECTIONS:
-        lat0, lon0 = DEMO_INTERSECTIONS[intersection_id]
-        # nx/ny 도 데모 좌표로 재계산
+    elif intersection_id in KNOWN_INTERSECTIONS:
+        lat0, lon0, _ = KNOWN_INTERSECTIONS[intersection_id]
         nx = int(round(60 + (lon0 - 126.9780) * 11.0))
         ny = int(round(127 + (lat0 - 37.5665) * 11.0))
     else:

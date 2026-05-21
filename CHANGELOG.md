@@ -5,6 +5,26 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.21 — 23종 확장 (국토부 횡단보도 GIS) + 50m 접근 알림 (2026-05-21)
+
+### Added — 23번째 데이터 소스 (v12.23)
+- **`#23 국토부 횡단보도 GIS`** (`api.vworld.kr/req/wfs lt_l_crwlk`) — 횡단보도 polyline + 신호등 유무
+  - 12개 fixture (8개 known 교차로 + 3개 스쿨존 횡단보도 + 강남대로)
+  - derived: crosswalk_count_within_radius (300m), nearest_crosswalk_m, approaching_crosswalk (50m 내), school_zone_crosswalk_count, crosswalk_pedestrian_boost (최대 +0.08)
+- 위험 가중치 v9: cw_boost × 0.05 추가, approaching True 시 base × 1.10
+- `schema_version`: `fusion.v8-22src` → `fusion.v9-23src-2026.05.21`
+- 신규 엔드포인트 카탈로그: `/fusion/sources` 에 23번째 entry
+
+### Updated — 네이티브 HUD
+- 횡단보도 chip: 50m 접근 시 적색 '횡단보도 50m', 스쿨존 횡단보도 '스쿨횡단 N', 일반 '횡단 N'
+- expectedSchemaPrefix: `fusion.v9-23src`
+- sourcesFused 배지: 23src v9 추가
+
+### Static pages
+- /story/ /scorecard/ 22종 → 23종 + 횡단보도 GIS 카드 추가 + 가중치 v9 표시
+
+---
+
 ## v0.20 — 22종 확장 (경찰청 단속CCTV) + 위치인식 stub 정확성 (2026-05-21)
 
 ### Fixed — 임의 GPS 위치에서 거짓 알람 차단 (v12.20)

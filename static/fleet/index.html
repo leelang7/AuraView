@@ -95,6 +95,28 @@
   .ev .ent.high{color:var(--danger);}
   .ev .ent.med{color:var(--warn);}
   .ev .ent.low{color:var(--safe);}
+  .ev{cursor:pointer;}
+  .ev.selected{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,200,255,0.15);}
+
+  /* v12.24: 이벤트 상세 모달 */
+  .detail-overlay{position:fixed;inset:0;background:rgba(7,10,18,0.78);backdrop-filter:blur(8px);
+    z-index:200;display:flex;align-items:center;justify-content:center;padding:24px;
+    opacity:0;pointer-events:none;transition:opacity 0.2s;}
+  .detail-overlay.open{opacity:1;pointer-events:auto;}
+  .detail-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:22px;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;}
+  .detail-card h4{font-size:13px;font-weight:900;letter-spacing:0.4px;margin-bottom:14px;
+    display:flex;justify-content:space-between;align-items:center;}
+  .detail-card h4 button{background:transparent;border:1px solid var(--line);color:var(--muted);
+    width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;font-weight:900;}
+  .detail-card h4 button:hover{color:var(--text);border-color:var(--accent);}
+  .detail-row{display:grid;grid-template-columns:130px 1fr;gap:10px;padding:8px 0;
+    border-bottom:1px dashed var(--line);font-size:12px;}
+  .detail-row .k{color:var(--muted);font-weight:700;letter-spacing:0.3px;}
+  .detail-row .v{color:var(--text);font-weight:600;font-family:monospace;word-break:break-all;}
+  .detail-row.danger .v{color:var(--danger);}
+  .detail-row.warn .v{color:var(--warn);}
+  .detail-row.safe .v{color:var(--safe);}
 
   /* New marker animation */
   @keyframes fadein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
@@ -226,6 +248,14 @@
     </div>
   </div>
 
+  <!-- v12.24: 이벤트 상세 모달 -->
+  <div class="detail-overlay" id="detail-overlay" onclick="if(event.target.id==='detail-overlay') closeDetail()">
+    <div class="detail-card" id="detail-card">
+      <h4>이벤트 상세 <button onclick="closeDetail()">×</button></h4>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
   <section class="priv">
     <b>🔒 익명 처리됨.</b> 차량번호/얼굴은 단말에서 즉시 SHA-256 해시 + 블러 처리 후 외부 송출 안 됨.
     위치는 100m 그리드 셀로 양자화. 모든 디바이스 ID 는 가명화 (`pseudo_device` 해시) — 원본 device ID 미보관.
@@ -290,6 +320,8 @@ function renderFeed(events) {
     feed.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:30px 0;">아직 업로드 없음 — 네이티브앱이 shadow mode 로 활성화되면 자동 표시</div>';
     return;
   }
+  // v12.24: 클릭 핸들러용으로 events 캐시
+  window._fleetEvents = events;
   feed.innerHTML = events.map((ev, i) => {
     const ent = ev.entropy || 0;
     const cls = ent >= 0.8 ? 'high' : ent >= 0.6 ? 'med' : 'low';
@@ -300,7 +332,7 @@ function renderFeed(events) {
     const iid = ev.intersection_id || (ev.lat && ev.lon ? `(${ev.lat.toFixed(3)}, ${ev.lon.toFixed(3)})` : '');
     const isNew = !lastSeenIds.has(ev.ts + ev.pseudo_device);
     if (isNew) lastSeenIds.add(ev.ts + ev.pseudo_device);
-    return `<div class="ev ${isNew ? 'new' : ''}">
+    return `<div class="ev ${isNew ? 'new' : ''}" onclick="openDetail(${i})">
       <div class="ic ${cls}">${icon}</div>
       <div class="meta">
         <span>${escHtml(ev.pseudo_device || '?').slice(0, 12)}… @ ${escHtml(iid)}</span>
@@ -311,6 +343,34 @@ function renderFeed(events) {
     </div>`;
   }).join('');
 }
+
+// v12.24: 이벤트 상세 패널
+function openDetail(i) {
+  const ev = (window._fleetEvents || [])[i];
+  if (!ev) return;
+  const ent = ev.entropy || 0;
+  const cls = ent >= 0.8 ? 'danger' : ent >= 0.6 ? 'warn' : 'safe';
+  const fields = [
+    ['Entropy', ent.toFixed(3), cls],
+    ['Reason', ev.reason || 'unknown', ent >= 0.6 ? 'warn' : ''],
+    ['Pseudo Device', (ev.pseudo_device || '?').slice(0, 24) + '…', ''],
+    ['Intersection', ev.intersection_id || '—', ''],
+    ['Position', (ev.lat != null && ev.lon != null) ? `${ev.lat.toFixed(5)}, ${ev.lon.toFixed(5)}` : '—', ''],
+    ['Timestamp', ev.ts || '—', ''],
+    ['k-anon ok', ev.k_anon_ok === false ? '❌ k<5' : '✓', ev.k_anon_ok === false ? 'danger' : 'safe'],
+    ['PII masked', ev.pii_masked === false ? '❌' : '✓ blur+hash', 'safe'],
+    ['Path', ev.path || '—', ''],
+  ];
+  const html = fields.map(([k, v, cl]) =>
+    `<div class="detail-row ${cl || ''}"><div class="k">${k}</div><div class="v">${escHtml(String(v))}</div></div>`
+  ).join('');
+  document.getElementById('detail-body').innerHTML = html;
+  document.getElementById('detail-overlay').classList.add('open');
+}
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDetail(); });
 
 function formatTs(d) {
   const diff = (Date.now() - d.getTime()) / 1000;

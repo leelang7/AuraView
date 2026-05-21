@@ -1237,7 +1237,7 @@ class _FleetHomeState extends State<FleetHome>
   /// v12.13: /fusion/sources 헬시 체크 (schema 버전 / N/21 live 소스 카운트)
   ///   bootstrap 1회 + _pollServer 와 함께 주기적으로 호출.
   ///   v12.14: schema 불일치 경고 추가 (네이티브 expectedSchema vs 서버 응답)
-  static const String _expectedSchemaPrefix = 'fusion.v7-21src';
+  static const String _expectedSchemaPrefix = 'fusion.v8-22src';
   bool _schemaMismatch = false;
   Future<void> _checkFusionHealth() async {
     try {

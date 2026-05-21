@@ -215,14 +215,15 @@ def verify_pipeline():
         f = public_api.fetch_fusion("1007").to_dict()
         schema = f["fusion_summary"]["schema_version"]
         sources_n = f["fusion_summary"]["sources_fused"]
-        schema_ok = schema.startswith("fusion.v7-21src")
+        # v12.20: v7-21src 또는 v8-22src 양쪽 허용 (호환성)
+        schema_ok = schema.startswith("fusion.v7-21src") or schema.startswith("fusion.v8-22src")
     except Exception as e:
         schema, sources_n, schema_ok = f"error: {e}", 0, False
     report["components"]["fusion_schema"] = {
         "ok": schema_ok,
         "schema_version": schema,
         "sources_fused": sources_n,
-        "expected_prefix": "fusion.v7-21src",
+        "expected_prefix": "fusion.v8-22src (또는 v7-21src)",
     }
 
     # 6) v12.20: 위치 인식 정확성 — 임의 GPS는 unknown/0, known 교차로는 정상값 반환?

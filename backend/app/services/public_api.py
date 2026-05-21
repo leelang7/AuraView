@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -1210,7 +1210,73 @@ def fetch_av_hub(region: str = "판교") -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (21-source v7 2026-05-19)
+# 22. 경찰청 교통단속 CCTV 위치 (v8 2026-05-21)
+#     단속 카메라 밀도 = 사고다발구간 정책 prior — 단속 위치는 과거 사고통계 기반
+# ──────────────────────────────────────────────────────────────────────
+
+POLICE_CAM_BASE_URL = os.getenv("POLICE_CAM_BASE_URL", "https://apis.data.go.kr/1320000/CityTrafficCctv")
+POLICE_CAM_KEY = os.getenv("POLICE_CAM_KEY", os.getenv("SERVICE_KEY", ""))
+
+_POLICE_CAM_FALLBACK = {
+    "source": "경찰청 교통단속 CCTV 위치 (stub — POLICE_CAM_KEY 미설정)",
+    "cams": [
+        {"id": "PC-001", "name": "강남대로 단속1", "lat": 37.4981, "lon": 127.0276, "type": "speed",  "limit_kmh": 50, "violation_5y": 2840},
+        {"id": "PC-002", "name": "테헤란로 단속1", "lat": 37.5045, "lon": 127.0506, "type": "signal", "limit_kmh":  0, "violation_5y": 1620},
+        {"id": "PC-003", "name": "광화문 단속1",   "lat": 37.5720, "lon": 126.9769, "type": "speed",  "limit_kmh": 50, "violation_5y": 1980},
+        {"id": "PC-004", "name": "잠실대교 북단",  "lat": 37.5180, "lon": 127.1010, "type": "speed",  "limit_kmh": 80, "violation_5y": 3215},
+        {"id": "PC-005", "name": "왕십리 단속1",   "lat": 37.5611, "lon": 127.0376, "type": "signal", "limit_kmh":  0, "violation_5y": 1240},
+        {"id": "PC-006", "name": "사당역 단속1",   "lat": 37.4766, "lon": 126.9816, "type": "speed",  "limit_kmh": 60, "violation_5y": 1810},
+        {"id": "PC-007", "name": "신촌 단속1",     "lat": 37.5556, "lon": 126.9367, "type": "signal", "limit_kmh":  0, "violation_5y":  920},
+        {"id": "PC-008", "name": "한양대역 단속1", "lat": 37.5547, "lon": 127.1295, "type": "speed",  "limit_kmh": 50, "violation_5y": 1430},
+        {"id": "PC-009", "name": "건대입구 단속1", "lat": 37.5403, "lon": 127.0700, "type": "signal", "limit_kmh":  0, "violation_5y": 1102},
+    ],
+}
+
+
+def fetch_police_cams(lat: float = 37.5665, lon: float = 126.9780,
+                      radius_m: float = 800.0) -> Dict[str, Any]:
+    """반경 N m 내 단속 CCTV 위치 + 단속실적. 단속 밀집 = 사고다발 prior."""
+    url = POLICE_CAM_BASE_URL
+    params = {"serviceKey": POLICE_CAM_KEY, "type": "json",
+              "minLat": lat-0.01, "maxLat": lat+0.01,
+              "minLon": lon-0.01, "maxLon": lon+0.01}
+    try:
+        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        res.raise_for_status()
+        _record_fetch("police_cam", "live", True)
+        return res.json()
+    except Exception as exc:
+        log.warning("Police cam API failed: %s", exc)
+        _record_fetch("police_cam", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
+
+    nearby = []
+    for c in _POLICE_CAM_FALLBACK["cams"]:
+        d = _haversine_m_local(lat, lon, c["lat"], c["lon"])
+        if d <= radius_m:
+            nearby.append({**c, "distance_m": round(d, 1)})
+    nearby.sort(key=lambda x: x["distance_m"])
+    cam_count = len(nearby)
+    total_viol = sum(c.get("violation_5y", 0) for c in nearby)
+    # 단속카메라 1대당 +0.025, 단속실적 1000건당 +0.01, 최대 +0.10
+    enf_boost = min(0.10, cam_count * 0.025 + (total_viol / 1000.0) * 0.01)
+    return {
+        **_POLICE_CAM_FALLBACK,
+        "nearby": nearby, "nearby_count": cam_count,
+        "derived": {
+            "cam_count_within_radius": cam_count,
+            "total_violations_5y": total_viol,
+            "enforcement_risk_boost": round(enf_boost, 3),
+            "is_enforcement_hotzone": cam_count >= 3,
+            "nearest_cam_type": nearby[0]["type"] if nearby else None,
+            "nearest_cam_distance_m": nearby[0]["distance_m"] if nearby else None,
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (22-source v8 2026-05-21)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -1242,6 +1308,8 @@ class IntersectionFusion:
     # v7 2026-05-19: 21-source 확장
     road_age: Dict[str, Any]
     av_hub: Dict[str, Any]
+    # v8 2026-05-21: 22-source 확장 (경찰청 단속 CCTV)
+    police_cam: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -1320,6 +1388,12 @@ class IntersectionFusion:
         av_risk_reduce  = float(av_derived.get("av_risk_reduce", 0.0))
         high_v2x_zone   = bool(av_derived.get("high_v2x_zone", False))
 
+        # NEW v8 2026-05-21: 경찰청 단속 CCTV 신호 추출
+        pcam_derived = self.police_cam.get("derived", {}) if isinstance(self.police_cam, dict) else {}
+        enf_boost = float(pcam_derived.get("enforcement_risk_boost", 0.0))
+        cam_count = int(pcam_derived.get("cam_count_within_radius", 0))
+        is_enf_zone = bool(pcam_derived.get("is_enforcement_hotzone", False))
+
         # 21종 통합 위험 점수 (v7)
         # 가중치 재조정: 속도0.13 + 돌발0.08 + TAAS0.08 + 기상0.07 + ER0.04 + 자전거0.04
         #         + 결빙0.06 + 보행자다발0.05 + 스쿨존0.08 + 통학로0.05 + 미세먼지0.03
@@ -1342,7 +1416,8 @@ class IntersectionFusion:
             insp_boost * 0.04 +
             dtg_boost * 0.06 +
             severity_boost * 0.05 +
-            road_age_boost * 0.06
+            road_age_boost * 0.06 +
+            enf_boost * 0.04
         )
         base *= sz_multiplier if in_school_zone else 1.0
         if golden_at_risk: base *= severity_mul_nfa
@@ -1353,8 +1428,8 @@ class IntersectionFusion:
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 21,
-                "schema_version": "fusion.v7-21src-2026.05.19",
+                "sources_fused": 22,
+                "schema_version": "fusion.v8-22src-2026.05.21",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
@@ -1397,6 +1472,10 @@ class IntersectionFusion:
                 "av_confidence": av_confidence,
                 "av_risk_reduce": av_risk_reduce,
                 "high_v2x_zone": high_v2x_zone,
+                # v8 신규 3필드 (경찰청 단속 CCTV — 단속 밀도 = 사고다발 prior)
+                "enforcement_cam_count": cam_count,
+                "enforcement_risk_boost": enf_boost,
+                "is_enforcement_hotzone": is_enf_zone,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",
@@ -1426,6 +1505,8 @@ class IntersectionFusion:
                 "nfa_dispatch":        {"provider": "소방청 119 교통사고 출동",         "data": self.nfa_dispatch},
                 # v7 신규 2종
                 "road_age":            {"provider": "행정안전부 도로 노후도",            "data": self.road_age},
+                # v8 신규 1종 (경찰청 단속 CCTV)
+                "police_cam":          {"provider": "경찰청 교통단속 CCTV",            "data": self.police_cam},
                 "av_hub":              {"provider": "KOTSA 자율주행 데이터허브 (V2X)",  "data": self.av_hub},
             },
         }
@@ -1539,4 +1620,6 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         # v7 2026-05-19
         road_age=fetch_road_age(sido="서울특별시"),
         av_hub=fetch_av_hub(region="판교"),
+        # v8 2026-05-21 — 경찰청 교통단속 CCTV (사고다발 prior)
+        police_cam=fetch_police_cams(lat=lat0, lon=lon0, radius_m=800.0),
     )

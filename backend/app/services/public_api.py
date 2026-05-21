@@ -207,8 +207,9 @@ _INCIDENT_FALLBACK = {
 }
 
 
-def fetch_incidents(num_of_rows: int = 100) -> Dict[str, Any]:
-    """실시간 돌발상황(사고·낙하물·통제)."""
+def fetch_incidents(num_of_rows: int = 100,
+                    bbox: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+    """실시간 돌발상황(사고·낙하물·통제). v12.20: bbox 필터."""
     url = f"{EX_OPEN_BASE_URL}/incidentapi/incidentAll"
     params = {"key": EX_OPEN_KEY, "type": "json", "numOfRows": num_of_rows}
     try:
@@ -220,6 +221,14 @@ def fetch_incidents(num_of_rows: int = 100) -> Dict[str, Any]:
         log.warning("incident API failed: %s", exc)
         _record_fetch("incidents", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if ALLOW_FALLBACK:
+            if bbox:
+                filtered = [
+                    i for i in _INCIDENT_FALLBACK["list"]
+                    if bbox["minLat"] <= i["lat"] <= bbox["maxLat"]
+                    and bbox["minLon"] <= i["lon"] <= bbox["maxLon"]
+                ]
+                return {**_INCIDENT_FALLBACK, "list": filtered,
+                        "filter_applied": "bbox"}
             return _INCIDENT_FALLBACK
         raise
 
@@ -266,6 +275,15 @@ def fetch_taas_accidents(bbox: Optional[Dict[str, float]] = None, year: int = 20
         log.warning("TAAS API failed: %s", exc)
         _record_fetch("taas", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if ALLOW_FALLBACK:
+            # v12.20: bbox 주어지면 fixture 사고를 bbox 안으로 제한 (집에서 거짓 7건 알람 차단)
+            if bbox:
+                filtered = [
+                    a for a in _TAAS_FALLBACK["accidents"]
+                    if bbox["minLat"] <= a["lat"] <= bbox["maxLat"]
+                    and bbox["minLon"] <= a["lon"] <= bbox["maxLon"]
+                ]
+                return {**_TAAS_FALLBACK, "accidents": filtered, "total": len(filtered),
+                        "filter_applied": "bbox", "filter_note": "v12.20 위치 인식 필터"}
             return _TAAS_FALLBACK
         raise
 
@@ -412,7 +430,44 @@ def fetch_emergency_capacity(lat: float = 37.5665, lon: float = 126.9780, radius
         log.warning("NEDIS API failed at (%s, %s): %s", lat, lon, exc)
         _record_fetch("medical", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if ALLOW_FALLBACK:
-            return _NEDIS_FALLBACK
+            # v12.20: 실제 lat/lon → 가까운 병원만 derived 재계산 (집/임의 위치 거짓 ER 알람 차단)
+            hospitals = _NEDIS_FALLBACK["hospitals"]
+            radius_m = radius_km * 1000
+            nearby = [
+                (_haversine_m_local(lat, lon, h["lat"], h["lon"]), h)
+                for h in hospitals
+            ]
+            nearby.sort(key=lambda x: x[0])
+            within = [(d, h) for d, h in nearby if d <= radius_m]
+            if not within:
+                # 임의 GPS — 반경 내 fixture 병원 없음 → 중립 derived
+                return {
+                    **_NEDIS_FALLBACK,
+                    "hospitals_filtered": [],
+                    "derived": {
+                        "nearest_ER_load": 0.0,
+                        "nearest_eta_min": 0,
+                        "severity_multiplier": 1.0,
+                        "_note": "v12.20 위치 인식 — 반경 내 응급실 fixture 없음",
+                    },
+                    "filter_applied": "lat/lon",
+                }
+            d0, nearest = within[0]
+            er_load = float(nearest.get("ER_load", 0.0))
+            eta_min = int(nearest.get("ambulance_eta_min", 0))
+            sev_mul = 1.0 + max(0.0, er_load - 0.5) * 0.8
+            return {
+                **_NEDIS_FALLBACK,
+                "hospitals_filtered": [h for _, h in within],
+                "derived": {
+                    "nearest_ER_load": er_load,
+                    "nearest_eta_min": eta_min,
+                    "severity_multiplier": round(sev_mul, 2),
+                    "nearest_hospital": nearest.get("name"),
+                    "nearest_distance_m": int(d0),
+                },
+                "filter_applied": "lat/lon",
+            }
         raise
 
 
@@ -441,8 +496,12 @@ _BIKE_FALLBACK = {
 }
 
 
-def fetch_bike_stations(num_of_rows: int = 50) -> Dict[str, Any]:
-    """서울시 공공자전거 실시간 거치 → 자전거도로 시나리오 prior 강화."""
+def fetch_bike_stations(num_of_rows: int = 50,
+                        lat: Optional[float] = None, lon: Optional[float] = None,
+                        radius_m: float = 1500.0) -> Dict[str, Any]:
+    """서울시 공공자전거 실시간 거치 → 자전거도로 시나리오 prior 강화.
+    v12.20: lat/lon 주어지면 반경 내 정거장만 derived 재계산 (위치 인식).
+    """
     url = f"{BIKE_BASE_URL}/{BIKE_KEY}/json/bikeList/1/{num_of_rows}/"
     try:
         res = requests.get(url, timeout=DEFAULT_TIMEOUT)
@@ -453,6 +512,36 @@ def fetch_bike_stations(num_of_rows: int = 50) -> Dict[str, Any]:
         log.warning("Bike API failed: %s", exc)
         _record_fetch("bike", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if ALLOW_FALLBACK:
+            if lat is not None and lon is not None:
+                stations = _BIKE_FALLBACK["stations"]
+                nearby = [
+                    s for s in stations
+                    if _haversine_m_local(lat, lon, s["lat"], s["lon"]) <= radius_m
+                ]
+                if not nearby:
+                    return {
+                        **_BIKE_FALLBACK,
+                        "stations_filtered": [],
+                        "derived": {
+                            "active_riders_estimate": 0,
+                            "bike_lane_risk_boost": 0.0,
+                            "peak_zone_count": 0,
+                            "_note": "v12.20 위치 인식 — 반경 내 따릉이 정거장 없음",
+                        },
+                        "filter_applied": "lat/lon",
+                    }
+                active = sum(max(0, s.get("rackTotCnt", 0) - s.get("parkingBikeTotCnt", 0)) for s in nearby)
+                peak = sum(1 for s in nearby if s.get("shared", 0) >= 0.8)
+                return {
+                    **_BIKE_FALLBACK,
+                    "stations_filtered": nearby,
+                    "derived": {
+                        "active_riders_estimate": active,
+                        "bike_lane_risk_boost": min(0.25, peak * 0.07),
+                        "peak_zone_count": peak,
+                    },
+                    "filter_applied": "lat/lon",
+                }
             return _BIKE_FALLBACK
         raise
 
@@ -1400,8 +1489,25 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         lat0, lon0, _ = KNOWN_INTERSECTIONS[intersection_id]
         nx = int(round(60 + (lon0 - 126.9780) * 11.0))
         ny = int(round(127 + (lat0 - 37.5665) * 11.0))
+    elif intersection_id.startswith("gps-"):
+        # v12.20: gps-{lat*1000}-{lon*1000} 형식에서 실제 위치 복원 (위치 인식 stub)
+        try:
+            parts = intersection_id.split("-")
+            lat0 = float(parts[1]) / 1000.0
+            lon0 = float(parts[2]) / 1000.0
+            nx = int(round(60 + (lon0 - 126.9780) * 11.0))
+            ny = int(round(127 + (lat0 - 37.5665) * 11.0))
+        except (ValueError, IndexError):
+            lat0, lon0 = 37.5665, 126.9780
     else:
         lat0, lon0 = 37.5665, 126.9780
+
+    # v12.20: bbox 없으면 lat0/lon0 ± 500m bbox 자동 생성 (TAAS 필터 동작 보장)
+    if not bbox:
+        bbox = {
+            "minLat": lat0 - 0.0045, "maxLat": lat0 + 0.0045,
+            "minLon": lon0 - 0.0057, "maxLon": lon0 + 0.0057,
+        }
 
     weather_data = fetch_weather(nx=nx, ny=ny)
 
@@ -1409,13 +1515,13 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         intersection_id=intersection_id,
         signal=fetch_signal_info(intersection_id),
         vds=fetch_vds_traffic(),
-        incidents=fetch_incidents(),
+        incidents=fetch_incidents(bbox=bbox),
         accidents_history=fetch_taas_accidents(bbox=bbox),
         its_link=fetch_its_link(link_id or "1000000100"),
         dsz_summary=_build_dsz_summary(intersection_id),
         weather=weather_data,
         medical=fetch_emergency_capacity(lat=lat0, lon=lon0),
-        bike=fetch_bike_stations(),
+        bike=fetch_bike_stations(lat=lat0, lon=lon0),
         # v3 2026-05-16
         school_zone=fetch_school_zone(lat=lat0, lon=lon0, radius_m=500.0),
         black_ice=fetch_black_ice_risk(lat=lat0, lon=lon0, weather_data=weather_data),

@@ -225,7 +225,35 @@ def verify_pipeline():
         "expected_prefix": "fusion.v7-21src",
     }
 
-    # 6) Overall verdict
+    # 6) v12.20: 위치 인식 정확성 — 임의 GPS는 unknown/0, known 교차로는 정상값 반환?
+    try:
+        from ..services import public_api as _pa
+        # v12.20: 시외/원거리 임의 GPS — fixture 데이터 영향 없는 영역 (강원)
+        home_like = _pa.fetch_fusion("gps-38200-128500").to_dict()    # 강원 산악 임의 GPS
+        known = _pa.fetch_fusion("1007").to_dict()                    # 한양대역
+        h_sum = home_like["fusion_summary"]
+        k_sum = known["fusion_summary"]
+        h_signal = home_like["sources"]["signal"]["data"]["body"]["items"]["item"]["stPdsgSttsNm"]
+        loc_ok = (
+            h_signal == "unknown"           # 임의 GPS → unknown 신호
+            and h_sum["taas_accidents_nearby"] == 0
+            and h_sum["nearest_ER_load"] == 0.0
+            and k_sum["taas_accidents_nearby"] >= 0
+        )
+        loc_note = "위치 인식 stub 정확 — gps-* 임의 위치에서 거짓 알람 없음" if loc_ok else "❌ 임의 GPS에서 잔여 false-positive 검출"
+    except Exception as e:
+        loc_ok, loc_note = False, f"error: {e}"
+        h_signal = "?"; h_sum = {}; k_sum = {}
+    report["components"]["location_accuracy"] = {
+        "ok": loc_ok,
+        "home_like_signal": h_signal if isinstance(h_signal, str) else str(h_signal),
+        "home_like_taas_nearby": h_sum.get("taas_accidents_nearby", "?") if isinstance(h_sum, dict) else "?",
+        "home_like_er_load": h_sum.get("nearest_ER_load", "?") if isinstance(h_sum, dict) else "?",
+        "known_intersection_taas": k_sum.get("taas_accidents_nearby", "?") if isinstance(k_sum, dict) else "?",
+        "note": loc_note,
+    }
+
+    # 7) Overall verdict
     all_ok = all(c.get("ok", True) for c in report["components"].values())
     report["overall_ok"] = all_ok
     report["summary"] = (

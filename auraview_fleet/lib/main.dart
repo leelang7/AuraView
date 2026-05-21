@@ -2319,8 +2319,10 @@ class _CityInfoLine extends StatelessWidget {
         final v = vds[0];
         if (v is Map && v['speed'] != null) vdsKmh = '${v['speed']}km/h';
       }
-      final acc = src?['accidents_history'];
-      if (acc is List) taas = '${acc.length}';
+      // v12.20: 정확한 경로 — summary.taas_accidents_nearby (fusion 계산 결과)
+      // 0건이면 chip 자체 미표시 (집/임의 위치 거짓 알람 차단)
+      final acc = summary?['taas_accidents_nearby'];
+      if (acc is num && acc > 0) taas = '$acc';
     } catch (_) {}
 
     // ── v2 2026-05-15: 9-source 신호 (기상/응급실/자전거) ──
@@ -2392,11 +2394,25 @@ class _CityInfoLine extends StatelessWidget {
     final hasSig  = sigState != '?';
     final hasVds  = vdsKmh   != '?';
     final hasTaas = taas     != '?';
+    // v12.20: 임의 GPS (gps-*) 위치 인식 배지 — 데이터 출처 투명성
+    final iidStr = fusion['intersection_id']?.toString() ?? '';
+    final isGpsMode = iidStr.startsWith('gps-');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Wrap(
         spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          // v12.20: 위치 인식 모드 표시 (gps-* iid → 실제 GPS 기반)
+          if (isGpsMode)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFF202A38),
+                border: Border.all(color: _accent.withValues(alpha: 0.4), width: 0.6),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text('GPS', style: TextStyle(color: _accent, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+            ),
           // v12.13: 종합 위험 점수 chip (가장 먼저 — 운전자가 즉시 보게)
           if (fusionRisk > 0)
             Row(mainAxisSize: MainAxisSize.min, children: [

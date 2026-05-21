@@ -2386,6 +2386,12 @@ class _CityInfoLine extends StatelessWidget {
     final bool showRoadAge    = roadAgeBoost > 0.03 || agedPct > 0.40;
     final bool showAvHub      = highV2xZone || avRiskReduce > 0.02;
 
+    // v12.21: v8 22-source — 경찰청 교통단속 CCTV (사고다발 prior + 운전 주의)
+    final int enfCamCount     = (summary?['enforcement_cam_count'] is num) ? (summary!['enforcement_cam_count'] as num).toInt() : 0;
+    final double enfBoost     = (summary?['enforcement_risk_boost'] is num) ? (summary!['enforcement_risk_boost'] as num).toDouble() : 0.0;
+    final bool isEnfHotzone   = (summary?['is_enforcement_hotzone'] == true);
+    final bool showEnfCam     = enfCamCount >= 1 || isEnfHotzone;
+
     // v12.13: 종합 위험 점수 (대표 표시용)
     final double fusionRisk   = (summary?['fusion_risk_score'] is num) ? (summary!['fusion_risk_score'] as num).toDouble() : 0.0;
     final String riskLevel    = summary?['risk_level']?.toString() ?? 'UNKNOWN';
@@ -2556,7 +2562,14 @@ class _CityInfoLine extends StatelessWidget {
               Text('V2X ${(avConfidence*100).toStringAsFixed(0)}% −${(avRiskReduce*100).toStringAsFixed(0)}%',
                 style: const TextStyle(color: Color(0xFF7CE4B0), fontSize: 10, fontWeight: FontWeight.w800)),
             ]),
-          // v7 배지: N종 융합 (21까지 확장)
+          // v12.21: v8 신규 — 경찰청 교통단속 CCTV (사고다발 + 단속존 주의)
+          if (showEnfCam)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.videocam, size: 11, color: isEnfHotzone ? _danger : _warn), const SizedBox(width: 3),
+              Text(isEnfHotzone ? '단속존 ${enfCamCount}대' : '단속 ${enfCamCount}대 +${(enfBoost*100).toStringAsFixed(0)}%',
+                style: TextStyle(color: isEnfHotzone ? _danger : _warn, fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v8 배지: N종 융합 (22까지 확장)
           if (sourcesFused >= 7)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -2565,7 +2578,7 @@ class _CityInfoLine extends StatelessWidget {
                 border: Border.all(color: _safe.withValues(alpha: 0.45), width: 0.8),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text('${sourcesFused}src v${sourcesFused >= 21 ? "7" : (sourcesFused >= 19 ? "6" : (sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2"))))}',
+              child: Text('${sourcesFused}src v${sourcesFused >= 22 ? "8" : (sourcesFused >= 21 ? "7" : (sourcesFused >= 19 ? "6" : (sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2")))))}',
                 style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
             ),
           // v2: BIS 실시간 버스 표시 (반경 150m 내 차량 수)

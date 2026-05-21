@@ -60,16 +60,47 @@ def get_freshness() -> Dict[str, Dict[str, Any]]:
 # 1. 신호등 API (기존)
 # ──────────────────────────────────────────────────────────────────────
 
-_SIGNAL_FALLBACK = {
+_SIGNAL_FALLBACK_UNKNOWN = {
     "body": {
         "items": {
             "item": {
-                "stPdsgSttsNm": "stop-And-Remain",
-                "stPdsgRmndCs": "10",
+                "stPdsgSttsNm": "unknown",
+                "stPdsgRmndCs": None,
+                "_stub_note": "신호 API 키 미설정 — 실제 신호 정보 없음",
             }
         }
     }
 }
+
+
+def _signal_stub_cycle(intersection_id: str) -> Dict[str, Any]:
+    """v12.19: 시간 기반 신호 cycle (known intersection 만 — gps-* 는 unknown).
+    30s 주기 (green 15s · yellow 3s · red 12s) — 현실적인 cycle.
+    """
+    if intersection_id.startswith("gps-"):
+        # 임의 GPS 그리드 셀 — 실제 신호기 존재 미확인 → unknown 반환
+        return _SIGNAL_FALLBACK_UNKNOWN
+    from datetime import datetime
+    now = datetime.utcnow()
+    t = now.second + (now.microsecond / 1e6)
+    cycle = t % 30
+    if cycle < 15:
+        state, remaining = "go", int(15 - cycle)
+    elif cycle < 18:
+        state, remaining = "warning", int(18 - cycle)
+    else:
+        state, remaining = "stop-And-Remain", int(30 - cycle)
+    return {
+        "body": {
+            "items": {
+                "item": {
+                    "stPdsgSttsNm": state,
+                    "stPdsgRmndCs": str(remaining),
+                    "_stub_note": f"신호 API 키 미설정 — 30s cycle stub ({state})",
+                }
+            }
+        }
+    }
 
 
 def fetch_intersections(page_no: int = 1, num_of_rows: int = 100) -> Dict[str, Any]:
@@ -88,7 +119,7 @@ def fetch_intersections(page_no: int = 1, num_of_rows: int = 100) -> Dict[str, A
     except Exception as exc:
         log.warning("intersection API failed: %s", exc)
         if ALLOW_FALLBACK:
-            return _SIGNAL_FALLBACK
+            return _SIGNAL_FALLBACK_UNKNOWN
         raise
 
 
@@ -111,7 +142,8 @@ def fetch_signal_info(intersection_id: str) -> Dict[str, Any]:
         log.warning("signal API failed for %s: %s", intersection_id, exc)
         _record_fetch("signal", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if ALLOW_FALLBACK:
-            return _SIGNAL_FALLBACK
+            # v12.19: gps-* 는 unknown / known intersection 은 30s cycle (정확성)
+            return _signal_stub_cycle(intersection_id)
         raise
 
 

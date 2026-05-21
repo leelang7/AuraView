@@ -432,10 +432,15 @@ class _FleetHomeState extends State<FleetHome>
             .timeout(const Duration(seconds: 6));
         if (r.statusCode == 200) {
           final body = jsonDecode(r.body) as Map<String, dynamic>;
-          // v5 2026-05-17: 위험 햅틱 — 정지 신호 + 이전과 상태 다를 때만 진동 (스팸 방지)
           final newState = (body['signal_state']?.toString() ?? '').toLowerCase();
-          final wasStop  = ((_altSignal?['signal_state'] as String?) ?? '').toLowerCase().contains('stop');
-          final isStop   = newState.contains('stop') || newState.contains('red');
+          // v12.19: "unknown" / gps-* 위치 → SignalHud 알람 띄우지 않음 (정확성)
+          final iidIsGps = iid.startsWith('gps-');
+          final isUnknown = newState.contains('unknown') || newState.isEmpty;
+          if (iidIsGps || isUnknown) {
+            if (mounted && _altSignal != null) setState(() => _altSignal = null);
+          } else {
+          final wasStop = ((_altSignal?['signal_state'] as String?) ?? '').toLowerCase().contains('stop');
+          final isStop  = newState.contains('stop') || newState.contains('red');
           if (mounted) setState(() => _altSignal = body);
           if (isStop && !wasStop) {
             // 새로 정지 신호 감지 → 강한 햅틱 (heavyImpact 3회 burst)
@@ -445,6 +450,7 @@ class _FleetHomeState extends State<FleetHome>
             await Future.delayed(const Duration(milliseconds: 120));
             HapticFeedback.heavyImpact();
           }
+          }  // end else (known intersection, not unknown)
         }
       } catch (_) {}
     }
@@ -2300,8 +2306,14 @@ class _CityInfoLine extends StatelessWidget {
     final summary = fusion['fusion_summary'] as Map<String, dynamic>?;
     String sigState = '?', vdsKmh = '?', taas = '?';
     try {
+      // v12.19: stub 신호 정확성 — "unknown" 은 chip 미표시 (집/임의 위치)
       final sig = src?['signal']?['body']?['items']?['item']?['stPdsgSttsNm'];
-      if (sig is String) sigState = sig.contains('Stop') ? '정지' : '진행';
+      if (sig is String && sig != 'unknown') {
+        if (sig.toLowerCase().contains('stop')) sigState = '정지';
+        else if (sig.toLowerCase().contains('warn')) sigState = '주의';
+        else if (sig == 'go') sigState = '진행';
+        else sigState = sig;
+      }
       final vds = src?['vds']?['list'];
       if (vds is List && vds.isNotEmpty) {
         final v = vds[0];

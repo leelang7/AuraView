@@ -159,17 +159,16 @@
   </nav>
 
   <header class="hero">
-    <span class="eyebrow"><span style="color:var(--safe);">●</span> Tesla 식 fleet → 익명 위험 이벤트 라이브</span>
-    <h1><span class="g">지금 이 순간</span> 폰들이 수집하고 있는 것</h1>
-    <p>AuraView 네이티브앱이 <b style="color:var(--text);">shadow mode</b>로 위험 장면(high_entropy / signal_occluded /
-       blind_spot 등)만 골라 익명 업로드하고 있습니다. 모든 이벤트는 <code>k≥5</code> 익명 결합 + 차량번호/얼굴 단말 마스킹 후
-       서버에 도달합니다. 아래는 <code>/fleet/live</code> API 5초 폴링.</p>
+    <span class="eyebrow"><span style="color:var(--safe);">●</span> 23종 공공데이터 + 폰 fleet — 라이브</span>
+    <h1><span class="g">지금 이 순간</span> 어떤 공공데이터를 쓰고 있나</h1>
+    <p>AuraView 서버가 <b style="color:var(--text);">23종 공공데이터</b>를 실시간 호출/캐시 중. 아래 grid 의 각 카드는
+       마지막 호출 시간(age) + 모드(live/stub) + 직전 응답 성공 여부를 5초마다 갱신.
+       동시에 네이티브앱들이 익명 위험 이벤트를 업로드하면 우측 피드에 표시됩니다.</p>
 
-    <!-- v12.18: 자가검증 strip — judges 가 한 클릭으로 전체 파이프라인 검증 -->
     <div id="verify-strip" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;
       padding:9px 12px;background:rgba(0,224,154,0.04);border:1px solid rgba(0,224,154,0.20);
       border-radius:99px;font-size:10px;letter-spacing:1.2px;font-family:'JetBrains Mono',monospace;font-weight:800;">
-      <span style="color:var(--muted);">PIPELINE CHECK:</span>
+      <span style="color:var(--muted);">자가검증:</span>
       <span data-vk="manifest" style="color:var(--muted);">⏳ MANIFEST</span>
       <span data-vk="image_integrity" style="color:var(--muted);">⏳ IMAGES</span>
       <span data-vk="pii_masking" style="color:var(--muted);">⏳ PII MASK</span>
@@ -178,19 +177,28 @@
       <span data-vk="location_accuracy" style="color:var(--muted);" title="v12.20: 임의 GPS 위치 인식 정확성">⏳ LOC ACC</span>
       <a href="/fleet/verify" target="_blank" id="verify-full" style="color:var(--accent);text-decoration:none;margin-left:auto;font-size:10px;">전체 보고 →</a>
     </div>
-
-    <!-- v12.39: demo-tour 통합 검증 카드 — 한 응답으로 8 known + 2 rural GPS 입증 -->
-    <div id="demo-tour-strip" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;
-      padding:9px 12px;background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.20);
-      border-radius:99px;font-size:10px;letter-spacing:1.2px;font-family:'JetBrains Mono',monospace;font-weight:800;">
-      <span style="color:var(--muted);">🎯 1-URL 검증:</span>
-      <span data-dt="schema_consistent" style="color:var(--muted);">⏳ SCHEMA 일관</span>
-      <span data-dt="known_intersections_active" style="color:var(--muted);">⏳ 8 KNOWN 활성</span>
-      <span data-dt="rural_no_false_alarms" style="color:var(--muted);">⏳ 2 RURAL 거짓없음</span>
-      <span data-dt="overall_ok" style="color:var(--muted);font-weight:900;">⏳ OVERALL</span>
-      <a href="/fleet/demo-tour" target="_blank" style="color:var(--accent);text-decoration:none;margin-left:auto;font-size:10px;">JSON →</a>
-    </div>
   </header>
+
+  <!-- v12.44: 23종 공공데이터 라이브 grid — 대시보드 주인공 -->
+  <section class="panel" style="margin-top:14px;">
+    <h3>
+      23종 공공데이터 실시간 호출 현황
+      <span style="display:flex;gap:10px;align-items:center;font-size:10px;letter-spacing:1.2px;color:var(--muted);font-weight:700;">
+        <span id="srcs-counter">— / 23</span>
+        <span>· live <span id="srcs-live" style="color:var(--safe);font-weight:900;">—</span></span>
+        <span>· stub <span id="srcs-stub" style="color:var(--warn);font-weight:900;">—</span></span>
+        <span class="badge"><span class="ring"></span>5s</span>
+      </span>
+    </h3>
+    <div id="sources-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+      <div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:12px;padding:24px 0;">⏳ /fusion/sources 로딩…</div>
+    </div>
+    <div style="margin-top:10px;font-size:10.5px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--safe);box-shadow:0 0 4px var(--safe);margin-right:4px;"></span>live — 실 외부 API 호출 성공</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 4px var(--warn);margin-right:4px;"></span>stub — 키 미설정/API 실패 시 fixture 응답</span>
+      <span style="margin-left:auto;font-family:monospace;">출처: <a href="/fusion/sources" target="_blank" style="color:var(--accent);text-decoration:none;">/fusion/sources</a></span>
+    </div>
+  </section>
 
   <!-- Top counters -->
   <div class="counters">
@@ -508,6 +516,43 @@ async function refreshHud() {
 refreshHud();
 setInterval(refreshHud, 5000);
 
+// v12.44: 23종 공공데이터 라이브 grid — 메인 컨텐츠
+async function refreshSources() {
+  try {
+    const r = await fetch('/fusion/sources');
+    if (!r.ok) return;
+    const j = await r.json();
+    const sources = j.sources || [];
+    const liveN = sources.filter(s => s.mode === 'live').length;
+    const stubN = sources.filter(s => s.mode !== 'live').length;
+    document.getElementById('srcs-counter').textContent = `${sources.length} / 23`;
+    document.getElementById('srcs-live').textContent = liveN;
+    document.getElementById('srcs-stub').textContent = stubN;
+    const grid = document.getElementById('sources-grid');
+    grid.innerHTML = sources.map(s => {
+      const mode = s.mode || 'stub';
+      const isLive = mode === 'live';
+      const age = s.age_s != null ? `${Math.round(s.age_s)}s` : '—';
+      const ok = s.last_success === true;
+      const color = isLive ? 'var(--safe)' : 'var(--warn)';
+      const bg = isLive ? 'rgba(0,224,154,0.06)' : 'rgba(255,176,32,0.05)';
+      const border = isLive ? 'rgba(0,224,154,0.30)' : 'rgba(255,176,32,0.20)';
+      return `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 12px;position:relative;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};box-shadow:0 0 5px ${color};"></span>
+          <span style="font-size:8.5px;letter-spacing:1.3px;color:${color};font-weight:900;font-family:monospace;">${mode.toUpperCase()}</span>
+          <span style="margin-left:auto;font-size:8.5px;color:var(--muted);font-family:monospace;">${age} ago</span>
+        </div>
+        <div style="font-size:12px;color:var(--text);font-weight:700;line-height:1.25;margin-bottom:3px;">${escHtml(s.name || s.id)}</div>
+        <div style="font-size:9.5px;color:var(--muted);font-family:monospace;">${escHtml(s.origin || '')}</div>
+        <div style="font-size:9px;color:#7C8AA8;margin-top:5px;line-height:1.3;">${escHtml(s.gain || '')}</div>
+      </div>`;
+    }).join('');
+  } catch (e) { console.error('sources fetch', e); }
+}
+refreshSources();
+setInterval(refreshSources, 5000);
+
 // v12.18: 파이프라인 자가검증 (페이지 로드 시 1회)
 fetch('/fleet/verify').then(r => r.json()).then(report => {
   document.querySelectorAll('[data-vk]').forEach(span => {
@@ -521,21 +566,6 @@ fetch('/fleet/verify').then(r => r.json()).then(report => {
   });
   if (report.overall_ok) {
     document.getElementById('verify-strip').style.borderColor = 'rgba(0,224,154,0.45)';
-  }
-}).catch(() => {});
-
-// v12.39: demo-tour 통합 검증 strip (페이지 로드 시 1회)
-fetch('/fleet/demo-tour').then(r => r.json()).then(tour => {
-  const s = tour.summary || {};
-  document.querySelectorAll('[data-dt]').forEach(span => {
-    const k = span.getAttribute('data-dt');
-    const ok = s[k] === true;
-    const label = span.textContent.replace(/⏳\s*/, '');
-    span.style.color = ok ? '#00E09A' : '#FF6B6B';
-    span.textContent = (ok ? '✓ ' : '✗ ') + label;
-  });
-  if (s.overall_ok) {
-    document.getElementById('demo-tour-strip').style.borderColor = 'rgba(0,200,255,0.55)';
   }
 }).catch(() => {});
 </script>

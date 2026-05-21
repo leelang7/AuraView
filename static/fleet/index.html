@@ -467,6 +467,15 @@ async function refreshHud() {
     push('V2X', Math.round((sum.av_confidence || 0)*100) + '%', '#7CE4B0', sum.high_v2x_zone);
     push('DTG', sum.dtg_danger_score?.toFixed(2), '#A095FF', (sum.dtg_risk_boost || 0) > 0.03);
     push('119', '×' + (sum.nfa_severity_multiplier || 1.0).toFixed(2), '#FF8866', sum.golden_time_at_risk);
+    // v12.34: 잔여 chip — 자전거/통학로/EV/노면/검사 + 스쿨존횡단 (23종 완전 커버)
+    push('자전거', '+' + Math.round((sum.bike_lane_risk_boost || 0)*100) + '%', '#FFB020', (sum.bike_lane_risk_boost || 0) > 0.05);
+    push('통학로', '+' + Math.round((sum.walk_route_boost || 0)*100) + '%', '#FFCB6B', sum.on_school_route);
+    push('EV', Math.round((sum.ev_dwelling_likelihood || 0)*100) + '%', '#7CE4B0', sum.near_ev_station && (sum.ev_dwelling_likelihood || 0) >= 0.7);
+    push('노면', sum.road_surface || 'dry', '#6BE3FF', (sum.surface_risk_boost || 0) > 0.05 || sum.low_visibility_flag);
+    push('검사', Math.round((sum.inspection_fail_rate_district || 0)*100) + '%', '#AAB0BC', (sum.inspection_risk_boost || 0) > 0.02);
+    push('스쿨횡단', (sum.school_zone_crosswalk_count || 0), '#A095FF', (sum.school_zone_crosswalk_count || 0) >= 1);
+    push('돌발', (sum.active_incidents || 0) + '건', '#FF8866', (sum.active_incidents || 0) > 0);
+    push('소스', (sum.sources_fused || 0) + '/23', '#00E09A', (sum.sources_fused || 0) >= 20);
 
     const html = chips.length ? chips.map(c =>
       `<div style="background:#141B2A;border:1px solid var(--line);border-radius:8px;padding:7px 10px;text-align:center;">

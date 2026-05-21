@@ -1276,7 +1276,83 @@ def fetch_police_cams(lat: float = 37.5665, lon: float = 126.9780,
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (22-source v8 2026-05-21)
+# 23. 국토부 횡단보도 GIS (v9 2026-05-21)
+#     vworld lt_l_crwlk — 횡단보도 polyline + 신호등 유무
+# ──────────────────────────────────────────────────────────────────────
+
+CROSSWALK_BASE_URL = os.getenv("CROSSWALK_BASE_URL", "https://api.vworld.kr/req/wfs")
+CROSSWALK_KEY = os.getenv("CROSSWALK_KEY", os.getenv("VWORLD_KEY", ""))
+
+_CROSSWALK_FALLBACK = {
+    "source": "국토부 횡단보도 GIS (vworld lt_l_crwlk, stub)",
+    "crosswalks": [
+        {"id": "CW-001", "name": "강남대로 횡단보도1", "lat": 37.4979, "lon": 127.0276, "has_signal": True,  "width_m": 12, "is_school_zone": False},
+        {"id": "CW-002", "name": "테헤란로 횡단보도1", "lat": 37.5045, "lon": 127.0506, "has_signal": True,  "width_m": 18, "is_school_zone": False},
+        {"id": "CW-003", "name": "광화문 횡단보도1",   "lat": 37.5720, "lon": 126.9769, "has_signal": True,  "width_m": 24, "is_school_zone": False},
+        {"id": "CW-004", "name": "잠실역 횡단보도1",   "lat": 37.5133, "lon": 127.1000, "has_signal": True,  "width_m": 16, "is_school_zone": False},
+        {"id": "CW-005", "name": "신촌 횡단보도1",     "lat": 37.5556, "lon": 126.9367, "has_signal": True,  "width_m": 14, "is_school_zone": False},
+        {"id": "CW-006", "name": "사당역 횡단보도1",   "lat": 37.4766, "lon": 126.9816, "has_signal": True,  "width_m": 14, "is_school_zone": False},
+        {"id": "CW-007", "name": "왕십리역 횡단보도1", "lat": 37.5611, "lon": 127.0376, "has_signal": True,  "width_m": 12, "is_school_zone": False},
+        {"id": "CW-008", "name": "건대입구 횡단보도1", "lat": 37.5403, "lon": 127.0700, "has_signal": True,  "width_m": 16, "is_school_zone": False},
+        {"id": "CW-009", "name": "한양대역 횡단보도1", "lat": 37.5547, "lon": 127.1295, "has_signal": True,  "width_m": 14, "is_school_zone": False},
+        {"id": "CW-010", "name": "대도초 앞 횡단보도", "lat": 37.5081, "lon": 127.0440, "has_signal": True,  "width_m": 10, "is_school_zone": True},
+        {"id": "CW-011", "name": "성수초 앞 횡단보도", "lat": 37.5446, "lon": 127.0556, "has_signal": True,  "width_m": 10, "is_school_zone": True},
+        {"id": "CW-012", "name": "잠실초 앞 횡단보도", "lat": 37.5133, "lon": 127.1010, "has_signal": True,  "width_m": 10, "is_school_zone": True},
+    ],
+}
+
+
+def fetch_crosswalk_gis(lat: float = 37.5665, lon: float = 126.9780,
+                        radius_m: float = 300.0) -> Dict[str, Any]:
+    """반경 N m 내 횡단보도 GIS + 신호등 유무 + 스쿨존 여부."""
+    if CROSSWALK_KEY:
+        try:
+            params = {
+                "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
+                "TYPENAMES": "lt_l_crwlk", "SRSNAME": "EPSG:4326",
+                "OUTPUT": "application/json", "key": CROSSWALK_KEY,
+                "BBOX": f"{lon-0.005},{lat-0.005},{lon+0.005},{lat+0.005}",
+            }
+            res = requests.get(CROSSWALK_BASE_URL, params=params, timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("crosswalk", "live", True)
+            return res.json()
+        except Exception as exc:
+            log.warning("Crosswalk GIS API failed: %s", exc)
+            _record_fetch("crosswalk", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+            if not ALLOW_FALLBACK:
+                raise
+
+    nearby = []
+    nearest_d = None
+    for c in _CROSSWALK_FALLBACK["crosswalks"]:
+        d = _haversine_m_local(lat, lon, c["lat"], c["lon"])
+        if d <= radius_m:
+            nearby.append({**c, "distance_m": round(d, 1)})
+            if nearest_d is None or d < nearest_d:
+                nearest_d = d
+    nearby.sort(key=lambda x: x["distance_m"])
+    cw_count = len(nearby)
+    has_signal_pct = (sum(1 for c in nearby if c.get("has_signal")) / cw_count) if cw_count else 0.0
+    sz_count = sum(1 for c in nearby if c.get("is_school_zone"))
+    # 횡단보도 밀집 + 스쿨존 횡단보도 → 보행자 위험 prior
+    crosswalk_boost = min(0.08, cw_count * 0.015 + sz_count * 0.025)
+    return {
+        **_CROSSWALK_FALLBACK,
+        "nearby": nearby, "nearby_count": cw_count,
+        "derived": {
+            "crosswalk_count_within_radius": cw_count,
+            "nearest_crosswalk_m": int(nearest_d) if nearest_d is not None else None,
+            "approaching_crosswalk": (nearest_d is not None and nearest_d <= 50.0),
+            "signaled_crosswalk_pct": round(has_signal_pct, 2),
+            "school_zone_crosswalk_count": sz_count,
+            "crosswalk_pedestrian_boost": round(crosswalk_boost, 3),
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (23-source v9 2026-05-21)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -1310,6 +1386,8 @@ class IntersectionFusion:
     av_hub: Dict[str, Any]
     # v8 2026-05-21: 22-source 확장 (경찰청 단속 CCTV)
     police_cam: Dict[str, Any] = field(default_factory=dict)
+    # v9 2026-05-21: 23-source 확장 (국토부 횡단보도 GIS)
+    crosswalk: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -1394,6 +1472,13 @@ class IntersectionFusion:
         cam_count = int(pcam_derived.get("cam_count_within_radius", 0))
         is_enf_zone = bool(pcam_derived.get("is_enforcement_hotzone", False))
 
+        # NEW v9 2026-05-21: 횡단보도 GIS 신호 추출
+        cw_derived = self.crosswalk.get("derived", {}) if isinstance(self.crosswalk, dict) else {}
+        cw_boost = float(cw_derived.get("crosswalk_pedestrian_boost", 0.0))
+        cw_count = int(cw_derived.get("crosswalk_count_within_radius", 0))
+        approaching_cw = bool(cw_derived.get("approaching_crosswalk", False))
+        cw_school_count = int(cw_derived.get("school_zone_crosswalk_count", 0))
+
         # 21종 통합 위험 점수 (v7)
         # 가중치 재조정: 속도0.13 + 돌발0.08 + TAAS0.08 + 기상0.07 + ER0.04 + 자전거0.04
         #         + 결빙0.06 + 보행자다발0.05 + 스쿨존0.08 + 통학로0.05 + 미세먼지0.03
@@ -1417,8 +1502,12 @@ class IntersectionFusion:
             dtg_boost * 0.06 +
             severity_boost * 0.05 +
             road_age_boost * 0.06 +
-            enf_boost * 0.04
+            enf_boost * 0.04 +
+            cw_boost * 0.05
         )
+        # v9: 50m 내 횡단보도 접근 시 추가 부스트 (보행자 충돌 위험)
+        if approaching_cw:
+            base *= 1.10
         base *= sz_multiplier if in_school_zone else 1.0
         if golden_at_risk: base *= severity_mul_nfa
         # 자율주행 V2X RSU 충분한 구역 → 위험 ↓ 감산
@@ -1428,8 +1517,8 @@ class IntersectionFusion:
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 22,
-                "schema_version": "fusion.v8-22src-2026.05.21",
+                "sources_fused": 23,
+                "schema_version": "fusion.v9-23src-2026.05.21",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
@@ -1476,6 +1565,11 @@ class IntersectionFusion:
                 "enforcement_cam_count": cam_count,
                 "enforcement_risk_boost": enf_boost,
                 "is_enforcement_hotzone": is_enf_zone,
+                # v9 신규 4필드 (국토부 횡단보도 GIS — 보행자 안전 prior)
+                "crosswalk_count_within_radius": cw_count,
+                "approaching_crosswalk": approaching_cw,
+                "crosswalk_pedestrian_boost": cw_boost,
+                "school_zone_crosswalk_count": cw_school_count,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",
@@ -1507,6 +1601,8 @@ class IntersectionFusion:
                 "road_age":            {"provider": "행정안전부 도로 노후도",            "data": self.road_age},
                 # v8 신규 1종 (경찰청 단속 CCTV)
                 "police_cam":          {"provider": "경찰청 교통단속 CCTV",            "data": self.police_cam},
+                # v9 신규 1종 (국토부 횡단보도 GIS)
+                "crosswalk":           {"provider": "국토부 vworld 횡단보도 GIS",      "data": self.crosswalk},
                 "av_hub":              {"provider": "KOTSA 자율주행 데이터허브 (V2X)",  "data": self.av_hub},
             },
         }
@@ -1622,4 +1718,6 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         av_hub=fetch_av_hub(region="판교"),
         # v8 2026-05-21 — 경찰청 교통단속 CCTV (사고다발 prior)
         police_cam=fetch_police_cams(lat=lat0, lon=lon0, radius_m=800.0),
+        # v9 2026-05-21 — 국토부 횡단보도 GIS (보행자 안전 prior + 접근 알림)
+        crosswalk=fetch_crosswalk_gis(lat=lat0, lon=lon0, radius_m=300.0),
     )

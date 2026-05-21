@@ -66,6 +66,8 @@ def list_sources():
         {"id": "av_hub",             "name": "KOTSA 자율주행 데이터허브 (V2X)",  "origin": "apis.data.go.kr/B552014/AvHub",          "gain": "V2X RSU + HD map → 위험 감산", "added": "v7-2026.05.19"},
         # v8 2026-05-21: 21 → 22종 확장
         {"id": "police_cam",         "name": "경찰청 교통단속 CCTV 위치",         "origin": "apis.data.go.kr/1320000/CityTrafficCctv","gain": "단속 밀집 = 사고다발 prior +0.04", "added": "v8-2026.05.21"},
+        # v9 2026-05-21: 22 → 23종 확장
+        {"id": "crosswalk",          "name": "국토부 횡단보도 GIS",                "origin": "api.vworld.kr (lt_l_crwlk)",             "gain": "보행자 prior +0.05 / 50m 접근 ×1.10",       "added": "v9-2026.05.21"},
     ]
     for s in sources:
         meta = fresh.get(s["id"]) or {}
@@ -76,7 +78,7 @@ def list_sources():
     return {
         "sources": sources,
         "count": len(sources),
-        "schema_version": "fusion.v8-22src-2026.05.21",
+        "schema_version": "fusion.v9-23src-2026.05.21",
         "checked_at": now_ts.isoformat() + "Z",
     }
 

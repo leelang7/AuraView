@@ -1237,7 +1237,7 @@ class _FleetHomeState extends State<FleetHome>
   /// v12.13: /fusion/sources 헬시 체크 (schema 버전 / N/21 live 소스 카운트)
   ///   bootstrap 1회 + _pollServer 와 함께 주기적으로 호출.
   ///   v12.14: schema 불일치 경고 추가 (네이티브 expectedSchema vs 서버 응답)
-  static const String _expectedSchemaPrefix = 'fusion.v8-22src';
+  static const String _expectedSchemaPrefix = 'fusion.v9-23src';
   bool _schemaMismatch = false;
   Future<void> _checkFusionHealth() async {
     try {
@@ -2392,6 +2392,12 @@ class _CityInfoLine extends StatelessWidget {
     final bool isEnfHotzone   = (summary?['is_enforcement_hotzone'] == true);
     final bool showEnfCam     = enfCamCount >= 1 || isEnfHotzone;
 
+    // v12.23: v9 23-source — 국토부 횡단보도 GIS (보행자 안전 + 50m 접근 알림)
+    final int cwCount         = (summary?['crosswalk_count_within_radius'] is num) ? (summary!['crosswalk_count_within_radius'] as num).toInt() : 0;
+    final bool approachingCw  = (summary?['approaching_crosswalk'] == true);
+    final int cwSchoolCount   = (summary?['school_zone_crosswalk_count'] is num) ? (summary!['school_zone_crosswalk_count'] as num).toInt() : 0;
+    final bool showCrosswalk  = approachingCw || cwCount >= 2 || cwSchoolCount >= 1;
+
     // v12.13: 종합 위험 점수 (대표 표시용)
     final double fusionRisk   = (summary?['fusion_risk_score'] is num) ? (summary!['fusion_risk_score'] as num).toDouble() : 0.0;
     final String riskLevel    = summary?['risk_level']?.toString() ?? 'UNKNOWN';
@@ -2569,7 +2575,18 @@ class _CityInfoLine extends StatelessWidget {
               Text(isEnfHotzone ? '단속존 ${enfCamCount}대' : '단속 ${enfCamCount}대 +${(enfBoost*100).toStringAsFixed(0)}%',
                 style: TextStyle(color: isEnfHotzone ? _danger : _warn, fontSize: 10, fontWeight: FontWeight.w800)),
             ]),
-          // v8 배지: N종 융합 (22까지 확장)
+          // v12.23: v9 신규 — 횡단보도 GIS (50m 접근 알림 + 스쿨존 횡단보도)
+          if (showCrosswalk)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(approachingCw ? Icons.warning : Icons.crisis_alert,
+                size: 11, color: approachingCw ? _danger : const Color(0xFFFF8866)), const SizedBox(width: 3),
+              Text(approachingCw
+                ? '횡단보도 50m'
+                : (cwSchoolCount >= 1 ? '스쿨횡단 ${cwSchoolCount}' : '횡단 ${cwCount}'),
+                style: TextStyle(color: approachingCw ? _danger : const Color(0xFFFF8866),
+                  fontSize: 10, fontWeight: FontWeight.w800)),
+            ]),
+          // v9 배지: N종 융합 (23까지 확장)
           if (sourcesFused >= 7)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -2578,7 +2595,7 @@ class _CityInfoLine extends StatelessWidget {
                 border: Border.all(color: _safe.withValues(alpha: 0.45), width: 0.8),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text('${sourcesFused}src v${sourcesFused >= 22 ? "8" : (sourcesFused >= 21 ? "7" : (sourcesFused >= 19 ? "6" : (sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2")))))}',
+              child: Text('${sourcesFused}src v${sourcesFused >= 23 ? "9" : (sourcesFused >= 22 ? "8" : (sourcesFused >= 21 ? "7" : (sourcesFused >= 19 ? "6" : (sourcesFused >= 17 ? "5" : (sourcesFused >= 15 ? "4" : (sourcesFused >= 12 ? "3" : "2"))))))}',
                 style: TextStyle(color: _safe, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
             ),
           // v2: BIS 실시간 버스 표시 (반경 150m 내 차량 수)

@@ -1,10 +1,10 @@
 # Datasets · 가명결합 · 안심구역 가이드
 
-> 6종 공공데이터 융합 + 가명결합 + 국토교통 데이터안심구역 절차를 통합한 AuraView 데이터 플로우 문서.
+> 23종 공공데이터 융합 (v9-23src-2026.05.21) + 가명결합 + 국토교통 데이터안심구역 절차를 통합한 AuraView 데이터 플로우 문서.
 
 ---
 
-## A. 실시간 공공 API (6종)
+## A. 실시간 공공 API (23종 — v9-23src-2026.05.21)
 
 | # | 소스 | Base URL | 어댑터 함수 |
 |---|---|---|---|
@@ -14,8 +14,25 @@
 | 4 | TAAS 사고이력 | `taas.koroad.or.kr/openapi` | `public_api.fetch_taas_accidents()` |
 | 5 | ITS 국가교통정보 | `openapi.its.go.kr:9443` | `public_api.fetch_its_link()` |
 | 6 | 안심구역 결합결과 | `dsz.ex.co.kr` (수동 반출) | `dsz_adapter.verify_artifact()` |
+| 7 | 기상청 동네예보 (KMA) | `apis.data.go.kr/1360000` | `public_api.fetch_weather()` |
+| 8 | E-Gen 응급실 가용병상 | `apis.data.go.kr/B552657` | `public_api.fetch_emergency_capacity()` |
+| 9 | 서울 따릉이 실시간 | `openapi.seoul.go.kr` | `public_api.fetch_bike_stations()` |
+| 10 | 어린이보호구역 GIS | `api.vworld.kr/req/wfs lt_c_spzzone` | `public_api.fetch_school_zone()` |
+| 11 | 도로결빙 위험 (KMA 파생) | T1H+PTY+RN1 결합 | `public_api.fetch_black_ice_risk()` |
+| 12 | 보행자 사고다발지역 | `taas.koroad.or.kr/openapi` | `public_api.fetch_pedestrian_hotspots()` |
+| 13 | 환경부 미세먼지 (PM10/PM2.5) | `apis.data.go.kr/B552584` | `public_api.fetch_air_quality()` |
+| 14 | 어린이 통학로 GIS | 도로교통공단 통학로 | `public_api.fetch_school_routes()` |
+| 15 | EV 충전소 (한국환경공단) | `apis.data.go.kr/B552584/EvCharger` | `public_api.fetch_ev_chargers()` |
+| 16 | 도로 노면 상태 RWIS | `data.ex.co.kr/openapi/rwisapi` | `public_api.fetch_road_surface()` |
+| 17 | KOTSA 자동차검사 통계 | `apis.data.go.kr/B552014/InspectionStats` | `public_api.fetch_vehicle_inspection()` |
+| 18 | KOTSA DTG 운행기록 | `apis.data.go.kr/B552014/DtgStats` | `public_api.fetch_dtg_stats()` |
+| 19 | 소방청 119 교통사고 출동 | `apis.data.go.kr/1661000/TfcAcdntDsptchInfo` | `public_api.fetch_nfa_dispatch()` |
+| 20 | 행정안전부 도로 노후도 | `apis.data.go.kr/1741000/RoadAgeStats` | `public_api.fetch_road_age()` |
+| 21 | KOTSA 자율주행 V2X 허브 | `apis.data.go.kr/B552014/AvHub` | `public_api.fetch_av_hub()` |
+| 22 | 경찰청 교통단속 CCTV | `apis.data.go.kr/1320000/CityTrafficCctv` | `public_api.fetch_police_cams()` |
+| 23 | 국토부 횡단보도 GIS | `api.vworld.kr/req/wfs lt_l_crwlk` | `public_api.fetch_crosswalk_gis()` |
 
-키 발급: 각 포털에서 개별 발급 후 `.env` 의 `EX_OPEN_KEY`, `TAAS_KEY`, `ITS_KEY` 등에 등록.
+키 발급: 각 포털에서 개별 발급 후 `.env` 의 `EX_OPEN_KEY`, `TAAS_KEY`, `ITS_KEY`, `KMA_KEY`, `NEDIS_KEY`, `BIKE_KEY`, `VWORLD_KEY`, `AIR_KEY`, `EV_KEY`, `POLICE_CAM_KEY` 등에 등록.
 
 ---
 
@@ -112,7 +129,7 @@ joined = pii.join_taas_vds(taas_records, vds_records)
 
 ## E. 제출 시 데이터 관련 체크리스트
 
-- [ ] 6종 API 키 발급 증빙 스크린샷
+- [ ] 23종 API 키 발급 증빙 스크린샷
 - [ ] 안심구역 이용 승인서 스크린샷
 - [ ] 가명결합 스크립트 + k-익명성 테스트 결과
 - [ ] 반출 결과물 SHA-256 해시 목록

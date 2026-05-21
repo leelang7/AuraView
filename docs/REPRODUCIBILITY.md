@@ -54,7 +54,7 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 curl -O "https://auraview.allthatai.kr/impact/policy-pdf?coverage=0.25"
 ```
 
-산출물: ~88KB A4 PDF 파일. KPI 카드 4종 + 5행 시나리오표 + 6종 공공데이터 상태 + 기술 차별화 4섹션.
+산출물: ~88KB A4 PDF 파일. KPI 카드 4종 + 5행 시나리오표 + 23종 공공데이터 상태 + 기술 차별화 4섹션.
 
 ---
 

@@ -1,7 +1,7 @@
 # AuraView Press Kit
 
 > **한 줄로:** 블랙박스 한 대로 사각지대까지 계산하는 한국형 K-Perception 플랫폼.
-> Tesla FSD 의 Occupancy + Fleet Learning 에 **한국 도로 협업 인지 (V2V + Bus + Bidirectional)** 와 **6종 공공데이터 결합** 을 더했다.
+> Tesla FSD 의 Occupancy + Fleet Learning 에 **한국 도로 협업 인지 (V2V + Bus + Bidirectional)** 와 **23종 공공데이터 실시간 융합** (v9-23src-2026.05.21) 을 더했다.
 
 [![demo](https://img.shields.io/badge/demo-auraview.allthatai.kr-00e09a)](https://auraview.allthatai.kr/ui)
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions)
@@ -72,8 +72,8 @@
 | 추론 지연 (p99) | **1.04 ms** | `/benchmark/risk` 실측 100회 |
 | V2V merge 지연 (p99) | **0.03 ms** | `/benchmark/v2v-merge` |
 | 모델 크기 | **278 KB** (67,970 params) | 가중치 published |
-| 라우트 수 | **80+** (impact + metrics + positioning) | `/healthz/details` |
-| 테스트 | **90 / 90 PASS** (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 가점 25점 증빙) | `pytest tests/` |
+| 라우트 수 | **80+** (impact + metrics + positioning + fleet/verify) | `/healthz/details` |
+| 테스트 | **110 / 110 PASS** (v9 fusion 23 src + location_accuracy 회귀 잠금 포함) | `pytest tests/` |
 
 ---
 
@@ -108,7 +108,7 @@
 2. **8초**: TAB ① 시나리오 8종 picker → 트럭/이륜/우회전/스쿨존/자전거/야간 클릭만으로 전환
 3. **7초**: TAB ⑤ Capability Matrix → 임팩트 카드 + 인터랙티브 시뮬레이터
 4. **5초**: TAB ⑨ V2V → 단독 vs 협업 인지 비교
-5. **5초**: TAB ⑩ 공공데이터 라이브 → 6종 freshness 실시간 모니터
+5. **5초**: TAB ⑩ 공공데이터 라이브 → 23종 freshness 실시간 모니터 + /fleet 라이브 HUD 미리보기
 
 키오스크 모드 (10장면 자동 순환): https://auraview.allthatai.kr/kiosk/
 
@@ -126,8 +126,11 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf # A4 PDF 자동 다운�
 
 ```
                     ┌─────────────────────────────┐
-                    │      6종 공공 데이터        │
-                    │  신호 · VDS · 돌발 · TAAS  │
+                    │     23종 공공 데이터        │
+                    │ 신호·VDS·돌발·TAAS·ITS·KMA  │
+                    │ NEDIS·따릉이·스쿨존·결빙·보행 │
+                    │ PM10·통학로·EV·RWIS·KOTSA  │
+                    │ DTG·119·노후·V2X·단속·횡단   │
                     │       ITS · 안심구역        │
                     └──────────────┬──────────────┘
                                    │ fusion

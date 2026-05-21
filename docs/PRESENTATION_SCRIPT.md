@@ -101,7 +101,7 @@ hazard probability 즉시 계산 + 권장속도 자동 산출.
 화면의 단독 47% → 협업 78%, **+31%p lift** 가 그 증거입니다."
 
 ### S11 · Roadmap (15초)
-"PoC, 6종 융합, BEV 3D, Flutter, 협업 인지 — 모두 ✓.
+"PoC, 23종 융합, BEV 3D, Flutter, 협업 인지 — 모두 ✓.
 다음은 발표 자료 v2, 시연 리허설, 제품 안정화입니다."
 
 ### S12 · CTA (15초)
@@ -120,7 +120,7 @@ hazard probability 즉시 계산 + 권장속도 자동 산출.
 2. TAB ⑥ 사고 재현  →  자동 합본영상 60초 재생
 3. TAB ⑨ V2V 협업 인지  →  '시연용 V2V 차량 게시' →
    '협업 인지 실행'  →  단독 47% vs 협업 78% 화면 정지
-4. TAB ⑩ 공공데이터 라이브  →  6종 freshness 3초 폴링 (live/stub 즉시 식별)
+4. TAB ⑩ 공공데이터 라이브  →  23종 freshness 3초 폴링 (live/stub 즉시 식별) + /fleet 라이브 HUD 미리보기
 5. TAB ⑤ Capability Matrix  →  AUC 0.9403 · Backend ⭐ trained 강조
 6. /metrics/competition (JSON 새 탭)  →  4축 KPI 한 응답 + git_sha (버전 추적)
 7. /policy/laws  →  8 시나리오 도로교통법 조항·대법원 판례 매핑 (법적 정당성)
@@ -146,7 +146,7 @@ A: `curl /policy/laws` — 8 시나리오 모두 도로교통법 조항·대법�
    `curl /policy/regulations` — 국토부·경찰청·도로공사 시행규칙 + PII/가명결합 컴플라이언스.
 
 **Q: stub 인지 live 인지 어떻게 알아?**
-A: TAB ⑩ 공공데이터 라이브 또는 `/fusion/sources` — 6종 소스 mode + age 명시.
+A: TAB ⑩ 공공데이터 라이브 또는 `/fusion/sources` — 23종 소스 mode + age 명시.
    stub 인 경우 fallback 데이터임을 명확히 표시 (속이지 않음).
 
 **Q: 실제 차량에 들어갈 수 있나?**

@@ -1,6 +1,6 @@
 # 제출용 1-pager — 2026 국토교통 데이터활용 경진대회
 
-> **AuraView K-Perception** · Tesla FSD 영감 + 한국 도로 협업 인지 + 6종 공공데이터 융합
+> **AuraView K-Perception** · Tesla FSD 영감 + 한국 도로 협업 인지 + **23종 공공데이터 융합** (v9-23src-2026.05.21)
 > 심사위원 1-step 검증 허브: <https://auraview.allthatai.kr/competition/>
 
 ---
@@ -93,7 +93,7 @@
 |---|:---:|---|---|
 | **AI 학습** | 5점 | `GET /ai/model-card` · `GET /ai/training-history` · `GET /ai/roc-curve` | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10,000 샘플, 15 epoch) |
 | **AI 분석** | 5점 | `GET /ai/scenario-analysis` · `GET /ai/feature-importance` · `GET /ai/confusion-matrix` | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt + 혼동행렬 |
-| **데이터융합** | 5점 | `GET /fusion/sources` · `GET /fusion/intersection/{id}` | 신호·VDS·돌발·TAAS·ITS·DSZ 6종 실시간 융합 |
+| **데이터융합** | 5점 | `GET /fusion/sources` · `GET /fusion/intersection/{id}` | 신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단 **23종 실시간 융합** (v9-23src) |
 | **가명정보결합** | 5점 | `GET /privacy/pipeline-spec` · `POST /privacy/demo-join` · `GET /privacy/evidence-report` | HMAC-SHA256 가명화 + k-익명성(k≥5) + TAAS×VDS 결합 전 과정 |
 | **안심구역** | 5점 | `GET /dsz/pipeline-report` · `POST /dsz/seed-demo` · `GET /dsz/compliance-status` | dsz.ex.co.kr 반입→결합→반출 전 과정 (SHA-256 해시 검증 + 감사 로그) |
 | **종합 스코어카드** | — | `GET /competition/scorecard` | 25점 항목별 달성 현황 + 증거 링크 원스톱 |

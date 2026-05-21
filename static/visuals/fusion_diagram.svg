@@ -75,12 +75,12 @@
 
   <!-- ── TITLE AREA ──────────────────────────────────────────── -->
   <text x="600" y="38" text-anchor="middle" font-size="28" font-weight="900" fill="#E8EDF8">
-    21종 공공데이터 →
+    23종 공공데이터 →
     <tspan fill="#00E09A"> 한 응답</tspan>
     <tspan fill="#E8EDF8">으로 융합</tspan>
   </text>
   <text x="600" y="58" text-anchor="middle" font-size="12" fill="#666">
-    fusion.v7-21src-2026.05.18 · GET /fusion/intersection/{id}
+    fusion.v9-23src-2026.05.21 · GET /fusion/intersection/{id}
   </text>
 
   <!-- ── SECTION LABELS ──────────────────────────────────────── -->

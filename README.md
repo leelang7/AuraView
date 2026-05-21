@@ -15,6 +15,12 @@
 
 > 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
+> 🆕 **v9 업데이트 (2026-05-21) — 21종 → 23종 + 위치 인식 stub 정확성 + 라이브 HUD 미리보기**
+> 추가 데이터 2종: 📹 **경찰청 교통단속 CCTV** (단속 밀집 = 사고다발 prior) · 🚸 **국토부 횡단보도 GIS** (50m 접근 알림 + 스쿨존 횡단).
+> 핵심 개선: **임의 GPS (집/원거리)에서 거짓 red signal/TAAS/ER 알람 차단** — 위치 인식 stub 6종 (signal/TAAS/incident/ER/bike/horizontal 모두 bbox·lat/lon 기반 필터).
+> 신규 UI: `/fleet/` 대시보드에 **라이브 HUD 미리보기 패널** (9 교차로 + 임의 GPS 선택 → 16 chip 실시간) + 양방향 hover 강조 + 이벤트 상세 모달.
+> 자가검증: [`GET /fleet/verify`](https://auraview.allthatai.kr/fleet/verify) (`location_accuracy` 컴포넌트 신설) · schema `fusion.v9-23src-2026.05.21`.
+
 > 🆕 **v4 업데이트 (2026-05-16) — 12종 → 17종 공공데이터 + OG 공유 + 인터랙티브 시뮬레이터 + 8 시나리오 카드**
 > 추가 데이터 3종: 💨 **환경부 미세먼지 (PM10/PM2.5)** · 🎒 **어린이 통학로 GIS** · ⚡ **한국환경공단 EV 충전소**.
 > 추가 비주얼: SNS OG 카드 SVG · 8 시나리오 카드 SVG · `/story` 페이지 인터랙티브 시뮬레이터 (슬라이더로 위험점수 실시간 계산).
@@ -41,7 +47,7 @@
 |---|:---:|---|---|
 | **AI 학습** | 5점 | [`GET /ai/model-card`](https://auraview.allthatai.kr/ai/model-card) · [`GET /ai/training-history`](https://auraview.allthatai.kr/ai/training-history) | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) |
 | **AI 분석** | 5점 | [`GET /ai/scenario-analysis`](https://auraview.allthatai.kr/ai/scenario-analysis) · [`GET /ai/feature-importance`](https://auraview.allthatai.kr/ai/feature-importance) · [`GET /ai/roc-curve`](https://auraview.allthatai.kr/ai/roc-curve) | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt |
-| **데이터융합** | 5점 | [`GET /fusion/sources`](https://auraview.allthatai.kr/fusion/sources) · [`GET /fusion/intersection/{id}`](https://auraview.allthatai.kr/fusion/sources) + 9 개별 GET 엔드포인트 | 신호·VDS·돌발·TAAS·ITS·DSZ·기상·응급실·따릉이 + **스쿨존·결빙·보행자다발 12종 실시간 융합** (v3 2026-05-16) |
+| **데이터융합** | 5점 | [`GET /fusion/sources`](https://auraview.allthatai.kr/fusion/sources) · [`GET /fusion/intersection/{id}`](https://auraview.allthatai.kr/fusion/sources) + 23 개별 GET 엔드포인트 | 신호·VDS·돌발·TAAS·ITS·DSZ·기상·응급실·따릉이·스쿨존·결빙·보행자다발·PM10·통학로·EV·RWIS·KOTSA검사·DTG·119·도로노후·V2X·**경찰청단속CCTV·횡단보도GIS** = **23종 실시간 융합 (v9 2026-05-21)** |
 | **가명정보결합** | 5점 | [`GET /privacy/pipeline-spec`](https://auraview.allthatai.kr/privacy/pipeline-spec) · [`POST /privacy/demo-join`](https://auraview.allthatai.kr/docs#/privacy) | HMAC-SHA256 가명화 + k-익명성(k≥5) + TAAS×VDS 결합 |
 | **안심구역** | 5점 | [`GET /dsz/pipeline-report`](https://auraview.allthatai.kr/dsz/pipeline-report) · [`POST /dsz/seed-demo`](https://auraview.allthatai.kr/docs#/dsz) | dsz.ex.co.kr 표준 반입→결합→반출 파이프라인 |
 | **종합 스코어카드** | — | [`GET /competition/scorecard`](https://auraview.allthatai.kr/competition/scorecard) | 25점 항목별 달성 현황 + 증거 링크 원스톱 |

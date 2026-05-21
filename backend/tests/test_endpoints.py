@@ -28,19 +28,22 @@ def test_root_alive():
     assert "AuraView" in r.text or "message" in r.text
 
 
-def test_fusion_sources_lists_seventeen():
-    """2026-05-18 v5: 15종 → 17종 확장 (도로 노면 RWIS + KOTSA 자동차검사 추가)."""
+def test_fusion_sources_lists_twentythree():
+    """2026-05-21 v9: 22종 → 23종 확장 (경찰청 단속CCTV + 횡단보도 GIS 추가)."""
     r = client.get("/fusion/sources")
     assert r.status_code == 200
     body = r.json()
-    assert body.get("count") == 17
+    assert body.get("count") == 23
     ids = {s["id"] for s in body["sources"]}
     assert {"signal", "vds", "incidents", "taas", "its", "dsz",
             "weather", "medical", "bike",
             "school_zone", "black_ice", "pedestrian_hotspot",
             "air_quality", "school_route", "ev_charger",
-            "road_surface", "vehicle_inspection"} <= ids
-    assert body.get("schema_version", "").startswith("fusion.v5-17src")
+            "road_surface", "vehicle_inspection",
+            "dtg", "nfa_dispatch",
+            "road_age", "av_hub",
+            "police_cam", "crosswalk"} <= ids
+    assert body.get("schema_version", "").startswith("fusion.v9-23src")
 
 
 def test_fusion_intersection_returns_six_keys():
@@ -52,8 +55,8 @@ def test_fusion_intersection_returns_six_keys():
         assert key in sources, f"missing fusion source: {key}"
 
 
-def test_fusion_intersection_returns_seventeen_sources_v5():
-    """2026-05-18 v5: 17종 (도로 노면 + KOTSA 추가) + sources_fused == 17."""
+def test_fusion_intersection_returns_twentythree_sources_v9():
+    """2026-05-21 v9: 23종 (경찰청 단속CCTV + 횡단보도 GIS 추가) + sources_fused == 23."""
     r = client.get("/fusion/intersection/1007")
     assert r.status_code == 200
     body = r.json()
@@ -62,11 +65,14 @@ def test_fusion_intersection_returns_seventeen_sources_v5():
                 "dsz_analysis", "weather", "medical", "bike",
                 "school_zone", "black_ice", "pedestrian_hotspot",
                 "air_quality", "school_route", "ev_charger",
-                "road_surface", "vehicle_inspection"]:
+                "road_surface", "vehicle_inspection",
+                "dtg", "nfa_dispatch",
+                "road_age", "av_hub",
+                "police_cam", "crosswalk"]:
         assert key in sources, f"missing fusion source: {key}"
     summary = body.get("fusion_summary", {})
-    assert summary.get("sources_fused") == 17
-    assert summary.get("schema_version", "").startswith("fusion.v5-17src")
+    assert summary.get("sources_fused") == 23
+    assert summary.get("schema_version", "").startswith("fusion.v9-23src")
     for k in ["weather_raining", "wet_road_risk_boost", "nearest_ER_load",
               "severity_multiplier", "bike_lane_risk_boost",
               "in_school_zone", "school_zone_multiplier",
@@ -74,8 +80,44 @@ def test_fusion_intersection_returns_seventeen_sources_v5():
               "in_pedestrian_hotspot", "ped_hotspot_boost",
               "pm10_avg", "air_quality_risk_boost",
               "on_school_route", "walk_route_boost",
-              "near_ev_station", "ev_dwelling_likelihood"]:
+              "near_ev_station", "ev_dwelling_likelihood",
+              # v8/v9 신규
+              "enforcement_cam_count", "enforcement_risk_boost", "is_enforcement_hotzone",
+              "crosswalk_count_within_radius", "approaching_crosswalk",
+              "crosswalk_pedestrian_boost", "school_zone_crosswalk_count"]:
         assert k in summary, f"missing fusion_summary field: {k}"
+
+
+def test_location_accuracy_rural_gps_no_false_alarms():
+    """v12.20+: 임의 GPS (집/원거리) 에서 거짓 알람 없어야 한다."""
+    r = client.get("/fusion/intersection/gps-38200-128500")
+    assert r.status_code == 200
+    body = r.json()
+    summary = body.get("fusion_summary", {})
+    # 위치 인식 stub: 신호 unknown, TAAS 0, ER 0, 단속/횡단 모두 0
+    sig = body.get("sources", {}).get("signal", {}).get("data", {}).get("body", {}).get("items", {}).get("item", {}).get("stPdsgSttsNm")
+    assert sig == "unknown", f"임의 GPS 에서 신호 stub 가 'unknown' 이 아닌 거짓 값 반환: {sig}"
+    assert summary.get("taas_accidents_nearby") == 0, "임의 GPS 에서 TAAS 가짜 사고"
+    assert summary.get("nearest_ER_load") == 0.0, "임의 GPS 에서 ER 가짜 포화도"
+    assert summary.get("enforcement_cam_count") == 0
+    assert summary.get("crosswalk_count_within_radius") == 0
+    # 위험 점수도 매우 낮아야 (LOW)
+    assert summary.get("risk_level") == "LOW"
+    assert summary.get("fusion_risk_score", 1.0) < 0.10
+
+
+def test_fleet_verify_location_accuracy_component():
+    """v12.20: /fleet/verify 에 location_accuracy 컴포넌트 신설."""
+    r = client.get("/fleet/verify")
+    assert r.status_code == 200
+    body = r.json()
+    comps = body.get("components", {})
+    assert "location_accuracy" in comps, "verify 응답에 location_accuracy 누락"
+    loc = comps["location_accuracy"]
+    assert loc.get("ok") is True, f"location_accuracy ok=False: {loc.get('note')}"
+    assert loc.get("home_like_signal") == "unknown"
+    assert loc.get("home_like_taas_nearby") == 0
+    assert loc.get("home_like_er_load") == 0.0
 
 
 def test_fusion_air_quality_endpoint():

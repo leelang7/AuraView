@@ -179,11 +179,22 @@
     </div>
   </header>
 
-  <!-- v12.44: 23종 공공데이터 라이브 grid — 대시보드 주인공 -->
+  <!-- v12.44+v12.46: 23종 공공데이터 라이브 grid — 위치 선택 dropdown 포함 -->
   <section class="panel" style="margin-top:14px;">
     <h3>
       23종 공공데이터 실시간 호출 현황
       <span style="display:flex;gap:10px;align-items:center;font-size:10px;letter-spacing:1.2px;color:var(--muted);font-weight:700;">
+        <select id="srcs-iid" onchange="refreshSources()" style="background:#0A0E18;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;">
+          <option value="1007">한양대역 (1007)</option>
+          <option value="2024">강남역 (2024)</option>
+          <option value="3015">광화문 (3015)</option>
+          <option value="4011">잠실역 (4011)</option>
+          <option value="5006">신촌 (5006)</option>
+          <option value="6022">사당역 (6022)</option>
+          <option value="7045">왕십리역 (7045)</option>
+          <option value="8033">건대입구 (8033)</option>
+          <option value="gps-38200-128500">강원 임의 GPS (테스트)</option>
+        </select>
         <span id="srcs-counter">— / 23</span>
         <span>· live <span id="srcs-live" style="color:var(--safe);font-weight:900;">—</span></span>
         <span>· stub <span id="srcs-stub" style="color:var(--warn);font-weight:900;">—</span></span>
@@ -552,9 +563,12 @@ const SOURCE_VALUE = (id, sum, sources) => {
 
 async function refreshSources() {
   try {
+    const iidEl = document.getElementById('srcs-iid');
+    const iid = iidEl ? iidEl.value : '1007';
+    const iidLabel = iidEl ? iidEl.options[iidEl.selectedIndex].text : '한양대역 (1007)';
     const [srcRes, fusRes] = await Promise.all([
       fetch('/fusion/sources'),
-      fetch('/fusion/intersection/1007'),
+      fetch(`/fusion/intersection/${iid}`),
     ]);
     if (!srcRes.ok) return;
     const j = await srcRes.json();
@@ -568,6 +582,7 @@ async function refreshSources() {
     document.getElementById('srcs-live').textContent = liveN;
     document.getElementById('srcs-stub').textContent = stubN;
     const grid = document.getElementById('sources-grid');
+    const isRural = iid.startsWith('gps-');
     grid.innerHTML = sources.map(s => {
       const mode = s.mode || 'stub';
       const isLive = mode === 'live';
@@ -576,7 +591,9 @@ async function refreshSources() {
       const bg = isLive ? 'rgba(0,224,154,0.06)' : 'rgba(255,176,32,0.05)';
       const border = isLive ? 'rgba(0,224,154,0.30)' : 'rgba(255,176,32,0.20)';
       const value = SOURCE_VALUE(s.id, sum, fSrc[s.id]?.data ? fSrc : { [s.id]: { data: fSrc[s.id] } }) || '—';
-      return `<div onclick="window.open('/fusion/intersection/1007','_blank')"
+      const accentColor = isRural ? '#7C8AA8' : 'var(--accent)';
+      const accentBg = isRural ? 'rgba(124,138,168,0.05)' : 'rgba(0,200,255,0.07)';
+      return `<div onclick="window.open('/fusion/intersection/${iid}','_blank')"
             style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 12px;position:relative;cursor:pointer;transition:transform 0.12s;"
             onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
@@ -586,8 +603,8 @@ async function refreshSources() {
         </div>
         <div style="font-size:12px;color:var(--text);font-weight:700;line-height:1.25;margin-bottom:3px;">${escHtml(s.name || s.id)}</div>
         <div style="font-size:9.5px;color:var(--muted);font-family:monospace;margin-bottom:6px;">${escHtml(s.origin || '')}</div>
-        <div style="font-size:11.5px;color:var(--accent);font-weight:800;background:rgba(0,200,255,0.07);border-left:2px solid var(--accent);padding:4px 7px;border-radius:3px;line-height:1.3;">
-          한양대 1007 · <b style="color:var(--text);">${escHtml(value)}</b>
+        <div style="font-size:11.5px;color:${accentColor};font-weight:800;background:${accentBg};border-left:2px solid ${accentColor};padding:4px 7px;border-radius:3px;line-height:1.3;">
+          ${escHtml(iidLabel.split(' (')[0])} · <b style="color:var(--text);">${escHtml(value)}</b>
         </div>
         <div style="font-size:9px;color:#7C8AA8;margin-top:5px;line-height:1.3;">${escHtml(s.gain || '')}</div>
       </div>`;

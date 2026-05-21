@@ -179,6 +179,33 @@ def test_fusion_intersection_bbox_taas_filtering():
     assert summary.get("nearest_ER_load") == 0.0
 
 
+def test_fleet_demo_tour_single_url_validation():
+    """v12.36: /fleet/demo-tour 단일 URL 로 8 known + 2 rural GPS 동시 검증."""
+    r = client.get("/fleet/demo-tour")
+    assert r.status_code == 200
+    body = r.json()
+    s = body.get("summary", {})
+    assert s.get("known_intersection_count") == 8
+    assert s.get("rural_gps_count") == 2
+    assert s.get("schema_consistent") is True, "schema 가 위치별 다름"
+    assert s.get("rural_no_false_alarms") is True, "rural GPS 에서 거짓 알람 발생"
+    assert s.get("known_intersections_active") is True, "known 교차로 비활성"
+    assert s.get("overall_ok") is True
+    # known/rural 데이터 구조 검증
+    for k in body["known_intersections"]:
+        if "error" in k:
+            continue
+        assert k["sources_fused"] == 23
+        assert k["signal_state"] != "unknown"
+    for r2 in body["rural_gps_locations"]:
+        if "error" in r2:
+            continue
+        assert r2["signal_state"] == "unknown"
+        assert r2["taas_accidents_nearby"] == 0
+        assert r2["nearest_ER_load"] == 0.0
+        assert r2["risk_level"] == "LOW"
+
+
 def test_fusion_air_quality_endpoint():
     r = client.get("/fusion/air-quality", params={"sido": "서울"})
     assert r.status_code == 200

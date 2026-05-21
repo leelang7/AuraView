@@ -1,7 +1,7 @@
 # AuraView
 
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-114%2F114%20passed-brightgreen)](backend/tests/)
+[![tests](https://img.shields.io/badge/tests-115%2F115%20passed-brightgreen)](backend/tests/)
 [![endpoints](https://img.shields.io/badge/API_endpoints-90-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
 [![judge hub](https://img.shields.io/badge/JUDGE_HUB-/competition/-00e09a)](https://auraview.allthatai.kr/competition/)
 [![scenarios](https://img.shields.io/badge/scenarios-8-00e09a)](https://auraview.allthatai.kr/occupancy/compare)
@@ -15,11 +15,11 @@
 
 > 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
-> 🆕 **v9 업데이트 (2026-05-21) — 21종 → 23종 + 위치 인식 stub 정확성 + 라이브 HUD 미리보기**
+> 🆕 **v9 업데이트 (2026-05-21~22) — 21종 → 23종 + 위치 인식 stub + 라이브 HUD + 1-URL 검증**
 > 추가 데이터 2종: 📹 **경찰청 교통단속 CCTV** (단속 밀집 = 사고다발 prior) · 🚸 **국토부 횡단보도 GIS** (50m 접근 알림 + 스쿨존 횡단).
 > 핵심 개선: **임의 GPS (집/원거리)에서 거짓 red signal/TAAS/ER 알람 차단** — 위치 인식 stub 6종 (signal/TAAS/incident/ER/bike/horizontal 모두 bbox·lat/lon 기반 필터).
-> 신규 UI: `/fleet/` 대시보드에 **라이브 HUD 미리보기 패널** (9 교차로 + 임의 GPS 선택 → 16 chip 실시간) + 양방향 hover 강조 + 이벤트 상세 모달.
-> 자가검증: [`GET /fleet/verify`](https://auraview.allthatai.kr/fleet/verify) (`location_accuracy` 컴포넌트 신설) · schema `fusion.v9-23src-2026.05.21`.
+> 신규 UI: `/fleet/` 대시보드 **라이브 HUD 미리보기 패널** (9 교차로 + 임의 GPS dropdown → 24 chip 실시간) + 양방향 hover 강조 + 이벤트 상세 모달.
+> 자가검증: [`GET /fleet/verify`](https://auraview.allthatai.kr/fleet/verify) (`location_accuracy`) · [`GET /fleet/demo-tour`](https://auraview.allthatai.kr/fleet/demo-tour) (8 known + 2 rural 단일 응답) · schema `fusion.v9-23src-2026.05.21` · 115/115 pytest PASS.
 
 > 🆕 **v4 업데이트 (2026-05-16) — 12종 → 17종 공공데이터 + OG 공유 + 인터랙티브 시뮬레이터 + 8 시나리오 카드**
 > 추가 데이터 3종: 💨 **환경부 미세먼지 (PM10/PM2.5)** · 🎒 **어린이 통학로 GIS** · ⚡ **한국환경공단 EV 충전소**.

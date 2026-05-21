@@ -16,7 +16,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Body, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
@@ -267,6 +267,11 @@ def verify_pipeline():
     return report
 
 
+# v12.43: demo-tour 60s 인메모리 캐시 — 라이브 서버 응답시간 60s+ → 1s 미만
+_DEMO_TOUR_CACHE: Dict[str, Any] = {"at": 0.0, "payload": None}
+_DEMO_TOUR_TTL = 60  # seconds
+
+
 @router.get("/demo-tour")
 def demo_tour():
     """v12.36: 심사위원 1-URL 검증 — 8 known 교차로 + 2 임의 GPS 동시 fusion 결과.
@@ -276,8 +281,18 @@ def demo_tour():
     - known 교차로는 정상 데이터 (TAAS / ER / 단속 등)
     - 임의 GPS 는 거짓 알람 차단 (TAAS=0, ER=0, signal=unknown)
     - 위험 점수 + risk_level 모든 위치에서 합리적
+
+    v12.43: 60s 인메모리 캐시 + ThreadPoolExecutor 병렬화로 응답시간 60s+ → <2s.
     """
+    import time
+    now = time.time()
+    if _DEMO_TOUR_CACHE["payload"] and (now - _DEMO_TOUR_CACHE["at"]) < _DEMO_TOUR_TTL:
+        cached = dict(_DEMO_TOUR_CACHE["payload"])
+        cached["cache_age_s"] = round(now - _DEMO_TOUR_CACHE["at"], 1)
+        return cached
+
     from ..services import public_api as _pa
+    from concurrent.futures import ThreadPoolExecutor
 
     KNOWN_INTERSECTIONS = {
         "1007": "한양대역 교차로",
@@ -294,7 +309,8 @@ def demo_tour():
         "gps-37200-126500": "경기 외곽 임의 GPS (테스트)",
     }
 
-    def _snapshot(iid: str, label: str):
+    def _snapshot(item):
+        iid, label = item
         try:
             f = _pa.fetch_fusion(iid).to_dict()
             s = f["fusion_summary"]
@@ -319,8 +335,10 @@ def demo_tour():
         except Exception as e:
             return {"intersection_id": iid, "label": label, "error": str(e)[:120]}
 
-    known_snaps = [_snapshot(iid, label) for iid, label in KNOWN_INTERSECTIONS.items()]
-    rural_snaps = [_snapshot(iid, label) for iid, label in RURAL_GPS.items()]
+    # v12.43: 10 fetch_fusion 호출을 병렬화 (외부 API 대기 시간 흡수)
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        known_snaps = list(ex.map(_snapshot, KNOWN_INTERSECTIONS.items()))
+        rural_snaps = list(ex.map(_snapshot, RURAL_GPS.items()))
 
     # 자체 검증
     all_same_schema = len({k.get("schema_version") for k in known_snaps + rural_snaps if "error" not in k}) == 1
@@ -336,7 +354,7 @@ def demo_tour():
         for k in known_snaps if "error" not in k
     )
 
-    return {
+    payload = {
         "tour_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
         "summary": {
             "known_intersection_count": len(known_snaps),
@@ -353,7 +371,15 @@ def demo_tour():
             "rural": "강원/경기 외곽 GPS — 모두 unknown signal + TAAS 0 + ER 0 + LOW risk (위치 인식 stub 검증)",
             "judges": "이 응답 하나로 fusion v9-23src + 위치 인식 정확성 전체 확인 가능 (v12.20+v12.21+v12.23 cumulative)",
         },
+        "performance": {
+            "cache_ttl_s": _DEMO_TOUR_TTL,
+            "parallelized": True,
+            "max_workers": 10,
+        },
     }
+    _DEMO_TOUR_CACHE["at"] = now
+    _DEMO_TOUR_CACHE["payload"] = payload
+    return payload
 
 
 @router.get("/live")

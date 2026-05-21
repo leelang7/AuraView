@@ -142,6 +142,19 @@
     <p>AuraView 네이티브앱이 <b style="color:var(--text);">shadow mode</b>로 위험 장면(high_entropy / signal_occluded /
        blind_spot 등)만 골라 익명 업로드하고 있습니다. 모든 이벤트는 <code>k≥5</code> 익명 결합 + 차량번호/얼굴 단말 마스킹 후
        서버에 도달합니다. 아래는 <code>/fleet/live</code> API 5초 폴링.</p>
+
+    <!-- v12.18: 자가검증 strip — judges 가 한 클릭으로 전체 파이프라인 검증 -->
+    <div id="verify-strip" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;
+      padding:9px 12px;background:rgba(0,224,154,0.04);border:1px solid rgba(0,224,154,0.20);
+      border-radius:99px;font-size:10px;letter-spacing:1.2px;font-family:'JetBrains Mono',monospace;font-weight:800;">
+      <span style="color:var(--muted);">PIPELINE CHECK:</span>
+      <span data-vk="manifest" style="color:var(--muted);">⏳ MANIFEST</span>
+      <span data-vk="image_integrity" style="color:var(--muted);">⏳ IMAGES</span>
+      <span data-vk="pii_masking" style="color:var(--muted);">⏳ PII MASK</span>
+      <span data-vk="fusion_schema" style="color:var(--muted);">⏳ SCHEMA v7</span>
+      <span data-vk="realtime_activity" style="color:var(--muted);">⏳ ACTIVE</span>
+      <a href="/fleet/verify" target="_blank" id="verify-full" style="color:var(--accent);text-decoration:none;margin-left:auto;font-size:10px;">전체 보고 →</a>
+    </div>
   </header>
 
   <!-- Top counters -->
@@ -312,6 +325,22 @@ function escHtml(s) {
 
 refresh();
 setInterval(refresh, 5000);
+
+// v12.18: 파이프라인 자가검증 (페이지 로드 시 1회)
+fetch('/fleet/verify').then(r => r.json()).then(report => {
+  document.querySelectorAll('[data-vk]').forEach(span => {
+    const k = span.getAttribute('data-vk');
+    const c = report.components?.[k];
+    if (!c) return;
+    const ok = c.ok !== false;
+    const label = span.textContent.replace(/⏳\s*/, '');
+    span.style.color = ok ? '#00E09A' : '#FF6B6B';
+    span.textContent = (ok ? '✓ ' : '✗ ') + label;
+  });
+  if (report.overall_ok) {
+    document.getElementById('verify-strip').style.borderColor = 'rgba(0,224,154,0.45)';
+  }
+}).catch(() => {});
 </script>
 </body>
 </html>

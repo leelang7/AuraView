@@ -173,10 +173,22 @@
       <span data-vk="manifest" style="color:var(--muted);">⏳ MANIFEST</span>
       <span data-vk="image_integrity" style="color:var(--muted);">⏳ IMAGES</span>
       <span data-vk="pii_masking" style="color:var(--muted);">⏳ PII MASK</span>
-      <span data-vk="fusion_schema" style="color:var(--muted);">⏳ SCHEMA v7</span>
+      <span data-vk="fusion_schema" style="color:var(--muted);">⏳ SCHEMA v9</span>
       <span data-vk="realtime_activity" style="color:var(--muted);">⏳ ACTIVE</span>
       <span data-vk="location_accuracy" style="color:var(--muted);" title="v12.20: 임의 GPS 위치 인식 정확성">⏳ LOC ACC</span>
       <a href="/fleet/verify" target="_blank" id="verify-full" style="color:var(--accent);text-decoration:none;margin-left:auto;font-size:10px;">전체 보고 →</a>
+    </div>
+
+    <!-- v12.39: demo-tour 통합 검증 카드 — 한 응답으로 8 known + 2 rural GPS 입증 -->
+    <div id="demo-tour-strip" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;
+      padding:9px 12px;background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.20);
+      border-radius:99px;font-size:10px;letter-spacing:1.2px;font-family:'JetBrains Mono',monospace;font-weight:800;">
+      <span style="color:var(--muted);">🎯 1-URL 검증:</span>
+      <span data-dt="schema_consistent" style="color:var(--muted);">⏳ SCHEMA 일관</span>
+      <span data-dt="known_intersections_active" style="color:var(--muted);">⏳ 8 KNOWN 활성</span>
+      <span data-dt="rural_no_false_alarms" style="color:var(--muted);">⏳ 2 RURAL 거짓없음</span>
+      <span data-dt="overall_ok" style="color:var(--muted);font-weight:900;">⏳ OVERALL</span>
+      <a href="/fleet/demo-tour" target="_blank" style="color:var(--accent);text-decoration:none;margin-left:auto;font-size:10px;">JSON →</a>
     </div>
   </header>
 
@@ -509,6 +521,21 @@ fetch('/fleet/verify').then(r => r.json()).then(report => {
   });
   if (report.overall_ok) {
     document.getElementById('verify-strip').style.borderColor = 'rgba(0,224,154,0.45)';
+  }
+}).catch(() => {});
+
+// v12.39: demo-tour 통합 검증 strip (페이지 로드 시 1회)
+fetch('/fleet/demo-tour').then(r => r.json()).then(tour => {
+  const s = tour.summary || {};
+  document.querySelectorAll('[data-dt]').forEach(span => {
+    const k = span.getAttribute('data-dt');
+    const ok = s[k] === true;
+    const label = span.textContent.replace(/⏳\s*/, '');
+    span.style.color = ok ? '#00E09A' : '#FF6B6B';
+    span.textContent = (ok ? '✓ ' : '✗ ') + label;
+  });
+  if (s.overall_ok) {
+    document.getElementById('demo-tour-strip').style.borderColor = 'rgba(0,200,255,0.55)';
   }
 }).catch(() => {});
 </script>

@@ -15,6 +15,8 @@
 
 > 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
+> 🖼️ **HUD 미리보기 (v9 23-chip mockup):** [`static/visuals/hud_mockup.svg`](static/visuals/hud_mockup.svg) — Tesla 스타일 카메라+BEV+chip row+속도계+위험점수
+>
 > 🆕 **v9 업데이트 (2026-05-21~22) — 21종 → 23종 + 위치 인식 stub + 라이브 HUD + 1-URL 검증**
 > 추가 데이터 2종: 📹 **경찰청 교통단속 CCTV** (단속 밀집 = 사고다발 prior) · 🚸 **국토부 횡단보도 GIS** (50m 접근 알림 + 스쿨존 횡단).
 > 핵심 개선: **임의 GPS (집/원거리)에서 거짓 red signal/TAAS/ER 알람 차단** — 위치 인식 stub 6종 (signal/TAAS/incident/ER/bike/horizontal 모두 bbox·lat/lon 기반 필터).

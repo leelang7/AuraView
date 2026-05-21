@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1440" width="720" height="1440"
+     font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0A0E18"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <linearGradient id="cam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2638"/>
+      <stop offset="100%" stop-color="#0a1424"/>
+    </linearGradient>
+    <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1f2c"/>
+      <stop offset="100%" stop-color="#252b3a"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Phone frame (Galaxy Z Fold inner) -->
+  <rect width="720" height="1440" fill="url(#bgGrad)" rx="0"/>
+
+  <!-- Status bar -->
+  <rect x="0" y="0" width="720" height="40" fill="#000"/>
+  <text x="30" y="26" font-size="13" fill="#fff" font-weight="600">9:41</text>
+  <text x="660" y="26" text-anchor="middle" font-size="11" fill="#fff">100%</text>
+
+  <!-- ─── Camera view (top half) ─── -->
+  <rect x="12" y="50" width="696" height="540" rx="20" fill="url(#cam)" stroke="rgba(0,200,255,0.25)" stroke-width="1.5"/>
+
+  <!-- Sky + horizon -->
+  <rect x="12" y="50" width="696" height="220" rx="20" fill="#1c2840"/>
+  <rect x="12" y="270" width="696" height="320" fill="url(#road)" rx="0"/>
+  <!-- Road lines -->
+  <line x1="360" y1="270" x2="360" y2="590" stroke="#FFD740" stroke-width="3" stroke-dasharray="20,12"/>
+  <line x1="180" y1="590" x2="100" y2="590" stroke="#fff" stroke-width="2" opacity="0.4"/>
+  <line x1="540" y1="590" x2="620" y2="590" stroke="#fff" stroke-width="2" opacity="0.4"/>
+
+  <!-- 트럭 (앞차) -->
+  <rect x="290" y="320" width="140" height="100" rx="6" fill="#2a3548" stroke="#3a4860" stroke-width="2"/>
+  <rect x="298" y="328" width="124" height="14" rx="2" fill="#1a2030"/>
+  <text x="360" y="380" text-anchor="middle" font-size="14" fill="#7a8aa0" font-weight="700">TRUCK</text>
+  <!-- 신호등 가림 표시 -->
+  <circle cx="360" cy="180" r="10" fill="#FF4040" opacity="0.6"/>
+  <text x="360" y="155" text-anchor="middle" font-size="9" fill="#FF4040" font-weight="800" letter-spacing="1">SIGNAL OCCLUDED</text>
+
+  <!-- 검출 박스 (ML Kit) -->
+  <rect x="282" y="312" width="156" height="116" fill="none" stroke="#00C8FF" stroke-width="1.8" stroke-dasharray="4,3"/>
+  <text x="282" y="305" font-size="9" fill="#00C8FF" font-weight="800">VEHICLE 0.92</text>
+
+  <!-- 보행자 (사각지대) -->
+  <circle cx="120" cy="500" r="14" fill="#FF8866"/>
+  <rect x="113" y="510" width="14" height="35" fill="#FF8866" rx="3"/>
+  <rect x="103" y="495" width="34" height="60" fill="none" stroke="#FFB020" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <text x="105" y="488" font-size="9" fill="#FFB020" font-weight="800">PED 0.88</text>
+
+  <!-- HUD Camera label -->
+  <text x="35" y="80" font-size="9" fill="#00C8FF" font-weight="800" letter-spacing="1.5">// CAMERA · MLKit</text>
+  <text x="35" y="93" font-size="9" fill="#7a8aa0" font-weight="600">obj=2 · label=12</text>
+
+  <!-- FPS counter -->
+  <text x="685" y="80" text-anchor="end" font-size="9" fill="#00E09A" font-weight="900" letter-spacing="1">28 FPS</text>
+  <circle cx="678" cy="92" r="3" fill="#00E09A">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  <text x="673" y="92" text-anchor="end" font-size="8" fill="#00E09A">LIVE</text>
+
+  <!-- ─── Chip Row (HUD overlay) ─── -->
+  <g transform="translate(20,610)">
+    <!-- 위험점수 (가장 먼저) -->
+    <rect x="0" y="0" width="74" height="22" rx="11" fill="rgba(255,68,68,0.22)" stroke="#FF4040" stroke-width="0.8"/>
+    <text x="37" y="15" text-anchor="middle" font-size="11" fill="#FF4040" font-weight="900">위험 0.72</text>
+
+    <!-- GPS 배지 -->
+    <rect x="80" y="3" width="32" height="16" rx="8" fill="#202A38" stroke="rgba(0,200,255,0.4)" stroke-width="0.6"/>
+    <text x="96" y="14" text-anchor="middle" font-size="9" fill="#00C8FF" font-weight="800" letter-spacing="0.4">GPS</text>
+
+    <!-- 신호 -->
+    <g transform="translate(120,3)">
+      <circle cx="6" cy="8" r="5" fill="#FF4040"/>
+      <text x="14" y="13" font-size="11" fill="#fff" font-weight="700">정지</text>
+    </g>
+
+    <!-- VDS -->
+    <g transform="translate(168,3)">
+      <text x="0" y="13" font-size="10" fill="#00C8FF">⚡</text>
+      <text x="14" y="13" font-size="10" fill="#fff">38km/h</text>
+    </g>
+
+    <!-- TAAS -->
+    <g transform="translate(232,3)">
+      <text x="0" y="13" font-size="10" fill="#FFB020">⚠</text>
+      <text x="12" y="13" font-size="10" fill="#fff">TAAS 4</text>
+    </g>
+  </g>
+
+  <!-- Second chip row -->
+  <g transform="translate(20,640)">
+    <!-- 우천 -->
+    <g transform="translate(0,3)">
+      <text x="0" y="13" font-size="10" fill="#6BAEFF">🌧</text>
+      <text x="14" y="13" font-size="10" fill="#6BAEFF" font-weight="700">우천 +18%</text>
+    </g>
+
+    <!-- 단속존 -->
+    <g transform="translate(96,3)">
+      <text x="0" y="13" font-size="10" fill="#FF4040">📹</text>
+      <text x="14" y="13" font-size="10" fill="#FF4040" font-weight="800">단속존 3대</text>
+    </g>
+
+    <!-- 횡단보도 50m -->
+    <g transform="translate(192,3)">
+      <text x="0" y="13" font-size="10" fill="#FF4040">⚠</text>
+      <text x="14" y="13" font-size="10" fill="#FF4040" font-weight="800">횡단 50m</text>
+    </g>
+
+    <!-- 스쿨존 -->
+    <g transform="translate(286,3)">
+      <text x="0" y="13" font-size="10" fill="#A095FF">🏫</text>
+      <text x="14" y="13" font-size="10" fill="#A095FF" font-weight="800">×1.5</text>
+    </g>
+
+    <!-- ER -->
+    <g transform="translate(340,3)">
+      <text x="0" y="13" font-size="10" fill="#FF6B6B">🏥</text>
+      <text x="14" y="13" font-size="10" fill="#FF6B6B" font-weight="700">ER 82%</text>
+    </g>
+  </g>
+
+  <!-- Third chip row -->
+  <g transform="translate(20,670)">
+    <g transform="translate(0,3)">
+      <text x="0" y="13" font-size="10" fill="#FF8866">🚶</text>
+      <text x="14" y="13" font-size="10" fill="#FF8866" font-weight="700">보행 +24%</text>
+    </g>
+    <g transform="translate(86,3)">
+      <text x="0" y="13" font-size="10" fill="#6BE3FF">❄️</text>
+      <text x="14" y="13" font-size="10" fill="#6BE3FF" font-weight="800">결빙 +12%</text>
+    </g>
+    <g transform="translate(182,3)">
+      <text x="0" y="13" font-size="10" fill="#AAB0BC">💨</text>
+      <text x="14" y="13" font-size="10" fill="#AAB0BC" font-weight="700">PM10 88</text>
+    </g>
+    <g transform="translate(258,3)">
+      <text x="0" y="13" font-size="10" fill="#7CE4B0">🤖</text>
+      <text x="14" y="13" font-size="10" fill="#7CE4B0" font-weight="800">V2X 95%</text>
+    </g>
+    <g transform="translate(332,3)">
+      <text x="0" y="13" font-size="10" fill="#FF8866">🚒</text>
+      <text x="14" y="13" font-size="10" fill="#FF8866" font-weight="800">119 ×1.34</text>
+    </g>
+  </g>
+
+  <!-- N/23 sources counter -->
+  <g transform="translate(540,610)">
+    <rect x="0" y="0" width="64" height="22" rx="4" fill="rgba(0,224,154,0.18)" stroke="#00E09A" stroke-width="0.8"/>
+    <text x="32" y="15" text-anchor="middle" font-size="11" fill="#00E09A" font-weight="900" letter-spacing="0.5">23src v9</text>
+  </g>
+
+  <!-- ─── BEV view (bottom half) ─── -->
+  <rect x="12" y="710" width="696" height="600" rx="20" fill="#0a0e18" stroke="rgba(0,200,255,0.3)" stroke-width="1.5"/>
+  <text x="35" y="740" font-size="9" fill="#00C8FF" font-weight="800" letter-spacing="1.5">// BEV · 3D OCCUPANCY</text>
+
+  <!-- BEV grid -->
+  <g transform="translate(72,770)">
+    <!-- 40x40 grid lines -->
+    <g stroke="#1a2438" stroke-width="0.5">
+      <line x1="0" y1="0" x2="576" y2="0"/>
+      <line x1="0" y1="100" x2="576" y2="100"/>
+      <line x1="0" y1="200" x2="576" y2="200"/>
+      <line x1="0" y1="300" x2="576" y2="300"/>
+      <line x1="0" y1="400" x2="576" y2="400"/>
+      <line x1="0" y1="500" x2="576" y2="500"/>
+      <line x1="0" y1="0" x2="0" y2="500"/>
+      <line x1="144" y1="0" x2="144" y2="500"/>
+      <line x1="288" y1="0" x2="288" y2="500"/>
+      <line x1="432" y1="0" x2="432" y2="500"/>
+      <line x1="576" y1="0" x2="576" y2="500"/>
+    </g>
+
+    <!-- Road -->
+    <rect x="216" y="0" width="144" height="500" fill="#1f2838" opacity="0.55"/>
+    <line x1="288" y1="0" x2="288" y2="500" stroke="#FFD740" stroke-dasharray="14,10" stroke-width="2"/>
+
+    <!-- Cross street -->
+    <rect x="0" y="216" width="576" height="120" fill="#1f2838" opacity="0.55"/>
+    <line x1="0" y1="276" x2="576" y2="276" stroke="#FFD740" stroke-dasharray="14,10" stroke-width="2"/>
+
+    <!-- Crosswalk -->
+    <g fill="#fff" opacity="0.65">
+      <rect x="218" y="200" width="20" height="14"/>
+      <rect x="246" y="200" width="20" height="14"/>
+      <rect x="274" y="200" width="20" height="14"/>
+      <rect x="302" y="200" width="20" height="14"/>
+      <rect x="330" y="200" width="20" height="14"/>
+    </g>
+
+    <!-- Ego vehicle (center bottom) -->
+    <rect x="266" y="380" width="44" height="68" rx="6" fill="#00C8FF" filter="url(#glow)"/>
+    <text x="288" y="420" text-anchor="middle" font-size="10" fill="#fff" font-weight="900">EGO</text>
+
+    <!-- Truck ahead -->
+    <rect x="262" y="240" width="52" height="84" rx="5" fill="#7a8aa0" stroke="#3a4860" stroke-width="1.5"/>
+    <text x="288" y="288" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">TRUCK</text>
+
+    <!-- Pedestrian in blind spot (left) -->
+    <circle cx="100" cy="280" r="10" fill="#FF8866" filter="url(#glow)"/>
+    <text x="100" y="305" text-anchor="middle" font-size="8" fill="#FF8866" font-weight="800">PED</text>
+    <line x1="288" y1="414" x2="100" y2="280" stroke="#FFB020" stroke-width="0.7" stroke-dasharray="4,4" opacity="0.6"/>
+    <text x="180" y="335" font-size="8" fill="#FFB020" font-weight="800">BLIND-SPOT</text>
+
+    <!-- Motorcycle from right (V2V) -->
+    <rect x="480" y="296" width="32" height="20" rx="3" fill="#A095FF" filter="url(#glow)"/>
+    <text x="496" y="289" text-anchor="middle" font-size="8" fill="#A095FF" font-weight="800">V2V</text>
+    <line x1="496" y1="296" x2="496" y2="286" stroke="#A095FF" stroke-width="1.5" opacity="0.5">
+      <animate attributeName="y2" values="286;276;286" dur="1.5s" repeatCount="indefinite"/>
+    </line>
+
+    <!-- Risk heatmap zones -->
+    <circle cx="80" cy="260" r="30" fill="url(#radhi)" opacity="0.3"/>
+    <circle cx="500" cy="290" r="25" fill="url(#radhi)" opacity="0.25"/>
+  </g>
+
+  <radialGradient id="radhi">
+    <stop offset="0%" stop-color="#FF4040" stop-opacity="0.6"/>
+    <stop offset="100%" stop-color="#FF4040" stop-opacity="0"/>
+  </radialGradient>
+
+  <!-- BEV info -->
+  <text x="685" y="740" text-anchor="end" font-size="9" fill="#00E09A" font-weight="900">40×40 voxel · 100m</text>
+
+  <!-- ─── Bottom HUD: Speed + Schema ─── -->
+  <g transform="translate(0,1305)">
+    <rect x="0" y="0" width="720" height="105" fill="#000"/>
+
+    <!-- Speed (Tesla style) -->
+    <text x="100" y="68" text-anchor="middle" font-size="68" fill="#fff" font-weight="200" font-variant-numeric="tabular-nums" letter-spacing="-3">38</text>
+    <text x="100" y="92" text-anchor="middle" font-size="10" fill="#7a8aa0" font-weight="700" letter-spacing="2">KM/H</text>
+
+    <!-- Risk gauge (Tesla style speedometer) -->
+    <text x="290" y="55" font-size="11" fill="#7a8aa0" font-weight="700" letter-spacing="1.5">FUSION RISK</text>
+    <rect x="290" y="60" width="180" height="10" rx="5" fill="#1a2030"/>
+    <rect x="290" y="60" width="130" height="10" rx="5" fill="url(#riskbar)"/>
+    <text x="290" y="92" font-size="10" fill="#FFB020" font-weight="900">0.72 MEDIUM</text>
+
+    <linearGradient id="riskbar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E09A"/>
+      <stop offset="50%" stop-color="#FFB020"/>
+      <stop offset="100%" stop-color="#FF4040"/>
+    </linearGradient>
+
+    <!-- Schema + intersection -->
+    <text x="490" y="50" font-size="9" fill="#5a7a9a" font-weight="700">SCHEMA</text>
+    <text x="490" y="62" font-size="11" fill="#00C8FF" font-weight="800" font-family="monospace">v9-23src</text>
+    <text x="490" y="80" font-size="9" fill="#5a7a9a" font-weight="700">IID · 한양대역</text>
+    <text x="490" y="92" font-size="11" fill="#fff" font-weight="700">1007</text>
+
+    <!-- TAP TO ENGAGE -->
+    <rect x="600" y="35" width="105" height="40" rx="20" fill="rgba(0,200,255,0.10)" stroke="#00C8FF" stroke-width="1.2"/>
+    <text x="652" y="60" text-anchor="middle" font-size="11" fill="#00C8FF" font-weight="900" letter-spacing="1.2">AURA</text>
+    <text x="652" y="70" text-anchor="middle" font-size="7" fill="#00C8FF" font-weight="700" letter-spacing="0.8">· ENGAGED</text>
+  </g>
+
+  <!-- ─── Footer info ─── -->
+  <text x="360" y="1430" text-anchor="middle" font-size="9" fill="#3a4860">
+    AuraView K-Perception · 23종 공공데이터 융합 · fusion.v9-23src-2026.05.21
+  </text>
+</svg>

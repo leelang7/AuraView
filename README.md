@@ -1,7 +1,7 @@
 # AuraView
 
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-90%2F90%20passed-brightgreen)](backend/tests/)
+[![tests](https://img.shields.io/badge/tests-110%2F110%20passed-brightgreen)](backend/tests/)
 [![endpoints](https://img.shields.io/badge/API_endpoints-90-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
 [![judge hub](https://img.shields.io/badge/JUDGE_HUB-/competition/-00e09a)](https://auraview.allthatai.kr/competition/)
 [![scenarios](https://img.shields.io/badge/scenarios-8-00e09a)](https://auraview.allthatai.kr/occupancy/compare)

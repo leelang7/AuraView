@@ -120,6 +120,65 @@ def test_fleet_verify_location_accuracy_component():
     assert loc.get("home_like_er_load") == 0.0
 
 
+def test_fetch_police_cams_location_filtering():
+    """v12.21: fetch_police_cams 는 반경 800m 내 단속카메라만 반환 + boost 계산."""
+    from app.services.public_api import fetch_police_cams
+    # 한양대역 (1007) 근처 — 1대 매칭 예상
+    near = fetch_police_cams(lat=37.5547, lon=127.1295, radius_m=800.0)
+    d_near = near.get("derived", {})
+    assert d_near.get("cam_count_within_radius") >= 1, "한양대 근처 단속카메라 미감지"
+    assert d_near.get("enforcement_risk_boost") > 0, "boost 미산정"
+    # 강원 임의 GPS — 0대
+    rural = fetch_police_cams(lat=38.2, lon=128.5, radius_m=800.0)
+    d_rural = rural.get("derived", {})
+    assert d_rural.get("cam_count_within_radius") == 0, "원거리에서 잘못된 단속카메라 반환"
+    assert d_rural.get("enforcement_risk_boost") == 0.0
+    assert d_rural.get("is_enforcement_hotzone") is False
+
+
+def test_fetch_crosswalk_gis_approach_alert():
+    """v12.23: fetch_crosswalk_gis approaching_crosswalk 50m 임계 동작 검증."""
+    from app.services.public_api import fetch_crosswalk_gis
+    # 한양대역 횡단보도 정중앙 — 50m 내 (approaching=True)
+    on_cw = fetch_crosswalk_gis(lat=37.5547, lon=127.1295, radius_m=300.0)
+    d_on = on_cw.get("derived", {})
+    assert d_on.get("approaching_crosswalk") is True, "횡단보도 50m 임박 미감지"
+    assert d_on.get("crosswalk_count_within_radius") >= 1
+    # 강원 임의 GPS — 0건
+    rural = fetch_crosswalk_gis(lat=38.2, lon=128.5, radius_m=300.0)
+    d_rural = rural.get("derived", {})
+    assert d_rural.get("crosswalk_count_within_radius") == 0
+    assert d_rural.get("approaching_crosswalk") is False
+    assert d_rural.get("crosswalk_pedestrian_boost") == 0.0
+
+
+def test_fetch_emergency_capacity_rural_gps_no_hospital():
+    """v12.20: fetch_emergency_capacity 임의 원거리 GPS → 반경 5km 내 병원 없음 → er_load=0."""
+    from app.services.public_api import fetch_emergency_capacity
+    # 강원 임의 GPS (서울 병원 fixture 와 무관)
+    r = fetch_emergency_capacity(lat=38.2, lon=128.5, radius_km=5.0)
+    d = r.get("derived", {})
+    assert d.get("nearest_ER_load") == 0.0
+    assert d.get("severity_multiplier") == 1.0
+    assert d.get("nearest_eta_min") == 0
+    assert r.get("filter_applied") == "lat/lon"
+
+
+def test_fusion_intersection_bbox_taas_filtering():
+    """v12.20: bbox 파라미터로 TAAS 사고를 위치 인식 필터 — 강원 bbox → 0건."""
+    r = client.get("/fusion/intersection/test-strange",
+                   params={
+                       "bbox_min_lat": 38.0, "bbox_max_lat": 38.5,
+                       "bbox_min_lon": 128.0, "bbox_max_lon": 128.7,
+                   })
+    assert r.status_code == 200
+    body = r.json()
+    summary = body.get("fusion_summary", {})
+    # 강원 bbox 안에 서울 사고 fixture 가 없으므로 0
+    assert summary.get("taas_accidents_nearby") == 0
+    assert summary.get("nearest_ER_load") == 0.0
+
+
 def test_fusion_air_quality_endpoint():
     r = client.get("/fusion/air-quality", params={"sido": "서울"})
     assert r.status_code == 200

@@ -516,12 +516,51 @@ async function refreshHud() {
 refreshHud();
 setInterval(refreshHud, 5000);
 
-// v12.44: 23종 공공데이터 라이브 grid — 메인 컨텐츠
+// v12.44+v12.45: 23종 공공데이터 라이브 grid + 카드별 실제 derived 응답값
+// 카드의 dropdown 교차로 기준 현재 응답(샘플) 1줄을 함께 표시
+const SOURCE_VALUE = (id, sum, sources) => {
+  switch (id) {
+    case 'signal': {
+      const v = sources?.signal?.data?.body?.items?.item?.stPdsgSttsNm || '?';
+      return v === 'go' ? '진행' : v === 'warning' ? '주의' : v === 'stop-And-Remain' ? '정지' : v;
+    }
+    case 'vds': return sum?.avg_vds_speed_kmh != null ? `평균 ${sum.avg_vds_speed_kmh} km/h` : '—';
+    case 'incidents': return `활성 ${sum?.active_incidents ?? 0}건`;
+    case 'taas': return `반경 내 ${sum?.taas_accidents_nearby ?? 0}건`;
+    case 'its': return '표준링크 정보';
+    case 'dsz': return 'k≥5 결합 검증';
+    case 'weather': return sum?.weather_raining ? `우천 +${Math.round((sum.wet_road_risk_boost||0)*100)}%` : '맑음';
+    case 'medical': return sum?.nearest_ER_load ? `최근접 ER ${Math.round(sum.nearest_ER_load*100)}% 포화` : '—';
+    case 'bike': return sum?.bike_lane_risk_boost ? `+${Math.round(sum.bike_lane_risk_boost*100)}% 프라이어` : '—';
+    case 'school_zone': return sum?.in_school_zone ? `진입 ×${(sum.school_zone_multiplier||1).toFixed(1)}` : '구역 밖';
+    case 'black_ice': return sum?.black_ice_risk ? `결빙 +${Math.round((sum.freeze_risk_boost||0)*100)}%` : '안전';
+    case 'pedestrian_hotspot': return sum?.in_pedestrian_hotspot ? `다발 +${Math.round((sum.ped_hotspot_boost||0)*100)}%` : '—';
+    case 'air_quality': return sum?.pm10_avg ? `PM10 ${Math.round(sum.pm10_avg)}` : '—';
+    case 'school_route': return sum?.on_school_route ? `통학 +${Math.round((sum.walk_route_boost||0)*100)}%` : '—';
+    case 'ev_charger': return sum?.near_ev_station ? `EV ${Math.round((sum.ev_dwelling_likelihood||0)*100)}%` : '—';
+    case 'road_surface': return sum?.road_surface ? `노면 ${sum.road_surface} +${Math.round((sum.surface_risk_boost||0)*100)}%` : 'dry';
+    case 'vehicle_inspection': return sum?.inspection_fail_rate_district ? `부적합 ${Math.round(sum.inspection_fail_rate_district*100)}%` : '—';
+    case 'dtg': return sum?.dtg_danger_score ? `위험 ${sum.dtg_danger_score.toFixed(2)}` : '—';
+    case 'nfa_dispatch': return `심각도 ×${(sum?.nfa_severity_multiplier||1).toFixed(2)}`;
+    case 'road_age': return sum?.road_aged_15y_plus_pct ? `노후 ${Math.round(sum.road_aged_15y_plus_pct*100)}%` : '—';
+    case 'av_hub': return sum?.av_confidence ? `V2X ${Math.round(sum.av_confidence*100)}% (-${Math.round((sum.av_risk_reduce||0)*100)}%)` : '—';
+    case 'police_cam': return `${sum?.enforcement_cam_count ?? 0}대 +${Math.round((sum?.enforcement_risk_boost||0)*100)}%`;
+    case 'crosswalk': return sum?.approaching_crosswalk ? '50m 접근⚠' : `${sum?.crosswalk_count_within_radius ?? 0}개소`;
+    default: return '—';
+  }
+};
+
 async function refreshSources() {
   try {
-    const r = await fetch('/fusion/sources');
-    if (!r.ok) return;
-    const j = await r.json();
+    const [srcRes, fusRes] = await Promise.all([
+      fetch('/fusion/sources'),
+      fetch('/fusion/intersection/1007'),
+    ]);
+    if (!srcRes.ok) return;
+    const j = await srcRes.json();
+    const fus = fusRes.ok ? await fusRes.json() : {};
+    const sum = fus.fusion_summary || {};
+    const fSrc = fus.sources || {};
     const sources = j.sources || [];
     const liveN = sources.filter(s => s.mode === 'live').length;
     const stubN = sources.filter(s => s.mode !== 'live').length;
@@ -533,18 +572,23 @@ async function refreshSources() {
       const mode = s.mode || 'stub';
       const isLive = mode === 'live';
       const age = s.age_s != null ? `${Math.round(s.age_s)}s` : '—';
-      const ok = s.last_success === true;
       const color = isLive ? 'var(--safe)' : 'var(--warn)';
       const bg = isLive ? 'rgba(0,224,154,0.06)' : 'rgba(255,176,32,0.05)';
       const border = isLive ? 'rgba(0,224,154,0.30)' : 'rgba(255,176,32,0.20)';
-      return `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 12px;position:relative;">
+      const value = SOURCE_VALUE(s.id, sum, fSrc[s.id]?.data ? fSrc : { [s.id]: { data: fSrc[s.id] } }) || '—';
+      return `<div onclick="window.open('/fusion/intersection/1007','_blank')"
+            style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 12px;position:relative;cursor:pointer;transition:transform 0.12s;"
+            onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
           <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};box-shadow:0 0 5px ${color};"></span>
           <span style="font-size:8.5px;letter-spacing:1.3px;color:${color};font-weight:900;font-family:monospace;">${mode.toUpperCase()}</span>
           <span style="margin-left:auto;font-size:8.5px;color:var(--muted);font-family:monospace;">${age} ago</span>
         </div>
         <div style="font-size:12px;color:var(--text);font-weight:700;line-height:1.25;margin-bottom:3px;">${escHtml(s.name || s.id)}</div>
-        <div style="font-size:9.5px;color:var(--muted);font-family:monospace;">${escHtml(s.origin || '')}</div>
+        <div style="font-size:9.5px;color:var(--muted);font-family:monospace;margin-bottom:6px;">${escHtml(s.origin || '')}</div>
+        <div style="font-size:11.5px;color:var(--accent);font-weight:800;background:rgba(0,200,255,0.07);border-left:2px solid var(--accent);padding:4px 7px;border-radius:3px;line-height:1.3;">
+          한양대 1007 · <b style="color:var(--text);">${escHtml(value)}</b>
+        </div>
         <div style="font-size:9px;color:#7C8AA8;margin-top:5px;line-height:1.3;">${escHtml(s.gain || '')}</div>
       </div>`;
     }).join('');

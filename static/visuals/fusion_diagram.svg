@@ -571,7 +571,7 @@
   ═══════════════════════════════════════════════════════════ -->
   <line x1="40" y1="618" x2="1160" y2="618" stroke="#1E2535" stroke-width="1"/>
   <text x="600" y="638" text-anchor="middle" font-size="10" fill="#404860">
-    AuraView · 2026 국토교통 데이터활용 경진대회 · 15종 공공데이터 실시간 융합 플랫폼
+    AuraView · 2026 국토교통 데이터활용 경진대회 · 23종 공공데이터 실시간 융합 플랫폼
   </text>
   <text x="600" y="656" text-anchor="middle" font-size="9" fill="#303550">
     GET /fusion/intersection/{id} · schema_version: fusion.v9-23src · © 2026 ThinkU Team

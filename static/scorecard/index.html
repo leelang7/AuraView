@@ -172,17 +172,17 @@
         <div class="cat">데이터 융합</div>
         <div class="pts">5<span class="pt">pt</span></div>
       </div>
-      <h2>21종 공공데이터 실시간 융합 어댑터</h2>
+      <h2>22종 공공데이터 실시간 융합 어댑터</h2>
       <p class="crit"><b>평가기준:</b> 이종 공공데이터 결합, 실시간성, 융합으로 인한 가치 창출</p>
 
-      <div class="ev"><b>21 어댑터 패턴</b> — TAAS / VDS / 신호 / KMA / ITS / E-Gen / 따릉이 / 스쿨존 / RWIS / KOTSA / DTG / 119 / 도로노후 / V2X 자율주행허브 등</div>
-      <div class="ev"><b>가중 융합 점수 (v6)</b> — speed 0.14 + DTG 0.07 + 스쿨존 0.09 + 119 심각도 0.05 + 노면 0.06 + 보행자 0.05 ···</div>
+      <div class="ev"><b>22 어댑터 패턴</b> — TAAS / VDS / 신호 / KMA / ITS / E-Gen / 따릉이 / 스쿨존 / RWIS / KOTSA / DTG / 119 / 도로노후 / V2X 자율주행허브 / <b>경찰청 단속CCTV</b> 등</div>
+      <div class="ev"><b>가중 융합 점수 (v8)</b> — speed 0.13 + DTG 0.06 + 스쿨존 0.08 + 119 심각도 0.05 + 노면 0.06 + 보행자 0.05 + 단속존 0.04 ···</div>
       <div class="ev"><b>실시간 폴링</b> — 교차로별 5초 캐시, p50 응답시간 180ms, fallback 0-downtime</div>
       <div class="ev"><b>골든타임 라우팅</b> — 119 평균 도착시간 &gt; 7분이면 자동 severity_multiplier 상향</div>
-      <div class="ev">스키마 버전: <code>fusion.v7-21src-2026.05.19</code> · 응답: <code>IntersectionFusion</code> dataclass</div>
+      <div class="ev">스키마 버전: <code>fusion.v8-22src-2026.05.21</code> · 응답: <code>IntersectionFusion</code> dataclass</div>
 
       <div class="actions">
-        <a class="btn" href="/fusion/sources" target="_blank">19 소스 JSON <span class="arrow">→</span></a>
+        <a class="btn" href="/fusion/sources" target="_blank">22 소스 JSON <span class="arrow">→</span></a>
         <a class="btn" href="/fusion/intersection/1007" target="_blank">교차로 융합 샘플 <span class="arrow">→</span></a>
         <a class="btn" href="/gallery/?f=data" target="_blank">융합 다이어그램 <span class="arrow">→</span></a>
       </div>
@@ -237,12 +237,12 @@
   <section class="legend">
     <h3>핵심 라이브 엔드포인트 (심사위원 즉시 검증용)</h3>
     <ul>
-      <li><b>21 소스 카탈로그</b> · <code>GET /fusion/sources</code></li>
+      <li><b>22 소스 카탈로그</b> · <code>GET /fusion/sources</code></li>
       <li><b>교차로 실시간 융합</b> · <code>GET /fusion/intersection/{id}</code></li>
       <li><b>위험도 추론</b> · <code>POST /risk/predict</code></li>
       <li><b>3D BEV 라이브</b> · <code>/bev3d/</code> (TF.js + COCO-SSD on-device 검출)</li>
       <li><b>정책의사결정 대시보드</b> · <code>/policy/</code> (수집→통계→정책 4단계)</li>
-      <li><b>21 데이터 다이어그램</b> · <code>/gallery/</code> (21종 SVG)</li>
+      <li><b>22 데이터 다이어그램</b> · <code>/gallery/</code> (22종 SVG)</li>
       <li><b>네이티브앱 APK</b> · GitHub Releases <code>latest</code> 자동 빌드</li>
       <li><b>30초 스토리</b> · <code>/story/</code> (시뮬레이터 포함)</li>
       <li><b>72초 시네마틱 릴</b> · <code>/reel/</code> (영상 대체)</li>
@@ -250,7 +250,7 @@
   </section>
 
   <div class="meta">
-    AuraView K-Perception · schema <code style="color:var(--muted);">fusion.v7-21src-2026.05.19</code> ·
+    AuraView K-Perception · schema <code style="color:var(--muted);">fusion.v8-22src-2026.05.21</code> ·
     <a href="/">메인</a> ·
     <a href="https://github.com/leelang7/AuraView" target="_blank">GitHub</a>
   </div>

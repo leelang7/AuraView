@@ -5,6 +5,41 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.20 — 22종 확장 (경찰청 단속CCTV) + 위치인식 stub 정확성 (2026-05-21)
+
+### Fixed — 임의 GPS 위치에서 거짓 알람 차단 (v12.20)
+사용자 보고: "집에서 테스트하는데 이 위치에 적색/정지 신호 hud이게 왜나오냐?"
+- **`fetch_taas_accidents(bbox)`**: bbox 안의 사고만 반환 — 임의 위치에서 7건 거짓 알람 차단
+- **`fetch_emergency_capacity(lat,lon)`**: 반경 5km 내 병원만으로 nearest_ER 재계산
+- **`fetch_incidents(bbox)`**: bbox 내 돌발만 필터
+- **`fetch_bike_stations(lat,lon)`**: 반경 1.5km 내 따릉이 정거장만으로 derived 재계산
+- **`fetch_fusion`**: `gps-{lat*1000}-{lon*1000}` iid 에서 실제 GPS 파싱 + bbox 자동 생성
+- **`_signal_stub_cycle`**: `gps-*` 임의 위치 → unknown 신호 (red/stop 가짜 알람 제거)
+
+### Added — 22번째 데이터 소스 (v12.21)
+- **`#22 경찰청 교통단속 CCTV`** (`apis.data.go.kr/1320000/CityTrafficCctv`) — 단속 카메라 위치 + 단속실적
+  - 단속 밀집 = 사고다발 정책 prior (5년 단속실적 기반)
+  - 9개 fixture: 강남대로/테헤란로/광화문/잠실대교/왕십리/사당역/신촌/한양대역/건대입구
+  - derived: cam_count_within_radius, enforcement_risk_boost (최대 +0.10), is_enforcement_hotzone
+- 융합 가중치: enforcement_risk_boost × 0.04 추가
+- `schema_version`: `fusion.v7-21src-2026.05.19` → `fusion.v8-22src-2026.05.21`
+
+### Added — 자가 검증 (location_accuracy)
+- `GET /fleet/verify` 신규 컴포넌트: 강원 임의 GPS (38.2, 128.5) 에서 unknown/0/0/LOW 반환 검증
+- 대시보드 PIPELINE CHECK 스트립에 `LOC ACC` 배지 추가
+
+### Updated — 네이티브 HUD (v12.20-v12.21)
+- TAAS chip: `summary.taas_accidents_nearby` 0 이면 미표시 (집/임의 위치 거짓 알람 차단)
+- GPS 모드 배지: `gps-*` iid 시 'GPS' 작은 배지 표시 — 데이터 출처 투명성
+- 단속카메라 chip: 단속 1대 이상이면 videocam 아이콘 + N대 + boost%; 단속존(≥3대) 적색 danger 톤
+- sourcesFused 배지: 22src v8 → 21src v7 → ... 호환 유지
+- expectedSchemaPrefix: `fusion.v8-22src`
+
+### Static pages
+- /story/ /scorecard/ 21종 → 22종 + 경찰청 단속 CCTV 카드 추가
+
+---
+
 ## v0.18 — 21종 확장 (도로노후+V2X) + Tesla UI/UX 전면 개편 + /policy 라이브 API (2026-05-19)
 
 ### Added — 19 → 21종 데이터 융합 확장 (v7)

@@ -452,7 +452,7 @@
 
   <!-- Schema -->
   <text x="600" y="397" text-anchor="middle" font-size="8" fill="#509070">schema_version:</text>
-  <text x="600" y="410" text-anchor="middle" font-size="9" fill="#00E09A">fusion.v7-21src</text>
+  <text x="600" y="410" text-anchor="middle" font-size="9" fill="#00E09A">fusion.v9-23src</text>
 
   <!-- Divider -->
   <line x1="510" y1="420" x2="690" y2="420" stroke="#00E09A" stroke-width="0.5" opacity="0.3"/>
@@ -574,7 +574,7 @@
     AuraView · 2026 국토교통 데이터활용 경진대회 · 15종 공공데이터 실시간 융합 플랫폼
   </text>
   <text x="600" y="656" text-anchor="middle" font-size="9" fill="#303550">
-    GET /fusion/intersection/{id} · schema_version: fusion.v7-21src · © 2026 ThinkU Team
+    GET /fusion/intersection/{id} · schema_version: fusion.v9-23src · © 2026 ThinkU Team
   </text>
 
   <!-- Corner decorations -->

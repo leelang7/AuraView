@@ -248,6 +248,36 @@
     </div>
   </div>
 
+  <!-- v12.25: 라이브 HUD 미리보기 — 23 소스 fusion 실시간 -->
+  <div class="panel" style="margin-top:14px;">
+    <h3>
+      라이브 HUD 미리보기 (네이티브앱 1:1)
+      <span style="display:flex;gap:8px;align-items:center;">
+        <select id="hud-iid" onchange="refreshHud()" style="background:#0A0E18;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;">
+          <option value="1007">한양대역 (1007)</option>
+          <option value="2024">강남역 (2024)</option>
+          <option value="3015">광화문 (3015)</option>
+          <option value="4011">잠실역 (4011)</option>
+          <option value="5006">신촌 (5006)</option>
+          <option value="6022">사당역 (6022)</option>
+          <option value="7045">왕십리역 (7045)</option>
+          <option value="8033">건대입구 (8033)</option>
+          <option value="gps-38200-128500">강원 임의 GPS (테스트)</option>
+        </select>
+        <span class="badge"><span class="ring"></span>5s</span>
+      </span>
+    </h3>
+    <div id="hud-mini" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;
+        background:#0A0E18;border:1px solid var(--line);border-radius:10px;padding:14px;min-height:90px;">
+      <div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:12px;padding:18px 0;">⏳ /fusion/intersection 로딩…</div>
+    </div>
+    <div style="margin-top:8px;font-size:10.5px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span>schema: <code id="hud-schema" style="color:var(--accent);font-family:monospace;">—</code></span>
+      <span>위험점수: <code id="hud-risk" style="color:var(--safe);font-family:monospace;font-weight:900;">—</code></span>
+      <span><a href="#" id="hud-json-link" target="_blank" style="color:var(--accent);text-decoration:none;">📋 전체 JSON →</a></span>
+    </div>
+  </div>
+
   <!-- v12.24: 이벤트 상세 모달 -->
   <div class="detail-overlay" id="detail-overlay" onclick="if(event.target.id==='detail-overlay') closeDetail()">
     <div class="detail-card" id="detail-card">
@@ -308,10 +338,26 @@ function renderMap(events) {
     const ent = ev.entropy || 0;
     const ring = ent >= 0.8 ? 'hi' : ent >= 0.6 ? 'mi' : 'lo';
     const col = ent >= 0.8 ? '#FF4040' : ent >= 0.6 ? '#FFB020' : '#00E09A';
+    // v12.25: 마커 클릭/호버 → 피드 강조 + 상세 모달
     g.insertAdjacentHTML('beforeend',
-      `<circle cx="${x}" cy="${y}" r="20" fill="url(#${ring})" opacity="${0.8 - i * 0.01}"/>
-       <circle cx="${x}" cy="${y}" r="3.5" fill="${col}" stroke="#fff" stroke-width="0.8"/>`);
+      `<g class="map-marker" data-idx="${i}" style="cursor:pointer;"
+         onmouseover="highlightFeedRow(${i},true)" onmouseout="highlightFeedRow(${i},false)"
+         onclick="openDetail(${i})">
+        <circle cx="${x}" cy="${y}" r="20" fill="url(#${ring})" opacity="${0.8 - i * 0.01}"/>
+        <circle cx="${x}" cy="${y}" r="3.5" fill="${col}" stroke="#fff" stroke-width="0.8"/>
+        <circle class="ring-${i}" cx="${x}" cy="${y}" r="9" fill="none" stroke="${col}"
+                stroke-width="1.5" opacity="0" pointer-events="none"/>
+      </g>`);
   });
+}
+
+// v12.25: 피드 row → 지도 마커 강조 (양방향)
+function highlightMapMarker(idx, on) {
+  document.querySelectorAll(`.ring-${idx}`).forEach(el => el.setAttribute('opacity', on ? 1 : 0));
+}
+function highlightFeedRow(idx, on) {
+  const rows = document.querySelectorAll('#feed .ev');
+  if (rows[idx]) rows[idx].classList.toggle('selected', on);
 }
 
 function renderFeed(events) {
@@ -332,7 +378,9 @@ function renderFeed(events) {
     const iid = ev.intersection_id || (ev.lat && ev.lon ? `(${ev.lat.toFixed(3)}, ${ev.lon.toFixed(3)})` : '');
     const isNew = !lastSeenIds.has(ev.ts + ev.pseudo_device);
     if (isNew) lastSeenIds.add(ev.ts + ev.pseudo_device);
-    return `<div class="ev ${isNew ? 'new' : ''}" onclick="openDetail(${i})">
+    return `<div class="ev ${isNew ? 'new' : ''}"
+      onmouseover="highlightMapMarker(${i},true)" onmouseout="highlightMapMarker(${i},false)"
+      onclick="openDetail(${i})">
       <div class="ic ${cls}">${icon}</div>
       <div class="meta">
         <span>${escHtml(ev.pseudo_device || '?').slice(0, 12)}… @ ${escHtml(iid)}</span>
@@ -386,6 +434,58 @@ function escHtml(s) {
 
 refresh();
 setInterval(refresh, 5000);
+
+// v12.25: 라이브 HUD 미리보기 (네이티브앱과 동일한 fusion JSON 시각화)
+async function refreshHud() {
+  const iid = document.getElementById('hud-iid').value;
+  document.getElementById('hud-json-link').href = `/fusion/intersection/${iid}`;
+  try {
+    const r = await fetch(`/fusion/intersection/${iid}`);
+    if (!r.ok) return;
+    const j = await r.json();
+    const sum = j.fusion_summary || {};
+    // 23 chip 후보 (값 있을 때만)
+    const chips = [];
+    const push = (label, val, color, cond) => {
+      if (cond) chips.push({ label, val, color });
+    };
+    const sigItem = j.sources?.signal?.data?.body?.items?.item;
+    const sigState = (sigItem && (Array.isArray(sigItem) ? sigItem[0] : sigItem)).stPdsgSttsNm;
+    push('신호', sigState === 'go' ? '진행' : sigState === 'warning' ? '주의' : sigState === 'stop-And-Remain' ? '정지' : sigState, '#00C8FF', sigState && sigState !== 'unknown');
+    push('VDS', sum.avg_vds_speed_kmh != null ? sum.avg_vds_speed_kmh + 'km/h' : '?', '#00C8FF', sum.avg_vds_speed_kmh != null);
+    push('TAAS', (sum.taas_accidents_nearby || 0) + '건', '#FFB020', (sum.taas_accidents_nearby || 0) > 0);
+    push('우천', '+' + Math.round((sum.wet_road_risk_boost || 0)*100) + '%', '#6BAEFF', sum.weather_raining);
+    push('ER', Math.round((sum.nearest_ER_load || 0)*100) + '%', '#FF6B6B', (sum.nearest_ER_load || 0) >= 0.6);
+    push('스쿨존', '×' + (sum.school_zone_multiplier || 1.0).toFixed(1), '#A095FF', sum.in_school_zone);
+    push('단속존', (sum.enforcement_cam_count || 0) + '대', '#FF4040', sum.is_enforcement_hotzone);
+    push('단속', (sum.enforcement_cam_count || 0) + '대', '#FFB020', sum.enforcement_cam_count >= 1 && !sum.is_enforcement_hotzone);
+    push('횡단보도 50m', '⚠', '#FF4040', sum.approaching_crosswalk);
+    push('보행자다발', '+' + Math.round((sum.ped_hotspot_boost || 0)*100) + '%', '#FF8866', sum.in_pedestrian_hotspot);
+    push('결빙', '+' + Math.round((sum.freeze_risk_boost || 0)*100) + '%', '#6BE3FF', sum.black_ice_risk);
+    push('PM10', Math.round(sum.pm10_avg || 0), '#AAB0BC', (sum.pm10_avg || 0) >= 80);
+    push('도로노후', '+' + Math.round((sum.road_age_risk_boost || 0)*100) + '%', '#AAB0BC', (sum.road_age_risk_boost || 0) > 0.03);
+    push('V2X', Math.round((sum.av_confidence || 0)*100) + '%', '#7CE4B0', sum.high_v2x_zone);
+    push('DTG', sum.dtg_danger_score?.toFixed(2), '#A095FF', (sum.dtg_risk_boost || 0) > 0.03);
+    push('119', '×' + (sum.nfa_severity_multiplier || 1.0).toFixed(2), '#FF8866', sum.golden_time_at_risk);
+
+    const html = chips.length ? chips.map(c =>
+      `<div style="background:#141B2A;border:1px solid var(--line);border-radius:8px;padding:7px 10px;text-align:center;">
+        <div style="font-size:9px;letter-spacing:1.5px;color:var(--muted);font-weight:700;margin-bottom:3px;">${escHtml(c.label)}</div>
+        <div style="font-size:14px;font-weight:900;color:${c.color};font-variant-numeric:tabular-nums;">${escHtml(c.val)}</div>
+      </div>`
+    ).join('') : `<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:12px;padding:18px 0;">⚪ 이 위치는 활성 데이터 없음 (임의 GPS / 위치 인식 stub)</div>`;
+    document.getElementById('hud-mini').innerHTML = html;
+    document.getElementById('hud-schema').textContent = sum.schema_version || '—';
+    const risk = sum.fusion_risk_score || 0;
+    const lvl = sum.risk_level || 'LOW';
+    const rcolor = lvl === 'HIGH' ? 'var(--danger)' : lvl === 'MEDIUM' ? 'var(--warn)' : 'var(--safe)';
+    const rEl = document.getElementById('hud-risk');
+    rEl.textContent = `${risk.toFixed(3)} ${lvl}`;
+    rEl.style.color = rcolor;
+  } catch (e) { console.error('hud fetch', e); }
+}
+refreshHud();
+setInterval(refreshHud, 5000);
 
 // v12.18: 파이프라인 자가검증 (페이지 로드 시 1회)
 fetch('/fleet/verify').then(r => r.json()).then(report => {

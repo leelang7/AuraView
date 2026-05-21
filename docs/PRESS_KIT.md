@@ -81,6 +81,8 @@
 
 | 용도 | URL |
 |---|---|
+| **🎯 1-URL 통합 검증 (v9 신규)** | **https://auraview.allthatai.kr/fleet/demo-tour** — 8 known + 2 rural GPS 한 응답 |
+| 파이프라인 자가검증 | https://auraview.allthatai.kr/fleet/verify (location_accuracy 포함) |
 | 풀 대시보드 (9탭) | https://auraview.allthatai.kr/ui |
 | 원페이지 요약 (인쇄용) | https://auraview.allthatai.kr/submission/ |
 | Reveal.js 발표 슬라이드 | https://auraview.allthatai.kr/slides/ |
@@ -115,6 +117,8 @@
 ## 🔍 심사위원 1-step 검증
 
 ```bash
+curl https://auraview.allthatai.kr/fleet/demo-tour      # 🎯 v9 신규 — 8 known + 2 rural GPS 통합 검증
+curl https://auraview.allthatai.kr/fleet/verify         # 파이프라인 + location_accuracy 자가검증
 curl https://auraview.allthatai.kr/metrics/competition  # 4축 KPI 한 응답
 curl https://auraview.allthatai.kr/metrics/scoreboard   # 5항목 자체 채점
 curl -O https://auraview.allthatai.kr/impact/policy-pdf # A4 PDF 자동 다운로드

@@ -226,6 +226,11 @@ def fusion_intersection(
     return fusion.to_dict()
 
 
+# v12.52: risk-breakdown 60s 캐시 (라이브 응답시간 30s+ → <1s)
+_RISK_BREAKDOWN_CACHE: dict = {}  # iid → {at, payload}
+_RISK_BREAKDOWN_TTL = 60  # seconds
+
+
 @router.get("/risk-breakdown/{intersection_id}")
 def fusion_risk_breakdown(intersection_id: str):
     """v12.49: 각 23 소스가 fusion_risk_score 에 얼마나 기여했는지 분해.
@@ -235,7 +240,17 @@ def fusion_risk_breakdown(intersection_id: str):
       + 결빙(0.06) + 보행다발(0.05) + 스쿨존(0.08) + 통학로(0.05) + PM10(0.03)
       + EV(0.02) + 노면(0.06) + 검사(0.04) + DTG(0.06) + 119(0.05) + 노후(0.06)
       + 단속(0.04) + 횡단(0.05) − V2X 감산
+
+    v12.52: 60s 인메모리 캐시 (iid 별 키).
     """
+    import time
+    now = time.time()
+    cached = _RISK_BREAKDOWN_CACHE.get(intersection_id)
+    if cached and (now - cached["at"]) < _RISK_BREAKDOWN_TTL:
+        out = dict(cached["payload"])
+        out["cache_age_s"] = round(now - cached["at"], 1)
+        return out
+
     fusion = public_api.fetch_fusion(intersection_id).to_dict()
     s = fusion.get("fusion_summary", {})
 
@@ -269,7 +284,7 @@ def fusion_risk_breakdown(intersection_id: str):
     av_reduce = s.get("av_risk_reduce", 0) or 0
     final = s.get("fusion_risk_score", 0) or 0
 
-    return {
+    payload = {
         "intersection_id": intersection_id,
         "schema_version": s.get("schema_version"),
         "final_risk_score": final,
@@ -279,5 +294,8 @@ def fusion_risk_breakdown(intersection_id: str):
         "school_zone_multiplier_applied": s.get("school_zone_multiplier", 1.0) if s.get("in_school_zone") else 1.0,
         "raw_weighted_sum": round(raw_sum, 4),
         "components_sorted_by_contribution": items_sorted,
+        "cache_ttl_s": _RISK_BREAKDOWN_TTL,
         "note": "value × weight = contribution. final_risk_score 는 스쿨존 배수·횡단접근 ×1.10·V2X 감산 후 [0, 1] clamp.",
     }
+    _RISK_BREAKDOWN_CACHE[intersection_id] = {"at": now, "payload": payload}
+    return payload

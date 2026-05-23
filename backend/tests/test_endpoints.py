@@ -179,6 +179,38 @@ def test_fusion_intersection_bbox_taas_filtering():
     assert summary.get("nearest_ER_load") == 0.0
 
 
+def test_fusion_risk_breakdown_decomposition():
+    """v12.49: /fusion/risk-breakdown/{iid} 23 소스 contribution 분해."""
+    r = client.get("/fusion/risk-breakdown/1007")
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("intersection_id") == "1007"
+    assert body.get("schema_version", "").startswith("fusion.v9-23src")
+    assert "final_risk_score" in body
+    assert "raw_weighted_sum" in body
+    items = body.get("components_sorted_by_contribution", [])
+    # v8/v9 23 소스 중 risk_score 계산에 포함되는 19종 (DSZ/ITS/신호는 별개)
+    assert len(items) >= 18, f"breakdown components too few: {len(items)}"
+    # 모든 항목 contribution == value × weight
+    for c in items:
+        expected = round((c["value"] or 0) * (c["weight"] or 0), 4)
+        assert abs(c["contribution"] - expected) < 1e-6, f"contribution mismatch for {c['id']}"
+    # 정렬 — contribution 내림차순
+    for i in range(len(items) - 1):
+        assert items[i]["contribution"] >= items[i+1]["contribution"]
+    # 한양대 1007 (서울 알려진 교차로) — final risk > 0
+    assert (body["final_risk_score"] or 0) > 0
+
+
+def test_fusion_risk_breakdown_rural_gps_zero():
+    """v12.49: 임의 원거리 GPS 에서 risk-breakdown 의 raw_weighted_sum 매우 낮음."""
+    r = client.get("/fusion/risk-breakdown/gps-38200-128500")
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("final_risk_score", 1.0) < 0.10
+    assert body.get("risk_level") == "LOW"
+
+
 def test_fleet_demo_tour_single_url_validation():
     """v12.36: /fleet/demo-tour 단일 URL 로 8 known + 2 rural GPS 동시 검증."""
     r = client.get("/fleet/demo-tour")

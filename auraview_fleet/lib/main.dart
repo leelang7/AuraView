@@ -408,8 +408,10 @@ class _FleetHomeState extends State<FleetHome>
                  '&bbox_max_lon=${(lon + d).toStringAsFixed(5)}';
         }
         // v12.55: cold fetch_fusion ~7s (서버 측 22 sub-fetch 병렬화 후) → 12s timeout 으로 안정 확보
+        debugPrint('[AURAVIEW] HTTP GET $url');
         final r = await http.get(Uri.parse(url))
             .timeout(const Duration(seconds: 12));
+        debugPrint('[AURAVIEW] HTTP $url → ${r.statusCode} ${r.body.length}B');
         if (r.statusCode == 200) {
           final body = jsonDecode(r.body) as Map<String, dynamic>;
           if (mounted) setState(() {
@@ -421,7 +423,9 @@ class _FleetHomeState extends State<FleetHome>
           // v12.13: 비정상 응답 → backoff (5xx 가 흔함)
           _fusionRetryDelay = (_fusionRetryDelay * 2).clamp(1500, 30000);
         }
-      } catch (_) {
+      } catch (e) {
+        // v12.61: HTTP 에러 silently 흡수 X — debugPrint 로 logcat 출력
+        debugPrint('[AURAVIEW] HTTP fusion FAIL: $e');
         _fusionRetryDelay = (_fusionRetryDelay * 2).clamp(1500, 30000);
       }
 

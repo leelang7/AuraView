@@ -1074,6 +1074,61 @@ def prototype_ui():
           <div class="loader-text">ANALYZING...</div>
         </div>
 
+        <!-- v12.65: 라이브 status strip — 페이지 첫 진입 즉시 '실시간' 시그널 -->
+        <div id="liveStripUi" style="position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:11px 22px;background:linear-gradient(90deg,rgba(0,200,255,0.10),rgba(124,58,237,0.06));backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,200,255,0.30);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.2px;font-weight:800;">
+          <span style="display:inline-flex;align-items:center;gap:7px;color:#00E09A;">
+            <span style="width:9px;height:9px;border-radius:50%;background:#00E09A;box-shadow:0 0 8px #00E09A;animation:livepulse 1.4s infinite;"></span>LIVE
+          </span>
+          <span style="color:#5a7a9a;">|</span>
+          <span style="color:#e2eaf5;">23 SRC <span id="liveSrcCount" style="color:#00C8FF;font-weight:900;">— / 23</span> · live <span id="liveSrcLive" style="color:#00E09A;font-weight:900;">—</span> stub <span id="liveSrcStub" style="color:#FFB020;font-weight:900;">—</span></span>
+          <span style="color:#5a7a9a;">|</span>
+          <span style="color:#e2eaf5;">FLEET <span id="liveFleetActive" style="color:#FFB020;font-weight:900;">—</span> 디바이스(5m) · <span id="liveFleet1m" style="color:#00C8FF;font-weight:900;">—</span> 이벤트(1m) · <span id="liveFleetTotal" style="color:#e2eaf5;font-weight:900;">—</span> 누적</span>
+          <span style="color:#5a7a9a;">|</span>
+          <span style="color:#e2eaf5;">RISK <span id="liveRisk" style="color:#00E09A;font-weight:900;">—</span> <span id="liveRiskLv" style="color:#7C8AA8;font-weight:700;font-size:10px;">—</span></span>
+          <span id="liveAge" style="margin-left:auto;color:#5a7a9a;font-size:10px;">갱신 —s 전</span>
+        </div>
+        <style>
+          @keyframes livepulse { 0%,100% {opacity:1;transform:scale(1);} 50% {opacity:0.45;transform:scale(0.85);} }
+        </style>
+        <script>
+          (function liveStripLoop() {
+            const fmtAge = (ts) => { const s = Math.round((Date.now()-ts)/1000); return s+'s 전'; };
+            async function tick() {
+              try {
+                const [src, live, fus] = await Promise.all([
+                  fetch('/fusion/sources').then(r=>r.json()).catch(()=>null),
+                  fetch('/fleet/live?limit=1').then(r=>r.json()).catch(()=>null),
+                  fetch('/fusion/intersection/1007').then(r=>r.json()).catch(()=>null),
+                ]);
+                if (src && src.sources) {
+                  const total = src.sources.length;
+                  const ln = src.sources.filter(s => s.mode === 'live').length;
+                  document.getElementById('liveSrcCount').textContent = total + ' / 23';
+                  document.getElementById('liveSrcLive').textContent = ln;
+                  document.getElementById('liveSrcStub').textContent = total - ln;
+                }
+                if (live) {
+                  document.getElementById('liveFleetActive').textContent = live.active_devices_5m ?? 0;
+                  document.getElementById('liveFleet1m').textContent = live.events_1m ?? 0;
+                  document.getElementById('liveFleetTotal').textContent = (live.events_total ?? 0).toLocaleString();
+                }
+                if (fus && fus.fusion_summary) {
+                  const risk = (fus.fusion_summary.fusion_risk_score ?? 0).toFixed(3);
+                  const lv = fus.fusion_summary.risk_level || 'LOW';
+                  const color = lv === 'HIGH' ? '#FF4040' : lv === 'MEDIUM' ? '#FFB020' : '#00E09A';
+                  const r = document.getElementById('liveRisk');
+                  r.textContent = risk;
+                  r.style.color = color;
+                  document.getElementById('liveRiskLv').textContent = lv + ' · 한양대 1007';
+                }
+                document.getElementById('liveAge').textContent = '갱신 ' + fmtAge(Date.now() - 100) ;
+              } catch (e) {}
+            }
+            tick();
+            setInterval(tick, 5000);
+          })();
+        </script>
+
         <!-- Boot splash: 첫 페이지 진입 임팩트 -->
         <div id="bootSplash" style="position:fixed;inset:0;background:radial-gradient(ellipse at center, #08121e 0%, #04070d 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999;transition:opacity .8s;">
           <div style="position:relative;width:88px;height:88px;">

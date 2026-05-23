@@ -158,7 +158,12 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     transition: transform 0.2s, border-color 0.2s;
+    position: relative;
   }
+  /* v12.48: live/stub 도트 */
+  .src-card::before { content: ''; position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: #404858; transition: background 0.3s, box-shadow 0.3s; }
+  .src-card[data-mode="live"]::before { background: #00E09A; box-shadow: 0 0 6px #00E09A; }
+  .src-card[data-mode="stub"]::before { background: #FFB020; box-shadow: 0 0 6px rgba(255,176,32,0.5); }
   .src-card:hover {
     transform: translateY(-2px);
     border-color: var(--safe);
@@ -432,30 +437,39 @@
       <object data="/static/visuals/fusion_diagram.svg" type="image/svg+xml" aria-label="23종 데이터 융합 다이어그램"></object>
     </div>
     <div class="caption" style="margin-bottom: 20px;">17 입력 → AuraView 융합 엔진 → 위험 점수·HUD 경보·K-MaaS 우회 4 출력</div>
+    <!-- v12.48: 라이브 ping strip — /fusion/sources 페치 결과 한 줄 -->
+    <div style="text-align:center;margin:8px auto 16px;padding:10px 14px;background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.18);border-radius:99px;max-width:680px;display:inline-flex;gap:14px;align-items:center;font-size:12px;font-family:'JetBrains Mono',monospace;font-weight:700;">
+      <span style="color:var(--muted);">지금 이 순간:</span>
+      <span><span id="story-srcs-count" style="color:var(--accent);font-weight:900;">— / 23</span> 호출 중</span>
+      <span style="color:var(--muted);">·</span>
+      <span>live <span id="story-srcs-live" style="color:#00E09A;font-weight:900;">—</span></span>
+      <span>stub <span id="story-srcs-stub" style="color:#FFB020;font-weight:900;">—</span></span>
+      <a href="/fleet/" style="color:var(--accent);text-decoration:none;margin-left:auto;">상세 →</a>
+    </div>
     <div class="sources">
-      <div class="src-card"><div class="emoji">🚦</div><div class="name">실시간 신호 정보</div><div class="desc">도로교통공단 · 교차로 신호 위상</div><span class="badge badge-v1">v1</span></div>
-      <div class="src-card"><div class="emoji">🚗</div><div class="name">VDS 실시간 소통</div><div class="desc">한국도로공사 · 속도·교통량·점유율</div><span class="badge badge-v1">v1</span></div>
-      <div class="src-card"><div class="emoji">⚠️</div><div class="name">돌발상황</div><div class="desc">한국도로공사 · 사고·낙하물·공사</div><span class="badge badge-v1">v1</span></div>
-      <div class="src-card"><div class="emoji">📊</div><div class="name">TAAS 사고이력</div><div class="desc">도로교통공단 · 과거 사고 prior</div><span class="badge badge-v1">v1</span></div>
-      <div class="src-card"><div class="emoji">🛣️</div><div class="name">ITS 국가교통정보</div><div class="desc">국토교통부 · 표준링크 속도</div><span class="badge badge-v1">v1</span></div>
-      <div class="src-card"><div class="emoji">🔒</div><div class="name">데이터안심구역</div><div class="desc">국토부 · TAAS×VDS k-익명 결합</div><span class="badge badge-v1">v1</span></div>
-      <div class="src-card"><div class="emoji">🌧️</div><div class="name">기상청 동네예보</div><div class="desc">KMA · 강수·시정·노면 위험</div><span class="badge badge-v2">v2</span></div>
-      <div class="src-card"><div class="emoji">🏥</div><div class="name">응급실 가용병상</div><div class="desc">NEDIS · 사고 심각도 보정</div><span class="badge badge-v2">v2</span></div>
-      <div class="src-card"><div class="emoji">🚴</div><div class="name">공공자전거 따릉이</div><div class="desc">서울시 · 자전거도로 prior</div><span class="badge badge-v2">v2</span></div>
-      <div class="src-card"><div class="emoji">🏫</div><div class="name">어린이보호구역</div><div class="desc">vworld · 등하교 시 위험 ×1.5</div><span class="badge badge-v3">v3 NEW</span></div>
-      <div class="src-card"><div class="emoji">❄️</div><div class="name">도로결빙 위험</div><div class="desc">RWIS · 블랙아이스 자동 추론</div><span class="badge badge-v3">v3 NEW</span></div>
-      <div class="src-card"><div class="emoji">🚶</div><div class="name">보행자 사고다발</div><div class="desc">TAAS · 광화문·강남역 등 hotspot</div><span class="badge badge-v3">v3 NEW</span></div>
-      <div class="src-card"><div class="emoji">💨</div><div class="name">미세먼지 (PM10/PM2.5)</div><div class="desc">에어코리아 · 시정·카메라 오염 위험</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
-      <div class="src-card"><div class="emoji">🎒</div><div class="name">어린이 통학로 GIS</div><div class="desc">교육부 · 등하교 시간 +0.18</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
-      <div class="src-card"><div class="emoji">⚡</div><div class="name">EV 충전소</div><div class="desc">한국환경공단 · 정차 EV 패턴 이상탐지</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
-      <div class="src-card"><div class="emoji">🛣️</div><div class="name">도로 노면 RWIS</div><div class="desc">한국도로공사 · 건조/습윤/결빙 +0.35</div><span class="badge badge-v3" style="background:rgba(124,140,180,0.15);color:#AAB0BC;">v5</span></div>
-      <div class="src-card"><div class="emoji">🔧</div><div class="name">자동차검사 부적합률</div><div class="desc">KOTSA · 구별 통계 → 잠재 위험</div><span class="badge badge-v3" style="background:rgba(124,140,180,0.15);color:#AAB0BC;">v5</span></div>
-      <div class="src-card"><div class="emoji">📈</div><div class="name">DTG 운행기록</div><div class="desc">KOTSA · 사업용 위험운전 +0.10</div><span class="badge badge-v3" style="background:rgba(160,149,255,0.15);color:#A095FF;">v6</span></div>
-      <div class="src-card"><div class="emoji">🚒</div><div class="name">119 교통사고 출동</div><div class="desc">소방청 · 골든타임 라우팅</div><span class="badge badge-v3" style="background:rgba(160,149,255,0.15);color:#A095FF;">v6</span></div>
-      <div class="src-card"><div class="emoji">🚧</div><div class="name">도로 노후도</div><div class="desc">행안부 · 포트홀+노후포장 인프라 위험</div><span class="badge badge-v3" style="background:rgba(0,200,255,0.15);color:#00C8FF;">v7</span></div>
-      <div class="src-card"><div class="emoji">🤖</div><div class="name">자율주행 V2X (KOTSA)</div><div class="desc">RSU + HD map → 위험 감산</div><span class="badge badge-v3" style="background:rgba(0,200,255,0.15);color:#00C8FF;">v7</span></div>
-      <div class="src-card"><div class="emoji">📹</div><div class="name">경찰청 단속 CCTV</div><div class="desc">속도/신호 단속 + 단속실적 → 사고다발 prior</div><span class="badge badge-v3" style="background:rgba(255,68,68,0.15);color:#FF4040;">v8 NEW</span></div>
-      <div class="src-card"><div class="emoji">🚸</div><div class="name">국토부 횡단보도 GIS</div><div class="desc">vworld · 횡단보도 50m 접근 알림 + 스쿨존 횡단</div><span class="badge badge-v3" style="background:rgba(255,68,68,0.15);color:#FF4040;">v9 NEW</span></div>
+      <div class="src-card" data-src="signal"><div class="emoji">🚦</div><div class="name">실시간 신호 정보</div><div class="desc">도로교통공단 · 교차로 신호 위상</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card" data-src="vds"><div class="emoji">🚗</div><div class="name">VDS 실시간 소통</div><div class="desc">한국도로공사 · 속도·교통량·점유율</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card" data-src="incidents"><div class="emoji">⚠️</div><div class="name">돌발상황</div><div class="desc">한국도로공사 · 사고·낙하물·공사</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card" data-src="taas"><div class="emoji">📊</div><div class="name">TAAS 사고이력</div><div class="desc">도로교통공단 · 과거 사고 prior</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card" data-src="its"><div class="emoji">🛣️</div><div class="name">ITS 국가교통정보</div><div class="desc">국토교통부 · 표준링크 속도</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card" data-src="dsz"><div class="emoji">🔒</div><div class="name">데이터안심구역</div><div class="desc">국토부 · TAAS×VDS k-익명 결합</div><span class="badge badge-v1">v1</span></div>
+      <div class="src-card" data-src="weather"><div class="emoji">🌧️</div><div class="name">기상청 동네예보</div><div class="desc">KMA · 강수·시정·노면 위험</div><span class="badge badge-v2">v2</span></div>
+      <div class="src-card" data-src="medical"><div class="emoji">🏥</div><div class="name">응급실 가용병상</div><div class="desc">NEDIS · 사고 심각도 보정</div><span class="badge badge-v2">v2</span></div>
+      <div class="src-card" data-src="bike"><div class="emoji">🚴</div><div class="name">공공자전거 따릉이</div><div class="desc">서울시 · 자전거도로 prior</div><span class="badge badge-v2">v2</span></div>
+      <div class="src-card" data-src="school_zone"><div class="emoji">🏫</div><div class="name">어린이보호구역</div><div class="desc">vworld · 등하교 시 위험 ×1.5</div><span class="badge badge-v3">v3 NEW</span></div>
+      <div class="src-card" data-src="black_ice"><div class="emoji">❄️</div><div class="name">도로결빙 위험</div><div class="desc">RWIS · 블랙아이스 자동 추론</div><span class="badge badge-v3">v3 NEW</span></div>
+      <div class="src-card" data-src="pedestrian_hotspot"><div class="emoji">🚶</div><div class="name">보행자 사고다발</div><div class="desc">TAAS · 광화문·강남역 등 hotspot</div><span class="badge badge-v3">v3 NEW</span></div>
+      <div class="src-card" data-src="air_quality"><div class="emoji">💨</div><div class="name">미세먼지 (PM10/PM2.5)</div><div class="desc">에어코리아 · 시정·카메라 오염 위험</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
+      <div class="src-card" data-src="school_route"><div class="emoji">🎒</div><div class="name">어린이 통학로 GIS</div><div class="desc">교육부 · 등하교 시간 +0.18</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
+      <div class="src-card" data-src="ev_charger"><div class="emoji">⚡</div><div class="name">EV 충전소</div><div class="desc">한국환경공단 · 정차 EV 패턴 이상탐지</div><span class="badge badge-v3" style="background:rgba(255,176,32,0.15);color:#FFB020;">v4 NEW</span></div>
+      <div class="src-card" data-src="road_surface"><div class="emoji">🛣️</div><div class="name">도로 노면 RWIS</div><div class="desc">한국도로공사 · 건조/습윤/결빙 +0.35</div><span class="badge badge-v3" style="background:rgba(124,140,180,0.15);color:#AAB0BC;">v5</span></div>
+      <div class="src-card" data-src="vehicle_inspection"><div class="emoji">🔧</div><div class="name">자동차검사 부적합률</div><div class="desc">KOTSA · 구별 통계 → 잠재 위험</div><span class="badge badge-v3" style="background:rgba(124,140,180,0.15);color:#AAB0BC;">v5</span></div>
+      <div class="src-card" data-src="dtg"><div class="emoji">📈</div><div class="name">DTG 운행기록</div><div class="desc">KOTSA · 사업용 위험운전 +0.10</div><span class="badge badge-v3" style="background:rgba(160,149,255,0.15);color:#A095FF;">v6</span></div>
+      <div class="src-card" data-src="nfa_dispatch"><div class="emoji">🚒</div><div class="name">119 교통사고 출동</div><div class="desc">소방청 · 골든타임 라우팅</div><span class="badge badge-v3" style="background:rgba(160,149,255,0.15);color:#A095FF;">v6</span></div>
+      <div class="src-card" data-src="road_age"><div class="emoji">🚧</div><div class="name">도로 노후도</div><div class="desc">행안부 · 포트홀+노후포장 인프라 위험</div><span class="badge badge-v3" style="background:rgba(0,200,255,0.15);color:#00C8FF;">v7</span></div>
+      <div class="src-card" data-src="av_hub"><div class="emoji">🤖</div><div class="name">자율주행 V2X (KOTSA)</div><div class="desc">RSU + HD map → 위험 감산</div><span class="badge badge-v3" style="background:rgba(0,200,255,0.15);color:#00C8FF;">v7</span></div>
+      <div class="src-card" data-src="police_cam"><div class="emoji">📹</div><div class="name">경찰청 단속 CCTV</div><div class="desc">속도/신호 단속 + 단속실적 → 사고다발 prior</div><span class="badge badge-v3" style="background:rgba(255,68,68,0.15);color:#FF4040;">v8 NEW</span></div>
+      <div class="src-card" data-src="crosswalk"><div class="emoji">🚸</div><div class="name">국토부 횡단보도 GIS</div><div class="desc">vworld · 횡단보도 50m 접근 알림 + 스쿨존 횡단</div><span class="badge badge-v3" style="background:rgba(255,68,68,0.15);color:#FF4040;">v9 NEW</span></div>
     </div>
   </div>
 </section>
@@ -763,6 +777,23 @@
     }
     recompute();
   })();
+
+  // v12.48: 23 src-card 라이브 ping (페이지 로드 시 1회)
+  fetch('/fusion/sources').then(r => r.json()).then(j => {
+    const sources = j.sources || [];
+    const liveN = sources.filter(s => s.mode === 'live').length;
+    const stubN = sources.filter(s => s.mode !== 'live').length;
+    const cc = document.getElementById('story-srcs-count');
+    const lv = document.getElementById('story-srcs-live');
+    const sb = document.getElementById('story-srcs-stub');
+    if (cc) cc.textContent = `${sources.length} / 23`;
+    if (lv) lv.textContent = liveN;
+    if (sb) sb.textContent = stubN;
+    sources.forEach(s => {
+      const card = document.querySelector(`.src-card[data-src="${s.id}"]`);
+      if (card) card.setAttribute('data-mode', s.mode || 'stub');
+    });
+  }).catch(() => {});
 </script>
 
 </body>

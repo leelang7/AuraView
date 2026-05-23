@@ -7379,52 +7379,76 @@ class _AuraIconPainter extends CustomPainter {
   bool shouldRepaint(_AuraIconPainter old) => old.color != color;
 }
 
-class _RecPill extends StatelessWidget {
+class _RecPill extends StatefulWidget {
   final bool on;
   final VoidCallback? onTap;
   const _RecPill({required this.on, this.onTap});
+  @override
+  State<_RecPill> createState() => _RecPillState();
+}
+
+class _RecPillState extends State<_RecPill> with SingleTickerProviderStateMixin {
+  late AnimationController _pulse;
+  @override
+  void initState() {
+    super.initState();
+    // v12.64: OFF 상태일 때 부드러운 펄스 (사용자가 REC 어디 있는지 못 찾던 문제 해결)
+    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+      ..repeat(reverse: true);
+  }
+  @override
+  void dispose() { _pulse.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
-    final col = on ? _danger : Colors.white;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-        height: 42,
-        padding: const EdgeInsets.symmetric(horizontal: 22),
-        decoration: BoxDecoration(
-          // Tesla "Engage AP" 풍 — pure dark glass + bright accent border
-          gradient: on
-            ? LinearGradient(
-                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [_danger.withValues(alpha: 0.32), _danger.withValues(alpha: 0.18)],
-              )
-            : LinearGradient(
-                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [Colors.white.withValues(alpha: 0.10), Colors.white.withValues(alpha: 0.04)],
+    final on = widget.on;
+    final col = on ? _danger : _accent;
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (_, __) {
+        final t = _pulse.value;   // 0 → 1 → 0
+        final pulseScale = on ? 1.0 : (0.97 + 0.06 * t);   // OFF 일 때만 펄스
+        final pulseGlow = on ? 0.55 : (0.20 + 0.30 * t);
+        return Transform.scale(
+          scale: pulseScale,
+          child: GestureDetector(
+            onTap: widget.onTap,
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              decoration: BoxDecoration(
+                gradient: on
+                  ? LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [_danger.withValues(alpha: 0.32), _danger.withValues(alpha: 0.18)])
+                  : LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [_accent.withValues(alpha: 0.18), _accent.withValues(alpha: 0.06)]),
+                border: Border.all(color: col.withValues(alpha: on ? 0.85 : 0.55), width: 1.5),
+                borderRadius: BorderRadius.circular(99),
+                boxShadow: [BoxShadow(color: col.withValues(alpha: pulseGlow), blurRadius: 20, spreadRadius: 1)],
               ),
-          border: Border.all(color: col.withValues(alpha: on ? 0.85 : 0.40), width: 1.4),
-          borderRadius: BorderRadius.circular(99),
-          boxShadow: on
-            ? [BoxShadow(color: _danger.withValues(alpha: 0.55), blurRadius: 18, spreadRadius: 1)]
-            : [BoxShadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 10, offset: const Offset(0, 4))],
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 8, height: 8, decoration: BoxDecoration(
-              color: col, shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: col, blurRadius: 6)],
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 9, height: 9, decoration: BoxDecoration(
+                    color: col, shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: col, blurRadius: 6)],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(on ? '자동 기록 중 · 탭하면 종료' : '여기 눌러 자동 기록 시작',
+                  style: TextStyle(color: on ? Colors.white : col, fontSize: 12,
+                    fontWeight: FontWeight.w900, letterSpacing: 0.6)),
+                if (!on) ...[
+                  const SizedBox(width: 8),
+                  Icon(Icons.arrow_upward, color: col, size: 14),
+                ],
+              ]),
             ),
           ),
-          const SizedBox(width: 10),
-          Text(on ? 'AURA · ENGAGED' : 'TAP TO ENGAGE',
-            style: TextStyle(color: col, fontSize: 11,
-              fontWeight: FontWeight.w900, letterSpacing: 2.0)),
-        ]),
-      ),
+        );
+      },
     );
   }
 }

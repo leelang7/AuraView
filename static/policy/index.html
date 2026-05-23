@@ -441,9 +441,16 @@ function renderHotspots(arr) {
     const cls = h.risk >= 0.7 ? 'high' : (h.risk >= 0.5 ? 'mid' : 'low');
     const ci = (h.ci && h.ci.length === 2) ? `CI [${h.ci[0].toFixed(2)} — ${h.ci[1].toFixed(2)}]` : '';
     const factors = (h.factors || []).join(' · ');
-    return `<div class="hot-row ${cls}">
+    // v12.56: iid 있으면 risk-breakdown drill-down 가능
+    const drillUrl = h.iid ? `/fusion/risk-breakdown/${h.iid}` : null;
+    const drillBadge = drillUrl
+      ? ` <a href="${drillUrl}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:10px;font-weight:800;padding:1px 6px;background:rgba(0,200,255,0.10);border-radius:99px;margin-left:6px;" onclick="event.stopPropagation();">기여도 분해 →</a>`
+      : '';
+    const cursorStyle = drillUrl ? 'cursor:pointer;' : '';
+    const onClick = drillUrl ? `onclick="window.open('${drillUrl}','_blank')"` : '';
+    return `<div class="hot-row ${cls}" ${onClick} style="${cursorStyle}">
       <div>
-        <div class="nm">${h.rank}. ${escapeHtml(h.name)}</div>
+        <div class="nm">${h.rank}. ${escapeHtml(h.name)}${drillBadge}</div>
         <div class="sub">${escapeHtml(factors)}</div>
       </div>
       <div>

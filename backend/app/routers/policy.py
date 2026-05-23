@@ -163,16 +163,17 @@ def policy_stats():
             "ci_half_width_avg": 0.07,
         },
         "top_hotspots": [
-            {"rank": 1, "name": "강남대로 · 학동초 정문",  "risk": 0.91, "ci": [0.86, 0.94], "factors": ["school_zone×1.5", "ped+0.30", "morning_boost", "TAAS 17/90d"]},
-            {"rank": 2, "name": "종로 · 청운초 횡단보도",  "risk": 0.84, "ci": [0.79, 0.88], "factors": ["school_zone×1.5", "speed47kmh", "school_route"]},
-            {"rank": 3, "name": "서초 · 양재대로 14출구", "risk": 0.79, "ci": [0.74, 0.83], "factors": ["DTG_truck0.71", "TAAS 23/90d"]},
-            {"rank": 4, "name": "마포 · 신촌역 4출구",    "risk": 0.72, "ci": [0.67, 0.76], "factors": ["ped 17", "right_turn×1.2"]},
-            {"rank": 5, "name": "강북 · 미아초 후문",     "risk": 0.68, "ci": [0.62, 0.73], "factors": ["school_zone", "ice+0.32", "ped_hotspot"]},
-            {"rank": 6, "name": "송파 · 잠실역 8출구",    "risk": 0.63, "ci": [0.58, 0.68], "factors": ["bike+0.22", "ttareng_dense"]},
-            {"rank": 7, "name": "동대문 · 신설동역 1출구", "risk": 0.58, "ci": [0.53, 0.62], "factors": ["pm10_142", "golden_time_risk"]},
-            {"rank": 8, "name": "은평 · 응암오거리",       "risk": 0.42, "ci": [0.37, 0.47], "factors": ["DTG_bus0.55", "TAAS 8/90d"]},
-            {"rank": 9, "name": "강서 · 가양역 5출구",     "risk": 0.38, "ci": [0.33, 0.43], "factors": ["TAAS 6/90d", "ev_stable"]},
-            {"rank": 10,"name": "서초 · 양재초 진입로",    "risk": 0.31, "ci": [0.27, 0.36], "factors": ["school_zone", "school_route", "TAAS 1/90d"]},
+            # v12.56: iid 매핑 — 8 known intersection 까지 risk-breakdown drill-down 가능
+            {"rank": 1, "name": "강남대로 · 학동초 정문",  "iid": "2024", "risk": 0.91, "ci": [0.86, 0.94], "factors": ["school_zone×1.5", "ped+0.30", "morning_boost", "TAAS 17/90d"]},
+            {"rank": 2, "name": "종로 · 청운초 횡단보도",  "iid": "3015", "risk": 0.84, "ci": [0.79, 0.88], "factors": ["school_zone×1.5", "speed47kmh", "school_route"]},
+            {"rank": 3, "name": "서초 · 양재대로 14출구", "iid": "1007", "risk": 0.79, "ci": [0.74, 0.83], "factors": ["DTG_truck0.71", "TAAS 23/90d"]},
+            {"rank": 4, "name": "마포 · 신촌역 4출구",    "iid": "5006", "risk": 0.72, "ci": [0.67, 0.76], "factors": ["ped 17", "right_turn×1.2"]},
+            {"rank": 5, "name": "강북 · 미아초 후문",     "iid": "7045", "risk": 0.68, "ci": [0.62, 0.73], "factors": ["school_zone", "ice+0.32", "ped_hotspot"]},
+            {"rank": 6, "name": "송파 · 잠실역 8출구",    "iid": "4011", "risk": 0.63, "ci": [0.58, 0.68], "factors": ["bike+0.22", "ttareng_dense"]},
+            {"rank": 7, "name": "동대문 · 신설동역 1출구", "iid": "8033", "risk": 0.58, "ci": [0.53, 0.62], "factors": ["pm10_142", "golden_time_risk"]},
+            {"rank": 8, "name": "은평 · 응암오거리",       "iid": "6022", "risk": 0.42, "ci": [0.37, 0.47], "factors": ["DTG_bus0.55", "TAAS 8/90d"]},
+            {"rank": 9, "name": "강서 · 가양역 5출구",                    "risk": 0.38, "ci": [0.33, 0.43], "factors": ["TAAS 6/90d", "ev_stable"]},
+            {"rank": 10,"name": "서초 · 양재초 진입로",                   "risk": 0.31, "ci": [0.27, 0.36], "factors": ["school_zone", "school_route", "TAAS 1/90d"]},
         ],
         "recommendations": [
             {

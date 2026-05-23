@@ -209,18 +209,24 @@ def verify_pipeline():
         "is_live": events_1m > 0 or len(devices_5m) > 0,
     }
 
-    # 5) Fusion schema (서버-네이티브 sync 확인)
+    # 5+6) v12.59: 1007 + gps-38200-128500 fetch_fusion 병렬 + 1007 중복 제거 (verify 응답 14.8s → ~7s)
     try:
-        from ..services import public_api
-        f = public_api.fetch_fusion("1007").to_dict()
+        from ..services import public_api as _pa
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            fut_known = ex.submit(lambda: _pa.fetch_fusion("1007").to_dict())
+            fut_rural = ex.submit(lambda: _pa.fetch_fusion("gps-38200-128500").to_dict())
+            known = fut_known.result()
+            home_like = fut_rural.result()
+        f = known                                # alias for fusion_schema check
         schema = f["fusion_summary"]["schema_version"]
         sources_n = f["fusion_summary"]["sources_fused"]
-        # v12.20+: v7-21src / v8-22src / v9-23src 호환
         schema_ok = (schema.startswith("fusion.v7-21src")
                   or schema.startswith("fusion.v8-22src")
                   or schema.startswith("fusion.v9-23src"))
     except Exception as e:
         schema, sources_n, schema_ok = f"error: {e}", 0, False
+        known = home_like = None
     report["components"]["fusion_schema"] = {
         "ok": schema_ok,
         "schema_version": schema,
@@ -230,10 +236,8 @@ def verify_pipeline():
 
     # 6) v12.20: 위치 인식 정확성 — 임의 GPS는 unknown/0, known 교차로는 정상값 반환?
     try:
-        from ..services import public_api as _pa
-        # v12.20: 시외/원거리 임의 GPS — fixture 데이터 영향 없는 영역 (강원)
-        home_like = _pa.fetch_fusion("gps-38200-128500").to_dict()    # 강원 산악 임의 GPS
-        known = _pa.fetch_fusion("1007").to_dict()                    # 한양대역
+        if home_like is None or known is None:
+            raise RuntimeError("fusion fetch 실패")
         h_sum = home_like["fusion_summary"]
         k_sum = known["fusion_summary"]
         h_signal = home_like["sources"]["signal"]["data"]["body"]["items"]["item"]["stPdsgSttsNm"]

@@ -293,9 +293,20 @@
     </div>
   </div>
 
+  <!-- v12.58: 23 소스 mini strip — 안전구역 분석은 23종 융합 결과 -->
+  <div style="margin:18px 0 10px;padding:12px 16px;background:rgba(160,149,255,0.04);border:1px solid rgba(160,149,255,0.25);border-radius:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;">
+    <span style="font-weight:800;color:var(--text);">안전구역 분석은 23종 공공데이터 융합 결과 →</span>
+    <span style="color:var(--muted);font-family:monospace;font-size:11px;">
+      <span id="sz-srcs-count">— / 23</span> ·
+      live <span id="sz-srcs-live" style="color:#00E09A;font-weight:900;">—</span> /
+      stub <span id="sz-srcs-stub" style="color:#FFB020;font-weight:900;">—</span>
+    </span>
+    <a href="/fleet/" style="margin-left:auto;color:#A095FF;text-decoration:none;font-weight:800;font-size:11px;">23 소스 라이브 grid →</a>
+  </div>
+
   <div class="meta">
     AuraView K-Perception · 안전구역 모듈 v1 ·
-    데이터: <code>school_zone</code> · <code>school_route</code> · <code>pedestrian_hotspot</code> · <code>medical</code> · <code>black_ice</code><br>
+    데이터: <code>school_zone</code> · <code>school_route</code> · <code>pedestrian_hotspot</code> · <code>medical</code> · <code>black_ice</code> · <code>crosswalk</code> (+ 18 다른 소스)<br>
     <a href="/scorecard/">⭐ 가산점 25점 적격 증거표</a> ·
     <a href="/fusion/intersection/1007">교차로 융합 샘플</a> ·
     <a href="/competition/">제안서</a>
@@ -326,6 +337,16 @@ document.querySelectorAll('[data-probe]').forEach(async (span) => {
 fetch('/fusion/sources').then(r => r.json()).then(j => {
   const s = document.getElementById('schema-info');
   if (s && j.schema_version) { s.textContent = j.schema_version.toUpperCase(); s.style.color = '#00E09A'; }
+  // v12.58: 23 소스 mini strip
+  const sources = j.sources || [];
+  const liveN = sources.filter(x => x.mode === 'live').length;
+  const stubN = sources.filter(x => x.mode !== 'live').length;
+  const mc = document.getElementById('sz-srcs-count');
+  const ml = document.getElementById('sz-srcs-live');
+  const ms = document.getElementById('sz-srcs-stub');
+  if (mc) mc.textContent = `${sources.length} / 23`;
+  if (ml) ml.textContent = liveN;
+  if (ms) ms.textContent = stubN;
 }).catch(() => {});
 </script>
 </body>

@@ -1857,22 +1857,40 @@ class _UnifiedStatusBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            // 브랜드 dot — 글로우 (status indicator)
-            Container(
-              width: 10, height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: brandCol,
-                boxShadow: [BoxShadow(color: brandCol, blurRadius: 8)],
+            // v12.63: brand 아이콘 복원 — 단순 dot → AuraView 로고 (눈+호 모양, status 글로우)
+            Stack(alignment: Alignment.center, children: [
+              // 글로우 펄스 (status indicator)
+              Container(
+                width: 26, height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    brandCol.withValues(alpha: 0.30),
+                    brandCol.withValues(alpha: 0.0),
+                  ]),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            // 브랜드 로고
-            const Text('AURAVIEW',
-              style: TextStyle(
-                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900,
-                letterSpacing: 2.5, height: 1.0,
-              )),
+              // AuraView 아이콘 (눈 모양 — 카메라/관측 시그니처)
+              CustomPaint(
+                size: const Size(22, 22),
+                painter: _AuraIconPainter(color: brandCol),
+              ),
+            ]),
+            const SizedBox(width: 8),
+            // 브랜드 로고 + subtitle
+            Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              const Text('AURAVIEW',
+                style: TextStyle(
+                  color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900,
+                  letterSpacing: 2.5, height: 1.0,
+                )),
+              const SizedBox(height: 1),
+              Text('K-PERCEPTION',
+                style: TextStyle(
+                  color: brandCol.withValues(alpha: 0.75), fontSize: 7.5,
+                  fontWeight: FontWeight.w800, letterSpacing: 1.6, height: 1.0,
+                )),
+            ]),
             const SizedBox(width: 14),
             Container(width: 1, height: 22, color: Colors.white.withValues(alpha: 0.10)),
             const SizedBox(width: 14),
@@ -7325,6 +7343,42 @@ class _TeslaLabel extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════
 // v11 2026-05-19: floating REC pill (옛 _DriveButton 큰 거 폐기, 작은 알약)
 // ═══════════════════════════════════════════════════════════════
+// v12.63: AuraView brand 아이콘 — 눈+호 모양 (관측/카메라 시그니처)
+class _AuraIconPainter extends CustomPainter {
+  final Color color;
+  _AuraIconPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final cx = w / 2, cy = h / 2;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.6;
+    // 1) 상단 호 — '레이더 / 시야' 곡선
+    final arcPath = Path()..moveTo(w * 0.18, cy)..quadraticBezierTo(cx, h * 0.18, w * 0.82, cy);
+    canvas.drawPath(arcPath, stroke);
+    // 2) 하단 호 — '도로 / 지면' 곡선
+    final groundPath = Path()..moveTo(w * 0.18, cy)..quadraticBezierTo(cx, h * 0.82, w * 0.82, cy);
+    canvas.drawPath(groundPath, stroke);
+    // 3) 중앙 동공 — 채워진 작은 원 (status dot 역할)
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), w * 0.16, fillPaint);
+    // 4) 글로우 외곽 점
+    final glowPaint = Paint()
+      ..color = color.withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), w * 0.28, glowPaint..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2));
+  }
+
+  @override
+  bool shouldRepaint(_AuraIconPainter old) => old.color != color;
+}
+
 class _RecPill extends StatelessWidget {
   final bool on;
   final VoidCallback? onTap;

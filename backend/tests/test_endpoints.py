@@ -179,6 +179,19 @@ def test_fusion_intersection_bbox_taas_filtering():
     assert summary.get("nearest_ER_load") == 0.0
 
 
+def test_policy_stats_hotspots_iid_drill_down():
+    """v12.56: /policy/stats top_hotspots 8개에 iid 매핑 — risk-breakdown drill 가능."""
+    r = client.get("/policy/stats")
+    assert r.status_code == 200
+    body = r.json()
+    hotspots = body.get("top_hotspots", [])
+    iid_count = sum(1 for h in hotspots if h.get("iid"))
+    assert iid_count >= 8, f"top hotspots 의 iid 매핑 부족: {iid_count}"
+    known_iids = {"1007", "2024", "3015", "4011", "5006", "6022", "7045", "8033"}
+    mapped = {h["iid"] for h in hotspots if "iid" in h}
+    assert known_iids <= mapped, f"known intersection 누락: {known_iids - mapped}"
+
+
 def test_fusion_risk_breakdown_decomposition():
     """v12.49: /fusion/risk-breakdown/{iid} 23 소스 contribution 분해."""
     r = client.get("/fusion/risk-breakdown/1007")

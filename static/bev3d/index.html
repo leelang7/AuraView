@@ -142,25 +142,41 @@ window.AURA_EMBED = false;
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const stage = document.getElementById('stage');
 const W = () => stage.clientWidth, H = () => stage.clientHeight;
 
-// ── Scene
+// ── Scene (도시 야경 톤)
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x05080F);
-scene.fog = new THREE.Fog(0x05080F, 40, 140);
+scene.background = new THREE.Color(0x040712);
+scene.fog = new THREE.FogExp2(0x080d18, 0.011);
 
-// ── Camera (시작은 위에서 약간 비스듬 — Tesla FSD 풍)
-const camera = new THREE.PerspectiveCamera(55, W()/H(), 0.1, 500);
+// ── Camera
+const camera = new THREE.PerspectiveCamera(50, W()/H(), 0.1, 500);
 camera.position.set(0, 22, 28);
 camera.lookAt(0, 0, 0);
 
-// ── Renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference:'high-performance' });
+// ── Renderer (v12.66 강화: 그림자 + tone mapping + HDR)
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference:'high-performance', logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(W(), H());
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 stage.appendChild(renderer.domElement);
+
+// ── Post-processing (Bloom: 네온 발광 톤)
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(W(), H()), 0.65, 0.3, 0.15);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
 
 // ── Controls
 const ctrls = new OrbitControls(camera, renderer.domElement);
@@ -168,22 +184,89 @@ ctrls.enableDamping = true;
 ctrls.dampingFactor = 0.08;
 ctrls.minDistance = 12; ctrls.maxDistance = 80;
 ctrls.maxPolarAngle = Math.PI * 0.49;
+ctrls.autoRotate = true;
+ctrls.autoRotateSpeed = 0.25;
 document.getElementById('btn-reset').onclick = () => {
   camera.position.set(0, 22, 28); ctrls.target.set(0,0,0); ctrls.update();
 };
 
-// ── Lights
-scene.add(new THREE.AmbientLight(0x6080A0, 0.55));
-const dl = new THREE.DirectionalLight(0xFFFFFF, 0.9); dl.position.set(20, 30, 10); scene.add(dl);
+// ── Lights (v12.66: 야간 도시 톤 — hemisphere + 그림자 + rim light)
+scene.add(new THREE.HemisphereLight(0x4070A0, 0x0A0F18, 0.55));
+const moonLight = new THREE.DirectionalLight(0xCCDDFF, 0.9);
+moonLight.position.set(25, 40, 15);
+moonLight.castShadow = true;
+moonLight.shadow.mapSize.set(2048, 2048);
+moonLight.shadow.camera.near = 1;
+moonLight.shadow.camera.far = 120;
+moonLight.shadow.camera.left = -60;
+moonLight.shadow.camera.right = 60;
+moonLight.shadow.camera.top = 60;
+moonLight.shadow.camera.bottom = -60;
+moonLight.shadow.bias = -0.0005;
+scene.add(moonLight);
+// Rim accent light (cyan)
+const rimLight = new THREE.PointLight(0x00C8FF, 0.6, 80, 1.5);
+rimLight.position.set(-15, 8, -20);
+scene.add(rimLight);
+const rimLight2 = new THREE.PointLight(0x7C3AED, 0.45, 70, 1.5);
+rimLight2.position.set(20, 6, 25);
+scene.add(rimLight2);
 
-// ── Ground (도로 표면, 격자)
+// ── Ground (아스팔트 + 메탈릭 반사 + 그림자 수신)
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(120, 120),
-  new THREE.MeshStandardMaterial({ color: 0x0A1018, roughness: 0.9, metalness: 0 })
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshStandardMaterial({ color: 0x080C14, roughness: 0.75, metalness: 0.15 })
 );
-ground.rotation.x = -Math.PI / 2; scene.add(ground);
-const grid = new THREE.GridHelper(120, 60, 0x1E3050, 0x0E1A28);
-grid.position.y = 0.01; scene.add(grid);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+const grid = new THREE.GridHelper(120, 48, 0x183050, 0x0A1622);
+grid.position.y = 0.012;
+grid.material.transparent = true;
+grid.material.opacity = 0.55;
+scene.add(grid);
+
+// ── v12.66: 주변 건물 array (야간 도시 — 네온 창문 발광)
+function makeBuildings() {
+  const g = new THREE.Group();
+  const rng = (s) => { let x = s; return () => (x = (x * 16807) % 2147483647) / 2147483647; };
+  const r = rng(42);
+  // 도로 외곽 직사각형 영역에 건물 배치
+  const zones = [
+    { x0: -55, x1: -12, z0: -55, z1: -12 },
+    { x0:  12, x1:  55, z0: -55, z1: -12 },
+    { x0: -55, x1: -12, z0:  12, z1:  55 },
+    { x0:  12, x1:  55, z0:  12, z1:  55 },
+  ];
+  for (const z of zones) {
+    for (let i = 0; i < 22; i++) {
+      const w = 3 + r() * 5;
+      const d = 3 + r() * 5;
+      const h = 6 + r() * 28;
+      const x = z.x0 + r() * (z.x1 - z.x0 - w);
+      const zp = z.z0 + r() * (z.z1 - z.z0 - d);
+      const baseColor = 0x0A1622;
+      const mat = new THREE.MeshStandardMaterial({
+        color: baseColor, roughness: 0.65, metalness: 0.35,
+        emissive: 0x00C8FF, emissiveIntensity: 0.04 + r() * 0.06,
+      });
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x + w/2, h/2, zp + d/2);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+      // 옥상 네온 라이트 라인
+      if (r() > 0.55) {
+        const lineMat = new THREE.MeshBasicMaterial({ color: r() > 0.5 ? 0x00C8FF : 0xFF4A88 });
+        const line = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.18, 0.18), lineMat);
+        line.position.set(x + w/2, h + 0.15, zp + d/2 - d/2 + 0.2);
+        g.add(line);
+      }
+    }
+  }
+  return g;
+}
+scene.add(makeBuildings());
 
 // ── 도로 (가로 + 세로, 우측통행)
 function makeRoad() {
@@ -211,20 +294,55 @@ function makeRoad() {
 }
 scene.add(makeRoad());
 
-// ── 차량 박스 (간단한 voxel — Tesla FSD BEV 느낌)
-function makeVehicle(color, w=2.0, l=4.5, h=1.4) {
-  const geo = new THREE.BoxGeometry(w, h, l);
-  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.20, roughness: 0.5 });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.y = h/2;
-  return mesh;
+// v12.66: 차량 복합 mesh — body lower + cabin upper + 헤드라이트 / 테일라이트 + 그림자
+function makeVehicle(color, w=1.95, l=4.5, h=1.45) {
+  const g = new THREE.Group();
+  // 1) 차체 (lower body) — 메탈릭 paint
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color, roughness: 0.30, metalness: 0.75,
+    emissive: color, emissiveIntensity: 0.06,
+  });
+  const lowerH = h * 0.55;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, lowerH, l), bodyMat);
+  body.position.y = lowerH / 2;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  g.add(body);
+  // 2) 캐빈 (upper) — 살짝 좁고 짧게, 다크 글래스 톤
+  const cabinH = h * 0.45;
+  const cabinMat = new THREE.MeshPhysicalMaterial({
+    color: 0x05080F, roughness: 0.12, metalness: 0.2,
+    transmission: 0.6, thickness: 0.2, ior: 1.4,
+  });
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(w * 0.88, cabinH, l * 0.55), cabinMat);
+  cabin.position.set(0, lowerH + cabinH / 2, l * 0.05);
+  cabin.castShadow = true;
+  g.add(cabin);
+  // 3) 헤드라이트 (전방 좌우, 발광)
+  const hlMat = new THREE.MeshBasicMaterial({ color: 0xFFFFEE });
+  const hl1 = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), hlMat);
+  hl1.position.set(-w/2 + 0.25, lowerH * 0.7, -l/2 + 0.1);
+  g.add(hl1);
+  const hl2 = hl1.clone();
+  hl2.position.x = w/2 - 0.25;
+  g.add(hl2);
+  // 4) 테일라이트 (후방, 적색)
+  const tlMat = new THREE.MeshBasicMaterial({ color: 0xFF2828 });
+  const tl1 = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.16, 0.06), tlMat);
+  tl1.position.set(-w/2 + 0.32, lowerH * 0.8, l/2 - 0.06);
+  g.add(tl1);
+  const tl2 = tl1.clone();
+  tl2.position.x = w/2 - 0.32;
+  g.add(tl2);
+  return g;
 }
 
 // ── 내 차 (ego) — Tesla 비주얼 톤: 청록 발광 + 외곽 글로우
 const ego = makeVehicle(0x00C8FF);
 ego.position.set(0, 0, 3);
 ego.userData.label = 'EGO';
-ego.material.emissiveIntensity = 0.45;
+// v12.66: ego 자체 발광 강화 (group이 되었으므로 첫 자식 body material)
+ego.traverse(o => { if (o.isMesh && o.material && o.material.emissiveIntensity != null) o.material.emissiveIntensity = 0.45; });
 scene.add(ego);
 // ego 외곽 글로우 링
 const egoGlow = new THREE.Mesh(
@@ -767,7 +885,8 @@ function tick(now) {
   inferFrame(now);
   riskBoard.lookAt(camera.position);
   ctrls.update();
-  renderer.render(scene, camera);
+  // v12.66: postprocessing composer 사용 (Bloom 효과 적용)
+  composer.render();
   requestAnimationFrame(tick);
 }
 tick();
@@ -776,6 +895,8 @@ tick();
 window.addEventListener('resize', () => {
   camera.aspect = W() / H(); camera.updateProjectionMatrix();
   renderer.setSize(W(), H());
+  composer.setSize(W(), H());
+  bloom.resolution.set(W(), H());
 });
 </script>
 

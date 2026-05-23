@@ -234,6 +234,21 @@
 
   </div>
 
+  <!-- v12.47: 23종 공공데이터 mini strip — 데이터융합 5점 증빙 직접 노출 -->
+  <div style="margin:18px 0;padding:14px 18px;background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.30);border-radius:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:9.5px;letter-spacing:2px;color:var(--muted);font-weight:800;margin-bottom:3px;">// 데이터융합 5점 증빙</div>
+      <div style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-0.3px;">
+        지금 <span id="sc-srcs-counter" style="color:var(--accent);">— / 23</span> 종 공공데이터 호출 중
+      </div>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">
+      live <span id="sc-srcs-live" style="color:#00E09A;font-weight:900;">—</span> ·
+      stub <span id="sc-srcs-stub" style="color:#FFB020;font-weight:900;">—</span>
+    </div>
+    <a href="/fleet/" style="margin-left:auto;padding:9px 16px;background:rgba(0,200,255,0.18);color:var(--accent);text-decoration:none;font-weight:800;border-radius:99px;font-size:12px;border:1px solid rgba(0,200,255,0.40);">23 소스 라이브 grid 보기 →</a>
+  </div>
+
   <section class="legend">
     <h3>핵심 라이브 엔드포인트 (즉시 검증용)</h3>
     <ul>
@@ -291,13 +306,22 @@
       span.textContent = '✗ ' + label;
     }
   });
-  // 스키마 버전 — /fusion/sources 에서 추출
+  // 스키마 버전 + v12.47 23 소스 mini strip
   fetch('/fusion/sources').then(r => r.json()).then(j => {
     const s = document.getElementById('schema-info');
     if (s && j.schema_version) {
       s.textContent = j.schema_version.toUpperCase();
       s.style.color = '#00C8FF';
     }
+    const sources = j.sources || [];
+    const liveN = sources.filter(x => x.mode === 'live').length;
+    const stubN = sources.filter(x => x.mode !== 'live').length;
+    const mc = document.getElementById('sc-srcs-counter');
+    const ml = document.getElementById('sc-srcs-live');
+    const ms = document.getElementById('sc-srcs-stub');
+    if (mc) mc.textContent = `${sources.length} / 23`;
+    if (ml) ml.textContent = liveN;
+    if (ms) ms.textContent = stubN;
   }).catch(() => {});
 })();
 </script>

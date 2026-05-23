@@ -37,11 +37,21 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - fleet 대시보드 신규 차트: 라벨 / 가로 막대 (raw 표시) / contribution + weight, 큰 기여 황색
 - 한양대 1007 top 5: VDS(0.050) / ER(0.022) / 스쿨존(0.016) / 우천(0.013) / DTG(0.003)
 
-### Performance — /fleet/demo-tour 응답시간 30s+ → <2s (v12.43)
-라이브 서버 timeout (10 fetch_fusion × 23 외부 API 시도 sequential = 230 호출):
-- `_DEMO_TOUR_CACHE` 60s TTL — 캐시 hit 시 <1s
-- `ThreadPoolExecutor(max_workers=10)` — 10 fetch_fusion 동시 실행 (sequential 30s → parallel ~3s)
-- `payload.performance` 메타 (cache_ttl_s/parallelized/max_workers) 노출
+### Performance — 라이브 응답시간 대폭 단축 (v12.43+v12.52+v12.53)
+**v12.43** /fleet/demo-tour: 30s+ → ~15s (cold) / ~1s (cache hit)
+- `_DEMO_TOUR_CACHE` 60s TTL
+- `ThreadPoolExecutor(max_workers=10)` 외부 fetch_fusion 10건 병렬
+
+**v12.52** /fusion/risk-breakdown: 30s+ → ~3s (cold) / <300ms (cache hit)
+- `_RISK_BREAKDOWN_CACHE` 60s TTL per intersection
+- 라이브 검증: cold 28s → cache hit 299ms
+
+**v12.53** fetch_fusion 근본 병렬화 (가장 임팩트 큼):
+- 22 sub-fetch sequential → `ThreadPoolExecutor(max_workers=12)` 동시 실행
+- weather 만 black_ice 의존 → 두 단계 분리
+- 라이브 검증: /fusion/intersection cold ~28s → **6.5s** (4배 단축)
+- pytest 풀 스위트 **55s → 30s** (-45%)
+- 모든 fusion 호출 (demo-tour / risk-breakdown / intersection) 동시 혜택
 
 ### Added — HUD mockup SVG (v12.41) + /gallery 등록 (v12.42)
 실 디바이스 캡쳐 대체용 마케팅 자료:

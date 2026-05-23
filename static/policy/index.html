@@ -362,6 +362,10 @@
     <div>
       <div class="panel" style="margin-bottom:14px;">
         <h3>위험 상위 10개 교차로 <span class="sub">신뢰구간 95% · <code style="color:var(--accent);background:rgba(0,200,255,0.08);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:10px;">GET /policy/stats</code></span></h3>
+        <!-- v12.60: 점수 차이 안내 — 정책 risk (장기 사고통계 + 정책 가중) vs 실시간 fusion_risk_score (분 단위) -->
+        <div style="margin:6px 0 12px;padding:8px 12px;background:rgba(255,176,32,0.06);border-left:3px solid rgba(255,176,32,0.45);border-radius:0 6px 6px 0;font-size:10.5px;color:var(--muted);line-height:1.5;">
+          <b style="color:#FFB020;">참고:</b> 아래 risk 점수는 <b>장기 정책 위험 지수</b> (TAAS 사고통계 + 정책 가중 + 시간대 가중). 클릭 시 열리는 <b style="color:var(--accent);">실시간 기여도 분해</b> 의 fusion_risk_score 와는 별개 — 분 단위 환경 risk 라서 평소엔 LOW 가 정상.
+        </div>
         <!-- v10.1: API /policy/stats 에서 동적 렌더 -->
         <div id="hotspots-list">
           <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">⏳ /policy/stats 페치 중…</div>

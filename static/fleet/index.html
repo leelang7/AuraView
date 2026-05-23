@@ -211,6 +211,23 @@
     </div>
   </section>
 
+  <!-- v12.49: 위험점수 기여도 breakdown — 23 소스 각각이 risk_score 에 얼마나 기여했나 -->
+  <section class="panel" style="margin-top:14px;">
+    <h3>
+      위험점수 기여도 (선택 교차로 기준)
+      <span style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted);font-weight:700;font-family:monospace;">
+        <span>final = <span id="bd-final" style="color:var(--accent);font-weight:900;">—</span></span>
+        <span>raw = <span id="bd-raw" style="color:var(--muted);font-weight:700;">—</span></span>
+      </span>
+    </h3>
+    <div id="breakdown-list" style="display:flex;flex-direction:column;gap:4px;">
+      <div style="text-align:center;color:var(--muted);font-size:11px;padding:18px 0;">⏳ /fusion/risk-breakdown 로딩…</div>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--muted);">
+      value × weight = contribution · 스쿨존 ×N · 횡단 50m ×1.10 · V2X 감산 후 final · <a href="/fusion/risk-breakdown/1007" target="_blank" style="color:var(--accent);text-decoration:none;">전체 JSON →</a>
+    </div>
+  </section>
+
   <!-- Top counters -->
   <div class="counters">
     <div class="ct pulse">
@@ -613,6 +630,38 @@ async function refreshSources() {
 }
 refreshSources();
 setInterval(refreshSources, 5000);
+
+// v12.49: 위험점수 기여도 breakdown 차트
+async function refreshBreakdown() {
+  const iidEl = document.getElementById('srcs-iid');
+  const iid = iidEl ? iidEl.value : '1007';
+  try {
+    const r = await fetch(`/fusion/risk-breakdown/${iid}`);
+    if (!r.ok) return;
+    const j = await r.json();
+    document.getElementById('bd-final').textContent = (j.final_risk_score ?? 0).toFixed(3) + ' ' + (j.risk_level || '');
+    document.getElementById('bd-raw').textContent = (j.raw_weighted_sum ?? 0).toFixed(4);
+    const items = j.components_sorted_by_contribution || [];
+    const maxC = Math.max(0.001, ...items.map(x => x.contribution));
+    document.getElementById('breakdown-list').innerHTML = items.map(c => {
+      const pct = (c.contribution / maxC * 100).toFixed(0);
+      const colorAccent = c.contribution > 0.02 ? 'var(--warn)' : c.contribution > 0.005 ? 'var(--accent)' : '#5A7090';
+      return `<div style="display:grid;grid-template-columns:130px 1fr 100px;gap:10px;align-items:center;font-size:11px;padding:3px 0;">
+        <div style="color:var(--text);font-weight:700;">${escHtml(c.label)}</div>
+        <div style="background:#0A0E18;border-radius:3px;height:14px;position:relative;">
+          <div style="background:${colorAccent};height:100%;width:${pct}%;border-radius:3px;opacity:0.8;"></div>
+          <div style="position:absolute;left:6px;top:0;line-height:14px;font-size:9.5px;color:var(--text);font-family:monospace;">${escHtml(c.raw)}</div>
+        </div>
+        <div style="text-align:right;font-family:monospace;color:var(--muted);font-size:10px;">${c.contribution.toFixed(4)} <span style="color:#5A7090;">(${c.weight})</span></div>
+      </div>`;
+    }).join('');
+  } catch (e) { console.error('breakdown fetch', e); }
+}
+refreshBreakdown();
+setInterval(refreshBreakdown, 5000);
+
+// v12.49: dropdown 변경 시 breakdown 도 즉시 갱신
+document.getElementById('srcs-iid')?.addEventListener('change', refreshBreakdown);
 
 // v12.18: 파이프라인 자가검증 (페이지 로드 시 1회)
 fetch('/fleet/verify').then(r => r.json()).then(report => {

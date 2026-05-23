@@ -224,3 +224,60 @@ def fusion_intersection(
         }
     fusion = public_api.fetch_fusion(intersection_id, link_id=link_id, bbox=bbox)
     return fusion.to_dict()
+
+
+@router.get("/risk-breakdown/{intersection_id}")
+def fusion_risk_breakdown(intersection_id: str):
+    """v12.49: 각 23 소스가 fusion_risk_score 에 얼마나 기여했는지 분해.
+
+    가중치 모델 (services/public_api.py to_dict 와 동일):
+      speed(0.13) + 돌발(0.08) + TAAS(0.08) + 우천(0.07) + ER(0.04) + 자전거(0.04)
+      + 결빙(0.06) + 보행다발(0.05) + 스쿨존(0.08) + 통학로(0.05) + PM10(0.03)
+      + EV(0.02) + 노면(0.06) + 검사(0.04) + DTG(0.06) + 119(0.05) + 노후(0.06)
+      + 단속(0.04) + 횡단(0.05) − V2X 감산
+    """
+    fusion = public_api.fetch_fusion(intersection_id).to_dict()
+    s = fusion.get("fusion_summary", {})
+
+    avg_speed = s.get("avg_vds_speed_kmh", 60) or 60
+    items = [
+        {"id": "vds",                "label": "VDS 평균속도",       "raw": f"{avg_speed}km/h",                "value": round((1 - min(avg_speed, 80)/80), 3),       "weight": 0.13},
+        {"id": "incidents",          "label": "돌발 N건",            "raw": f"{s.get('active_incidents', 0)}건", "value": round(min(s.get("active_incidents", 0), 3)/3, 3), "weight": 0.08},
+        {"id": "taas",               "label": "TAAS 사고이력",      "raw": f"{s.get('taas_accidents_nearby', 0)}건", "value": round(min(s.get("taas_accidents_nearby", 0), 7)/7, 3), "weight": 0.08},
+        {"id": "weather",            "label": "기상 (우천)",         "raw": "비" if s.get("weather_raining") else "맑음", "value": s.get("wet_road_risk_boost", 0), "weight": 0.07},
+        {"id": "medical",            "label": "ER 포화도",           "raw": f"{round((s.get('nearest_ER_load', 0) or 0)*100)}%", "value": s.get("nearest_ER_load", 0) or 0, "weight": 0.04},
+        {"id": "bike",               "label": "자전거 prior",        "raw": f"+{round((s.get('bike_lane_risk_boost', 0) or 0)*100)}%", "value": s.get("bike_lane_risk_boost", 0) or 0, "weight": 0.04},
+        {"id": "black_ice",          "label": "결빙",                "raw": "위험" if s.get("black_ice_risk") else "안전", "value": s.get("freeze_risk_boost", 0) or 0, "weight": 0.06},
+        {"id": "pedestrian_hotspot", "label": "보행 다발",            "raw": "진입" if s.get("in_pedestrian_hotspot") else "—", "value": s.get("ped_hotspot_boost", 0) or 0, "weight": 0.05},
+        {"id": "school_zone",        "label": "스쿨존 (-1)",         "raw": f"×{s.get('school_zone_multiplier', 1.0)}",   "value": max(0, (s.get("school_zone_multiplier", 1.0) or 1) - 1.0), "weight": 0.08},
+        {"id": "school_route",       "label": "통학로",              "raw": "활성" if s.get("on_school_route") else "—", "value": s.get("walk_route_boost", 0) or 0, "weight": 0.05},
+        {"id": "air_quality",        "label": "미세먼지",            "raw": f"PM10 {round(s.get('pm10_avg', 0) or 0)}", "value": s.get("air_quality_risk_boost", 0) or 0, "weight": 0.03},
+        {"id": "ev_charger",         "label": "EV 정차 확률",        "raw": f"{round((s.get('ev_dwelling_likelihood', 0) or 0)*100)}%", "value": s.get("ev_dwelling_likelihood", 0) or 0, "weight": 0.02},
+        {"id": "road_surface",       "label": "노면 상태",           "raw": str(s.get("road_surface", "dry")), "value": s.get("surface_risk_boost", 0) or 0, "weight": 0.06},
+        {"id": "vehicle_inspection", "label": "검사 부적합률",       "raw": f"{round((s.get('inspection_fail_rate_district', 0) or 0)*100)}%", "value": s.get("inspection_risk_boost", 0) or 0, "weight": 0.04},
+        {"id": "dtg",                "label": "DTG 위험점수",        "raw": f"{s.get('dtg_danger_score', 0)}", "value": s.get("dtg_risk_boost", 0) or 0, "weight": 0.06},
+        {"id": "nfa_dispatch",       "label": "119 골든타임",        "raw": f"×{s.get('nfa_severity_multiplier', 1.0)}", "value": s.get("nfa_severity_risk_boost", 0) or 0, "weight": 0.05},
+        {"id": "road_age",           "label": "도로 노후",           "raw": f"{round((s.get('road_aged_15y_plus_pct', 0) or 0)*100)}%", "value": s.get("road_age_risk_boost", 0) or 0, "weight": 0.06},
+        {"id": "police_cam",         "label": "단속 CCTV",          "raw": f"{s.get('enforcement_cam_count', 0)}대", "value": s.get("enforcement_risk_boost", 0) or 0, "weight": 0.04},
+        {"id": "crosswalk",          "label": "횡단보도",            "raw": "50m 접근" if s.get("approaching_crosswalk") else f"{s.get('crosswalk_count_within_radius', 0)}개소", "value": s.get("crosswalk_pedestrian_boost", 0) or 0, "weight": 0.05},
+    ]
+    for it in items:
+        it["contribution"] = round(it["value"] * it["weight"], 4)
+
+    items_sorted = sorted(items, key=lambda x: -x["contribution"])
+    raw_sum = sum(it["contribution"] for it in items_sorted)
+    av_reduce = s.get("av_risk_reduce", 0) or 0
+    final = s.get("fusion_risk_score", 0) or 0
+
+    return {
+        "intersection_id": intersection_id,
+        "schema_version": s.get("schema_version"),
+        "final_risk_score": final,
+        "risk_level": s.get("risk_level"),
+        "av_risk_reduce": av_reduce,
+        "approaching_crosswalk_boost_x1_10": s.get("approaching_crosswalk", False),
+        "school_zone_multiplier_applied": s.get("school_zone_multiplier", 1.0) if s.get("in_school_zone") else 1.0,
+        "raw_weighted_sum": round(raw_sum, 4),
+        "components_sorted_by_contribution": items_sorted,
+        "note": "value × weight = contribution. final_risk_score 는 스쿨존 배수·횡단접근 ×1.10·V2X 감산 후 [0, 1] clamp.",
+    }

@@ -1686,38 +1686,44 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
             "minLon": lon0 - 0.0057, "maxLon": lon0 + 0.0057,
         }
 
+    # v12.53: 23 sub-fetch 를 ThreadPoolExecutor 로 병렬화
+    # 외부 API 시도 (timeout 0.3s × 23) sequential ~7-30s → parallel ~1-3s
+    # black_ice 만 weather_data 에 의존 → 두 단계로 분리 (weather 먼저, 나머지 동시)
+    from concurrent.futures import ThreadPoolExecutor
+
     weather_data = fetch_weather(nx=nx, ny=ny)
+
+    tasks = {
+        "signal":             lambda: fetch_signal_info(intersection_id),
+        "vds":                lambda: fetch_vds_traffic(),
+        "incidents":          lambda: fetch_incidents(bbox=bbox),
+        "accidents_history":  lambda: fetch_taas_accidents(bbox=bbox),
+        "its_link":           lambda: fetch_its_link(link_id or "1000000100"),
+        "dsz_summary":        lambda: _build_dsz_summary(intersection_id),
+        "medical":            lambda: fetch_emergency_capacity(lat=lat0, lon=lon0),
+        "bike":               lambda: fetch_bike_stations(lat=lat0, lon=lon0),
+        "school_zone":        lambda: fetch_school_zone(lat=lat0, lon=lon0, radius_m=500.0),
+        "black_ice":          lambda: fetch_black_ice_risk(lat=lat0, lon=lon0, weather_data=weather_data),
+        "pedestrian_hotspot": lambda: fetch_pedestrian_hotspots(lat=lat0, lon=lon0, radius_m=500.0),
+        "air_quality":        lambda: fetch_air_quality(sido="서울"),
+        "school_route":       lambda: fetch_school_routes(lat=lat0, lon=lon0, radius_m=800.0),
+        "ev_charger":         lambda: fetch_ev_chargers(lat=lat0, lon=lon0, radius_m=500.0),
+        "road_surface":       lambda: fetch_road_surface(lat=lat0, lon=lon0, radius_m=2000.0),
+        "vehicle_inspection": lambda: fetch_vehicle_inspection(district="강남구"),
+        "dtg":                lambda: fetch_dtg_stats(vehicle_type="법인택시"),
+        "nfa_dispatch":       lambda: fetch_nfa_dispatch(sido="서울특별시"),
+        "road_age":           lambda: fetch_road_age(sido="서울특별시"),
+        "av_hub":             lambda: fetch_av_hub(region="판교"),
+        "police_cam":         lambda: fetch_police_cams(lat=lat0, lon=lon0, radius_m=800.0),
+        "crosswalk":          lambda: fetch_crosswalk_gis(lat=lat0, lon=lon0, radius_m=300.0),
+    }
+
+    with ThreadPoolExecutor(max_workers=12) as ex:
+        future_map = {key: ex.submit(fn) for key, fn in tasks.items()}
+        results = {key: fut.result() for key, fut in future_map.items()}
 
     return IntersectionFusion(
         intersection_id=intersection_id,
-        signal=fetch_signal_info(intersection_id),
-        vds=fetch_vds_traffic(),
-        incidents=fetch_incidents(bbox=bbox),
-        accidents_history=fetch_taas_accidents(bbox=bbox),
-        its_link=fetch_its_link(link_id or "1000000100"),
-        dsz_summary=_build_dsz_summary(intersection_id),
         weather=weather_data,
-        medical=fetch_emergency_capacity(lat=lat0, lon=lon0),
-        bike=fetch_bike_stations(lat=lat0, lon=lon0),
-        # v3 2026-05-16
-        school_zone=fetch_school_zone(lat=lat0, lon=lon0, radius_m=500.0),
-        black_ice=fetch_black_ice_risk(lat=lat0, lon=lon0, weather_data=weather_data),
-        pedestrian_hotspot=fetch_pedestrian_hotspots(lat=lat0, lon=lon0, radius_m=500.0),
-        # v4 2026-05-16
-        air_quality=fetch_air_quality(sido="서울"),
-        school_route=fetch_school_routes(lat=lat0, lon=lon0, radius_m=800.0),
-        ev_charger=fetch_ev_chargers(lat=lat0, lon=lon0, radius_m=500.0),
-        # v5 2026-05-18
-        road_surface=fetch_road_surface(lat=lat0, lon=lon0, radius_m=2000.0),
-        vehicle_inspection=fetch_vehicle_inspection(district="강남구"),
-        # v6 2026-05-18
-        dtg=fetch_dtg_stats(vehicle_type="법인택시"),
-        nfa_dispatch=fetch_nfa_dispatch(sido="서울특별시"),
-        # v7 2026-05-19
-        road_age=fetch_road_age(sido="서울특별시"),
-        av_hub=fetch_av_hub(region="판교"),
-        # v8 2026-05-21 — 경찰청 교통단속 CCTV (사고다발 prior)
-        police_cam=fetch_police_cams(lat=lat0, lon=lon0, radius_m=800.0),
-        # v9 2026-05-21 — 국토부 횡단보도 GIS (보행자 안전 prior + 접근 알림)
-        crosswalk=fetch_crosswalk_gis(lat=lat0, lon=lon0, radius_m=300.0),
+        **results,
     )

@@ -1286,9 +1286,14 @@ class _FleetHomeState extends State<FleetHome>
       final shot = await _cam!.takePicture();
       final bytes = await shot.readAsBytes();
       _captures++;
+      // v12.62: voxel grid 생성 활성화 (이전 _fetchBev if(false) 가드로 끊겨있던 경로 복원)
+      // 4 정밀 reason (signal_occluded / crosswalk_blocked / blind_spot_left/right) 작동에 필수
+      final voxel = _voxelizeOnDevice(bytes);
+      if (voxel != null && mounted) setState(() => _bev = voxel);
       final feat = _entropyAndMotion(bytes);
       _lastEntropy = feat.entropy;
       final reason = _classifyReason(feat);
+      debugPrint('[AURAVIEW] shadowTick reason=$reason entropy=${feat.entropy.toStringAsFixed(2)} bev=${voxel != null}');
 
       // V2V broadcast — intersection ID 가 있고 토글 ON 이면 매 틱 위치/heading/속도 송신
       if (_v2vEnabled && _intersectionId != null && _intersectionId!.isNotEmpty) {

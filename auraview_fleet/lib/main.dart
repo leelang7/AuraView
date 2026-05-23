@@ -407,8 +407,9 @@ class _FleetHomeState extends State<FleetHome>
                  '&bbox_min_lon=${(lon - d).toStringAsFixed(5)}'
                  '&bbox_max_lon=${(lon + d).toStringAsFixed(5)}';
         }
+        // v12.55: cold fetch_fusion ~7s (서버 측 22 sub-fetch 병렬화 후) → 12s timeout 으로 안정 확보
         final r = await http.get(Uri.parse(url))
-            .timeout(const Duration(seconds: 6));
+            .timeout(const Duration(seconds: 12));
         if (r.statusCode == 200) {
           final body = jsonDecode(r.body) as Map<String, dynamic>;
           if (mounted) setState(() {
@@ -429,7 +430,7 @@ class _FleetHomeState extends State<FleetHome>
         final occ = _estimateOcclusionScore();
         final r = await http.get(Uri.parse(
               '$kApiBase/signals/$iid/alternate?occlusion_score=${occ.toStringAsFixed(2)}'))
-            .timeout(const Duration(seconds: 6));
+            .timeout(const Duration(seconds: 10));
         if (r.statusCode == 200) {
           final body = jsonDecode(r.body) as Map<String, dynamic>;
           final newState = (body['signal_state']?.toString() ?? '').toLowerCase();
@@ -461,7 +462,7 @@ class _FleetHomeState extends State<FleetHome>
       try {
         final scn = _scnList[_scnIdx % _scnList.length];
         final r = await http.get(Uri.parse('$kApiBase/occupancy/demo?scenario=$scn'))
-            .timeout(const Duration(seconds: 6));
+            .timeout(const Duration(seconds: 8));
         if (r.statusCode == 200) {
           final body = jsonDecode(r.body) as Map<String, dynamic>;
           if (mounted) setState(() => _serverBev = body);

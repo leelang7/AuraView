@@ -167,14 +167,15 @@ renderer.setSize(W(), H());
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.toneMappingExposure = 0.85;   // v12.67: 1.2 → 0.85 (사용자 '눈 아픔' 해결)
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 stage.appendChild(renderer.domElement);
 
-// ── Post-processing (Bloom: 네온 발광 톤)
+// ── Post-processing (Bloom: 절제된 발광 — 야경 차분히)
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(W(), H()), 0.65, 0.3, 0.15);
+// v12.67: strength 0.65 → 0.28, radius 0.3 → 0.4, threshold 0.15 → 0.55 (지나친 발광 차단, 헤드라이트만 살짝)
+const bloom = new UnrealBloomPass(new THREE.Vector2(W(), H()), 0.28, 0.4, 0.55);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -191,8 +192,8 @@ document.getElementById('btn-reset').onclick = () => {
 };
 
 // ── Lights (v12.66: 야간 도시 톤 — hemisphere + 그림자 + rim light)
-scene.add(new THREE.HemisphereLight(0x4070A0, 0x0A0F18, 0.55));
-const moonLight = new THREE.DirectionalLight(0xCCDDFF, 0.9);
+scene.add(new THREE.HemisphereLight(0x2A3E5A, 0x05080F, 0.35));   // v12.67: 0.55 → 0.35 (덜 밝게)
+const moonLight = new THREE.DirectionalLight(0xBBCCEE, 0.55);   // v12.67: 0.9 → 0.55
 moonLight.position.set(25, 40, 15);
 moonLight.castShadow = true;
 moonLight.shadow.mapSize.set(2048, 2048);
@@ -204,12 +205,12 @@ moonLight.shadow.camera.top = 60;
 moonLight.shadow.camera.bottom = -60;
 moonLight.shadow.bias = -0.0005;
 scene.add(moonLight);
-// Rim accent light (cyan)
-const rimLight = new THREE.PointLight(0x00C8FF, 0.6, 80, 1.5);
-rimLight.position.set(-15, 8, -20);
+// Rim accent light (cyan + purple) — v12.67: 약하게 (0.6 → 0.25)
+const rimLight = new THREE.PointLight(0x00C8FF, 0.25, 60, 1.5);
+rimLight.position.set(-15, 6, -20);
 scene.add(rimLight);
-const rimLight2 = new THREE.PointLight(0x7C3AED, 0.45, 70, 1.5);
-rimLight2.position.set(20, 6, 25);
+const rimLight2 = new THREE.PointLight(0x7C3AED, 0.20, 55, 1.5);
+rimLight2.position.set(20, 5, 25);
 scene.add(rimLight2);
 
 // ── Ground (아스팔트 + 메탈릭 반사 + 그림자 수신)
@@ -276,20 +277,82 @@ function makeRoad() {
   horiz.rotation.x = -Math.PI / 2; horiz.position.y = 0.02; g.add(horiz);
   const vert = new THREE.Mesh(new THREE.PlaneGeometry(16, 120), roadMat);
   vert.rotation.x = -Math.PI / 2; vert.position.y = 0.02; g.add(vert);
-  // 중앙선 (노란 점선) — 가로 도로
+  // 중앙선 (노란 점선) — 가로/세로 도로 둘 다
   const yellowMat = new THREE.MeshBasicMaterial({ color: 0xFFD93D });
   for (let x = -50; x <= 50; x += 6) {
+    if (Math.abs(x) <= 9) continue;   // 교차로 내부 skip
     const dash = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.3), yellowMat);
     dash.rotation.x = -Math.PI / 2; dash.position.set(x, 0.03, 0);
-    if (Math.abs(x) > 8) g.add(dash);
+    g.add(dash);
   }
-  // 횡단보도 (한국 표준: 가로 stripe, 도로 가로지름)
-  const whiteMat = new THREE.MeshBasicMaterial({ color: 0xE8E8E8 });
-  for (let i = 0; i < 7; i++) {
-    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(12, 0.8), whiteMat);
-    stripe.rotation.x = -Math.PI / 2; stripe.position.set(0, 0.04, -8 + i * 1.6);
+  for (let z = -50; z <= 50; z += 6) {
+    if (Math.abs(z) <= 9) continue;
+    const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 3), yellowMat);
+    dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.03, z);
+    g.add(dash);
+  }
+  // 차선 (흰색 점선, 차로 분리) — 4 방향
+  const laneMat = new THREE.MeshBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.6 });
+  for (let x = -50; x <= 50; x += 4) {
+    if (Math.abs(x) <= 9) continue;
+    for (const zoff of [-4, 4]) {
+      const dash = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.18), laneMat);
+      dash.rotation.x = -Math.PI / 2; dash.position.set(x, 0.025, zoff);
+      g.add(dash);
+    }
+  }
+  for (let z = -50; z <= 50; z += 4) {
+    if (Math.abs(z) <= 9) continue;
+    for (const xoff of [-4, 4]) {
+      const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 2), laneMat);
+      dash.rotation.x = -Math.PI / 2; dash.position.set(xoff, 0.025, z);
+      g.add(dash);
+    }
+  }
+  // v12.67: 횡단보도 4방향 정확 (한국 표준: 도로 폭(16)을 가로지르는 라인이 진행방향 따라 평행)
+  const whiteMat = new THREE.MeshBasicMaterial({ color: 0xF2F2F2 });
+  const STRIPE_W = 0.7;
+  const STRIPE_GAP = 1.3;
+  const NUM_STRIPES = 7;
+  const ROAD_HALF = 7;     // 도로 폭 절반 (16/2 - 1)
+  const CW_OFFSET = 9;     // 교차로 가장자리에서 횡단보도까지
+  // (1) 북쪽 횡단보도 — vert 도로의 z = +CW_OFFSET 위치, 라인 방향: X축 따라 길게 (도로 가로지름), Z 따라 평행 배치
+  for (let i = 0; i < NUM_STRIPES; i++) {
+    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF * 2, STRIPE_W), whiteMat);
+    stripe.rotation.x = -Math.PI / 2;
+    stripe.position.set(0, 0.05, CW_OFFSET + i * STRIPE_GAP * 0.6);
     g.add(stripe);
   }
+  // (2) 남쪽 횡단보도 (mirror)
+  for (let i = 0; i < NUM_STRIPES; i++) {
+    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF * 2, STRIPE_W), whiteMat);
+    stripe.rotation.x = -Math.PI / 2;
+    stripe.position.set(0, 0.05, -CW_OFFSET - i * STRIPE_GAP * 0.6);
+    g.add(stripe);
+  }
+  // (3) 동쪽 횡단보도 — horiz 도로의 x = +CW_OFFSET, 라인 방향: Z축 따라 길게, X 따라 평행 배치
+  for (let i = 0; i < NUM_STRIPES; i++) {
+    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(STRIPE_W, ROAD_HALF * 2), whiteMat);
+    stripe.rotation.x = -Math.PI / 2;
+    stripe.position.set(CW_OFFSET + i * STRIPE_GAP * 0.6, 0.05, 0);
+    g.add(stripe);
+  }
+  // (4) 서쪽 횡단보도 (mirror)
+  for (let i = 0; i < NUM_STRIPES; i++) {
+    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(STRIPE_W, ROAD_HALF * 2), whiteMat);
+    stripe.rotation.x = -Math.PI / 2;
+    stripe.position.set(-CW_OFFSET - i * STRIPE_GAP * 0.6, 0.05, 0);
+    g.add(stripe);
+  }
+  // 정지선 (각 방향, 노란 두꺼운 라인 — 횡단보도 직전)
+  const stopMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+  // 4방향 정지선
+  const stopBarN = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF * 2, 0.35), stopMat);
+  stopBarN.rotation.x = -Math.PI / 2; stopBarN.position.set(0, 0.055, CW_OFFSET - 0.6); g.add(stopBarN);
+  const stopBarS = stopBarN.clone(); stopBarS.position.z = -CW_OFFSET + 0.6; g.add(stopBarS);
+  const stopBarE = new THREE.Mesh(new THREE.PlaneGeometry(0.35, ROAD_HALF * 2), stopMat);
+  stopBarE.rotation.x = -Math.PI / 2; stopBarE.position.set(CW_OFFSET - 0.6, 0.055, 0); g.add(stopBarE);
+  const stopBarW = stopBarE.clone(); stopBarW.position.x = -CW_OFFSET + 0.6; g.add(stopBarW);
   return g;
 }
 scene.add(makeRoad());

@@ -248,6 +248,8 @@ def prototype_ui():
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>AuraView · K-Perception Dashboard</title>
 <meta name="description" content="23 공공 API → Fusion → 네이티브 HUD/대시보드/정책 한 화면 라이브"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root{
   --bg:#04070D; --surface:#0A1018; --line:#1A2438;
@@ -372,6 +374,21 @@ nav a:hover{color:var(--accent);border-color:rgba(0,200,255,0.30);}
     </div>
   </nav>
 
+  <!-- v12.69: 핵심 차별점 Hero strip (대시보드 정체성) -->
+  <div style="margin-bottom:14px;padding:18px 22px;background:linear-gradient(135deg,rgba(0,200,255,0.10),rgba(124,58,237,0.06));border:1px solid rgba(0,200,255,0.30);border-radius:14px;display:flex;flex-wrap:wrap;gap:24px;align-items:center;">
+    <div style="flex:1;min-width:280px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2.4px;color:var(--accent);font-weight:900;margin-bottom:4px;">// AURAVIEW K-PERCEPTION · 2026 국토교통 데이터활용 경진대회</div>
+      <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-0.4px;line-height:1.25;">한국 도로 23종 공공데이터를 융합해 <span style="background:linear-gradient(120deg,#00E09A,#00C8FF 55%,#7C3AED 100%);-webkit-background-clip:text;background-clip:text;color:transparent;">평균 3.38초 먼저</span> 위험을 알려줍니다</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:5px;">국토부 빅데이터 안심구역 (DSZ) · TAAS 결합 · k≥5 가명 익명화 · cv2 PII 블러 · ML Kit on-device · 위치 인식 stub (집/원거리 거짓 알람 차단)</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,auto);gap:18px;align-items:center;">
+      <div style="text-align:center;"><div style="font-size:24px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-1px;">23</div><div style="font-size:9px;letter-spacing:1.5px;color:var(--muted);font-weight:800;margin-top:2px;">공공 API</div></div>
+      <div style="text-align:center;"><div style="font-size:24px;font-weight:900;color:var(--safe);font-variant-numeric:tabular-nums;letter-spacing:-1px;">3.38<span style="font-size:14px;">s</span></div><div style="font-size:9px;letter-spacing:1.5px;color:var(--muted);font-weight:800;margin-top:2px;">선행 경고</div></div>
+      <div style="text-align:center;"><div style="font-size:24px;font-weight:900;color:var(--warn);font-variant-numeric:tabular-nums;letter-spacing:-1px;">21<span style="font-size:14px;">명/년</span></div><div style="font-size:9px;letter-spacing:1.5px;color:var(--muted);font-weight:800;margin-top:2px;">사망 감소 (TAAS)</div></div>
+      <div style="text-align:center;"><div style="font-size:24px;font-weight:900;color:var(--accent2);font-variant-numeric:tabular-nums;letter-spacing:-1px;">0.94</div><div style="font-size:9px;letter-spacing:1.5px;color:var(--muted);font-weight:800;margin-top:2px;">AI AUC</div></div>
+    </div>
+  </div>
+
   <div class="stats">
     <div class="st"><div class="l">공공데이터</div><div class="v accent" id="hSrc">— / 23</div><div class="sub" id="hSrcSub">live X · stub Y</div></div>
     <div class="st"><div class="l">현재 위험점수</div><div class="v" id="hRisk">—</div><div class="sub" id="hRiskSub">한양대 1007 · 5s</div></div>
@@ -405,6 +422,13 @@ nav a:hover{color:var(--accent);border-color:rgba(0,200,255,0.30);}
       </div>
     </section>
   </div>
+
+  <!-- v12.69: 지도 패널 — 익명 이벤트 마커 + 위험 hotspot + 8 known intersection -->
+  <section class="panel" style="margin-bottom:14px;">
+    <h3>지도 — 익명 이벤트 위치 + 위험 hotspot<span class="badge"><span class="ring"></span>OSM · Leaflet</span></h3>
+    <div class="desc">파란 점=8 known 교차로 · 빨간 원=수집된 익명 이벤트 (entropy 비례 크기) · 노란 별=정책 hotspot Top10. 클릭 시 상세.</div>
+    <div id="map" style="height:380px;border-radius:10px;overflow:hidden;background:#0A0F18;border:1px solid var(--line);"></div>
+  </section>
 
   <div class="main">
     <section class="panel">
@@ -475,6 +499,30 @@ const SRC_VAL = (id, sum, srcData) => {
   }
 };
 
+// v12.69: Leaflet 지도 — 8 known 교차로 + 익명 이벤트 + 위험 hotspot
+const KNOWN_INTERSECTIONS = [
+  {iid:'1007', lat:37.5547, lon:127.1295, name:'한양대역'},
+  {iid:'2024', lat:37.4979, lon:127.0276, name:'강남역'},
+  {iid:'3015', lat:37.5723, lon:126.9769, name:'광화문'},
+  {iid:'4011', lat:37.5133, lon:127.1000, name:'잠실역'},
+  {iid:'5006', lat:37.5556, lon:126.9367, name:'신촌'},
+  {iid:'6022', lat:37.4766, lon:126.9816, name:'사당역'},
+  {iid:'7045', lat:37.5611, lon:127.0376, name:'왕십리역'},
+  {iid:'8033', lat:37.5403, lon:127.0700, name:'건대입구'},
+];
+const map = L.map('map', { zoomControl: true, attributionControl: false }).setView([37.5500, 127.020], 12);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19, subdomains: 'abcd',
+}).addTo(map);
+// known intersection 8 (파란 점)
+KNOWN_INTERSECTIONS.forEach(it => {
+  L.circleMarker([it.lat, it.lon], {
+    radius: 7, color: '#00C8FF', fillColor: '#00C8FF', fillOpacity: 0.5, weight: 2,
+  }).bindPopup('<b>' + it.name + '</b><br><code>iid=' + it.iid + '</code><br><a href="/fusion/risk-breakdown/' + it.iid + '" target="_blank">risk-breakdown →</a>').addTo(map);
+});
+let evMarkerLayer = L.layerGroup().addTo(map);
+let hotMarkerLayer = L.layerGroup().addTo(map);
+
 async function tick() {
   try {
     const [src, fus, live, pol, bd, ver] = await Promise.all([
@@ -511,6 +559,16 @@ async function tick() {
       document.getElementById('h1m').textContent = live.events_1m == null ? 0 : live.events_1m;
       document.getElementById('hTot').textContent = (live.events_total == null ? 0 : live.events_total).toLocaleString();
       const evs = live.events || [];
+      // 이벤트 마커 갱신
+      evMarkerLayer.clearLayers();
+      evs.forEach(function (ev) {
+        if (ev.lat == null || ev.lon == null) return;
+        const ent = ev.entropy || 0;
+        const color = ent >= 0.8 ? '#FF4040' : ent >= 0.6 ? '#FFB020' : '#00E09A';
+        L.circleMarker([ev.lat, ev.lon], {
+          radius: 5 + ent * 6, color: color, fillColor: color, fillOpacity: 0.6, weight: 1,
+        }).bindPopup('<b>' + esc(ev.reason || '?') + '</b><br>ent=' + ent.toFixed(2) + '<br>' + esc(ev.intersection_id || '') + '<br><code>' + esc((ev.pseudo_device||'').slice(0,12)) + '…</code>').addTo(evMarkerLayer);
+      });
       const feedHtml = evs.length === 0
         ? '<div style="text-align:center;color:var(--muted);font-size:11px;padding:18px;">아직 업로드 없음 — 네이티브앱 REC 활성화 시 표시</div>'
         : evs.slice(0, 8).map(ev => {
@@ -566,6 +624,22 @@ async function tick() {
       document.getElementById('srcGrid').innerHTML = sHtml;
     }
     if (pol && pol.top_hotspots) {
+      // hotspot 지도 마커 갱신 (iid 매핑된 8개만)
+      hotMarkerLayer.clearLayers();
+      pol.top_hotspots.forEach(function (h) {
+        if (!h.iid) return;
+        const it = KNOWN_INTERSECTIONS.find(function (x) { return x.iid === h.iid; });
+        if (!it) return;
+        const color = h.risk >= 0.7 ? '#FF4040' : h.risk >= 0.5 ? '#FFB020' : '#00E09A';
+        const star = L.marker([it.lat + 0.0015, it.lon], {
+          icon: L.divIcon({
+            html: '<div style="font-size:18px;color:' + color + ';text-shadow:0 0 4px ' + color + ';">★</div>',
+            className: 'hot-star-icon', iconSize: [22, 22], iconAnchor: [11, 11],
+          })
+        });
+        star.bindPopup('<b>#' + h.rank + ' ' + esc(h.name) + '</b><br>policy risk = ' + h.risk.toFixed(2) + '<br>' + esc((h.factors||[]).join(' · ')) + '<br><a href="/fusion/risk-breakdown/' + h.iid + '" target="_blank">risk-breakdown →</a>');
+        star.addTo(hotMarkerLayer);
+      });
       const hotHtml = pol.top_hotspots.slice(0, 10).map(function (h) {
         const cls = h.risk >= 0.7 ? 'hi' : h.risk >= 0.5 ? 'mi' : 'lo';
         const url = h.iid ? '/fusion/risk-breakdown/' + h.iid : null;

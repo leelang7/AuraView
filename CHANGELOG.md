@@ -5,6 +5,65 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.22 — 대시보드 ↔ 23종 데이터 시각화 일관성 + 위험점수 분해 (2026-05-22~23)
+
+### Fixed — UX 일관성 (사용자 피드백 "공공데이터 보여주는게 없음")
+- `/fleet/` 대시보드 메인 컨텐츠를 **23종 공공데이터 라이브 grid** 로 교체 (v12.44)
+  - 각 카드: live/stub 도트 + age + 이름 + origin + 기여도
+  - 헤더: `N/23 · live X · stub Y` 카운터 (5s 폴링)
+- 23 grid 카드별 **실 derived 값** 표시 — 한양대 1007 기준 (v12.45)
+  - 신호 '정지/주의/진행', VDS '평균 38km/h', TAAS '반경 내 N건', 우천 '+18%', 단속 'N대', 횡단 '50m 접근⚠' 등
+  - 카드 클릭 → `/fusion/intersection/{iid}` JSON 새 탭
+- 23 grid 헤더에 **교차로 dropdown** 9 위치 (v12.46)
+  - 8 known + 1 강원 임의 GPS — 토글로 위치인식 stub 즉시 비교
+  - 임의 GPS 선택 시 카드 accent 색 회색조 (#7C8AA8) — 시각적 구분
+- `/policy` + `/scorecard` 에 23 소스 mini strip (v12.47)
+  - "지금 N/23 호출 중 · live X / stub Y · [라이브 grid →]"
+- `/story` 첫 인상 페이지 23 카드에 **라이브 live/stub 도트** (v12.48)
+  - 각 카드 우상단 8px 도트: live=녹색 glow, stub=황색 dim
+  - 헤더 ping strip: "지금 이 순간: N/23 호출 중"
+
+### Removed — "심사위원" 용어 일괄 제거 (v12.44)
+사용자 피드백 "심사위원 그딴 용어는 빼고":
+- 7 파일에서 "심사위원" → "경진대회" / "검증" 으로 정리
+  - competition / gallery / kiosk / story / slides / scorecard 6 정적 페이지
+  - 표 라벨 / 메뉴 라벨 / pill 텍스트 / 주석 모두
+
+### Added — 위험점수 기여도 분해 (v12.49)
+`GET /fusion/risk-breakdown/{iid}` 신규 — 23 소스 각각이 fusion_risk_score 에 얼마나 기여했나:
+- `raw 값 + weight + contribution (= value × weight)` 분해
+- `raw_weighted_sum` (조정 전) + `final_risk_score` (스쿨존 ×N / 횡단 ×1.10 / V2X 감산 적용 후) 모두 노출
+- contribution 내림차순 정렬
+- fleet 대시보드 신규 차트: 라벨 / 가로 막대 (raw 표시) / contribution + weight, 큰 기여 황색
+- 한양대 1007 top 5: VDS(0.050) / ER(0.022) / 스쿨존(0.016) / 우천(0.013) / DTG(0.003)
+
+### Performance — /fleet/demo-tour 응답시간 30s+ → <2s (v12.43)
+라이브 서버 timeout (10 fetch_fusion × 23 외부 API 시도 sequential = 230 호출):
+- `_DEMO_TOUR_CACHE` 60s TTL — 캐시 hit 시 <1s
+- `ThreadPoolExecutor(max_workers=10)` — 10 fetch_fusion 동시 실행 (sequential 30s → parallel ~3s)
+- `payload.performance` 메타 (cache_ttl_s/parallelized/max_workers) 노출
+
+### Added — HUD mockup SVG (v12.41) + /gallery 등록 (v12.42)
+실 디바이스 캡쳐 대체용 마케팅 자료:
+- `static/visuals/hud_mockup.svg` — Tesla 스타일 23-chip HUD (720×1440 Galaxy Z Fold 비율)
+  - 상단 카메라: 트럭 검출 박스 + 보행자 블라인드스팟 + ML Kit FPS counter
+  - 23 chip row 3줄
+  - BEV: 40×40 voxel + ego/truck/V2V + 횡단보도 + 위험 히트맵
+  - 하단 HUD: Tesla식 큰 속도 + FUSION RISK 게이지 + schema v9-23src + AURA ENGAGED pill
+- `/gallery/?f=app` 에 등록 (19 → 20 SVG)
+
+### Updated — 회귀 잠금 + 문서 일관성
+- pytest 117/117 PASSED — risk-breakdown 2건 추가 (v12.50)
+- /story OG/Twitter meta 12종 → 23종 (소셜 공유 카드 통일) (v12.31)
+- kiosk 4개 scene + competition + summary 9-23종 (v12.31)
+- gallery / reel / slides 15/21 → 23 일괄 정렬 (v12.32)
+- ROADMAP / REPRODUCIBILITY / DATASETS (전체 23행 어댑터 매핑) (v12.29)
+- PRESS_KIT / SUBMISSION / PRESENTATION_SCRIPT / WHITEPAPER 6종 → 23종 (v12.28)
+- visuals SVG 3개 (fusion_diagram / before_after / og_card) + native app 마케팅 텍스트 23종 (v12.33)
+- README v9 업데이트 블럭 + 데이터융합 row + tests 배지 117/117 (v12.36+)
+
+---
+
 ## v0.21 — 23종 확장 (국토부 횡단보도 GIS) + 50m 접근 알림 (2026-05-21)
 
 ### Added — 23번째 데이터 소스 (v12.23)

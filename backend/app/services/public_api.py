@@ -38,7 +38,8 @@ DEFAULT_TIMEOUT = float(os.getenv("PUBLIC_API_TIMEOUT", "3.0"))
 #   value = (timestamp, result)
 import time as _time
 _OSM_CACHE: dict = {}
-_OSM_CACHE_TTL = 300.0  # 5 min
+_OSM_CACHE_TTL = 1800.0  # v12.110: 5min → 30min — OSM crosswalk/hospital/등 정적 데이터, 자주 변하지 않음
+_OSM_STALE_GRACE = 86400.0  # 만료 후 24h 까지는 stale-cache 반환 허용 (stub 보다 우선)
 
 
 def _osm_cache_key(kind: str, lat: float, lon: float, radius_m: float) -> tuple:
@@ -47,10 +48,23 @@ def _osm_cache_key(kind: str, lat: float, lon: float, radius_m: float) -> tuple:
 
 
 def _osm_cache_get(key: tuple):
+    """fresh 캐시만 반환 (만료 시 None)."""
     entry = _OSM_CACHE.get(key)
     if not entry: return None
     ts, val = entry
     if _time.time() - ts > _OSM_CACHE_TTL:
+        return None
+    return val
+
+
+def _osm_cache_get_stale(key: tuple):
+    """만료된 캐시도 (24h 안이면) 반환 — Overpass 실패 시 stub 보다 우선.
+    v12.110: 라이브 카운트 안정화."""
+    entry = _OSM_CACHE.get(key)
+    if not entry: return None
+    ts, val = entry
+    age = _time.time() - ts
+    if age > _OSM_STALE_GRACE:
         _OSM_CACHE.pop(key, None)
         return None
     return val
@@ -76,21 +90,31 @@ _OVERPASS_TIMEOUT = 12.0
 
 def _overpass_post(query: str) -> dict:
     """Overpass POST — mirror 순차 fallback, 12s timeout 각.
-    Render 환경에서 overpass-api.de 가 자주 timeout → 다른 mirror 로 자동 전환."""
+    Render 환경에서 overpass-api.de 가 자주 timeout → 다른 mirror 로 자동 전환.
+    v12.110: 쿼리 hash 키로 stale-cache 보관, mirror 모두 실패 시 stale 반환."""
     headers = {
         "User-Agent": "AuraView/0.8 (auraview@allthatai.kr)",
         "Accept": "application/json",
     }
+    # query 자체로 캐시 키 (각 helper 가 이미 위치 단위 캐시 사용하지만, 동일 query 재시도도 보호)
+    q_key = ("opquery", hash(query))
     last_exc = None
     for url in _OVERPASS_MIRRORS:
         try:
             r = requests.post(url, data={"data": query}, headers=headers,
                               timeout=_OVERPASS_TIMEOUT)
             r.raise_for_status()
-            return r.json()
+            result = r.json()
+            _osm_cache_put(q_key, result)
+            return result
         except Exception as exc:
             last_exc = exc
             continue
+    # All mirrors failed → try stale cache (Overpass data is static enough)
+    stale = _osm_cache_get_stale(q_key)
+    if stale is not None:
+        log.warning("Overpass all mirrors failed, returning stale cache: %s", last_exc)
+        return stale
     raise RuntimeError(f"All Overpass mirrors failed: {last_exc}")
 
 

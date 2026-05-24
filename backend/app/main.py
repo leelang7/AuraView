@@ -442,6 +442,8 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
   <a href="/scorecard/">SCORECARD</a>
   <a href="/bev3d/">BEV3D</a>
   <a href="/metrics/audit" target="_blank" title="라이브 시스템 헬스 + 가점 25점 + 데이터 신뢰성 (단일 GET)">AUDIT</a>
+  <span class="sep"></span>
+  <a id="navGit" href="https://github.com/leelang7/AuraView" target="_blank" title="현재 배포된 git commit (자동 갱신)" style="font-family:monospace;font-size:10px;color:rgba(255,255,255,0.45);">git —</a>
 </div>
 
 <!-- Hero pill 가운데 상단 (간결한 메시지) -->
@@ -553,13 +555,24 @@ setInterval(rotateSlide, 5000);
 
 async function tick() {
   try {
-    const [src, fus, live, pol, occ] = await Promise.all([
+    const [src, fus, live, pol, occ, aud] = await Promise.all([
       fetch('/fusion/sources').then(r=>r.json()).catch(()=>null),
       fetch('/fusion/intersection/1007').then(r=>r.json()).catch(()=>null),
       fetch('/fleet/live?limit=20').then(r=>r.json()).catch(()=>null),
       fetch('/policy/stats').then(r=>r.json()).catch(()=>null),
       fetch('/occupancy/compare').then(r=>r.json()).catch(()=>null),
+      fetch('/metrics/audit').then(r=>r.json()).catch(()=>null),
     ]);
+    // v12.112: git_sha 표시 (NAV 끝)
+    if (aud && aud.git_sha) {
+      const g = document.getElementById('navGit');
+      if (g) {
+        const sha = aud.git_sha.slice(0,7);
+        g.textContent = 'git ' + sha;
+        g.href = 'https://github.com/leelang7/AuraView/commit/' + aud.git_sha;
+        g.title = '현재 배포 commit: ' + aud.git_sha + ' · tests ' + (aud.system?.tests_passing || '—');
+      }
+    }
     // Hero pill
     if (live) {
       document.getElementById('hrAct').textContent = live.active_devices_5m || 0;

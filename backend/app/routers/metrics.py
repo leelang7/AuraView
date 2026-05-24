@@ -423,8 +423,27 @@ def competition_manifest():
             "rainy_intersection", "right_turn_pedestrian",
             "school_zone", "bicycle_lane", "night_pedestrian",
         ],
-        "tests_passed": 90,
-        "tests_breakdown": "68 기존 + 22 신규 (privacy·ai·competition·dsz 가점 25점 router)",
+        "tests_passed": 118,
+        "tests_breakdown": "68 기존 + 50 신규 (privacy·ai·competition·dsz 가점 25점 router + v12.83 location_verified · v12.87 speed_kmh 게이트)",
+        "data_sources_total": 23,
+        "data_sources_live_potential": 10,
+        "live_source_list": [
+            "weather (Open-Meteo no-key)",
+            "air_quality (Open-Meteo Air no-key)",
+            "crosswalk (OSM Overpass no-key)",
+            "bike (Citybikes seoul-bike no-key)",
+            "ev_charger (OSM amenity=charging_station no-key)",
+            "medical (OSM amenity=hospital no-key)",
+            "police_cam (OSM highway=speed_camera no-key)",
+            "school_zone (OSM amenity=school no-key)",
+            "incidents (OSM highway=construction no-key)",
+            "road_age (OSM highway surface tag no-key)",
+        ],
+        "location_verification": {
+            "client_gate": "GPS proximity to known 8 intersections (100m) OR OSM signaled crossings (80m) OR OSM crosswalk density (3+ in 80m) OR adjacent crossing (1+ in 30m)",
+            "server_gate": "speed_kmh + lat/lon + reason → method='known-intersection' / 'osm-signaled-crossing' / 'osm-intersection-density' / 'moving-fast' / 'stationary' (false positive)",
+            "deprecated_methods": "no-gate-needed, test-mode, no-gps (auto-recomputed via v12.92 backfill)",
+        },
     }
 
 

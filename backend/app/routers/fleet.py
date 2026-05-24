@@ -547,12 +547,22 @@ def live_feed(limit: int = Query(50, ge=1, le=200)):
                 continue
     rows.reverse()   # 최신 순
     out = rows[:limit]
-    # v12.83: 옛날 manifest 엔트리에 location_verified 없으면 즉시 계산해서 추가 (backfill)
+    # v12.83+v12.92: 옛 룰로 저장된 location_verified 도 항상 재평가 (룰 진화 반영)
+    # 옛 method 가 deprecated 한 경우 (no-gate-needed 등) 새 룰 적용
+    _DEPRECATED_METHODS = {"no-gate-needed", "test-mode", "no-gps"}
     for r in out:
-        if "location_verified" not in r:
+        existing = r.get("location_verified")
+        needs_recompute = (
+            existing is None
+            or not isinstance(existing, dict)
+            or existing.get("method") in _DEPRECATED_METHODS
+        )
+        if needs_recompute:
             r["location_verified"] = _verify_event_location(
                 reason=r.get("reason", ""), lat=r.get("lat"), lon=r.get("lon"),
-                intersection_id=r.get("intersection_id"))
+                intersection_id=r.get("intersection_id"),
+                speed_kmh=r.get("speed_kmh"),
+                test_mode=bool(r.get("test_mode")))
     # 1분 내 이벤트 카운트
     from datetime import datetime, timedelta
     one_min_ago = datetime.utcnow() - timedelta(minutes=1)
@@ -563,10 +573,13 @@ def live_feed(limit: int = Query(50, ge=1, le=200)):
     for r in rows:
         # 전체 rows 검증 카운트 (페이지네이션 무관)
         v = r.get("location_verified")
-        if v is None:
+        # v12.92: deprecated method 도 재평가
+        if v is None or not isinstance(v, dict) or v.get("method") in _DEPRECATED_METHODS:
             v = _verify_event_location(
                 reason=r.get("reason", ""), lat=r.get("lat"), lon=r.get("lon"),
-                intersection_id=r.get("intersection_id"))
+                intersection_id=r.get("intersection_id"),
+                speed_kmh=r.get("speed_kmh"),
+                test_mode=bool(r.get("test_mode")))
         if isinstance(v, dict) and v.get("verified"):
             verified_count += 1
         elif v is True:

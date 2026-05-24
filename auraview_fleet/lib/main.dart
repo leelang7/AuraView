@@ -306,9 +306,12 @@ class _FleetHomeState extends State<FleetHome>
       }
     }
     // 2) OSM signaled crossings (서버 fetch 캐시 사용)
-    //    v12.88: 신호 있는 횡단보도 80m + 일반 횡단보도 50m (교차로 면적 + 정지 거리 고려)
-    //    정지 + 앞차로 신호등 가림은 AuraView KEY use case → 너무 좁으면 놓침
+    //    v12.89: 한국 OSM 은 신호등 태그가 sparse → 횡단보도 밀도를 교차로 추정 신호로 사용
+    //    A) 신호 노드/신호 있는 횡단보도 80m 내 → ✓
+    //    B) 80m 내 횡단보도 3+ 개 → 교차로 추정 ✓
+    //    C) 30m 내 횡단보도 1+ 개 → 횡단보도 바로 옆 ✓
     double? bestSignalKm, bestAnyKm;
+    int crosswalksWithin80m = 0, crosswalksWithin30m = 0;
     for (final cw in _nearbyCrosswalks) {
       final clat = (cw['lat'] as num?)?.toDouble();
       final clon = (cw['lon'] as num?)?.toDouble();
@@ -318,16 +321,24 @@ class _FleetHomeState extends State<FleetHome>
         if (bestSignalKm == null || dKm < bestSignalKm) bestSignalKm = dKm;
       }
       if (bestAnyKm == null || dKm < bestAnyKm) bestAnyKm = dKm;
+      if (dKm < 0.080) crosswalksWithin80m++;
+      if (dKm < 0.030) crosswalksWithin30m++;
     }
     if (bestSignalKm != null && bestSignalKm < 0.080) {
       _locationGateReason = 'OSM signal ${(bestSignalKm*1000).toStringAsFixed(0)}m';
       return true;
     }
-    if (bestAnyKm != null && bestAnyKm < 0.050) {
-      _locationGateReason = 'OSM crossing ${(bestAnyKm*1000).toStringAsFixed(0)}m';
+    if (crosswalksWithin80m >= 3) {
+      _locationGateReason = 'OSM 교차로($crosswalksWithin80m cw 80m)';
       return true;
     }
-    _locationGateReason = '신호등/교차로 미근접';
+    if (crosswalksWithin30m >= 1) {
+      _locationGateReason = 'OSM 횡단보도 ${(bestAnyKm!*1000).toStringAsFixed(0)}m';
+      return true;
+    }
+    _locationGateReason = bestAnyKm != null
+      ? '신호등 미근접 (가장 가까운 cw ${(bestAnyKm*1000).toStringAsFixed(0)}m)'
+      : '신호등/교차로 미근접';
     return false;
   }
 

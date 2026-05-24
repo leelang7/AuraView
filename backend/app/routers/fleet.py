@@ -167,27 +167,40 @@ def _verify_event_location(reason: str, lat: Optional[float], lon: Optional[floa
             return {"verified": True, "method": "known-intersection",
                     "distance_m": best_m,
                     "note": f"100m 내 known 교차로 ({best_m}m)"}
-        # v12.88: OSM signaled crossing 도 확인 (전국 어디서나 작동)
+        # v12.89: OSM crossing/signal 확인 (전국 어디서나 작동)
         try:
             from ..services import public_api as _pa
             cw = _pa.fetch_crosswalk_gis(lat=lat, lon=lon, radius_m=300.0)
             nearest_signal_m = None
+            cw_within_80 = 0
+            cw_within_30 = 0
             for c in cw.get("crosswalks", []) or cw.get("nearby", []):
-                if c.get("has_signal") != True: continue
                 clat = c.get("lat"); clon = c.get("lon")
                 if clat is None or clon is None: continue
-                d = _planar_km(lat, lon, clat, clon)
-                if nearest_signal_m is None or d * 1000 < nearest_signal_m:
-                    nearest_signal_m = int(d * 1000)
+                d_m = _planar_km(lat, lon, clat, clon) * 1000
+                if c.get("has_signal") is True:
+                    if nearest_signal_m is None or d_m < nearest_signal_m:
+                        nearest_signal_m = int(d_m)
+                if d_m < 80: cw_within_80 += 1
+                if d_m < 30: cw_within_30 += 1
             if nearest_signal_m is not None and nearest_signal_m < 80:
                 return {"verified": True, "method": "osm-signaled-crossing",
                         "distance_m": nearest_signal_m,
-                        "note": f"OSM 신호 횡단보도 {nearest_signal_m}m"}
+                        "note": f"OSM 신호 {nearest_signal_m}m"}
+            # 신호 노드 sparse → 횡단보도 밀도로 교차로 추정
+            if cw_within_80 >= 3:
+                return {"verified": True, "method": "osm-intersection-density",
+                        "distance_m": best_m,
+                        "note": f"OSM 80m 내 {cw_within_80}개 횡단보도 (교차로 추정)"}
+            if cw_within_30 >= 1:
+                return {"verified": True, "method": "osm-crosswalk-adjacent",
+                        "distance_m": best_m,
+                        "note": f"OSM 30m 내 횡단보도 {cw_within_30}개"}
         except Exception:
             pass
         return {"verified": False, "method": "no-nearby-infra",
                 "distance_m": best_m,
-                "note": f"가까운 known 교차로 {best_m or '?'}m, OSM 신호도 80m 외"}
+                "note": f"known {best_m or '?'}m, OSM 횡단보도 80m 내 3개 미만"}
 
     # 속도-의존 reason (사각지대/저신뢰도/고불확실성) — 정지 상태 false positive 차단
     if reason in ("blind_spot_left", "blind_spot_right"):

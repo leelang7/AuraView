@@ -2229,6 +2229,8 @@ class IntersectionFusion:
     police_cam: Dict[str, Any] = field(default_factory=dict)
     # v9 2026-05-21: 23-source 확장 (국토부 횡단보도 GIS)
     crosswalk: Dict[str, Any] = field(default_factory=dict)
+    # v10 2026-05-25: 24-source 확장 (USGS 실시간 지진 — 터널/교량 인프라 안전)
+    earthquake: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -2444,6 +2446,8 @@ class IntersectionFusion:
                 "police_cam":          {"provider": "경찰청 교통단속 CCTV",            "data": self.police_cam},
                 # v9 신규 1종 (국토부 횡단보도 GIS)
                 "crosswalk":           {"provider": "국토부 vworld 횡단보도 GIS",      "data": self.crosswalk},
+                # v10 신규 1종 (USGS 실시간 지진 — 터널/교량 인프라 안전)
+                "earthquake":          {"provider": "USGS FDSN 지진 (no-key)",         "data": self.earthquake},
                 "av_hub":              {"provider": "KOTSA 자율주행 데이터허브 (V2X)",  "data": self.av_hub},
             },
         }
@@ -2557,6 +2561,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         "av_hub":             lambda: fetch_av_hub(region="판교"),
         "police_cam":         lambda: fetch_police_cams(lat=lat0, lon=lon0, radius_m=800.0),
         "crosswalk":          lambda: fetch_crosswalk_gis(lat=lat0, lon=lon0, radius_m=300.0),
+        "earthquake":         lambda: fetch_usgs_earthquakes(lat=lat0, lon=lon0, radius_km=500.0, days_back=30, min_magnitude=2.0),
     }
 
     with ThreadPoolExecutor(max_workers=12) as ex:

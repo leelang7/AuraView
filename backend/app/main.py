@@ -98,6 +98,48 @@ if _SHOWREEL_OK:
 
 # RAG 인덱스 자동 복구 — 재시작 후 chunks.jsonl + embeddings.npy 디스크에서 복원
 @app.on_event("startup")
+def _osm_prewarm():
+    """v12.111: cold-start 후 첫 사용자 요청 전에 OSM 캐시 pre-warm.
+    8 known 교차로 + Seoul 시청 좌표로 5개 OSM helper 호출 → 캐시 hot 상태로 시작.
+    백그라운드 스레드로 비동기 실행 (startup 속도 영향 X)."""
+    import logging as _log, threading
+    log = _log.getLogger("auraview.osm_prewarm")
+    KI = [
+        (37.5547, 127.1295),  # 1007 한양대역
+        (37.4979, 127.0276),  # 2024 강남역
+        (37.5723, 126.9769),  # 3015 광화문
+        (37.5133, 127.1000),  # 4011 잠실역
+        (37.5556, 126.9367),  # 5006 신촌
+        (37.4766, 126.9816),  # 6022 사당역
+        (37.5611, 127.0376),  # 7045 왕십리역
+        (37.5403, 127.0700),  # 8033 건대입구
+        (37.5665, 126.9780),  # Seoul 시청 (fusion 기본)
+    ]
+
+    def _warm():
+        try:
+            from .services import public_api as _pa
+            warmed = 0
+            for lat, lon in KI:
+                for fn in [
+                    lambda: _pa._fetch_osm_crosswalks(lat, lon, 300.0),
+                    lambda: _pa._fetch_osm_hospitals(lat, lon, 3000.0),
+                    lambda: _pa._fetch_osm_schools(lat, lon, 500.0),
+                    lambda: _pa._fetch_osm_ev_chargers(lat, lon, 2000.0),
+                    lambda: _pa._fetch_osm_speed_cameras(lat, lon, 800.0),
+                ]:
+                    try: fn(); warmed += 1
+                    except Exception: pass
+            log.info("osm_prewarm: warmed %d/%d helpers across %d intersections",
+                     warmed, len(KI)*5, len(KI))
+        except Exception as exc:
+            log.warning("osm_prewarm failed: %s", exc)
+
+    # 백그라운드로 (startup 차단 X)
+    threading.Thread(target=_warm, daemon=True, name="osm-prewarm").start()
+
+
+@app.on_event("startup")
 def _qa_restore_index():
     """QA 인덱스 디스크 복구 (가벼움). 모델은 첫 /qa/ask 시 lazy load."""
     import logging as _log

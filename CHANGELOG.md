@@ -5,6 +5,68 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.23 — 위치/속도 검증 게이트 + 10 no-key 라이브 소스 + 오프라인 큐 (2026-05-24)
+
+### Added — 라이브 외부 데이터 (no-key fallback) 6 → 10 (v12.77~v12.96)
+- **weather** Open-Meteo current API (KMA 키 미설정 시 fallback) — v12.77
+- **air_quality** Open-Meteo Air Quality (에어코리아 키 미설정 시 fallback) — v12.78
+- **crosswalk** OpenStreetMap Overpass `highway=crossing` + `highway=traffic_signals` — v12.78, v12.89
+- **bike** Citybikes seoul-bike 네트워크 (서울 OpenAPI 키 미설정 시 fallback) — v12.79
+- **ev_charger** OSM `amenity=charging_station` (node + way, capacity 태그) — v12.79, v12.80
+- **medical** OSM `amenity=hospital` (NEDIS 실패 시 위치만 라이브) — v12.80
+- **police_cam** OSM `highway=speed_camera` + `enforcement=maxspeed/traffic_signals` — v12.93
+- **school_zone** OSM `amenity=school|kindergarten` (vworld 키 미설정 시 fallback) — v12.93
+- **incidents** OSM `highway=construction` + `construction=*` (공사구간 라이브) — v12.96
+- **road_age** OSM way `surface` 태그 (asphalt/gravel/unpaved 비율로 노후도 추정) — v12.96
+
+### Added — 위치/속도 게이팅 (Flutter 앱 + 백엔드)
+- 클라이언트 `_isNearTrafficSignal()`: known 8 교차로 100m + OSM 신호 80m + OSM 횡단보도 밀도 3+/80m + 인접 1+/30m
+- 클라이언트 `_isNearCrosswalk()`: OSM 횡단보도 30m
+- 클라이언트 `_testMode` (long-press GATE pill 토글): 위치 무관 발화 (실내 시연용)
+- 서버 `_verify_event_location(reason, lat, lon, speed_kmh, test_mode)`:
+  - signal_occluded/crosswalk_blocked: known 100m OR OSM signaled 80m OR density 3+/80m OR 30m 인접
+  - blind_spot_*: speed ≥ 15km/h OR (5+ AND known 100m) — 정지 상태 false positive 차단
+  - high_uncertainty/low_confidence: speed ≥ 5km/h 만 요구
+- `/fleet/contribute` payload 에 `speed_kmh`, `test_mode` 필드 추가
+- `/fleet/live` 응답에 `events_verified_total`, `events_verified_pct` + 각 이벤트 `location_verified.{verified, method, note, distance_m}`
+- `_DEPRECATED_METHODS` (no-gate-needed/test-mode/no-gps) 옛 verdict 자동 backfill 재평가
+
+### Added — UX/UI
+- `/ui` NAV READINESS 뱃지: `SRC N/23` (사이언) + `VRF X%` (≥60% green / ≥30% orange / <30% red)
+- `/ui` LIVE STREAM 이벤트별 ✓/? 배지 + 호버 시 검증 사유 툴팁
+- `/ui` 지도 마커: verified=true 채워진 원, false 점선 테두리
+- 라운드로빈 슬라이드 6 → 4 (중복 제거): FUSION RISK / FLEET KPI / HOTSPOT 5 / 8 시나리오
+- 줌 컨트롤 좌상단 → 우하단 (라운드로빈 카드와 충돌 해결)
+- 핫스팟 top-5 iid 의 KI 기본 마커 자동 숨김 (●+★ 스택 제거)
+
+### Added — 네이티브앱 (Flutter)
+- 추론 ticker (`_LiveInferenceTicker`): ENT/MOT 바 + voxel cells + reason 후보 + BEV 상태 항상 표시
+- BEV 패널 voxel grid 40×40 heatmap: 거리별 의미 색상 (RED 근거리/YELLOW 중거리/CYAN 원거리)
+- 카메라 박스 클래스별 한글 라벨 (🚶 사람 / 🚗 차량 / 🚲 자전거 / 🏍 오토바이) + Tesla 코너 마커
+- 추론 ticker 카메라 init 시 자동 시작 (REC OFF 에서도 라이브 — v12.90)
+- 업로드 in-memory 재시도 큐 (최대 50개, 30초 주기 batch 5건 재시도, 5회 시도 후 포기 — v12.97)
+- 설정 ⚙ 버튼 우상단 floating (overflow 무관 항상 visible)
+- GATE pill long-press 로 TEST 모드 토글
+
+### Performance
+- OSM Overpass 5분 in-memory 캐시 (`_OSM_CACHE`, ~100m 그리드 셀 단위 공유) — Render 무료 tier outbound timeout 안정화 (v12.95)
+- 라이브 소스 카운트 4↔7 진동 → 안정 9-10개
+
+### Fixed — 데이터 신뢰성
+- 발견: prod 35건 중 10건이 사용자 집(37.583,127.048)에서 정지 상태 `blind_spot_left` 발화 → 옛 서버는 모두 verified=true
+- 옛 클라이언트가 `/fusion/crosswalk` 호출 → 서버에 라우트 없어 404 → OSM 캐시 비어있음 → 8 known 외 어디서나 절대 발화 안됨 (v12.88 라우트 추가)
+- `events_verified_pct` 부풀려진 100% → **정직한 43%** (정지 false positive 자동 차단)
+
+### Tests
+- pytest **118/118** PASS (이전 115/115 → 데이터 신뢰성 테스트 추가)
+- `test_metrics_manifest_lists_all_artifacts` 갱신: `competition.startswith('AuraView')`
+
+### Cleanup — 용어 표준화 (v12.76)
+- 33 파일에서 '경진대회/심사위원/JUDGE' 일괄 제거 → 'AuraView K-Perception / 시스템 허브 / 개발자'
+- Flutter main.dart + 33 백엔드/도큐/SVG/CI 파일 정리
+
+---
+
 ## v0.22 — 대시보드 ↔ 23종 데이터 시각화 일관성 + 위험점수 분해 (2026-05-22~23)
 
 ### Fixed — UX 일관성 (사용자 피드백 "공공데이터 보여주는게 없음")

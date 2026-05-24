@@ -278,7 +278,8 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 /* ─── Full-screen map ─── */
 #map{position:fixed;inset:0;z-index:1;}
 .leaflet-control-attribution{display:none!important;}
-.leaflet-control-zoom{margin-bottom:80px!important;}
+/* 줌 컨트롤 → 라운드로빈 카드와 충돌 회피: 좌상단(기본)에서 우하단으로 이동 */
+.leaflet-control-zoom{display:none!important;}
 
 /* ─── Top-left round-robin floating card ─── */
 .rr{position:fixed;top:78px;left:18px;z-index:100;
@@ -314,14 +315,6 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 .rr .hl .ho .nm{font-size:11.5px;color:#fff;font-weight:700;}
 .rr .hl .ho .rs{font-family:monospace;font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;}
 
-/* health 6 grid */
-.rr .hg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
-.rr .hg .h{background:rgba(0,224,154,0.10);border:1px solid rgba(0,224,154,0.25);border-radius:7px;padding:6px 8px;text-align:center;}
-.rr .hg .h.fail{background:rgba(255,68,68,0.10);border-color:rgba(255,68,68,0.35);}
-.rr .hg .h .l{font-size:8px;letter-spacing:0.8px;color:rgba(255,255,255,0.55);font-weight:700;text-transform:uppercase;}
-.rr .hg .h .v{font-size:13px;font-weight:900;color:#00E09A;margin-top:2px;}
-.rr .hg .h.fail .v{color:#FF4040;}
-
 /* 8 scenarios grid (4×2) */
 .rr .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:4px;}
 .rr .sg .sc{background:rgba(0,200,255,0.07);border:1px solid rgba(0,200,255,0.20);border-radius:6px;padding:5px 4px;text-align:center;transition:all 0.3s;}
@@ -331,12 +324,6 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 .rr .sg .sc .nm{font-size:8px;letter-spacing:0.4px;color:rgba(255,255,255,0.7);font-weight:700;margin-top:3px;text-transform:uppercase;}
 .rr .sg .sc .dl{font-family:monospace;font-size:9.5px;font-weight:900;color:#00E09A;margin-top:2px;}
 .rr .sg .sc.hi .dl{color:#FF4040;}.rr .sg .sc.mi .dl{color:#FFB020;}
-
-/* 23 src bar */
-.rr .srb{display:flex;gap:1.5px;margin-top:6px;height:18px;border-radius:3px;overflow:hidden;background:#1A2438;}
-.rr .srb .s{flex:1;background:#404858;transition:all 0.5s;}
-.rr .srb .s.lv{background:#00E09A;box-shadow:inset 0 0 4px rgba(0,224,154,0.6);}
-.rr .srb .s.st{background:#FFB020;box-shadow:inset 0 0 4px rgba(255,176,32,0.4);}
 
 /* ─── Bottom-right LIVE STREAM ─── */
 .ls{position:fixed;bottom:18px;right:18px;z-index:100;
@@ -378,9 +365,13 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 .hr .sep{width:1px;height:12px;background:rgba(255,255,255,0.15);}
 
 @media (max-width:900px){
-  .rr{width:calc(100% - 36px);left:18px;right:18px;}
-  .ls{width:calc(100% - 36px);left:18px;right:18px;}
+  /* 모바일/Z Fold: 라운드로빈은 상단 1/3, LIVE 스트림은 하단 1/3 — 가운데 1/3는 지도 노출 */
+  .rr{width:calc(100% - 24px);left:12px;right:12px;top:62px;padding:12px 14px;min-height:140px;max-height:32vh;overflow-y:auto;}
+  .rr .big{font-size:42px;}
+  .ls{width:calc(100% - 24px);left:12px;right:12px;bottom:12px;max-height:34vh;}
   .hr{display:none;}
+  .nv{font-size:11px;padding:7px 14px;gap:5px;top:10px;}
+  .nv a{padding:2px 6px;}
 }
 </style>
 </head>
@@ -397,7 +388,6 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
   <a href="/policy/">POLICY</a>
   <a href="/scorecard/">SCORECARD</a>
   <a href="/bev3d/">BEV3D</a>
-  <a href="/competition/">VERIFY</a>
 </div>
 
 <!-- Hero pill 가운데 상단 (간결한 메시지) -->
@@ -417,9 +407,9 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 <!-- ROUND-ROBIN floating card (top-left) -->
 <div class="rr">
   <div class="head">
-    <div class="eye" id="rrEye">// SLIDE 1 / 6</div>
+    <div class="eye" id="rrEye">// SLIDE 1 / 4</div>
     <div class="dots">
-      <span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span>
     </div>
   </div>
   <!-- Slide 1: Big risk score -->
@@ -438,40 +428,20 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
       <div class="k"><div class="v" id="s2Pyt">118</div><div class="l">PYTEST / 118</div></div>
     </div>
   </div>
-  <!-- Slide 3: 23 SRC bar + count -->
+  <!-- Slide 3: Hotspot top 5 -->
   <div class="slide" data-i="2">
-    <div class="ttl">23 공공데이터 LIVE</div>
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:2px;">
-      <div class="big" style="font-size:42px;"><span id="s3N">—</span><sub>/ 23</sub></div>
-      <div style="text-align:right;font-family:monospace;font-size:11px;color:rgba(255,255,255,0.55);">
-        <div><span style="color:#00E09A;">●</span> live <span id="s3L">—</span></div>
-        <div><span style="color:#FFB020;">●</span> stub <span id="s3S">—</span></div>
-      </div>
-    </div>
-    <div class="srb" id="s3Bar"></div>
-    <div class="sub">22 sub-fetch ThreadPool(12) 병렬 · cold 6.5s</div>
-  </div>
-  <!-- Slide 4: Hotspot top 5 -->
-  <div class="slide" data-i="3">
     <div class="ttl">위험 HOTSPOT TOP 5</div>
     <div class="hl" id="s4List">
       <div style="color:rgba(255,255,255,0.4);font-size:11px;text-align:center;padding:14px 0;">⏳ 로딩</div>
     </div>
   </div>
-  <!-- Slide 5: Pipeline health 6 -->
-  <div class="slide" data-i="4">
-    <div class="ttl">PIPELINE 자가검증</div>
-    <div class="hg" id="s5Grid">
-      <div style="grid-column:1/-1;color:rgba(255,255,255,0.4);font-size:11px;text-align:center;padding:14px 0;">⏳ 로딩</div>
-    </div>
-  </div>
-  <!-- Slide 6: 8 시나리오 (occupancy/compare) -->
-  <div class="slide" data-i="5">
+  <!-- Slide 4: 8 시나리오 (occupancy/compare) -->
+  <div class="slide" data-i="3">
     <div class="ttl">8 시나리오 K-인지</div>
     <div class="sg" id="s6Grid">
       <div style="grid-column:1/-1;color:rgba(255,255,255,0.4);font-size:11px;text-align:center;padding:14px 0;">⏳ 로딩</div>
     </div>
-    <div class="sub" id="s6Sub" style="margin-top:6px;">truck/bike/signal/rain/RT/school/lane/night · before vs after</div>
+    <div class="sub" id="s6Sub" style="margin-top:6px;">truck/bike/signal/rain/RT/school/lane/night</div>
   </div>
 </div>
 
@@ -501,18 +471,24 @@ const KI = [
   {iid:'7045', lat:37.5611, lon:127.0376, name:'왕십리역'},
   {iid:'8033', lat:37.5403, lon:127.0700, name:'건대입구'},
 ];
-// Map init (Tesla dark)
-const map = L.map('map', { zoomControl: true, attributionControl: false }).setView([37.5500, 127.020], 12);
+// Map init (Tesla dark) — 줌 컨트롤은 우하단으로 이동 (라운드로빈 카드와 충돌 회피)
+const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([37.5500, 127.020], 12);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
-KI.forEach(it => L.circleMarker([it.lat, it.lon], {
-  radius: 8, color: '#00C8FF', fillColor: '#00C8FF', fillOpacity: 0.4, weight: 2,
-}).bindPopup('<b>' + it.name + '</b><br><code>iid=' + it.iid + '</code><br><a href="/fusion/risk-breakdown/' + it.iid + '" target="_blank">risk-breakdown →</a>').addTo(map));
+// KI 기본 마커 → iid별 layer로 보관 (hotspot top-5에 들면 숨김으로 ★와 중복 방지)
+const kiMarkers = {};
+KI.forEach(it => {
+  const m = L.circleMarker([it.lat, it.lon], {
+    radius: 8, color: '#00C8FF', fillColor: '#00C8FF', fillOpacity: 0.4, weight: 2,
+  }).bindPopup('<b>' + it.name + '</b><br><code>iid=' + it.iid + '</code><br><a href="/fusion/risk-breakdown/' + it.iid + '" target="_blank">risk-breakdown →</a>').addTo(map);
+  kiMarkers[it.iid] = m;
+});
 const evL = L.layerGroup().addTo(map);
 const hotL = L.layerGroup().addTo(map);
 
 // Round-robin slide rotation
 let curSlide = 0;
-const slideCount = 6;
+const slideCount = 4;
 function rotateSlide() {
   curSlide = (curSlide + 1) % slideCount;
   document.querySelectorAll('.rr .slide').forEach(el => el.classList.toggle('on', parseInt(el.dataset.i) === curSlide));
@@ -523,12 +499,11 @@ setInterval(rotateSlide, 5000);
 
 async function tick() {
   try {
-    const [src, fus, live, pol, ver, occ] = await Promise.all([
+    const [src, fus, live, pol, occ] = await Promise.all([
       fetch('/fusion/sources').then(r=>r.json()).catch(()=>null),
       fetch('/fusion/intersection/1007').then(r=>r.json()).catch(()=>null),
       fetch('/fleet/live?limit=20').then(r=>r.json()).catch(()=>null),
       fetch('/policy/stats').then(r=>r.json()).catch(()=>null),
-      fetch('/fleet/verify').then(r=>r.json()).catch(()=>null),
       fetch('/occupancy/compare').then(r=>r.json()).catch(()=>null),
     ]);
     // Hero pill
@@ -558,15 +533,10 @@ async function tick() {
       document.getElementById('s2Ev').textContent = live.events_1m || 0;
       document.getElementById('s2Tot').textContent = (live.events_total || 0).toLocaleString();
     }
-    // Slide 3: 23 SRC bar + LIVE badge
+    // LIVE 뱃지 (23 SRC 슬라이드 제거 — 뱃지가 그 역할)
     if (src && src.sources) {
       const ss = src.sources;
       const ln = ss.filter(s => s.mode === 'live').length;
-      document.getElementById('s3N').textContent = ss.length;
-      document.getElementById('s3L').textContent = ln;
-      document.getElementById('s3S').textContent = ss.length - ln;
-      document.getElementById('s3Bar').innerHTML = ss.map(s => '<div class="s ' + (s.mode === 'live' ? 'lv' : 'st') + '" title="' + esc(s.name||s.id) + ' · ' + s.mode + '"></div>').join('');
-      // LIVE badge on LIVE STREAM header
       const liveN = document.getElementById('liveN');
       if (liveN) {
         liveN.textContent = ln;
@@ -582,30 +552,24 @@ async function tick() {
         return '<div class="ho"' + (url ? ' style="cursor:pointer;" onclick="window.open(\\''+url+'\\',\\'_blank\\')"' : '') + '><div class="rk">#' + h.rank + '</div><div class="nm">' + esc(h.name) + '</div><div class="rs" style="color:' + col + ';">' + h.risk.toFixed(2) + '</div></div>';
       }).join('');
       document.getElementById('s4List').innerHTML = html;
-      // 지도 hotspot 마커
+      // 지도 hotspot 마커 — top-5에 포함된 iid의 KI 기본 ● 마커는 숨김 (★와 중복 방지)
       hotL.clearLayers();
-      pol.top_hotspots.forEach(h => {
+      const topIids = new Set(pol.top_hotspots.slice(0,5).map(h=>h.iid).filter(Boolean));
+      Object.entries(kiMarkers).forEach(([iid, m]) => {
+        if (topIids.has(iid)) { if (map.hasLayer(m)) map.removeLayer(m); }
+        else { if (!map.hasLayer(m)) m.addTo(map); }
+      });
+      pol.top_hotspots.slice(0,5).forEach(h => {
         if (!h.iid) return;
         const it = KI.find(x => x.iid === h.iid);
         if (!it) return;
         const c = h.risk >= 0.7 ? '#FF4040' : h.risk >= 0.5 ? '#FFB020' : '#00E09A';
-        L.marker([it.lat + 0.0015, it.lon], {
-          icon: L.divIcon({ html: '<div style="font-size:20px;color:' + c + ';text-shadow:0 0 6px ' + c + ';">★</div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] })
-        }).bindPopup('<b>#' + h.rank + ' ' + esc(h.name) + '</b><br>risk=' + h.risk.toFixed(2) + '<br><a href="/fusion/risk-breakdown/' + h.iid + '" target="_blank">risk-breakdown →</a>').addTo(hotL);
+        L.marker([it.lat, it.lon], {
+          icon: L.divIcon({ html: '<div style="font-size:22px;color:' + c + ';text-shadow:0 0 8px ' + c + ';line-height:1;">★</div>', className: '', iconSize: [22, 22], iconAnchor: [11, 11] })
+        }).bindPopup('<b>#' + h.rank + ' ' + esc(h.name) + '</b><br>risk=' + h.risk.toFixed(2) + '<br><code>iid=' + h.iid + '</code><br><a href="/fusion/risk-breakdown/' + h.iid + '" target="_blank">risk-breakdown →</a>').addTo(hotL);
       });
     }
-    // Slide 5: Pipeline health 6
-    if (ver && ver.components) {
-      const cs = ver.components;
-      const html = Object.entries(cs).map(([k, c]) => {
-        const fail = c.ok === false;
-        const sign = fail ? '✗' : '✓';
-        const lbl = k.replace(/_/g, ' ').replace('location accuracy', 'LOC ACC').replace('image integrity', 'IMG').replace('pii masking', 'PII').replace('fusion schema', 'SCHEMA').replace('realtime activity', 'LIVE').replace('manifest', 'MANIFEST').toUpperCase();
-        return '<div class="h ' + (fail ? 'fail' : '') + '"><div class="l">' + esc(lbl).slice(0, 8) + '</div><div class="v">' + sign + '</div></div>';
-      }).join('');
-      document.getElementById('s5Grid').innerHTML = html;
-    }
-    // Slide 6: 8 시나리오 (truck/bike/signal/rain/RT/school/lane/night)
+    // Slide 4: 8 시나리오 (truck/bike/signal/rain/RT/school/lane/night)
     if (occ && occ.scenarios) {
       const ICN = {
         truck_occlusion:'🚛', motorcycle_blindspot:'🏍', signal_occlusion:'🚦',

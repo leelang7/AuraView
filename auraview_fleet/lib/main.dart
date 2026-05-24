@@ -1567,25 +1567,34 @@ class _FleetHomeState extends State<FleetHome>
         }
       }
 
-      // 임계값 — voxel 패턴이 시사하는 reason (게이트 통과 전, ticker 표시용)
+      // v12.85: 임계값 우상향 (정지/실내 오발화 방지)
+      //   blind_spot: 25 → 60 (좌·우 측면이 진짜 차량 크기로 채워질 때만)
+      //   사각지대는 주행 중에만 의미 있음 — 정지 상태(<5 km/h) 또는 GPS 없으면 skip
       if (upperCenter >= 30) reasonCandidate = 'signal_occluded';
       else if (bigBlobCenter >= 60) reasonCandidate = 'crosswalk_blocked';
-      else if (leftEdge >= 25) reasonCandidate = 'blind_spot_left';
-      else if (rightEdge >= 25) reasonCandidate = 'blind_spot_right';
+      else if (leftEdge >= 60) reasonCandidate = 'blind_spot_left';
+      else if (rightEdge >= 60) reasonCandidate = 'blind_spot_right';
       _liveReasonCandidate = reasonCandidate;
 
-      // v12.82: 위치-의존 reason 은 GPS 게이트 통과한 경우에만 실제 발화
+      // v12.82+v12.85: 위치+속도 게이트 통과한 경우에만 실제 발화
       final nearSignal = _isNearTrafficSignal();
       final nearCw = _isNearCrosswalk() || nearSignal;
+      final speedKmh = _pos == null ? 0.0 : (_pos!.speed * 3.6);
+      final moving = _testMode || speedKmh >= 5.0;
       if (upperCenter >= 30 && nearSignal) return 'signal_occluded';
       if (bigBlobCenter >= 60 && nearCw) return 'crosswalk_blocked';
-      if (leftEdge >= 25)  return 'blind_spot_left';
-      if (rightEdge >= 25) return 'blind_spot_right';
+      // 사각지대: 주행 중(5km/h+) 만 — 정지·실내 오발화 차단
+      if (leftEdge >= 60 && moving)  return 'blind_spot_left';
+      if (rightEdge >= 60 && moving) return 'blind_spot_right';
     } else {
       _liveVoxelCells = 0;
       _liveReasonCandidate = '';
     }
-    // 폴백 (voxel 정보 없을 때) — 일반 entropy/motion (위치 무관)
+    // 폴백 (voxel 정보 없을 때) — 일반 entropy/motion
+    //   v12.85: 폴백도 주행 중에만 (정지 시 카메라 흔들림으로 false alarm 차단)
+    final speedKmh = _pos == null ? 0.0 : (_pos!.speed * 3.6);
+    final moving = _testMode || speedKmh >= 5.0;
+    if (!moving) return null;
     if (feat.entropy >= 0.75 || feat.motion >= 0.7) return 'high_uncertainty';
     if (feat.entropy >= kEntropyThreshold) return 'low_confidence';
     return null;
@@ -6106,6 +6115,27 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
                 ? 'BEV · 0 FPS · VOXEL ✗'
                 : 'BEV · ${widget.fps > 0.5 ? widget.fps.toStringAsFixed(1) : "0"} FPS · VOXEL ✓',
               color: widget.voxelFlat == null ? _muted : _safe)),
+            // v12.85: BEV 범례 (좌측 중앙) — 색상이 뭘 의미하는지 표시
+            const Positioned(left: 10, bottom: 36, child: _BevLegend()),
+            // 검출 객체 0개 + voxel 비어있으면 안내 메시지
+            if (_objs.isEmpty && (widget.voxelFlat == null || widget.voxelFlat!.isEmpty))
+              Center(child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+                ),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.radar_rounded, size: 28, color: _accent.withValues(alpha: 0.6)),
+                  const SizedBox(height: 6),
+                  Text('탐지 대기 중',
+                    style: TextStyle(color: _accent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                  const SizedBox(height: 2),
+                  Text('카메라에 사람/차량/사물이 잡히면 표시',
+                    style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w600)),
+                ]),
+              )),
             Positioned(right: 12, top: 10, child: _TeslaLabel(
               icon: Icons.tag_faces_rounded, label: '$pc 보행 · $vc 차량',
               color: (pc + vc) > 0 ? _accent : Colors.white.withValues(alpha: 0.55))),
@@ -6187,35 +6217,93 @@ class _CamBoxPainter extends CustomPainter {
 }
 
 // 깨끗한 BEV 페인터 (도로 X, 거리 grid + ego + 검출 silhouette 만)
-// v12.84: 40×40 voxel grid 히트맵 — BEV 패널 바닥에 깔리는 occupancy 시각화.
-//   cell 값 0..1 → 어두운 검정~사이언 보간. 0.4 미만은 투명.
-//   row 0 = ego 가까이 (화면 아래), row 39 = 멀리 (화면 위)
+// v12.85: 40×40 voxel grid 히트맵 — 거리별 의미 있는 색상.
+//   row 0 = ego 가까이 (화면 아래·RED 위험), row 39 = 멀리 (화면 위·CYAN 안전)
+//   3구간: 0-13 (0-5m, 빨강) / 14-26 (5-15m, 노랑) / 27-39 (15-40m, 사이언)
+//   사용자가 "내 차 근처는 위험, 멀리는 안전" 즉시 직관 가능
 class _VoxelHeatmapPainter extends CustomPainter {
   final List flat;
   _VoxelHeatmapPainter({required this.flat});
+
+  Color _distColor(int row, double v) {
+    // 0..0.4 보다 큰 occupancy 만 표시. alpha 는 occupancy 비례
+    final alpha = (0.18 + (v - 0.4) * 0.85).clamp(0.18, 0.78);
+    if (row < 14) {
+      // 근거리: RED (#FF4040)
+      return Color.fromRGBO(255, 64, 64, alpha);
+    } else if (row < 27) {
+      // 중거리: YELLOW (#FFB020)
+      return Color.fromRGBO(255, 176, 32, alpha);
+    } else {
+      // 원거리: CYAN (#00C8FF)
+      return Color.fromRGBO(0, 200, 255, alpha);
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     const int rows = 40, cols = 40;
     final cellW = size.width / cols;
     final cellH = size.height / rows;
-    // base cyan: #00C8FF, max alpha 0.55 (BEV 객체 그림과 합성)
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
         final v = (flat[r * cols + c] as num).toDouble();
         if (v < 0.4) continue;
-        // 화면 좌표 변환: row 39 (멀리) → y 위, row 0 (가까이) → y 아래
+        // row 39 (멀리) → y 위, row 0 (가까이·ego) → y 아래
         final y = (rows - 1 - r) * cellH;
         final x = c * cellW;
-        final alpha = (0.10 + (v - 0.4) * 0.75).clamp(0.10, 0.55);
-        final p = Paint()
-          ..color = Color.fromRGBO(0, 200, 255, alpha)
-          ..style = PaintingStyle.fill;
+        final p = Paint()..color = _distColor(r, v)..style = PaintingStyle.fill;
         canvas.drawRect(Rect.fromLTWH(x, y, cellW + 0.5, cellH + 0.5), p);
       }
     }
   }
   @override
   bool shouldRepaint(covariant _VoxelHeatmapPainter old) => !identical(old.flat, flat);
+}
+
+// v12.85: BEV 범례 + ego 라벨 — "이게 뭔지" 한눈에 이해되게
+class _BevLegend extends StatelessWidget {
+  const _BevLegend();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.7),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('BIRD-EYE VIEW',
+            style: TextStyle(
+              color: Color(0xFF00C8FF), fontSize: 8,
+              fontFamily: 'monospace', fontWeight: FontWeight.w900, letterSpacing: 1.4)),
+          const SizedBox(height: 4),
+          _legendRow(const Color(0xFFFF4040), '0-5m 위험'),
+          _legendRow(const Color(0xFFFFB020), '5-15m 주의'),
+          _legendRow(const Color(0xFF00C8FF), '15m+ 안전'),
+        ],
+      ),
+    );
+  }
+  Widget _legendRow(Color c, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(
+          color: c, borderRadius: BorderRadius.circular(2),
+          boxShadow: [BoxShadow(color: c.withValues(alpha: 0.55), blurRadius: 3)],
+        )),
+        const SizedBox(width: 5),
+        Text(label, style: const TextStyle(
+          color: Colors.white, fontSize: 8.5,
+          fontFamily: 'monospace', fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
 }
 
 class _CleanBevPainter extends CustomPainter {

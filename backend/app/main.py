@@ -399,6 +399,7 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
   <a href="/policy/">POLICY</a>
   <a href="/scorecard/">SCORECARD</a>
   <a href="/bev3d/">BEV3D</a>
+  <a href="/metrics/audit" target="_blank" title="라이브 시스템 헬스 + 가점 25점 + 데이터 신뢰성 (단일 GET)">AUDIT</a>
 </div>
 
 <!-- Hero pill 가운데 상단 (간결한 메시지) -->

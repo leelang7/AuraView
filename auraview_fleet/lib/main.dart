@@ -204,6 +204,12 @@ class _FleetHomeState extends State<FleetHome>
   // BEV 라이브 상태
   DateTime? _bevLastFrameAt;
   int _bevFrameCount = 0;
+  // v12.84: 라이브 추론 ticker (항상 표시) — 현재 진행중 inference 의 raw 값
+  double _liveEntropy = 0.0;
+  double _liveMotion = 0.0;
+  int _liveVoxelCells = 0;          // 0.4 이상 채워진 cell 수 (1600 中)
+  String _liveReasonCandidate = ''; // voxel 패턴이 시사하는 reason (게이트 통과 전)
+  DateTime? _liveTickerAt;          // 마지막 ticker 갱신 시각
 
   // v12.4 2026-05-19: ML Kit raw 박스 (필터 전) — 카메라에 모두 표시
   //   { box[x,y,w,h], labels: 'A 0.9, B 0.6', kept: true/false, rejReason: '...' }
@@ -1523,7 +1529,13 @@ class _FleetHomeState extends State<FleetHome>
   /// v12.82: 위치 기반 게이팅 — signal_occluded/crosswalk_blocked 는
   ///   실제 신호등/횡단보도 근처에서만 발화. 테스트 모드 ON 일 때만 어디서나.
   String? _classifyReason(_FrameFeat feat) {
+    // v12.84: 라이브 ticker 갱신 (게이트 통과 여부와 무관 — 항상 inference 동작 표시)
+    _liveEntropy = feat.entropy;
+    _liveMotion = feat.motion;
+    _liveTickerAt = DateTime.now();
+
     final flat = _bev?['grid_flat'];
+    String reasonCandidate = '';
     if (flat is List && flat.length == 1600) {
       // 화면 영역 분석 (40×40 그리드, row 0=ego 가까이, row 39=멀리)
       const ROWS = 40, COLS = 40;
@@ -1531,6 +1543,11 @@ class _FleetHomeState extends State<FleetHome>
       double leftEdge = 0;      // 좌측 사각지대
       double rightEdge = 0;     // 우측 사각지대
       double bigBlobCenter = 0; // 트럭/버스 같은 큰 객체
+      int cellsFilled = 0;      // v12.84: 전체 채워진 cell 수
+      for (int idx = 0; idx < 1600; idx++) {
+        if ((flat[idx] as num).toDouble() >= 0.4) cellsFilled++;
+      }
+      _liveVoxelCells = cellsFilled;
       for (int r = 25; r < 38; r++) {           // 멀리 (10~15m)
         for (int c = 14; c < 26; c++) {         // 중앙 차로
           upperCenter += (flat[r * COLS + c] as num).toDouble();
@@ -1550,17 +1567,23 @@ class _FleetHomeState extends State<FleetHome>
         }
       }
 
-      // 임계값 — 대략 cell ≥ 0.4 일 때 채워진 걸로 본다
-      // v12.82: 위치-의존 reason 은 GPS 게이트 통과한 경우에만
+      // 임계값 — voxel 패턴이 시사하는 reason (게이트 통과 전, ticker 표시용)
+      if (upperCenter >= 30) reasonCandidate = 'signal_occluded';
+      else if (bigBlobCenter >= 60) reasonCandidate = 'crosswalk_blocked';
+      else if (leftEdge >= 25) reasonCandidate = 'blind_spot_left';
+      else if (rightEdge >= 25) reasonCandidate = 'blind_spot_right';
+      _liveReasonCandidate = reasonCandidate;
+
+      // v12.82: 위치-의존 reason 은 GPS 게이트 통과한 경우에만 실제 발화
       final nearSignal = _isNearTrafficSignal();
       final nearCw = _isNearCrosswalk() || nearSignal;
-      // 신호 가림: 전방 멀리 중앙 점유 누적 ≥ 30 + 실제 신호등 근처
       if (upperCenter >= 30 && nearSignal) return 'signal_occluded';
-      // 횡단보도 가림 (큰 객체 중앙 점유): bigBlob ≥ 60 + 실제 횡단보도 근처
       if (bigBlobCenter >= 60 && nearCw) return 'crosswalk_blocked';
-      // 사각지대: 좌/우 측면 누적 ≥ 25 — 어디서나 의미있음 (위치 게이트 없음)
       if (leftEdge >= 25)  return 'blind_spot_left';
       if (rightEdge >= 25) return 'blind_spot_right';
+    } else {
+      _liveVoxelCells = 0;
+      _liveReasonCandidate = '';
     }
     // 폴백 (voxel 정보 없을 때) — 일반 entropy/motion (위치 무관)
     if (feat.entropy >= 0.75 || feat.motion >= 0.7) return 'high_uncertainty';
@@ -1793,6 +1816,7 @@ class _FleetHomeState extends State<FleetHome>
                         serverTotalSources: _serverSourceCount,
                         serverSchema: _serverSchema,
                         lastFusionOk: _lastFusionFetchOk,
+                        voxelFlat: _bev?['grid_flat'] as List?,   // v12.84
                       ),
                     ),
                   ),
@@ -1848,73 +1872,67 @@ class _FleetHomeState extends State<FleetHome>
               ),
             ),
 
-            // v12.82: 통합 상태 pill — DET / BEV / GATE 한 줄
+            // v12.84: 라이브 추론 ticker — 좌하단 (entropy/motion/voxel 항상 표시)
             Positioned(
-              left: 10, right: 10, bottom: 60,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // 좌측: 검출 상태
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              left: 10, bottom: 60,
+              child: _LiveInferenceTicker(
+                entropy: _liveEntropy,
+                motion: _liveMotion,
+                voxelCells: _liveVoxelCells,
+                reasonCandidate: _liveReasonCandidate,
+                bevAlive: _bev != null,
+                bevFrameCount: _bevFrameCount,
+                tickerAt: _liveTickerAt,
+                detectKept: _detectKeptN,
+              ),
+            ),
+            // v12.84: 위치 게이트 — 우하단 (짧은 텍스트)
+            Positioned(
+              right: 10, bottom: 60,
+              child: GestureDetector(
+                onLongPress: () {
+                  setState(() => _testMode = !_testMode);
+                  _toast(_testMode ? 'TEST 모드 ON — 위치 무관 발화' : 'TEST 모드 OFF — 실제 신호등 근처에서만',
+                    color: _testMode ? _warn : _accent);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  constraints: const BoxConstraints(maxWidth: 140),
+                  decoration: BoxDecoration(
+                    color: const Color(0xDD000000),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: (_testMode ? _warn : (_locationGateReason.startsWith('known') || _locationGateReason.startsWith('OSM') ? _safe : _muted)).withValues(alpha: 0.55),
+                      width: 0.8),
+                  ),
+                  child: Text(
+                    _testMode ? 'TEST 모드 ON' : (_locationGateReason.isEmpty ? 'GPS 대기' : _locationGateReason),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _testMode ? _warn : (_locationGateReason.startsWith('known') || _locationGateReason.startsWith('OSM') ? _safe : _muted),
+                      fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ),
+            // v12.84: 설정 ⚙ 버튼 — 우상단 floating (상단 status bar 와 무관, 항상 보임)
+            Positioned(
+              top: 14, right: 12,
+              child: SafeArea(
+                child: GestureDetector(
+                  onTap: _openDetailSheet,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    width: 44, height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xDD000000),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: (_detectRawN > 0 ? _safe : _warn).withValues(alpha: 0.5),
-                        width: 0.8),
+                      color: Colors.black.withValues(alpha: 0.72),
+                      border: Border.all(color: _accent.withValues(alpha: 0.55), width: 1.2),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.25), blurRadius: 10)],
                     ),
-                    child: Text(
-                      'DET $_detectRawN/$_detectKeptN${_detectLastAt != null ? " · ${DateTime.now().difference(_detectLastAt!).inSeconds}s" : ""}',
-                      style: TextStyle(
-                        color: _detectRawN > 0 ? _safe : _warn,
-                        fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
-                    ),
+                    child: Icon(Icons.settings_rounded, size: 22, color: _accent),
                   ),
-                  // 가운데: BEV 라이브 여부
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xDD000000),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: (_bev != null ? _safe : _muted).withValues(alpha: 0.5),
-                        width: 0.8),
-                    ),
-                    child: Text(
-                      _bev == null
-                        ? 'BEV ✗'
-                        : 'BEV ✓ ${_bevFrameCount}f${_bevLastFrameAt != null ? " · ${DateTime.now().difference(_bevLastFrameAt!).inSeconds}s" : ""}',
-                      style: TextStyle(
-                        color: _bev != null ? _safe : _muted,
-                        fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  // 우측: 위치 게이트 (테스트 모드 / 신호등 근접)
-                  GestureDetector(
-                    onLongPress: () {
-                      setState(() => _testMode = !_testMode);
-                      _toast(_testMode ? 'TEST 모드 ON — 위치 무관 발화' : 'TEST 모드 OFF — 실제 신호등 근처에서만',
-                        color: _testMode ? _warn : _accent);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xDD000000),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: (_testMode ? _warn : (_locationGateReason.startsWith('known') || _locationGateReason.startsWith('OSM') ? _safe : _muted)).withValues(alpha: 0.5),
-                          width: 0.8),
-                      ),
-                      child: Text(
-                        _testMode ? 'TEST 모드' : (_locationGateReason.isEmpty ? 'GPS 대기' : _locationGateReason),
-                        style: TextStyle(
-                          color: _testMode ? _warn : (_locationGateReason.startsWith('known') || _locationGateReason.startsWith('OSM') ? _safe : _muted),
-                          fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -5910,6 +5928,7 @@ class _CameraBevSplit extends StatefulWidget {
   final int serverTotalSources;
   final String serverSchema;
   final DateTime? lastFusionOk;
+  final List? voxelFlat;   // v12.84: 1600개 voxel cell occupancy [0..1]
   const _CameraBevSplit({
     required this.camera, required this.detections,
     this.rawDetections = const [],
@@ -5919,6 +5938,7 @@ class _CameraBevSplit extends StatefulWidget {
     this.serverTotalSources = 0,
     this.serverSchema = '',
     this.lastFusionOk,
+    this.voxelFlat,
   });
   @override
   State<_CameraBevSplit> createState() => _CameraBevSplitState();
@@ -6069,14 +6089,23 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
         child: ClipRRect(
           borderRadius: BorderRadius.circular(19),
           child: Stack(fit: StackFit.expand, children: [
+            // v12.84: voxel grid heatmap (40×40) — 실제 카메라→voxel 변환 결과 시각화
+            //   사용자가 BEV 가 살아있는지 즉시 확인 가능 (cell 색이 변함)
+            if (widget.voxelFlat != null && widget.voxelFlat!.length == 1600)
+              IgnorePointer(child: RepaintBoundary(child: CustomPaint(
+                size: Size.infinite,
+                painter: _VoxelHeatmapPainter(flat: widget.voxelFlat!),
+              ))),
             RepaintBoundary(child: CustomPaint(
               size: Size.infinite,
               painter: _CleanBevPainter(objs: _objs, t: _t),
             )),
             Positioned(left: 12, top: 10, child: _TeslaLabel(
               icon: Icons.view_in_ar_rounded,
-              label: 'BEV · ${widget.fps > 0.5 ? widget.fps.toStringAsFixed(1) : "0"} FPS',
-              color: _safe)),
+              label: widget.voxelFlat == null
+                ? 'BEV · 0 FPS · VOXEL ✗'
+                : 'BEV · ${widget.fps > 0.5 ? widget.fps.toStringAsFixed(1) : "0"} FPS · VOXEL ✓',
+              color: widget.voxelFlat == null ? _muted : _safe)),
             Positioned(right: 12, top: 10, child: _TeslaLabel(
               icon: Icons.tag_faces_rounded, label: '$pc 보행 · $vc 차량',
               color: (pc + vc) > 0 ? _accent : Colors.white.withValues(alpha: 0.55))),
@@ -6158,6 +6187,37 @@ class _CamBoxPainter extends CustomPainter {
 }
 
 // 깨끗한 BEV 페인터 (도로 X, 거리 grid + ego + 검출 silhouette 만)
+// v12.84: 40×40 voxel grid 히트맵 — BEV 패널 바닥에 깔리는 occupancy 시각화.
+//   cell 값 0..1 → 어두운 검정~사이언 보간. 0.4 미만은 투명.
+//   row 0 = ego 가까이 (화면 아래), row 39 = 멀리 (화면 위)
+class _VoxelHeatmapPainter extends CustomPainter {
+  final List flat;
+  _VoxelHeatmapPainter({required this.flat});
+  @override
+  void paint(Canvas canvas, Size size) {
+    const int rows = 40, cols = 40;
+    final cellW = size.width / cols;
+    final cellH = size.height / rows;
+    // base cyan: #00C8FF, max alpha 0.55 (BEV 객체 그림과 합성)
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final v = (flat[r * cols + c] as num).toDouble();
+        if (v < 0.4) continue;
+        // 화면 좌표 변환: row 39 (멀리) → y 위, row 0 (가까이) → y 아래
+        final y = (rows - 1 - r) * cellH;
+        final x = c * cellW;
+        final alpha = (0.10 + (v - 0.4) * 0.75).clamp(0.10, 0.55);
+        final p = Paint()
+          ..color = Color.fromRGBO(0, 200, 255, alpha)
+          ..style = PaintingStyle.fill;
+        canvas.drawRect(Rect.fromLTWH(x, y, cellW + 0.5, cellH + 0.5), p);
+      }
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _VoxelHeatmapPainter old) => !identical(old.flat, flat);
+}
+
 class _CleanBevPainter extends CustomPainter {
   final List<_BevObj2> objs;
   final double t;
@@ -7610,5 +7670,171 @@ class _RecPillState extends State<_RecPill> with SingleTickerProviderStateMixin 
         );
       },
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// v12.84: 라이브 추론 ticker — entropy/motion 바 + voxel cells + reason 후보
+//   항상 표시되어 사용자가 inference 가 돌고 있는지 즉시 확인 가능.
+//   게이트로 발화 막혀도 ticker 는 변화 → "왜 안 잡히는지" 디버그도 됨.
+// ─────────────────────────────────────────────────────────────────
+class _LiveInferenceTicker extends StatefulWidget {
+  final double entropy;
+  final double motion;
+  final int voxelCells;     // 0.4+ 채워진 cell (1600 中)
+  final String reasonCandidate;  // voxel 패턴이 시사하는 reason (게이트 통과 전)
+  final bool bevAlive;
+  final int bevFrameCount;
+  final DateTime? tickerAt;
+  final int detectKept;     // ML Kit 검출 살아남은 개수
+  const _LiveInferenceTicker({
+    required this.entropy, required this.motion,
+    required this.voxelCells, required this.reasonCandidate,
+    required this.bevAlive, required this.bevFrameCount,
+    required this.tickerAt, required this.detectKept,
+  });
+
+  @override
+  State<_LiveInferenceTicker> createState() => _LiveInferenceTickerState();
+}
+
+class _LiveInferenceTickerState extends State<_LiveInferenceTicker> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..repeat(reverse: true);
+  }
+  @override
+  void dispose() { _pulse.dispose(); super.dispose(); }
+
+  Color _entCol(double v) {
+    if (v >= 0.8) return _danger;
+    if (v >= 0.6) return _warn;
+    return _safe;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ageSec = widget.tickerAt == null ? 999 : DateTime.now().difference(widget.tickerAt!).inSeconds;
+    final stale = ageSec > 3;
+    final pulseOn = !stale && (widget.entropy > 0 || widget.voxelCells > 0);
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (_, __) {
+        final glow = pulseOn ? (0.25 + 0.35 * _pulse.value) : 0.10;
+        return Container(
+          width: 188,
+          padding: const EdgeInsets.fromLTRB(9, 7, 9, 7),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: (stale ? _muted : _accent).withValues(alpha: 0.55),
+              width: 0.9),
+            boxShadow: pulseOn ? [BoxShadow(color: _accent.withValues(alpha: glow), blurRadius: 8)] : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1행: LIVE INFERENCE 헤더 + BEV/DET 카운트
+              Row(children: [
+                Container(width: 6, height: 6, decoration: BoxDecoration(
+                  color: stale ? _muted : _safe, shape: BoxShape.circle,
+                  boxShadow: pulseOn ? [BoxShadow(color: _safe, blurRadius: 4)] : null,
+                )),
+                const SizedBox(width: 5),
+                Text('LIVE INFERENCE',
+                  style: TextStyle(
+                    color: stale ? _muted : _accent, fontSize: 8,
+                    fontFamily: 'monospace', fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+                const Spacer(),
+                Text('${widget.detectKept}d ${ageSec}s',
+                  style: TextStyle(
+                    color: _muted, fontSize: 8,
+                    fontFamily: 'monospace', fontWeight: FontWeight.w800)),
+              ]),
+              const SizedBox(height: 5),
+              // 2행: ENT bar
+              _TickerBar(label: 'ENT', value: widget.entropy, color: _entCol(widget.entropy)),
+              const SizedBox(height: 3),
+              // 3행: MOT bar
+              _TickerBar(label: 'MOT', value: widget.motion, color: _entCol(widget.motion)),
+              const SizedBox(height: 4),
+              // 4행: VOXEL cells + BEV 상태
+              Row(children: [
+                Icon(Icons.grid_on_rounded, size: 10,
+                  color: widget.bevAlive ? _safe : _muted),
+                const SizedBox(width: 3),
+                Text('${widget.voxelCells}/1600',
+                  style: TextStyle(
+                    color: widget.bevAlive ? _safe : _muted, fontSize: 9,
+                    fontFamily: 'monospace', fontWeight: FontWeight.w800)),
+                const SizedBox(width: 6),
+                Text('· ${widget.bevFrameCount}f',
+                  style: TextStyle(
+                    color: _muted, fontSize: 8,
+                    fontFamily: 'monospace', fontWeight: FontWeight.w700)),
+              ]),
+              // 5행: reason candidate (있을 때만)
+              if (widget.reasonCandidate.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(children: [
+                  Container(width: 4, height: 4, decoration: const BoxDecoration(
+                    color: _warn, shape: BoxShape.circle)),
+                  const SizedBox(width: 4),
+                  Expanded(child: Text(
+                    '후보: ${widget.reasonCandidate.replaceAll('_', ' ')}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _warn, fontSize: 8.5,
+                      fontFamily: 'monospace', fontWeight: FontWeight.w800))),
+                ]),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TickerBar extends StatelessWidget {
+  final String label;
+  final double value;   // 0..1
+  final Color color;
+  const _TickerBar({required this.label, required this.value, required this.color});
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      SizedBox(width: 22, child: Text(label,
+        style: const TextStyle(
+          color: _muted, fontSize: 8,
+          fontFamily: 'monospace', fontWeight: FontWeight.w800, letterSpacing: 0.5))),
+      const SizedBox(width: 4),
+      Expanded(child: ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: Stack(children: [
+          Container(height: 6, color: Colors.white.withValues(alpha: 0.10)),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            height: 6,
+            width: 88 * value.clamp(0.0, 1.0),  // 컨테이너 폭에 비례
+            decoration: BoxDecoration(
+              color: color,
+              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 3)],
+            ),
+          ),
+        ]),
+      )),
+      const SizedBox(width: 5),
+      SizedBox(width: 24, child: Text(value.toStringAsFixed(2),
+        textAlign: TextAlign.right,
+        style: TextStyle(
+          color: color, fontSize: 9,
+          fontFamily: 'monospace', fontWeight: FontWeight.w900))),
+    ]);
   }
 }

@@ -2093,7 +2093,107 @@ def fetch_crosswalk_gis(lat: float = 37.5665, lon: float = 126.9780,
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (23-source v9 2026-05-21)
+# 24. USGS 실시간 지진 (v10 2026-05-25) — 터널·교량 인프라 안전 prior
+#     no-key, FDSN earthquake catalog (USGS 공식 free API)
+# ──────────────────────────────────────────────────────────────────────
+
+USGS_QUAKE_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
+
+
+def fetch_usgs_earthquakes(lat: float = 37.5665, lon: float = 126.9780,
+                            radius_km: float = 500.0,
+                            days_back: int = 30,
+                            min_magnitude: float = 2.0) -> Dict[str, Any]:
+    """USGS FDSN 지진 카탈로그 — 반경 N km 내 최근 N일 M2.0+ 지진.
+    응답: { events: [...], count, max_magnitude, recent_24h_count, derived: {...} }
+    no-key, 1초 cache (USGS rate limit 보호)."""
+    from datetime import datetime, timedelta
+    start = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+    end = (datetime.utcnow() + timedelta(days=1)).strftime("%Y-%m-%d")
+    # _OSM_CACHE 재사용 (key prefix 'usgs')
+    ck = ("usgs", round(lat, 2), round(lon, 2), int(radius_km), days_back)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
+    params = {
+        "format": "geojson", "latitude": lat, "longitude": lon,
+        "maxradiuskm": radius_km, "minmagnitude": min_magnitude,
+        "starttime": start, "endtime": end,
+        "orderby": "time", "limit": 50,
+    }
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)"}
+    try:
+        r = requests.get(USGS_QUAKE_URL, params=params, headers=headers, timeout=8.0)
+        r.raise_for_status()
+        j = r.json()
+        feats = j.get("features", []) or []
+        events = []
+        max_mag = 0.0
+        recent_24h = 0
+        now_ts = _time.time()
+        for f in feats[:50]:
+            props = f.get("properties", {}) or {}
+            geom = f.get("geometry", {}) or {}
+            coords = geom.get("coordinates") or [None, None, None]
+            mag = float(props.get("mag", 0) or 0)
+            t_ms = float(props.get("time", 0) or 0)
+            t_age_h = max(0.0, (now_ts - t_ms / 1000.0) / 3600.0)
+            events.append({
+                "id": f.get("id"),
+                "mag": round(mag, 1),
+                "place": props.get("place"),
+                "time_ms": int(t_ms),
+                "age_hours": round(t_age_h, 1),
+                "lat": coords[1], "lon": coords[0], "depth_km": coords[2],
+                "url": props.get("url"),
+                "tsunami": bool(props.get("tsunami", 0)),
+            })
+            if mag > max_mag: max_mag = mag
+            if t_age_h <= 24: recent_24h += 1
+        # 위험 prior: 24시간 내 M3.0+ 1건이면 +0.02, M4.0+ 1건이면 +0.04
+        recent_strong = sum(1 for e in events
+                            if e["age_hours"] <= 24 and e["mag"] >= 3.0)
+        recent_severe = sum(1 for e in events
+                            if e["age_hours"] <= 24 and e["mag"] >= 4.0)
+        quake_boost = min(0.06, recent_strong * 0.02 + recent_severe * 0.04)
+        result = {
+            "source": "USGS FDSN earthquake catalog (no-key · live)",
+            "lat": lat, "lon": lon, "radius_km": radius_km,
+            "days_back": days_back, "min_magnitude": min_magnitude,
+            "events": events, "count": len(events),
+            "derived": {
+                "max_magnitude": round(max_mag, 1),
+                "recent_24h_count": recent_24h,
+                "recent_24h_strong_M3plus": recent_strong,
+                "recent_24h_severe_M4plus": recent_severe,
+                "infrastructure_risk_boost": round(quake_boost, 3),
+                "tunnel_bridge_alert": recent_strong > 0,
+            },
+        }
+        _record_fetch("earthquake", "live", True)
+        _osm_cache_put(ck, result)
+        return result
+    except Exception as exc:
+        log.warning("USGS earthquake API failed: %s", exc)
+        _record_fetch("earthquake", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
+        # stub: 빈 결과 (한국은 보통 평온)
+        return {
+            "source": "USGS (stub — API timeout)",
+            "events": [], "count": 0,
+            "derived": {
+                "max_magnitude": 0.0,
+                "recent_24h_count": 0,
+                "recent_24h_strong_M3plus": 0,
+                "recent_24h_severe_M4plus": 0,
+                "infrastructure_risk_boost": 0.0,
+                "tunnel_bridge_alert": False,
+            },
+        }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (24-source v10 2026-05-25)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass

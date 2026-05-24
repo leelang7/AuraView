@@ -68,6 +68,8 @@ def list_sources():
         {"id": "police_cam",         "name": "경찰청 교통단속 CCTV 위치",         "origin": "apis.data.go.kr/1320000/CityTrafficCctv","gain": "단속 밀집 = 사고다발 prior +0.04", "added": "v8-2026.05.21"},
         # v9 2026-05-21: 22 → 23종 확장
         {"id": "crosswalk",          "name": "국토부 횡단보도 GIS",                "origin": "api.vworld.kr (lt_l_crwlk)",             "gain": "보행자 prior +0.05 / 50m 접근 ×1.10",       "added": "v9-2026.05.21"},
+        # v10 2026-05-25: 23 → 24종 확장 (USGS 지진 — 터널/교량 인프라 안전)
+        {"id": "earthquake",         "name": "USGS 실시간 지진 (M2.0+)",            "origin": "earthquake.usgs.gov/fdsnws (no-key)",   "gain": "터널/교량 인프라 위험 prior +0.02 / 진앙 50km 내 알림", "added": "v10-2026.05.25"},
     ]
     for s in sources:
         meta = fresh.get(s["id"]) or {}
@@ -151,6 +153,17 @@ def fusion_crosswalk(lat: float = Query(37.5665), lon: float = Query(126.9780),
     """v12.88: 반경 N m 내 횡단보도 + 신호등 유무 + 스쿨존.
     Flutter 앱이 위치 게이팅(_isNearTrafficSignal)용으로 호출 → OSM Overpass live."""
     return public_api.fetch_crosswalk_gis(lat=lat, lon=lon, radius_m=radius_m)
+
+
+@router.get("/earthquake")
+def fusion_earthquake(lat: float = Query(37.5665), lon: float = Query(126.9780),
+                       radius_km: float = Query(500.0, ge=10.0, le=2000.0),
+                       days_back: int = Query(30, ge=1, le=180),
+                       min_magnitude: float = Query(2.0, ge=0.0, le=8.0)):
+    """v10 2026-05-25: USGS FDSN 실시간 지진 (no-key) — 터널/교량 인프라 안전 prior.
+    반경 N km, 최근 N일, M? 이상. 응답: events[] + derived (max_mag, 24h count, risk_boost)."""
+    return public_api.fetch_usgs_earthquakes(lat=lat, lon=lon,
+        radius_km=radius_km, days_back=days_back, min_magnitude=min_magnitude)
 
 
 # v5 2026-05-18: 15 → 17종 확장

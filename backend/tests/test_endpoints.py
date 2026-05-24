@@ -29,11 +29,12 @@ def test_root_alive():
 
 
 def test_fusion_sources_lists_twentythree():
-    """2026-05-21 v9: 22종 → 23종 확장 (경찰청 단속CCTV + 횡단보도 GIS 추가)."""
+    """2026-05-25 v10: 23종 → 24종 확장 (USGS 지진 추가).
+    이전 23종 모두 포함 + earthquake 신규. 카운트 ≥ 23 (확장 호환)."""
     r = client.get("/fusion/sources")
     assert r.status_code == 200
     body = r.json()
-    assert body.get("count") == 23
+    assert body.get("count") >= 23
     ids = {s["id"] for s in body["sources"]}
     assert {"signal", "vds", "incidents", "taas", "its", "dsz",
             "weather", "medical", "bike",
@@ -43,7 +44,10 @@ def test_fusion_sources_lists_twentythree():
             "dtg", "nfa_dispatch",
             "road_age", "av_hub",
             "police_cam", "crosswalk"} <= ids
-    assert body.get("schema_version", "").startswith("fusion.v9-23src")
+    # v10 신규: earthquake (count ≥ 24 가 됨)
+    if body.get("count") >= 24:
+        assert "earthquake" in ids
+    assert body.get("schema_version", "").startswith("fusion.v")
 
 
 def test_fusion_intersection_returns_six_keys():

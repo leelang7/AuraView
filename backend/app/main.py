@@ -398,6 +398,20 @@ nav a:hover{color:var(--accent);border-color:rgba(0,200,255,0.30);}
     <div class="st"><div class="l">파이프라인</div><div class="v safe" id="hVer">— / 6</div><div class="sub" id="hVerSub">자가검증</div></div>
   </div>
 
+  <!-- v12.70: 지도 메인 위치 (Hero + Stats 직후) — 전체 너비 큰 사이즈 -->
+  <section class="panel" style="margin-bottom:14px;">
+    <h3>🗺 위험지도 — 8 known 교차로 + 익명 이벤트 + 정책 hotspot<span class="badge"><span class="ring"></span>OSM · 라이브</span></h3>
+    <div class="desc">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00C8FF;box-shadow:0 0 5px #00C8FF;vertical-align:middle;margin-right:3px;"></span>파란 점 = 8 known 교차로
+      &nbsp;·&nbsp;
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#FF4040;box-shadow:0 0 5px #FF4040;vertical-align:middle;margin-right:3px;"></span>빨/황/녹 원 = 익명 이벤트 (entropy 비례)
+      &nbsp;·&nbsp;
+      <span style="color:#FFB020;font-size:14px;">★</span> 노란 별 = 정책 hotspot Top10
+      &nbsp;·&nbsp; 클릭 시 risk-breakdown drill-down.
+    </div>
+    <div id="map" style="height:460px;border-radius:10px;overflow:hidden;background:#0A0F18;border:1px solid var(--line);"></div>
+  </section>
+
   <div class="main">
     <section class="panel">
       <h3>① 23 공공데이터 실시간 호출 — 한양대역 1007 응답<span class="badge"><span class="ring"></span>LIVE</span></h3>
@@ -422,13 +436,6 @@ nav a:hover{color:var(--accent);border-color:rgba(0,200,255,0.30);}
       </div>
     </section>
   </div>
-
-  <!-- v12.69: 지도 패널 — 익명 이벤트 마커 + 위험 hotspot + 8 known intersection -->
-  <section class="panel" style="margin-bottom:14px;">
-    <h3>지도 — 익명 이벤트 위치 + 위험 hotspot<span class="badge"><span class="ring"></span>OSM · Leaflet</span></h3>
-    <div class="desc">파란 점=8 known 교차로 · 빨간 원=수집된 익명 이벤트 (entropy 비례 크기) · 노란 별=정책 hotspot Top10. 클릭 시 상세.</div>
-    <div id="map" style="height:380px;border-radius:10px;overflow:hidden;background:#0A0F18;border:1px solid var(--line);"></div>
-  </section>
 
   <div class="main">
     <section class="panel">

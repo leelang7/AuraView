@@ -1614,20 +1614,45 @@ _CROSSWALK_FALLBACK = {
 
 
 def _fetch_osm_crosswalks(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
-    """OpenStreetMap Overpass (no-key) — highway=crossing 노드 라이브 fetch.
+    """OpenStreetMap Overpass (no-key) — highway=crossing + highway=traffic_signals 동시 fetch.
+    v12.89: 한국 OSM 은 crossing 에 traffic_signals 태그가 거의 없음 →
+    별도로 highway=traffic_signals 신호등 노드를 쿼리해서 signals 배열로 분리 반환.
     rate-limited 이므로 5분 캐시 권장. VWORLD 키 미설정 시 fallback."""
     overpass_url = "https://overpass-api.de/api/interpreter"
     radius_int = int(radius_m)
-    query = f'[out:json][timeout:10];(node["highway"="crossing"](around:{radius_int},{lat},{lon}););out body 60;'
+    # 두 가지 노드 동시 쿼리 — crossing + 신호등 분리
+    query = (
+        f'[out:json][timeout:10];'
+        f'('
+        f'node["highway"="crossing"](around:{radius_int},{lat},{lon});'
+        f'node["highway"="traffic_signals"](around:{radius_int},{lat},{lon});'
+        f');'
+        f'out body 80;'
+    )
     headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
     res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
     res.raise_for_status()
     j = res.json()
     elements = j.get("elements", [])
     crosswalks = []
-    for e in elements[:60]:
+    signals = []
+    for e in elements[:120]:
         tags = e.get("tags", {}) or {}
-        has_signal = tags.get("crossing") in ("traffic_signals", "pelican", "toucan")
+        hwy = tags.get("highway")
+        if hwy == "traffic_signals":
+            # 신호등 노드 자체 — 가장 정확한 신호등 위치
+            signals.append({
+                "id": f"OSM-SIG-{e.get('id')}",
+                "lat": e.get("lat"), "lon": e.get("lon"),
+                "traffic_signals": tags.get("traffic_signals", "signal"),
+                "direction": tags.get("traffic_signals:direction"),
+                "for_pedestrian": tags.get("crossing") in ("traffic_signals", "marked"),
+            })
+            continue
+        # crossing 노드
+        # has_signal 판정: crossing=traffic_signals OR crossing:signals=yes
+        has_signal = (tags.get("crossing") in ("traffic_signals", "pelican", "toucan")) \
+                     or (tags.get("crossing:signals") == "yes")
         is_school = tags.get("crossing:island") == "yes" or tags.get("school_zone") == "yes"
         crosswalks.append({
             "id": f"OSM-{e.get('id')}",
@@ -1642,6 +1667,7 @@ def _fetch_osm_crosswalks(lat: float, lon: float, radius_m: float) -> Dict[str, 
         "source": "OpenStreetMap Overpass (no-key fallback · live)",
         "lat": lat, "lon": lon, "radius_m": radius_m,
         "crosswalks": crosswalks,
+        "signals": signals,   # v12.89: 별도 신호등 노드 배열
     }
 
 
@@ -1667,6 +1693,7 @@ def fetch_crosswalk_gis(lat: float = 37.5665, lon: float = 126.9780,
     try:
         osm = _fetch_osm_crosswalks(lat, lon, radius_m)
         cws = osm["crosswalks"]
+        sigs = osm.get("signals", []) or []
         cws_with_dist = []
         nearest_d = None
         for c in cws:
@@ -1677,17 +1704,38 @@ def fetch_crosswalk_gis(lat: float = 37.5665, lon: float = 126.9780,
                 nearest_d = d
         cws_with_dist.sort(key=lambda x: x["distance_m"])
         cw_count = len(cws_with_dist)
-        has_signal_pct = (sum(1 for c in cws_with_dist if c.get("has_signal")) / cw_count) if cw_count else 0.0
+        # v12.89: signals 노드도 거리 계산 + has_signal=true 로 표시해서 crosswalks 에 병합
+        sigs_with_dist = []
+        nearest_signal_d = None
+        for s in sigs:
+            if s.get("lat") is None: continue
+            d = _haversine_m_local(lat, lon, s["lat"], s["lon"])
+            sigs_with_dist.append({**s, "distance_m": round(d, 1), "has_signal": True,
+                                    "name": "OSM 신호등", "is_school_zone": False})
+            if nearest_signal_d is None or d < nearest_signal_d:
+                nearest_signal_d = d
+        sigs_with_dist.sort(key=lambda x: x["distance_m"])
+        # has_signal=true 카운트는 crossing 노드 + signals 노드 모두 합산
+        has_signal_count = sum(1 for c in cws_with_dist if c.get("has_signal")) + len(sigs_with_dist)
+        has_signal_pct = (has_signal_count / (cw_count + len(sigs_with_dist))) if (cw_count + len(sigs_with_dist)) else 0.0
         sz_count = sum(1 for c in cws_with_dist if c.get("is_school_zone"))
         crosswalk_boost = min(0.08, cw_count * 0.015 + sz_count * 0.025)
         _record_fetch("crosswalk", "live", True)
+        # v12.89: 클라이언트 게이팅용 → crosswalks 응답에 signals 도 has_signal=true 로 포함
+        merged = cws_with_dist + sigs_with_dist
         return {
             **osm,
-            "nearby": cws_with_dist, "nearby_count": cw_count,
+            "crosswalks": merged,   # 통합 리스트 (클라이언트가 한 번에 본다)
+            "signals_only": sigs_with_dist,
+            "crossings_only": cws_with_dist,
+            "nearby": merged, "nearby_count": len(merged),
             "derived": {
                 "crosswalk_count_within_radius": cw_count,
+                "signal_count_within_radius": len(sigs_with_dist),
                 "nearest_crosswalk_m": int(nearest_d) if nearest_d is not None else None,
+                "nearest_signal_m": int(nearest_signal_d) if nearest_signal_d is not None else None,
                 "approaching_crosswalk": (nearest_d is not None and nearest_d <= 50.0),
+                "approaching_signal": (nearest_signal_d is not None and nearest_signal_d <= 80.0),
                 "signaled_crosswalk_pct": round(has_signal_pct, 2),
                 "school_zone_crosswalk_count": sz_count,
                 "crosswalk_pedestrian_boost": round(crosswalk_boost, 3),

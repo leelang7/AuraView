@@ -5,6 +5,51 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.24 — 24번째 데이터 소스 (USGS 지진) + Overpass mirror fallback + /metrics/audit (2026-05-25)
+
+### Added — 24번째 데이터 소스 (v12.100~v12.104)
+- **bus_live (v12.100)**: BIS_KEY 미설정 시 OSM `highway=bus_stop` + `public_transport=stop_position[bus=yes]` no-key fallback — V2V/Bus 협업 컨텍스트 강화
+- **earthquake (v12.102~v12.104)**: USGS FDSN earthquake catalog (no-key 공식 free API) — 24번째 데이터 소스
+  - `GET /fusion/earthquake?lat=&lon=&radius_km=500&days_back=30&min_magnitude=2.0`
+  - `derived`: max_magnitude, recent_24h_count, M3+/M4+ 카운트, tunnel_bridge_alert, infrastructure_risk_boost
+  - 한국 차별화: 2017 포항 지진 이후 터널/교량 안전 prior — 진앙 50km 내 자동 알림
+  - IntersectionFusion 통합 응답 + tasks dict ThreadPool 병렬 fetch
+
+### Added — Overpass 인프라 안정화 (v12.101 + v12.110 + v12.111)
+- **3 mirror fallback (v12.101)**: overpass-api.de → overpass.kumi.systems → maps.mail.ru/osm
+  - 12s timeout 각, 첫 mirror 실패 시 자동 다음 mirror 시도
+- **30min TTL + 24h stale-cache (v12.110)**: 모든 mirror 실패 시 만료된 캐시 (24h 안) 반환 (stub 보다 정직)
+- **Cold-start pre-warm (v12.111)**: app startup 시 백그라운드 스레드로 8 known + Seoul 시청 좌표 × 5 OSM helper pre-warm
+- 라이브 카운트 4-7 진동 → **11/24 안정화** (all no-key)
+
+### Added — /metrics/audit 신규 (v12.107~v12.108)
+- 100% 라이브 계산 엔드포인트 (manifest 는 정적 + live_evidence 일부)
+- `data_sources` (live/stub/derived 분포 + no_key_live_count)
+- `fleet_events` (verified_pct + rejected_breakdown_by_method)
+- `score25_gates` (4 항목 각 endpoint + score + evidence + total_claimed: 25)
+- `system` (tests 119, schema_version, ci_url, manifest URL)
+- v12.108: `rejected_breakdown_by_method` + `by_method_full` 분해 추가
+
+### Added — UI (v12.109)
+- /ui NAV 끝에 **AUDIT** 링크 — `/metrics/audit` 1-click 노출 (새 탭)
+
+### Added — 정부 API 키 없이 라이브 fallback 추가 (v12.93 ~ v12.96)
+- **police_cam**: OSM `highway=speed_camera` + `enforcement=maxspeed/traffic_signals`
+- **school_zone**: OSM `amenity=school/kindergarten`
+- **incidents**: OSM `highway=construction` + `construction=*`
+- **road_age**: OSM way `surface` 태그 (asphalt/unpaved/gravel 비율로 노후도 추정)
+
+### Docs (v12.105~v12.106)
+- README badges: tests 118/118, endpoints 90→149, neue live sources 10/23 → 11/24, location_verified 43% honest
+- SUBMISSION.md: 23종 → 24종, tests 90→118, verified_pct honest 노출
+- PRESS_KIT.md + WHITEPAPER_KR.md: 23종 → 24종 (earthquake 추가), v9-23src → v10-2026.05.25
+- /metrics/manifest: data_sources_total 23→24, live_potential 10→11, live_evidence 블록 (호출마다 재계산)
+
+### Tests
+- pytest **118/118** PASS 유지 (test_endpoints v10 호환 갱신)
+
+---
+
 ## v0.23 — 위치/속도 검증 게이트 + 10 no-key 라이브 소스 + 오프라인 큐 (2026-05-24)
 
 ### Added — 라이브 외부 데이터 (no-key fallback) 6 → 10 (v12.77~v12.96)

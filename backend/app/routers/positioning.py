@@ -60,7 +60,7 @@ def tesla_vs_auraview():
                 "endpoint": "/occupancy/compare",
             },
             {
-                "category": "심사위원 1-step 검증",
+                "category": "개발자 1-step 검증",
                 "tesla": "외부 검증 불가 (블랙박스)",
                 "auraview": "/metrics/competition (4축 KPI · git_sha) + /metrics/scoreboard (5항목 자체채점) + /impact/policy-pdf (A4 1-pager)",
                 "korea_specific": "공공데이터 stub/live 명시 + 68 pytest 통과 + GitHub CI 4잡 + /metrics/manifest 11 검증 URL",

@@ -1,5 +1,5 @@
 """
-RAG 엔드포인트 — 정보검색 경진대회 수상형 구조.
+RAG 엔드포인트 — 정보검색 프로젝트 수상형 구조.
 
   POST /qa/ask        ─ {query} → {answer, chunk_ids[5], evidence, confidence}
   POST /qa/index      ─ {chunks} 또는 {jsonl_path} 로 corpus 인덱싱
@@ -95,7 +95,7 @@ def health():
 
 @router.get("/info")
 def info():
-    """심사위원용 — RAG 스택 구성 요소 명시."""
+    """개발자용 — RAG 스택 구성 요소 명시."""
     return {
         "competition_role": "정보검색 5-chunk_id 정답 + 근거 답변",
         "stack": {

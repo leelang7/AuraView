@@ -26,7 +26,7 @@ psycopg2-binary
 # ffmpeg binary for video transcode — system 패키지 우선, 없을 때 pip
 imageio-ffmpeg
 
-# RAG 스택 (정보검색 경진대회 — 5개 chunk_id 정확도 우선 · GPU 필수)
+# RAG 스택 (정보검색 프로젝트 — 5개 chunk_id 정확도 우선 · GPU 필수)
 # BM25 + dense embedding + reranker + Qwen2.5-7B-Instruct LLM
 rank-bm25                         # BM25 sparse retrieval (CPU)
 sentence-transformers             # dense embedding (bge-m3) + cross-encoder reranker (bge-reranker-v2-m3)

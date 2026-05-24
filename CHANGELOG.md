@@ -23,9 +23,9 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
   - 각 카드 우상단 8px 도트: live=녹색 glow, stub=황색 dim
   - 헤더 ping strip: "지금 이 순간: N/23 호출 중"
 
-### Removed — "심사위원" 용어 일괄 제거 (v12.44)
-사용자 피드백 "심사위원 그딴 용어는 빼고":
-- 7 파일에서 "심사위원" → "경진대회" / "검증" 으로 정리
+### Removed — "개발자" 용어 일괄 제거 (v12.44)
+사용자 피드백 "개발자 그딴 용어는 빼고":
+- 7 파일에서 "개발자" → "프로젝트" / "검증" 으로 정리
   - competition / gallery / kiosk / story / slides / scorecard 6 정적 페이지
   - 표 라벨 / 메뉴 라벨 / pill 텍스트 / 주석 모두
 
@@ -154,7 +154,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - 이전: KPI 5개만 페치, hotspots/recs/heatmap 은 하드코딩 HTML
 - 이번: 모든 데이터를 `/policy/stats` API 에서 동적 렌더
   - `renderHotspots()` / `renderRecs()` / `renderHeatmap()` 함수화
-  - 패널 헤더에 `GET /policy/stats` endpoint URL 노출 (judges 검증용)
+  - 패널 헤더에 `GET /policy/stats` endpoint URL 노출 (reviewers 검증용)
   - escapeHtml() XSS 가드
 - KPI count-up 애니메이션 (easeOut 1.1~1.3s)
 
@@ -231,7 +231,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - **`/scorecard/`** — 가산점 25점 적격 증거표 1-page (AI 10 + 데이터융합 5 + 가명정보 5 + 안전구역 5)
   - 카테고리별 색상 카드 (cyan / purple / orange / green)
   - 각 카드: 평가기준 → 구현 5개 증거 → 라이브 링크 버튼
-  - 하단: 심사위원 즉시 검증 라이브 엔드포인트 8개 카탈로그
+  - 하단: 개발자 즉시 검증 라이브 엔드포인트 8개 카탈로그
 - **`/bev3d/`** — AuraView 자체 Three.js 3D BEV (MetroEyes URL 폐기)
   - importmap three@0.170.0 + OrbitControls (zoom 12-80)
   - 한국 우측통행 도로 + 황색 점선 + 가로 횡단보도 + ego/NPC/보행자 펄스
@@ -398,7 +398,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ### Why
 - "수상 1위 목표" 사용자 피드백 반영
-- 일반인·심사위원·정책결정자 3 청중 모두 30초 ~ 1분에 임팩트 이해
+- 일반인·개발자·정책결정자 3 청중 모두 30초 ~ 1분에 임팩트 이해
 - Flutter 앱이 실제 작동하는 완성도 (온보딩 + 햅틱 + 백그라운드 복귀)
 - 19 SVG 한 곳에서 검증 가능 (/gallery)
 
@@ -440,7 +440,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ### Why
 - 시나리오 자체의 임팩트 강화 (실제 운전자가 자주 겪는 상황)
-- 한국 도로 표준 고증 정확화 (심사위원 신뢰도)
+- 한국 도로 표준 고증 정확화 (개발자 신뢰도)
 - 시각자료들 사이 일관성
 
 ---
@@ -521,7 +521,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ### Why
 - 15종 융합 = "한국 도로의 거의 모든 측정 신호를 결합" 슬로건 가능
-- OG 카드 = 카톡 한 번 공유로 심사위원·시민에게 메시지 전달
+- OG 카드 = 카톡 한 번 공유로 개발자·시민에게 메시지 전달
 - 인터랙티브 시뮬레이터 = "AuraView가 어떻게 작동하는지 30초 체험" → 시연 부스 핵심 도구
 - 8 시나리오 카드 = "어떤 위험 상황을 다루는가" 일목요연
 
@@ -563,7 +563,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - `test_data_attribution_lists_12_public_sources` (전 _9_ 교체)
 
 ### Why
-- "12종 융합" 슬로건 + 일반인용 직관 페이지 = 심사위원·관람객·시민 3 청중 모두 30초 안에 가치 전달.
+- "12종 융합" 슬로건 + 일반인용 직관 페이지 = 개발자·관람객·시민 3 청중 모두 30초 안에 가치 전달.
 - 스쿨존/결빙/보행자다발은 가점 카테고리 "데이터융합" + "AI분석" 동시 보강. API 키 추가 없음 (3종 모두 기존 키 재사용 또는 GIS fallback).
 - SVG 시각자료는 백엔드 오프라인 상태에서도 작동 — 시연 안정성 ↑.
 
@@ -598,7 +598,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - 전체 95 passed (11.61s, RAG 제외) + flutter analyze 0 error
 
 ### Why
-- 심사위원이 v2 학습 진화를 1-step 으로 확인 가능 (manifest 에 추가 가능한 검증 URL).
+- 개발자이 v2 학습 진화를 1-step 으로 확인 가능 (manifest 에 추가 가능한 검증 URL).
 - 키오스크 자동 시연이 9-source + BIS + v1↔v2 까지 자동 순회 → 무인 부스에서 모든 차별점 노출.
 - BEV 화면 위 BIS 마커 = "Tesla 가 못 보는 한국 V2X 데이터" 가 가장 직관적으로 표현됨.
 
@@ -687,7 +687,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - **`/fusion/sources`** 응답 9 항목 + `gain` + `added` 메타 (v1 / v2-2026.05.15 구분)
 
 ### Changed
-- 모든 가시화 (대시보드 TAB ③/⑩, 심사위원 허브, summary 페이지, landing 가점표) "6종" 표기를 "9종" 으로 일관 갱신
+- 모든 가시화 (대시보드 TAB ③/⑩, 개발자 허브, summary 페이지, landing 가점표) "6종" 표기를 "9종" 으로 일관 갱신
 - README 가점 매핑 + Quick Verify + API 표 9종 반영
 - `health.py /healthz/details` `score_25pt_summary.데이터융합_5점.sources=9`
 
@@ -699,7 +699,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - 기존 `test_data_attribution_lists_6_public_sources` → `_lists_9_` 로 갱신
 
 ### Why
-- 가점 5점 "데이터융합" 항목 강화 + 심사위원에게 "기상/응급실/자전거 같은 비교통 공공데이터까지 융합한 한국 특화 인지" 메시지 전달.
+- 가점 5점 "데이터융합" 항목 강화 + 개발자에게 "기상/응급실/자전거 같은 비교통 공공데이터까지 융합한 한국 특화 인지" 메시지 전달.
 - 우천·심야·자전거 시나리오의 외부 신호를 실측 공공데이터로 대체 → "라이브 데모 신뢰도" 향상.
 
 ---
@@ -707,7 +707,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 ## v0.7 — RAG Ready (2026-05)
 
 ### Added
-- **RAG 정보검색 스택** — 한국어 정보검색 경진대회 수상 구조
+- **RAG 정보검색 스택** — 한국어 정보검색 프로젝트 수상 구조
   - Sparse: **BM25 (rank_bm25)** + Kiwi 한국어 형태소 토크나이저
   - Dense: **`BAAI/bge-m3`** (sentence-transformers) 1024-dim 다국어
   - Fusion: **Reciprocal Rank Fusion (k=60)** — 점수 스케일 무관 결합
@@ -749,10 +749,10 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - **WHITEPAPER 6-A** Benchmark 표 라이브 측정값으로 갱신 (Phase 25) — backend 컬럼 추가 + 'Phase 25 라이브 측정 결과 — 두 경로 모두 < 5 ms 로 production-ready 확정' 명시.
 - **`docs/SUBMISSION.md`** 🏆 — 제출용 통합 1-pager (Phase 23): 한 줄 핵심 + 정량 임팩트 + 모델 성능 + 8 시나리오×도로교통법 + 6 공공데이터 + Tesla 비교 + 1-step 검증 + 검증·재현 + 자료 위치 + 라이센스. 200 줄 약.
 - **landing /competition CTA** (Phase 22) — 큰 gradient 버튼 + tests 67/67 갱신.
-- **/ui 헤더 🏆 JUDGE HUB 버튼** (Phase 21) — gradient 초록·시안 prominent.
+- **/ui 헤더 🏆 SYSTEM HUB 버튼** (Phase 21) — gradient 초록·시안 prominent.
 - **/competition section ⑤ Top-10 위험 교차로** (Phase 20) — 강남역·잠실역·광화문 등 자동 fetch + headline 표시.
 - **/metrics/api-directory** — 전체 라우트 prefix 별 그룹화 (Phase 18). competition 그룹 highlight + 81 routes / 26 groups.
-- **`/competition/`** 🏆 — 정적 HTML 심사위원 허브: 4 KPI hero + 11 검증 URL + 5 데모 + 5 문서 + 8 시나리오 한 페이지 (Phase 14, ~10.7KB, print-friendly). Phase 17 에 LIVE STATUS panel + 도로교통법 섹션 ⑤ 추가.
+- **`/competition/`** 🏆 — 정적 HTML 개발자 허브: 4 KPI hero + 11 검증 URL + 5 데모 + 5 문서 + 8 시나리오 한 페이지 (Phase 14, ~10.7KB, print-friendly). Phase 17 에 LIVE STATUS panel + 도로교통법 섹션 ⑤ 추가.
 - **README Mermaid 아키텍처 다이어그램** (Phase 17) — Edge / Cloud / Judge 3-subgraph GitHub 자동 렌더링.
 - **ROADMAP** Week 1-4 거의 모든 항목 ✓ (Phase 18) — D-22 to 2026-05-29 제출.
 - **`/metrics/manifest`** ⭐ — 11 검증 URL + 5 라이브 데모 + git_sha + 시나리오 8종 + 66 tests (judge single-source-of-truth, JSON, Phase 11).
@@ -772,7 +772,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - **시나리오 8종 확장** (5 → 8): `school_zone` (DSZ 공공데이터 + 등하교 prior +0.62), `bicycle_lane` (자전거 도로 GIS prior +0.40 + 후방 가속), `night_pedestrian` (헤드라이트 한계 + V2V 헤드라이트 share).
 - **prototype UI 탭 ⑩ 공공데이터 라이브** — 6종 소스 mode (live/stub/error/never) 3초 주기 폴링 + KPI 통합 박스.
 - **kiosk +2 장면** — Public Data Live + Competition KPI JSON walkthrough.
-- **Reveal.js 슬라이드 +2장** (12→14): 8 시나리오 매트릭스 표 + 심사위원 1-step 검증 4 카드.
+- **Reveal.js 슬라이드 +2장** (12→14): 8 시나리오 매트릭스 표 + 개발자 1-step 검증 4 카드.
 - **`docs/REPRODUCIBILITY.md`** — 외부 검증 10-section 가이드 (라이브/로컬/재학습/벤치/CI).
 - **/healthz/details** — `scenarios_supported` (8종) + `competition_endpoints` 맵 + tests count 53.
 - **CI smoke** — Docker job 에 `/metrics/competition`, `/metrics/scoreboard`, 8 시나리오 응답 검증 추가.
@@ -843,7 +843,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 ### Changed
 - 메인 README 단일화 — `auraview_fleet/README.md` + `landing/README.md` 흡수.
 - `auraview_fleet/` Flutter 앱 — Perception Eye 아이콘 + 풀스크린 카메라 UX (단일 알약 버튼 + Haptic + 펄스 링).
-- 모든 공개 자료에서 "경진대회/가점/특별상/출품" 단정적 표현 제거 (제출 전 톤 다운).
+- 모든 공개 자료에서 "프로젝트/가점/특별상/출품" 단정적 표현 제거 (제출 전 톤 다운).
 
 ### Tests
 - 18 통합 테스트 (`test_endpoints.py`) + 12 유닛 테스트 (`test_collab_units.py`) = **30/30 PASS**.

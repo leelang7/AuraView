@@ -1,5 +1,5 @@
 """
-경진대회 신규 기능 통합 테스트 — /metrics, /impact/policy-pdf, school_zone 시나리오.
+프로젝트 신규 기능 통합 테스트 — /metrics, /impact/policy-pdf, school_zone 시나리오.
 
 이 테스트는 conftest.py 에서 ALLOW_FALLBACK=1 으로 외부 API 없이도 통과하도록 설정.
 """
@@ -18,7 +18,7 @@ def test_metrics_competition_has_all_axes():
     r = client.get("/metrics/competition")
     assert r.status_code == 200
     j = r.json()
-    # 4 main axes for judges
+    # 4 main axes for reviewers
     for k in ("model_performance", "impact_estimate", "public_data_fusion", "verification"):
         assert k in j, f"missing axis: {k}"
     # Build traceability
@@ -43,7 +43,7 @@ def test_metrics_scoreboard_has_5_criteria():
     r = client.get("/metrics/scoreboard")
     assert r.status_code == 200
     j = r.json()
-    assert j["competition"].startswith("2026")
+    assert j["competition"].startswith("AuraView")
     criteria = j.get("criteria", [])
     assert len(criteria) == 5
     for c in criteria:
@@ -165,7 +165,7 @@ def test_night_pedestrian_has_oncoming_vehicle_hotspot():
 
 # ─── /healthz/details enhancements ────────────────────────────────────
 def test_healthz_details_has_scenarios_and_competition_endpoints():
-    """심사위원이 한 번의 healthz 호출로 신규 기능 위치 파악 가능."""
+    """개발자이 한 번의 healthz 호출로 신규 기능 위치 파악 가능."""
     r = client.get("/healthz/details")
     assert r.status_code == 200
     j = r.json()
@@ -197,7 +197,7 @@ def test_healthz_details_has_resources_field():
 
 # ─── /metrics/data-attribution ────────────────────────────────────────
 def test_data_attribution_lists_17_public_sources():
-    """경진대회 출처 명시 의무 — 17종 공공데이터. 2026-05-18 v5 15→17종 확장."""
+    """프로젝트 출처 명시 의무 — 17종 공공데이터. 2026-05-18 v5 15→17종 확장."""
     r = client.get("/metrics/data-attribution")
     assert r.status_code == 200
     j = r.json()
@@ -250,7 +250,7 @@ def test_occupancy_compare_has_demo_url_per_scenario():
 
 # ─── /policy/laws + /policy/regulations ───────────────────────────────
 def test_policy_laws_maps_8_scenarios():
-    """경진대회 — 각 시나리오 도로교통법 조항 명시."""
+    """프로젝트 — 각 시나리오 도로교통법 조항 명시."""
     r = client.get("/policy/laws")
     assert r.status_code == 200
     j = r.json()
@@ -287,11 +287,11 @@ def test_metrics_api_directory_groups_routes():
 
 
 def test_metrics_manifest_lists_all_artifacts():
-    """심사위원 single-source-of-truth — 모든 검증 URL 한 응답."""
+    """개발자 single-source-of-truth — 모든 검증 URL 한 응답."""
     r = client.get("/metrics/manifest")
     assert r.status_code == 200
     j = r.json()
-    assert j["competition"].startswith("2026")
+    assert j["competition"].startswith("AuraView")
     assert j["tests_passed"] >= 38
     verify = j.get("verification_in_one_step", [])
     assert len(verify) >= 8

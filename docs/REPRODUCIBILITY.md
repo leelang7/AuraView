@@ -1,4 +1,4 @@
-# Reproducibility — 심사위원·연구자 검증 가이드
+# Reproducibility — 개발자·연구자 검증 가이드
 
 > AuraView K-Perception 의 모든 헤드라인 숫자 (모델 성능, 임팩트, 공공데이터, 테스트) 를 **외부에서 1-step 으로 재검증** 하기 위한 가이드.
 > 모든 명령은 Live (`https://auraview.allthatai.kr`) 또는 Local (`docker compose up`) 양쪽 모두에서 동일하게 작동.

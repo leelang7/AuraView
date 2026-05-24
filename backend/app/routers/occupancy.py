@@ -529,7 +529,7 @@ def _build_scene(name: str, phase: float):
 
 @router.get("/compare")
 def occupancy_compare():
-    """8 시나리오 메타 정보 한 응답 — 심사위원 매트릭스 시각화용.
+    """8 시나리오 메타 정보 한 응답 — 개발자 매트릭스 시각화용.
 
     각 시나리오의 title/risk/lead_time/primary_threat 만 추려서 반환 (voxel 데이터 X).
     /occupancy/demo?scenario={id} 로 개별 voxel 그리드 호출 가능.

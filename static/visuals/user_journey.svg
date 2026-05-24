@@ -177,7 +177,7 @@
   <text x="192" y="415" text-anchor="middle" font-size="9" fill="#406050" opacity="0">/competition
     <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.5s" fill="freeze"/>
   </text>
-  <text x="192" y="428" text-anchor="middle" font-size="9" fill="#406050" opacity="0">심사위원 허브
+  <text x="192" y="428" text-anchor="middle" font-size="9" fill="#406050" opacity="0">개발자 허브
     <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.5s" fill="freeze"/>
   </text>
 
@@ -488,7 +488,7 @@
     <animate attributeName="opacity" values="0;0.3;1;0.3;1" dur="2s" begin="3.5s" fill="freeze"/>
     <animateTransform attributeName="transform" type="scale" values="0.5,0.5;1.2,1.2;1,1" dur="1s" begin="3.5s" fill="freeze" additive="sum"/>
   </text>
-  <text x="1072" y="695" text-anchor="middle" font-size="10" fill="#6060AA" opacity="0">2026 국토교통 데이터활용 경진대회
+  <text x="1072" y="695" text-anchor="middle" font-size="10" fill="#6060AA" opacity="0">AuraView K-Perception
     <animate attributeName="opacity" values="0;1" dur="0.8s" begin="4s" fill="freeze"/>
   </text>
 </svg>

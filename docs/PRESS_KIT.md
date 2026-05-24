@@ -88,7 +88,7 @@
 | Reveal.js 발표 슬라이드 | https://auraview.allthatai.kr/slides/ |
 | 무인 자동 시연 키오스크 | https://auraview.allthatai.kr/kiosk/ |
 | 합본 시연 영상 | https://auraview.allthatai.kr/showreel/latest.mp4 |
-| **경진대회 통합 KPI** | https://auraview.allthatai.kr/metrics/competition |
+| **시스템 통합 KPI** | https://auraview.allthatai.kr/metrics/competition |
 | **5개 평가항목 자체채점** | https://auraview.allthatai.kr/metrics/scoreboard |
 | **A4 1-pager 정책 PDF** | https://auraview.allthatai.kr/impact/policy-pdf |
 | **도로교통법 조항 매핑** | https://auraview.allthatai.kr/policy/laws |
@@ -114,7 +114,7 @@
 
 키오스크 모드 (10장면 자동 순환): https://auraview.allthatai.kr/kiosk/
 
-## 🔍 심사위원 1-step 검증
+## 🔍 개발자 1-step 검증
 
 ```bash
 curl https://auraview.allthatai.kr/fleet/demo-tour      # 🎯 v9 신규 — 8 known + 2 rural GPS 통합 검증

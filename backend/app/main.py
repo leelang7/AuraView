@@ -89,7 +89,7 @@ app.include_router(policy.router, prefix="/policy", tags=["policy"])
 app.include_router(qa.router, prefix="/qa", tags=["qa-rag"])
 app.include_router(privacy.router, prefix="/privacy", tags=["privacy-가명정보결합"])
 app.include_router(ai_analytics.router, prefix="/ai", tags=["ai-analytics"])
-app.include_router(competition.router, prefix="/competition", tags=["competition-경진대회"])
+app.include_router(competition.router, prefix="/competition", tags=["competition-system"])
 if _SCENARIO_OK:
     app.include_router(scenario.router, prefix="/scenario", tags=["scenario"])
 if _SHOWREEL_OK:
@@ -322,6 +322,16 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 .rr .hg .h .v{font-size:13px;font-weight:900;color:#00E09A;margin-top:2px;}
 .rr .hg .h.fail .v{color:#FF4040;}
 
+/* 8 scenarios grid (4×2) */
+.rr .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:4px;}
+.rr .sg .sc{background:rgba(0,200,255,0.07);border:1px solid rgba(0,200,255,0.20);border-radius:6px;padding:5px 4px;text-align:center;transition:all 0.3s;}
+.rr .sg .sc.hi{background:rgba(255,68,68,0.10);border-color:rgba(255,68,68,0.35);}
+.rr .sg .sc.mi{background:rgba(255,176,32,0.10);border-color:rgba(255,176,32,0.35);}
+.rr .sg .sc .ic{font-size:14px;line-height:1;}
+.rr .sg .sc .nm{font-size:8px;letter-spacing:0.4px;color:rgba(255,255,255,0.7);font-weight:700;margin-top:3px;text-transform:uppercase;}
+.rr .sg .sc .dl{font-family:monospace;font-size:9.5px;font-weight:900;color:#00E09A;margin-top:2px;}
+.rr .sg .sc.hi .dl{color:#FF4040;}.rr .sg .sc.mi .dl{color:#FFB020;}
+
 /* 23 src bar */
 .rr .srb{display:flex;gap:1.5px;margin-top:6px;height:18px;border-radius:3px;overflow:hidden;background:#1A2438;}
 .rr .srb .s{flex:1;background:#404858;transition:all 0.5s;}
@@ -404,9 +414,9 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 <!-- ROUND-ROBIN floating card (top-left) -->
 <div class="rr">
   <div class="head">
-    <div class="eye" id="rrEye">// SLIDE 1 / 5</div>
+    <div class="eye" id="rrEye">// SLIDE 1 / 6</div>
     <div class="dots">
-      <span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span>
     </div>
   </div>
   <!-- Slide 1: Big risk score -->
@@ -452,6 +462,14 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
       <div style="grid-column:1/-1;color:rgba(255,255,255,0.4);font-size:11px;text-align:center;padding:14px 0;">⏳ 로딩</div>
     </div>
   </div>
+  <!-- Slide 6: 8 시나리오 (occupancy/compare) -->
+  <div class="slide" data-i="5">
+    <div class="ttl">8 시나리오 K-인지</div>
+    <div class="sg" id="s6Grid">
+      <div style="grid-column:1/-1;color:rgba(255,255,255,0.4);font-size:11px;text-align:center;padding:14px 0;">⏳ 로딩</div>
+    </div>
+    <div class="sub" id="s6Sub" style="margin-top:6px;">truck/bike/signal/rain/RT/school/lane/night · before vs after</div>
+  </div>
 </div>
 
 <!-- LIVE STREAM (bottom-right) -->
@@ -488,7 +506,7 @@ const hotL = L.layerGroup().addTo(map);
 
 // Round-robin slide rotation
 let curSlide = 0;
-const slideCount = 5;
+const slideCount = 6;
 function rotateSlide() {
   curSlide = (curSlide + 1) % slideCount;
   document.querySelectorAll('.rr .slide').forEach(el => el.classList.toggle('on', parseInt(el.dataset.i) === curSlide));
@@ -499,12 +517,13 @@ setInterval(rotateSlide, 5000);
 
 async function tick() {
   try {
-    const [src, fus, live, pol, ver] = await Promise.all([
+    const [src, fus, live, pol, ver, occ] = await Promise.all([
       fetch('/fusion/sources').then(r=>r.json()).catch(()=>null),
       fetch('/fusion/intersection/1007').then(r=>r.json()).catch(()=>null),
       fetch('/fleet/live?limit=20').then(r=>r.json()).catch(()=>null),
       fetch('/policy/stats').then(r=>r.json()).catch(()=>null),
       fetch('/fleet/verify').then(r=>r.json()).catch(()=>null),
+      fetch('/occupancy/compare').then(r=>r.json()).catch(()=>null),
     ]);
     // Hero pill
     if (live) {
@@ -572,6 +591,30 @@ async function tick() {
         return '<div class="h ' + (fail ? 'fail' : '') + '"><div class="l">' + esc(lbl).slice(0, 8) + '</div><div class="v">' + sign + '</div></div>';
       }).join('');
       document.getElementById('s5Grid').innerHTML = html;
+    }
+    // Slide 6: 8 시나리오 (truck/bike/signal/rain/RT/school/lane/night)
+    if (occ && occ.scenarios) {
+      const ICN = {
+        truck_occlusion:'🚛', motorcycle_blindspot:'🏍', signal_occlusion:'🚦',
+        rainy_intersection:'🌧', right_turn_pedestrian:'↳', school_zone:'🏫',
+        bicycle_lane:'🚲', night_pedestrian:'🌙'
+      };
+      const SHORT = {
+        truck_occlusion:'TRUCK', motorcycle_blindspot:'BIKE', signal_occlusion:'SIGNAL',
+        rainy_intersection:'RAIN', right_turn_pedestrian:'RT-PED', school_zone:'SCHOOL',
+        bicycle_lane:'LANE', night_pedestrian:'NIGHT'
+      };
+      const html = occ.scenarios.map(s => {
+        const p = s.p_collision || 0;
+        const lt = s.lead_time_s != null ? s.lead_time_s.toFixed(1) + 's' : '—';
+        const cls = p >= 0.7 ? 'hi' : p >= 0.4 ? 'mi' : '';
+        const ic = ICN[s.id] || '●';
+        const nm = SHORT[s.id] || s.id.slice(0, 6).toUpperCase();
+        return '<div class="sc ' + cls + '" title="' + esc(s.title || s.id) + ' · p=' + p.toFixed(2) + ' · lead=' + lt + '" onclick="window.open(\\''+s.demo_url+'\\',\\'_blank\\')" style="cursor:pointer;"><div class="ic">' + ic + '</div><div class="nm">' + nm + '</div><div class="dl">+' + lt + '</div></div>';
+      }).join('');
+      document.getElementById('s6Grid').innerHTML = html;
+      const avgP = occ.scenarios.reduce((a, s) => a + (s.p_collision || 0), 0) / occ.scenarios.length;
+      document.getElementById('s6Sub').textContent = occ.count + '개 시나리오 · 평균 p_collision=' + avgP.toFixed(2);
     }
     // LIVE STREAM
     if (live) {
@@ -1536,7 +1579,7 @@ def demos_9tabs():
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <a href="/story/" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1.5px;color:#0a0e18;padding:9px 16px;background:linear-gradient(135deg,#FFB020,#FF6B6B);border:1px solid rgba(255,176,32,0.7);border-radius:99px;font-weight:900;box-shadow:0 0 18px rgba(255,176,32,0.45);">📖 일반인용 30초 스토리</a>
               <a href="/reel/" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1.5px;color:#fff;padding:9px 16px;background:linear-gradient(135deg,#FF4444,#7c3aed);border:1px solid rgba(255,68,68,0.7);border-radius:99px;font-weight:900;box-shadow:0 0 18px rgba(255,68,68,0.45);">🎥 1분 시연</a>
-              <a href="/competition/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#fff;padding:7px 14px;background:linear-gradient(135deg,rgba(0,224,154,0.30),rgba(0,200,255,0.20));border:1px solid rgba(0,224,154,0.55);border-radius:99px;font-weight:700;">🏆 JUDGE HUB</a>
+              <a href="/competition/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#fff;padding:7px 14px;background:linear-gradient(135deg,rgba(0,224,154,0.30),rgba(0,200,255,0.20));border:1px solid rgba(0,224,154,0.55);border-radius:99px;font-weight:700;">🏆 SYSTEM HUB</a>
               <a href="/submission/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--safe);padding:7px 14px;border:1px solid rgba(0,224,154,0.4);border-radius:99px;">≡ SUMMARY</a>
               <a href="https://github.com/leelang7/AuraView/releases/latest/download/AuraView_Whitepaper.pdf" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--warn);padding:7px 14px;border:1px solid rgba(255,176,32,0.4);border-radius:99px;">📑 WHITEPAPER PDF</a>
               <a href="/slides/" target="_blank" style="text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent);padding:7px 14px;border:1px solid rgba(0,200,255,0.3);border-radius:99px;">▶ SLIDES</a>
@@ -2118,7 +2161,7 @@ def demos_9tabs():
                       <button class="btn-video" onclick="buildShowreel()">⭐ 새 합본 빌드</button>
                     </div>
                     <p style="margin-top:8px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
-                      일반 사용자 흐름 X — 심사위원 검증 또는 새 영상 즉석 생성용.
+                      일반 사용자 흐름 X — 개발자 검증 또는 새 영상 즉석 생성용.
                     </p>
                   </details>
                 </div>

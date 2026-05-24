@@ -6,7 +6,7 @@
 
 ---
 
-## 0. 경진대회 가점 25점 달성 현황
+## 0. 프로젝트 가점 25점 달성 현황
 
 | 가점 항목 | 점수 | 핵심 증빙 | 증빙 엔드포인트 |
 |---|:---:|---|---|
@@ -367,17 +367,17 @@ API: `GET /benchmark/risk?n=200` · `GET /benchmark/v2v-merge?n=50` · `GET /ben
 - [x] Occupancy · HydraNet · Risk · Intent 서비스 코드
 - [x] 가명결합 · 안심구역 반입/검증
 - [x] Fleet Learning contribute 엔드포인트
-- [x] **경진대회 통합 KPI 엔드포인트** (`/metrics/competition`, `/metrics/scoreboard`)
+- [x] **통합 KPI 엔드포인트** (`/metrics/competition`, `/metrics/scoreboard`)
 - [x] **정책 1-pager PDF 자동 생성** (`/impact/policy-pdf`) — A4 즉시 배포
 - [x] **시나리오 8종** — 트럭/이륜/신호/우천/우회전 + **school_zone (DSZ)** + **bicycle_lane (자전거 GIS)** + **night_pedestrian (V2V 헤드라이트 share)**
-- [x] **65 pytest 통과** — endpoint + collab + impact + 경진대회 신규 features
+- [x] **65 pytest 통과** — endpoint + collab + impact + 프로젝트 신규 features
 - [x] **법적·정책적 근거** — `/policy/laws` (8 시나리오별 도로교통법 조항·대법원 판례·시행규칙)
 - [x] **공공데이터 출처 명시** — `/metrics/data-attribution` (6 소스 + 4 정적 + 7 라이브러리 라이센스)
 - [ ] 학습 노트북 실행 결과 (1주 내)
 - [ ] 사고 재현 데모 영상 2분 (3주 내)
 - [ ] 발표 슬라이드 (4주 내)
 
-### 심사위원 1-step 검증 가이드
+### 개발자 1-step 검증 가이드
 ```bash
 curl https://auraview.allthatai.kr/metrics/competition   # 4축 KPI 한 응답
 curl https://auraview.allthatai.kr/metrics/scoreboard    # 5개 평가 항목 자체 채점

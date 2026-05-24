@@ -35,7 +35,7 @@
 
 ## Week 3 (2026-05-05 ~ 2026-05-11) ─ 플라이휠 + BEV 고도화
 
-**목표:** 심사위원의 시각 임팩트 극대화.
+**목표:** 개발자의 시각 임팩트 극대화.
 
 - [x] Three.js BEV 3D viewer — occupancy grid 를 voxel로 렌더 (시나리오별 동적 조명 포함)
 - [x] `/fleet/contribute` 모바일 PWA + Flutter 네이티브 프런트엔드 + 갤러리 + KPI 패널
@@ -53,7 +53,7 @@
 - [x] 사고 재현 데모 영상 (`/showreel/build`, `/showreel/latest.mp4`)
 - [x] 발표 슬라이드 **15장** (제목 + 문제 + 솔루션 + 임팩트 + 데모 + Showreel + Capability + 기술스택 + KMaaS + 기능매트릭스 + 시나리오 8종 + 법적 근거 + 1-step 검증 + 로드맵 + CTA)
 - [x] 기술백서 v0.6 (Phase 7-14 누적 + 법적 근거 + 65 pytest)
-- [x] **/competition/ 심사위원 허브** — 단일 페이지에 모든 검증 URL + KPI hero + 라이브 status
+- [x] **/competition/ 개발자 허브** — 단일 페이지에 모든 검증 URL + KPI hero + 라이브 status
 - [x] **/metrics/manifest** — 11 검증 URL + 5 데모 + 5 문서 + 8 시나리오 + git_sha
 - [x] **/policy/laws** + **/policy/regulations** — 8 시나리오 도로교통법·대법원 판례 매핑
 - [x] 제출 전 QA 체크리스트 완주 (66 pytest passed · GitHub CI 4 jobs · /submission/ 12+ checks)

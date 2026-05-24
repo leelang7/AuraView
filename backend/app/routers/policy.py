@@ -2,7 +2,7 @@
 Policy & Korean Traffic Law citations.
 
 각 시나리오 / AuraView 기능이 어떤 한국 도로교통법 조항·판례에 근거하는지 명시.
-경진대회 심사위원이 "법적·정책적 정당성" 을 즉시 검증 가능.
+프로젝트 개발자이 "법적·정책적 정당성" 을 즉시 검증 가능.
 
   GET /policy/laws         — 도로교통법 매핑
   GET /policy/regulations  — 국토부·도로공사 시행규칙 매핑

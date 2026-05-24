@@ -132,7 +132,7 @@ def stats():
 def verify_pipeline():
     """v12.18: 자가 검증 — 전체 파이프라인 health/integrity 한 번에 보고.
 
-    judges 가 GET /fleet/verify 만 호출해서 다음을 한 번에 확인:
+    reviewers 가 GET /fleet/verify 만 호출해서 다음을 한 번에 확인:
     - manifest 존재 + 누적 N건
     - PII 마스킹 적용 비율 (cv2 가 import 가능했고 실 mask 됐는지)
     - 최근 1분 활동 / 5분 디바이스
@@ -278,7 +278,7 @@ _DEMO_TOUR_TTL = 60  # seconds
 
 @router.get("/demo-tour")
 def demo_tour():
-    """v12.36: 심사위원 1-URL 검증 — 8 known 교차로 + 2 임의 GPS 동시 fusion 결과.
+    """v12.36: 개발자 1-URL 검증 — 8 known 교차로 + 2 임의 GPS 동시 fusion 결과.
 
     한 응답으로 확인 가능:
     - 23 소스 schema 일관 (모든 위치에 동일 schema_version)
@@ -373,7 +373,7 @@ def demo_tour():
         "validation_notes": {
             "known": "8개 known 교차로 — 23/23 소스 활성 + 신호 cycle (go/warning/stop)",
             "rural": "강원/경기 외곽 GPS — 모두 unknown signal + TAAS 0 + ER 0 + LOW risk (위치 인식 stub 검증)",
-            "judges": "이 응답 하나로 fusion v9-23src + 위치 인식 정확성 전체 확인 가능 (v12.20+v12.21+v12.23 cumulative)",
+            "reviewers": "이 응답 하나로 fusion v9-23src + 위치 인식 정확성 전체 확인 가능 (v12.20+v12.21+v12.23 cumulative)",
         },
         "performance": {
             "cache_ttl_s": _DEMO_TOUR_TTL,

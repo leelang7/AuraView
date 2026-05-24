@@ -1,5 +1,5 @@
 """
-AI 학습·분석 시각화 엔드포인트 (경진대회 AI활용 가점 10점).
+AI 학습·분석 시각화 엔드포인트 (프로젝트 AI활용 가점 10점).
 
   GET /ai/model-card          모델 카드 (학습 근거 + 분석 근거 통합 문서)
   GET /ai/training-history    학습 곡선 (loss, AUC per epoch)
@@ -467,7 +467,7 @@ def v2_metric():
 def v1_vs_v2_comparison():
     """v1 (10-feature) ↔ v2 (13-feature 9-source) 학습 비교.
 
-    심사위원에게 "데이터융합 확장이 모델 정확도에 직접 기여" 시각화.
+    개발자에게 "데이터융합 확장이 모델 정확도에 직접 기여" 시각화.
     """
     m1 = _load_metrics()
     m2 = _load_metrics_v2()
@@ -524,7 +524,7 @@ def v1_vs_v2_comparison():
 
 @router.get("/evidence-report")
 def evidence_report():
-    """AI활용 경진대회 가점 10점 증빙 보고서. v2 metric 가 있으면 v1/v2 비교 포함."""
+    """AI활용 프로젝트 가점 10점 증빙 보고서. v2 metric 가 있으면 v1/v2 비교 포함."""
     m = _load_metrics()
     m2 = _load_metrics_v2()
     v2_block = None
@@ -542,7 +542,7 @@ def evidence_report():
         }
     return {
         "title": "AuraView AI 활용 가점 증빙 보고서",
-        "competition": "2026 국토교통 데이터활용 경진대회",
+        "competition": "AuraView K-Perception",
         "score_category": "AI활용 10점 (학습 5점 + 분석 5점)",
         **({"학습_v2_9src": v2_block} if v2_block else {}),
         "학습_5점": {

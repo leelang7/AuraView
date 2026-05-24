@@ -113,7 +113,7 @@ jobs:
 
           curl -fsS http://localhost:8000/fusion/sources >/dev/null || echo "::warning::/fusion/sources 응답 없음"
           curl -fsS http://localhost:8000/impact >/dev/null || echo "::warning::/impact 응답 없음"
-          # 경진대회 신규 엔드포인트 — JSON 만 검증 (PDF 는 무거워서 skip)
+          # 프로젝트 신규 엔드포인트 — JSON 만 검증 (PDF 는 무거워서 skip)
           curl -fsS http://localhost:8000/metrics/competition >/dev/null || echo "::warning::/metrics/competition 응답 없음"
           curl -fsS http://localhost:8000/metrics/scoreboard >/dev/null || echo "::warning::/metrics/scoreboard 응답 없음"
           # 8 시나리오 모두 응답 검증

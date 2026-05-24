@@ -2,7 +2,7 @@
 정책 임팩트 1-pager PDF 생성기.
 
 매 호출마다 TAAS 베이스라인 + 공공데이터 freshness + KPI 요약을 단일 A4 페이지로 묶어
-심사위원·정책담당자 배포용으로 즉석 출력. matplotlib backend(Agg/PDF) 사용.
+개발자·정책담당자 배포용으로 즉석 출력. matplotlib backend(Agg/PDF) 사용.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ def render_policy_pdf(
         _add_text(ax_head, 0.07, 0.15, datetime.now().strftime("발행일 %Y-%m-%d %H:%M  ·  v0.5"),
                   fontsize=9, color="#7a8794")
         _add_text(ax_head, 0.95, 0.78, "1-pager", fontsize=10, color="#00c8ff", ha="right")
-        _add_text(ax_head, 0.95, 0.42, "2026 국토교통 데이터활용 경진대회",
+        _add_text(ax_head, 0.95, 0.42, "AuraView K-Perception",
                   fontsize=9, color="#7a8794", ha="right")
 
         # ── 헤드라인 KPI 4-grid

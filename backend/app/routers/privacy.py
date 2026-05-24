@@ -1,5 +1,5 @@
 """
-가명정보결합 파이프라인 증빙 라우터 (경진대회 가점 5점)
+가명정보결합 파이프라인 증빙 라우터 (프로젝트 가점 5점)
 
 국토교통 데이터안심구역(DSZ) 표준에 따른 가명정보 결합 전 과정을 시연하는 엔드포인트.
 
@@ -278,12 +278,12 @@ def demo_join(req: DemoJoinRequest):
 @router.get("/evidence-report")
 def evidence_report():
     """
-    가명정보결합 경진대회 가점 증빙 보고서.
+    가명정보결합 프로젝트 가점 증빙 보고서.
     심사자가 가점 5점을 확인할 수 있는 기술 근거 요약.
     """
     return {
         "title": "AuraView 가명정보결합 가점 증빙 보고서",
-        "competition": "2026 국토교통 데이터활용 경진대회",
+        "competition": "AuraView K-Perception",
         "score_category": "가명정보결합 5점",
         "summary": (
             "AuraView는 TAAS 교통사고이력 × 한국도로공사 VDS 교통량 데이터를 "

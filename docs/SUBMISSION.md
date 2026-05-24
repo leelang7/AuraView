@@ -1,7 +1,7 @@
-# 제출용 1-pager — 2026 국토교통 데이터활용 경진대회
+# 제출용 1-pager — AuraView K-Perception
 
 > **AuraView K-Perception** · Tesla FSD 영감 + 한국 도로 협업 인지 + **23종 공공데이터 융합** (v9-23src-2026.05.21)
-> 심사위원 1-step 검증 허브: <https://auraview.allthatai.kr/competition/>
+> 개발자 1-step 검증 허브: <https://auraview.allthatai.kr/competition/>
 
 ---
 
@@ -87,7 +87,7 @@
 
 ---
 
-## 🏅 경진대회 가점 25점 — 항목별 증빙 엔드포인트
+## 🏅 프로젝트 가점 25점 — 항목별 증빙 엔드포인트
 
 | 가점 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
 |---|:---:|---|---|
@@ -102,7 +102,7 @@
 
 ---
 
-## 심사위원 1-step 검증 (curl)
+## 개발자 1-step 검증 (curl)
 
 ```bash
 # 시각 허브 (한 페이지에 모두)
@@ -149,7 +149,7 @@ curl https://auraview.allthatai.kr/metrics/api-directory
 
 | 종류 | URL |
 |---|---|
-| **🏆 심사 허브** | <https://auraview.allthatai.kr/competition/> |
+| **🏆 시스템 허브** | <https://auraview.allthatai.kr/competition/> |
 | 메인 대시보드 (10탭) | <https://auraview.allthatai.kr/ui> |
 | 발표 슬라이드 (15장) | <https://auraview.allthatai.kr/slides/> |
 | 무인 시연 키오스크 (15장면) | <https://auraview.allthatai.kr/kiosk/> |

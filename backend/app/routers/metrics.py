@@ -1,9 +1,9 @@
 """
-경진대회 심사용 통합 KPI 엔드포인트.
+프로젝트 심사용 통합 KPI 엔드포인트.
 
   GET /metrics/competition  ─ 단일 응답으로 모델 성능·임팩트·데이터 freshness·테스트 종합
 
-심사위원이 한 번 호출로 "이 시스템이 실제로 작동하고, 정량 효과가 있고, 공공데이터를 융합한다"
+개발자이 한 번 호출로 "이 시스템이 실제로 작동하고, 정량 효과가 있고, 공공데이터를 융합한다"
 는 3 축 검증을 즉시 수행 가능. WHITEPAPER 헤드라인 숫자의 단일 출처(single source of truth).
 """
 
@@ -48,7 +48,7 @@ def _git_sha() -> str:
 
 @router.get("/competition")
 def competition_kpis():
-    """경진대회 헤드라인 KPI — 한 응답에 모두."""
+    """프로젝트 헤드라인 KPI — 한 응답에 모두."""
     from ..services import public_api, impact as impact_service
 
     # 1) 모델 성능 (학습된 모델이 있으면 그것, 없으면 baseline)
@@ -86,7 +86,7 @@ def competition_kpis():
         "korean_data_fusion": "신호·VDS·돌발·TAAS·ITS·DSZ 6종 동시 융합",
     }
 
-    # RAG 스택 상태 (정보검색 경진대회용)
+    # RAG 스택 상태 (정보검색 프로젝트용)
     rag_status = {}
     try:
         from ..services import qa_engine
@@ -160,7 +160,7 @@ def competition_kpis():
 
 @router.get("/data-attribution")
 def data_attribution():
-    """공공데이터 출처·라이센스 명시 — 경진대회 제출 의무 항목.
+    """공공데이터 출처·라이센스 명시 — 프로젝트 제출 의무 항목.
 
     각 데이터 출처마다 어떤 endpoint 에 결합되는지 + 라이센스 + URL 링크 노출.
     """
@@ -367,7 +367,7 @@ def competition_manifest():
         "service": "AuraView K-Perception",
         "version": "0.8-score25-ready",
         "git_sha": _git_sha(),
-        "competition": "2026 국토교통 데이터활용 경진대회",
+        "competition": "AuraView K-Perception",
         "score_25pt_endpoints": {
             "AI활용_학습_5점": "/ai/model-card · /ai/training-history · /ai/roc-curve",
             "AI활용_분석_5점": "/ai/scenario-analysis · /ai/feature-importance · /ai/confusion-matrix",
@@ -489,7 +489,7 @@ def visuals_index():
 
 @router.get("/api-directory")
 def api_directory():
-    """경진대회 평가용 — 전체 엔드포인트 그룹별 디렉토리 (judge friendly).
+    """시스템 평가용 — 전체 엔드포인트 그룹별 디렉토리 (judge friendly).
 
     /healthz/details 와 비슷하지만 prefix(group)별로 묶어 한눈에 검토 가능.
     """
@@ -536,11 +536,11 @@ def api_directory():
 
 @router.get("/scoreboard")
 def scoreboard():
-    """경진대회 가점 25점 항목별 자체 채점 — 심사위원 가독성."""
+    """프로젝트 가점 25점 항목별 자체 채점 — 개발자 가독성."""
     m = _read_json("models/risk_transformer_trained_metric.json")
     return {
         "as_of": datetime.utcnow().isoformat() + "Z",
-        "competition": "2026 국토교통 데이터활용 경진대회",
+        "competition": "AuraView K-Perception",
         "total_possible": 25,
         "total_claimed": 25,
         "detail_endpoint": "/competition/scorecard",

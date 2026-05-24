@@ -3969,7 +3969,7 @@ class _IdleStatusCard extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         // v9 2026-05-18: "3D" 버튼 제거 — 메인 라이브 화면 자체가 3D BEV이므로 별도 진입점 불필요.
-        // v7.4 2026-05-18: 심사위원 가산점 모드 (⭐ → /scorecard webview)
+        // v7.4 2026-05-18: 개발자 가산점 모드 (⭐ → /scorecard webview)
         Builder(builder: (ctx) => GestureDetector(
           onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
             builder: (_) => const _JudgeModeScreen(),
@@ -4516,7 +4516,7 @@ class _DetailSheetState extends State<_DetailSheet> {
           _KV('백엔드', kApiBase.replaceFirst('https://', '')),
 
           const SizedBox(height: 18),
-          _SectionTitle('// 경진대회 KPI · 심사 검증용'),
+          _SectionTitle('// 프로젝트 KPI · 심사 검증용'),
           GestureDetector(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const _CompetitionKpiScreen()),
@@ -5129,7 +5129,7 @@ class _FleetImageDetailScreen extends StatelessWidget {
 
 
 // ──────────────────────────────────────────────────────────────────────
-// 경진대회 KPI 패널 — 심사위원 1-step 검증용 폰 화면
+// 프로젝트 KPI 패널 — 개발자 1-step 검증용 폰 화면
 // /metrics/competition 응답 → 4 축 (모델·임팩트·공공데이터·검증) 한 화면에
 // ──────────────────────────────────────────────────────────────────────
 class _CompetitionKpiScreen extends StatefulWidget {
@@ -5199,7 +5199,7 @@ class _CompetitionKpiScreenState extends State<_CompetitionKpiScreen> {
       backgroundColor: _bg,
       appBar: AppBar(
         backgroundColor: _surface,
-        title: const Text('경진대회 KPI',
+        title: const Text('프로젝트 KPI',
           style: TextStyle(color: _text, fontWeight: FontWeight.w700, fontSize: 16)),
         iconTheme: const IconThemeData(color: _accent),
         elevation: 0,
@@ -5233,7 +5233,7 @@ class _CompetitionKpiScreenState extends State<_CompetitionKpiScreen> {
                     Text('${_data?['version'] ?? '—'}  ·  git ${_data?['git_sha'] ?? 'unknown'}',
                       style: const TextStyle(color: _muted, fontSize: 11, fontFamily: 'monospace')),
                     const SizedBox(height: 4),
-                    Text('2026 국토교통 데이터활용 경진대회',
+                    Text('AuraView K-Perception',
                       style: TextStyle(color: _accent, fontSize: 11, fontFamily: 'monospace', letterSpacing: 1.2)),
                   ]),
                 ),
@@ -5590,7 +5590,7 @@ class _AuraView3DBevScreenState extends State<AuraView3DBevScreen> {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// v7.4 2026-05-18: 심사위원 가산점 모드 (★)
+// v7.4 2026-05-18: 개발자 가산점 모드 (★)
 //   - 4탭: ⭐ 가산점 25점 · 🔒 PII · 🛡️ 안전구역 · 🎬 스토리
 //   - 각 탭은 WebView 로 https://auraview.allthatai.kr/{path}/ 로드
 // ═══════════════════════════════════════════════════════════════
@@ -5654,7 +5654,7 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
             boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
           )),
           const SizedBox(width: 8),
-          const Text('심사위원 모드 · 가산점 25점',
+          const Text('개발자 모드 · 가산점 25점',
               style: TextStyle(color: _text, fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
         ]),
         actions: [

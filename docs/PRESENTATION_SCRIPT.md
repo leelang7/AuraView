@@ -133,7 +133,7 @@ hazard probability 즉시 계산 + 권장속도 자동 산출.
 A: 합성 8 시나리오 (트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간) 8000+2000 샘플 + Fleet 누적 데이터.
    `notebooks/train_risk_transformer_real.py` 한 번이면 누구나 재현. AUC 0.9403, F1 0.9412.
 
-**Q: 어떻게 검증하나? (심사위원 1-step)**
+**Q: 어떻게 검증하나? (개발자 1-step)**
 A: `curl /metrics/competition` — 모델·임팩트·공공데이터·검증 4축 한 응답.
    `curl /metrics/scoreboard` — 5개 평가항목 자체 채점 + evidence endpoint.
    `curl -O /impact/policy-pdf` — A4 1-pager PDF 즉석 다운로드.

@@ -1,5 +1,5 @@
 """
-데이터안심구역 반입/조회 엔드포인트 (경진대회 가점 5점).
+데이터안심구역 반입/조회 엔드포인트 (프로젝트 가점 5점).
 
   POST /dsz/verify             안심구역에서 반출한 결과물(JSON) 해시 검증 + 등록
   GET  /dsz/artifacts          등록된 안심구역 결합분석 결과물 목록
@@ -81,7 +81,7 @@ def join_taas_vds_demo():
 @router.post("/seed-demo")
 def seed_demo_artifact():
     """
-    경진대회 시연용 데모 안심구역 아티팩트 생성.
+    시스템 시연용 데모 안심구역 아티팩트 생성.
 
     실제 dsz.ex.co.kr 반출 결과물과 동일한 스키마를 가진 JSON을 로컬에 생성하고
     SHA-256 해시 검증 후 manifest에 등록합니다.
@@ -119,12 +119,12 @@ def seed_demo_artifact():
 
 @router.get("/pipeline-report")
 def pipeline_report():
-    """안심구역 활용 파이프라인 전체 보고서 (경진대회 가점 5점 증빙)."""
+    """안심구역 활용 파이프라인 전체 보고서 (프로젝트 가점 5점 증빙)."""
     registered = dsz_adapter.list_imported()
 
     return {
         "title": "AuraView 국토교통 데이터안심구역 활용 보고서",
-        "competition": "2026 국토교통 데이터활용 경진대회",
+        "competition": "AuraView K-Perception",
         "score_category": "안심구역(국토교통 데이터안심구역 dsz.ex.co.kr) 5점",
         "dsz_url": "https://dsz.ex.co.kr",
         "operator": "한국도로공사 국토교통부 위탁운영",

@@ -1,12 +1,12 @@
 """
-경진대회 가점 종합 대시보드 — 심사자용 원스톱 증빙 엔드포인트.
+프로젝트 가점 종합 대시보드 — 심사자용 원스톱 증빙 엔드포인트.
 
   GET /competition/scorecard    가점 25점 항목별 달성 현황 (심사 제출용)
   GET /competition/summary      시스템 KPI 종합 (발표 슬라이드용)
   GET /competition/api-map      전체 86 엔드포인트 → 가점 항목 매핑
   GET /competition/checklist    제출 전 체크리스트
 
-2026 국토교통 데이터활용 경진대회 가점:
+AuraView K-Perception 가점:
   - AI활용 10점 (학습 5 + 분석 5)
   - 데이터융합 5점
   - 가명정보결합 5점
@@ -34,7 +34,7 @@ def scorecard():
     m = _json.loads(_METRIC_PATH.read_text(encoding="utf-8")) if _METRIC_PATH.exists() else {}
 
     return {
-        "title": "AuraView 2026 국토교통 데이터활용 경진대회 가점 달성 현황",
+        "title": "AuraView AuraView K-Perception 가점 달성 현황",
         "total_possible": 25,
         "total_claimed": 25,
         "submission_deadline": "2026-05-29",
@@ -223,9 +223,9 @@ def summary():
 
 @router.get("/api-map")
 def api_map():
-    """전체 엔드포인트 → 경진대회 가점 항목 매핑."""
+    """전체 엔드포인트 → 프로젝트 가점 항목 매핑."""
     return {
-        "title": "AuraView API 엔드포인트 → 경진대회 가점 매핑",
+        "title": "AuraView API 엔드포인트 → 프로젝트 가점 매핑",
         "total_endpoints": 90,
         "mapping": [
             # AI활용 학습
@@ -282,7 +282,7 @@ def checklist():
         {"item": "가명정보결합 파이프라인 명세 (GET /privacy/pipeline-spec)", "ok": True, "path": None},
         {"item": "안심구역 파이프라인 보고서 (GET /dsz/pipeline-report)", "ok": True, "path": None},
         {"item": "9종 데이터 융합 소스 목록 (GET /fusion/sources)", "ok": True, "path": None},
-        {"item": "경진대회 가점 스코어카드 (GET /competition/scorecard)", "ok": True, "path": None},
+        {"item": "프로젝트 가점 스코어카드 (GET /competition/scorecard)", "ok": True, "path": None},
         {"item": "학습 스크립트 존재", "ok": Path("notebooks/train_risk_transformer_real.py").exists(),
          "path": "notebooks/train_risk_transformer_real.py"},
         {"item": "README.md 가점 매핑 섹션 포함", "ok": True, "path": "README.md"},

@@ -3,7 +3,7 @@
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/badge/tests-118%2F118%20passed-brightgreen)](backend/tests/)
 [![endpoints](https://img.shields.io/badge/API_endpoints-90-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
-[![judge hub](https://img.shields.io/badge/JUDGE_HUB-/competition/-00e09a)](https://auraview.allthatai.kr/competition/)
+[![system hub](https://img.shields.io/badge/SYSTEM_HUB-/competition/-00e09a)](https://auraview.allthatai.kr/competition/)
 [![scenarios](https://img.shields.io/badge/scenarios-8-00e09a)](https://auraview.allthatai.kr/occupancy/compare)
 [![model AUC](https://img.shields.io/badge/Risk%20Transformer%20AUC-0.9403-00c8ff)](models/risk_transformer_trained_metric.json)
 [![inference p99](https://img.shields.io/badge/inference%20p99-1.04ms-7c3aed)](https://auraview.allthatai.kr/benchmark/all)
@@ -39,11 +39,11 @@
 > 각각 우천 위험 가중치 (+0.18) · 사고 심각도 보정 (×1.34) · 자전거도로 prior (+0.22) 로 융합 위험 점수에 자동 반영됩니다.
 > 검증: [`/fusion/sources`](https://auraview.allthatai.kr/fusion/sources) · [`/fusion/weather`](https://auraview.allthatai.kr/fusion/weather) · [`/fusion/medical`](https://auraview.allthatai.kr/fusion/medical) · [`/fusion/bike`](https://auraview.allthatai.kr/fusion/bike)
 
-## 🏆 Judge Hub (심사위원 전용 한 페이지)
+## 🏆 System Hub (개발자 전용 한 페이지)
 
 > **<https://auraview.allthatai.kr/competition/>** — KPI 4종 + 검증 URL 11개 + 라이브 데모 5종 + 8 시나리오 + 문서 5종 한 화면. JSON 직접 호출 없이 시각적으로 모두 가능.
 
-## 🏅 경진대회 가점 25점 — 항목별 증빙 엔드포인트
+## 🏅 프로젝트 가점 25점 — 항목별 증빙 엔드포인트
 
 | 가점 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
 |---|:---:|---|---|
@@ -58,7 +58,7 @@
 
 ---
 
-## 🏆 Quick Verify (심사위원 1-step)
+## 🏆 Quick Verify (개발자 1-step)
 
 ```bash
 # 모든 검증 URL 한 응답 (master index)
@@ -92,7 +92,7 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 | 📖 **일반인용 스토리** | 30초 이해 + 인터랙티브 시뮬레이터 + 시나리오 프리셋 | [/story/](https://auraview.allthatai.kr/story/) |
 | 🎥 **1분 자동 시연** | 풀스크린 시네마틱 16 장면 무한루프 (시연 부스용) | [/reel/](https://auraview.allthatai.kr/reel/) |
 | 🖼️ **시각자료 갤러리** | 18 SVG 종합 + 필터/라이트박스 | [/gallery/](https://auraview.allthatai.kr/gallery/) |
-| 🏆 **심사위원 허브** | 11 검증 URL + 5 데모 + 8 시나리오 + 가점 25점 | [/competition/](https://auraview.allthatai.kr/competition/) |
+| 🏆 **개발자 허브** | 11 검증 URL + 5 데모 + 8 시나리오 + 가점 25점 | [/competition/](https://auraview.allthatai.kr/competition/) |
 | 🎬 **풀 대시보드** | 10탭 라이브 데모 (Fusion / BEV / Fleet / V2V 등) | [/ui](https://auraview.allthatai.kr/ui) |
 | 🎞️ **발표 슬라이드** | Reveal.js 14장 (Cover → CTA) | [/slides/](https://auraview.allthatai.kr/slides/) |
 | 📺 **무인 키오스크** | 자동 순회 13 장면 | [/kiosk/](https://auraview.allthatai.kr/kiosk/) |
@@ -133,8 +133,8 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 **산출 근거**: TAAS 2024 (전체 사고 207,535 / 사망 2,581 / 부상 290,400) × 도시교차로 비중 46% × AuraView 적용 시나리오 42% × 회피율 `min(0.85, 0.25 × lead_time_s)` (KOTI ITS 효과 분석).
 선행경고 시간 = 트레인드 모델 평균 **3.38s** → 회피율 **84.5%**. 모든 가정 라이브 검증: <https://auraview.allthatai.kr/impact>
 
-> 📄 **A4 1-pager PDF 자동 생성** — `GET /impact/policy-pdf?coverage=0.05&lead=3.38` 으로 즉시 다운로드 (정책담당자·심사위원 배포용, 88KB).
-> 📊 **경진대회 통합 KPI** — `GET /metrics/competition` (모델 성능·임팩트·공공데이터 freshness·검증 4축을 한 응답에).
+> 📄 **A4 1-pager PDF 자동 생성** — `GET /impact/policy-pdf?coverage=0.05&lead=3.38` 으로 즉시 다운로드 (정책담당자·개발자 배포용, 88KB).
+> 📊 **시스템 통합 KPI** — `GET /metrics/competition` (모델 성능·임팩트·공공데이터 freshness·검증 4축을 한 응답에).
 > 🔍 **재현 가이드** — [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) — 외부 검증 1-step 명령 모음.
 
 ---
@@ -229,7 +229,7 @@ flowchart LR
     FUSE -- HUD 경고 --> Edge
     Edge -- 하드샘플 업로드 --> FLEET
 
-    subgraph Judge[심사위원 검증]
+    subgraph Judge[개발자 검증]
         MANIFEST[/metrics/manifest<br/>11 verify URLs/]
         COMP[/competition/<br/>판정 Hub HTML/]
         PDF[/impact/policy-pdf<br/>A4 1-pager/]
@@ -318,7 +318,7 @@ github.com/leelang7/AuraView
 | `POST` | **`/collab/bus-context`** · **`/collab/bidirectional`** | 버스/상행하행 분석 |
 | `POST` | **`/collab/fused-occupancy`** ★ | **단독 vs 협업 결합 비교** |
 | `GET`  | **`/metrics/manifest`** ⭐ | **🏆 심사용 single-source-of-truth — 11 검증 URL + 5 데모 + git_sha** |
-| `GET`  | **`/metrics/competition`** ★ | **경진대회 통합 KPI (모델·임팩트·공공데이터·검증·RAG)** |
+| `GET`  | **`/metrics/competition`** ★ | **시스템 통합 KPI (모델·임팩트·공공데이터·검증·RAG)** |
 | `GET`  | **`/metrics/scoreboard`** ★ | **5개 평가 항목 자체 채점** |
 | `GET`  | **`/impact/policy-pdf?coverage=0.05&lead=3.38`** ★ | **A4 1-pager 정책 임팩트 PDF** |
 | `GET`  | **`/policy/laws`** ★ | **8 시나리오별 도로교통법 조항·판례 매핑** |
@@ -332,7 +332,7 @@ github.com/leelang7/AuraView
 
 > 시나리오 8종 — `/occupancy/demo?scenario=` 에 `truck_occlusion` · `motorcycle_blindspot` · `signal_occlusion` · `rainy_intersection` · `right_turn_pedestrian` · **`school_zone`** (DSZ 공공데이터) · **`bicycle_lane`** (자전거 도로 GIS prior) · **`night_pedestrian`** (야간 V2V 헤드라이트 share)
 
-### 🧠 RAG 정보검색 스택 (정보검색 경진대회 수상형 구조)
+### 🧠 RAG 정보검색 스택 (정보검색 프로젝트 수상형 구조)
 
 | 단계 | 모델 / 라이브러리 | 비고 |
 |---|---|---|

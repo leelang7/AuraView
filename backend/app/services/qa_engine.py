@@ -1,5 +1,5 @@
 """
-RAG 엔진 — 정보검색 경진대회 수상 구조.
+RAG 엔진 — 정보검색 프로젝트 수상 구조.
 
   검색: BM25 (sparse) + bge-m3 (dense) + bge-reranker-v2-m3 (cross-encoder)
   생성: Qwen2.5-7B-Instruct (4bit GPU)

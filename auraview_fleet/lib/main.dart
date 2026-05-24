@@ -1495,7 +1495,11 @@ class _FleetHomeState extends State<FleetHome>
     if (_pos != null) {
       req.fields['lat'] = _pos!.latitude.toStringAsFixed(5);
       req.fields['lon'] = _pos!.longitude.toStringAsFixed(5);
+      // v12.87: 속도 동봉 — 서버 측 blind_spot/저신뢰도 false positive 차단용
+      final speedKmh = _pos!.speed * 3.6;
+      req.fields['speed_kmh'] = speedKmh.toStringAsFixed(1);
     }
+    if (_testMode) req.fields['test_mode'] = 'true';
     req.files.add(http.MultipartFile.fromBytes('image', jpg, filename: 'fleet.jpg'));
     try {
       final res = await req.send().timeout(const Duration(seconds: 12));

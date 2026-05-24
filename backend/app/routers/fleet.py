@@ -54,6 +54,8 @@ async def contribute(
     intersection_id: Optional[str] = Form(None),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
+    speed_kmh: Optional[float] = Form(None, description="v12.87: 차량 속도 km/h — blind_spot 검증용"),
+    test_mode: Optional[bool] = Form(False, description="v12.87: 테스트 모드 여부 — true 면 게이트 bypass 표시"),
 ):
     """Hard-sample upload with automatic PII masking."""
     # 저장 파일명에 실제 device_id는 쓰지 않음 → 가명화
@@ -95,12 +97,15 @@ async def contribute(
         # ~100m 그리드로 반올림 → k-익명성 보조
         entry["lat"] = round(lat, 3)
         entry["lon"] = round(lon, 3)
+    if speed_kmh is not None:
+        entry["speed_kmh"] = round(float(speed_kmh), 1)
+    if test_mode:
+        entry["test_mode"] = True
 
-    # v12.83: 서버 측 위치 검증 — signal_occluded/crosswalk_blocked 가 실제 신호등/횡단보도 근처인지 표시
-    #   * 데이터 무결성 증명 (앱이 게이팅 무시한 채 업로드한 경우 서버에서도 마킹)
-    #   * /fleet/live 응답에 location_verified 필드 노출 → /ui 에서 verified/unverified 구분 표시
+    # v12.83+v12.87: 서버 측 위치/속도 검증 — 정지 상태 blind_spot 같은 false positive 차단
     entry["location_verified"] = _verify_event_location(
-        reason=reason, lat=lat, lon=lon, intersection_id=intersection_id)
+        reason=reason, lat=lat, lon=lon, intersection_id=intersection_id,
+        speed_kmh=speed_kmh, test_mode=bool(test_mode))
 
     with MANIFEST.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -129,31 +134,82 @@ def _planar_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def _verify_event_location(reason: str, lat: Optional[float], lon: Optional[float],
-                            intersection_id: Optional[str]) -> dict:
-    """v12.83: 이벤트 위치 검증 — 위치-의존 reason 이 실제 인프라 근처에서 발생했는지.
+                            intersection_id: Optional[str],
+                            speed_kmh: Optional[float] = None,
+                            test_mode: bool = False) -> dict:
+    """v12.87: 위치 + 속도 검증 — 정지 상태 false positive 차단.
     Returns: {'verified': bool, 'method': str, 'distance_m': int|None, 'note': str}
+
+    검증 규칙:
+    - test_mode=true → 항상 verified=true (실내 시연 명시)
+    - signal_occluded/crosswalk_blocked: 100m 내 known 교차로 (위치 게이트)
+    - blind_spot_left/right: speed>=5km/h AND (100m 내 known 교차로 OR speed>=15km/h 명백한 주행)
+    - high_uncertainty/low_confidence: speed>=5km/h 만 요구
     """
-    # 위치 무관 reason 은 항상 verified=true
-    if reason in ("blind_spot_left", "blind_spot_right", "high_uncertainty", "low_confidence", "high_entropy"):
-        return {"verified": True, "method": "no-gate-needed", "distance_m": None,
-                "note": f"{reason} 는 어디서나 의미있음"}
+    if test_mode:
+        return {"verified": True, "method": "test-mode", "distance_m": None,
+                "note": "TEST 모드 (실내 시연)"}
     if lat is None or lon is None:
         return {"verified": False, "method": "no-gps", "distance_m": None,
                 "note": "GPS 좌표 없음"}
-    # 1) 100m 내 known intersection
+    # 거리 계산 공통
     best_km = None
     for klat, klon in _KNOWN_INTERSECTIONS_LATLON:
         d = _planar_km(lat, lon, klat, klon)
         if best_km is None or d < best_km:
             best_km = d
-    if best_km is not None and best_km < 0.100:
-        return {"verified": True, "method": "known-intersection",
-                "distance_m": int(best_km * 1000),
-                "note": f"100m 내 known 8 교차로 ({int(best_km*1000)}m)"}
-    # 2) 그 외 — gps-* iid 거나 멀리 떨어진 곳
-    return {"verified": False, "method": "no-nearby-infra",
-            "distance_m": int(best_km * 1000) if best_km else None,
-            "note": f"{reason} 인데 가장 가까운 known 교차로가 {int(best_km*1000) if best_km else '?'}m"}
+    best_m = int(best_km * 1000) if best_km is not None else None
+    near_known = best_km is not None and best_km < 0.100
+
+    # 위치-의존 reason
+    if reason in ("signal_occluded", "crosswalk_blocked"):
+        if near_known:
+            return {"verified": True, "method": "known-intersection",
+                    "distance_m": best_m,
+                    "note": f"100m 내 known 교차로 ({best_m}m)"}
+        return {"verified": False, "method": "no-nearby-infra",
+                "distance_m": best_m,
+                "note": f"가까운 known 교차로 {best_m or '?'}m (>100m)"}
+
+    # 속도-의존 reason (사각지대/저신뢰도/고불확실성) — 정지 상태 false positive 차단
+    if reason in ("blind_spot_left", "blind_spot_right"):
+        if speed_kmh is None:
+            # 옛 업로드는 speed 없음 → known 교차로 근처면 verified, 아니면 unverified
+            if near_known:
+                return {"verified": True, "method": "no-speed-but-near-road",
+                        "distance_m": best_m,
+                        "note": f"속도 없음, known 교차로 {best_m}m 내"}
+            return {"verified": False, "method": "no-speed-and-no-road",
+                    "distance_m": best_m,
+                    "note": f"속도 정보 없고 가까운 교차로 {best_m or '?'}m"}
+        if speed_kmh >= 15.0:
+            return {"verified": True, "method": "moving-fast",
+                    "distance_m": best_m,
+                    "note": f"주행 중 {speed_kmh:.0f}km/h"}
+        if speed_kmh >= 5.0 and near_known:
+            return {"verified": True, "method": "moving-near-road",
+                    "distance_m": best_m,
+                    "note": f"{speed_kmh:.0f}km/h, known 교차로 {best_m}m 내"}
+        return {"verified": False, "method": "stationary",
+                "distance_m": best_m,
+                "note": f"정지 상태 ({speed_kmh:.0f}km/h) → 사각지대 false positive 의심"}
+
+    if reason in ("high_uncertainty", "low_confidence", "high_entropy"):
+        if speed_kmh is None:
+            return {"verified": True, "method": "no-speed-allowed",
+                    "distance_m": best_m,
+                    "note": "신뢰도 reason — 속도 무관"}
+        if speed_kmh >= 5.0:
+            return {"verified": True, "method": "moving",
+                    "distance_m": best_m,
+                    "note": f"주행 중 {speed_kmh:.0f}km/h"}
+        return {"verified": False, "method": "stationary-confidence",
+                "distance_m": best_m,
+                "note": f"정지 상태 ({speed_kmh:.0f}km/h) → 카메라 흔들림 의심"}
+
+    # 알 수 없는 reason — 기본 통과
+    return {"verified": True, "method": "unknown-reason-pass",
+            "distance_m": best_m, "note": f"reason={reason}"}
 
 
 @router.get("/stats")

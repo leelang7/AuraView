@@ -482,24 +482,90 @@ _NEDIS_FALLBACK = {
 }
 
 
+def _fetch_osm_hospitals(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
+    """OpenStreetMap Overpass (no-key) — amenity=hospital 라이브 fetch.
+    실시간 병상 정보는 없지만 정확한 병원 위치 + 응급실 태그 (emergency=yes) 제공."""
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    radius_int = int(radius_m)
+    query = (
+        f'[out:json][timeout:10];'
+        f'(node["amenity"="hospital"](around:{radius_int},{lat},{lon});'
+        f' way["amenity"="hospital"](around:{radius_int},{lat},{lon}););'
+        f'out center 30;'
+    )
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
+    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
+    res.raise_for_status()
+    j = res.json()
+    hospitals = []
+    for e in j.get("elements", [])[:30]:
+        tags = e.get("tags", {}) or {}
+        elat = e.get("lat") or (e.get("center") or {}).get("lat")
+        elon = e.get("lon") or (e.get("center") or {}).get("lon")
+        if elat is None or elon is None: continue
+        has_er = tags.get("emergency") == "yes" or "응급" in (tags.get("name") or "")
+        hospitals.append({
+            "hpid": f"OSM-{e.get('id')}",
+            "name": tags.get("name") or "Hospital",
+            "lat": elat, "lon": elon,
+            "emergency": has_er,
+            "hvec": None,
+            "hv1": None,
+            "ER_load": 0.5,  # 실시간 없음 - 중립값
+            "ambulance_eta_min": 0,
+        })
+    return hospitals
+
+
 def fetch_emergency_capacity(lat: float = 37.5665, lon: float = 126.9780, radius_km: float = 5.0) -> Dict[str, Any]:
-    """반경 N km 내 응급실 실시간 가용병상 + 사고 심각도 보정 계수."""
-    url = f"{NEDIS_BASE_URL}/getEmrrmRltmUsefulSckbdInfoInqire"
-    params = {
-        "serviceKey": NEDIS_KEY,
-        "Q0": "서울특별시",
-        "pageNo": 1,
-        "numOfRows": 20,
-        "_type": "json",
-    }
+    """반경 N km 내 응급실 실시간 가용병상 + 사고 심각도 보정 계수.
+    우선순위: NEDIS 정부 API (NEDIS_KEY) → OSM amenity=hospital (no-key, 위치만) → stub."""
+    if NEDIS_KEY:
+        url = f"{NEDIS_BASE_URL}/getEmrrmRltmUsefulSckbdInfoInqire"
+        params = {
+            "serviceKey": NEDIS_KEY,
+            "Q0": "서울특별시",
+            "pageNo": 1,
+            "numOfRows": 20,
+            "_type": "json",
+        }
+        try:
+            res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("medical", "live", True)
+            return res.json()
+        except Exception as exc:
+            log.warning("NEDIS API failed at (%s, %s): %s", lat, lon, exc)
+    # 2차: OSM amenity=hospital no-key fallback (위치만 라이브)
     try:
-        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
-        res.raise_for_status()
-        _record_fetch("medical", "live", True)
-        return res.json()
+        radius_m = radius_km * 1000
+        osm_hospitals = _fetch_osm_hospitals(lat, lon, radius_m)
+        if osm_hospitals:
+            with_dist = []
+            for h in osm_hospitals:
+                d = _haversine_m_local(lat, lon, h["lat"], h["lon"])
+                with_dist.append({**h, "distance_m": int(d)})
+            with_dist.sort(key=lambda x: x["distance_m"])
+            nearest = with_dist[0]
+            _record_fetch("medical", "live", True)
+            return {
+                "source": "OpenStreetMap amenity=hospital (no-key fallback · live · 위치만)",
+                "collected_at": None,
+                "hospitals": with_dist[:20],
+                "derived": {
+                    "nearest_ER_load": nearest["ER_load"],
+                    "nearest_eta_min": nearest["ambulance_eta_min"],
+                    "severity_multiplier": 1.0,
+                    "nearest_hospital": nearest["name"],
+                    "nearest_distance_m": nearest["distance_m"],
+                    "_note": "OSM에서 위치만 라이브, 실시간 병상은 NEDIS_KEY 설정 필요",
+                },
+            }
     except Exception as exc:
-        log.warning("NEDIS API failed at (%s, %s): %s", lat, lon, exc)
-        _record_fetch("medical", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        log.warning("OSM hospital fallback failed: %s", exc)
+    # 3차: stub fallback
+    _record_fetch("medical", "stub" if ALLOW_FALLBACK else "error", False, "fallback")
+    if True:  # ALLOW_FALLBACK
         if ALLOW_FALLBACK:
             # v12.20: 실제 lat/lon → 가까운 병원만 derived 재계산 (집/임의 위치 거짓 ER 알람 차단)
             hospitals = _NEDIS_FALLBACK["hospitals"]
@@ -1072,21 +1138,22 @@ def _fetch_osm_ev_chargers(lat: float, lon: float, radius_m: float) -> Dict[str,
     return stations
 
 
-def fetch_ev_chargers(lat: float = 37.5665, lon: float = 126.9780, radius_m: float = 500.0) -> Dict[str, Any]:
+def fetch_ev_chargers(lat: float = 37.5665, lon: float = 126.9780, radius_m: float = 2000.0) -> Dict[str, Any]:
     """반경 N m EV 충전소. 정차한 EV 패턴 이상 탐지에 활용.
-    우선순위: OSM Overpass (no-key) → 내장 fixture stub."""
+    우선순위: OSM Overpass (no-key) → 내장 fixture stub.
+    radius_m 기본값 2000m — 도시 환경에서 충분한 EV 충전소 커버리지 확보."""
     nearby = []
     osm_mode = False
     try:
         osm_stations = _fetch_osm_ev_chargers(lat, lon, radius_m)
+        # Overpass `around:` 자체가 radius 필터링하므로 추가 거리 확인만
         for s in osm_stations:
             d = _haversine_m_local(lat, lon, s["lat"], s["lon"])
-            if d <= radius_m:
-                nearby.append({**s, "distance_m": round(d, 1)})
+            nearby.append({**s, "distance_m": round(d, 1)})
         nearby.sort(key=lambda x: x["distance_m"])
-        if osm_stations:
-            osm_mode = True
-            _record_fetch("ev_charger", "live", True)
+        # API 호출이 성공했으면 결과 0건이어도 live (실제 그 반경에 충전소 없음)
+        osm_mode = True
+        _record_fetch("ev_charger", "live", True)
     except Exception as exc:
         log.warning("OSM ev_charger fallback failed: %s", exc)
     if not osm_mode:
@@ -2016,7 +2083,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         "pedestrian_hotspot": lambda: fetch_pedestrian_hotspots(lat=lat0, lon=lon0, radius_m=500.0),
         "air_quality":        lambda: fetch_air_quality(sido="서울"),
         "school_route":       lambda: fetch_school_routes(lat=lat0, lon=lon0, radius_m=800.0),
-        "ev_charger":         lambda: fetch_ev_chargers(lat=lat0, lon=lon0, radius_m=500.0),
+        "ev_charger":         lambda: fetch_ev_chargers(lat=lat0, lon=lon0, radius_m=2000.0),
         "road_surface":       lambda: fetch_road_surface(lat=lat0, lon=lon0, radius_m=2000.0),
         "vehicle_inspection": lambda: fetch_vehicle_inspection(district="강남구"),
         "dtg":                lambda: fetch_dtg_stats(vehicle_type="법인택시"),

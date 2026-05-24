@@ -362,6 +362,9 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 .ls .ev .ent{font-family:monospace;font-size:11px;font-weight:900;}
 .ls .ev .ent.hi{color:#FF4040;}.ls .ev .ent.mi{color:#FFB020;}.ls .ev .ent.lo{color:#00E09A;}
 .ls .empty{text-align:center;color:rgba(255,255,255,0.4);font-size:11px;padding:24px 0;}
+.ls .liveBadge{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:900;letter-spacing:1.1px;color:#00E09A;background:rgba(0,224,154,0.10);border:1px solid rgba(0,224,154,0.30);border-radius:99px;padding:5px 10px;margin-bottom:8px;width:fit-content;}
+.ls .liveBadge .pulseDot{width:6px;height:6px;border-radius:50%;background:#00E09A;box-shadow:0 0 6px #00E09A;animation:lvPulse 1.4s ease-in-out infinite;}
+@keyframes lvPulse{0%,100%{opacity:0.4;}50%{opacity:1;}}
 
 /* ─── Hero strip 가운데 상단 (큰 메시지) ─── */
 .hr{position:fixed;top:68px;left:50%;transform:translateX(-50%);z-index:90;
@@ -478,6 +481,9 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
     <div class="eye">// LIVE STREAM</div>
     <div class="ct" id="lsCt">— events</div>
   </div>
+  <div class="liveBadge" id="liveBadge" title="실시간 공공데이터 소스 수 (no-key fallback 포함)">
+    <span class="pulseDot"></span><span id="liveN">—</span> LIVE / 23 SRC
+  </div>
   <div class="body" id="lsBody">
     <div class="empty">⏳ /fleet/live 로딩…</div>
   </div>
@@ -552,14 +558,21 @@ async function tick() {
       document.getElementById('s2Ev').textContent = live.events_1m || 0;
       document.getElementById('s2Tot').textContent = (live.events_total || 0).toLocaleString();
     }
-    // Slide 3: 23 SRC bar
+    // Slide 3: 23 SRC bar + LIVE badge
     if (src && src.sources) {
       const ss = src.sources;
       const ln = ss.filter(s => s.mode === 'live').length;
       document.getElementById('s3N').textContent = ss.length;
       document.getElementById('s3L').textContent = ln;
       document.getElementById('s3S').textContent = ss.length - ln;
-      document.getElementById('s3Bar').innerHTML = ss.map(s => '<div class="s ' + (s.mode === 'live' ? 'lv' : 'st') + '" title="' + esc(s.name||s.id) + '"></div>').join('');
+      document.getElementById('s3Bar').innerHTML = ss.map(s => '<div class="s ' + (s.mode === 'live' ? 'lv' : 'st') + '" title="' + esc(s.name||s.id) + ' · ' + s.mode + '"></div>').join('');
+      // LIVE badge on LIVE STREAM header
+      const liveN = document.getElementById('liveN');
+      if (liveN) {
+        liveN.textContent = ln;
+        const badge = document.getElementById('liveBadge');
+        if (badge) badge.title = '실시간 ' + ln + '개: ' + ss.filter(s=>s.mode==='live').map(s=>s.id).join(', ');
+      }
     }
     // Slide 4: Hotspot top 5
     if (pol && pol.top_hotspots) {

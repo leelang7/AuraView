@@ -773,11 +773,43 @@ def _haversine_m_local(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return 2*R*math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
+def _fetch_osm_schools(lat: float, lon: float, radius_m: float) -> list:
+    """OpenStreetMap Overpass (no-key) — amenity=school/kindergarten 라이브 fetch.
+    스쿨존 게이트의 자명한 proxy (학교 반경 300m = 사실상 스쿨존)."""
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    radius_int = int(radius_m)
+    query = (
+        f'[out:json][timeout:10];'
+        f'(node["amenity"~"^(school|kindergarten)$"](around:{radius_int},{lat},{lon});'
+        f' way["amenity"~"^(school|kindergarten)$"](around:{radius_int},{lat},{lon}););'
+        f'out center 40;'
+    )
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
+    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
+    res.raise_for_status()
+    schools = []
+    for e in res.json().get("elements", [])[:40]:
+        tags = e.get("tags", {}) or {}
+        elat = e.get("lat") or (e.get("center") or {}).get("lat")
+        elon = e.get("lon") or (e.get("center") or {}).get("lon")
+        if elat is None or elon is None: continue
+        schools.append({
+            "id": f"OSM-{e.get('id')}",
+            "name": tags.get("name") or ("학교" if tags.get("amenity") == "school" else "유치원"),
+            "amenity": tags.get("amenity"),
+            "lat": elat, "lon": elon,
+            "radius_m": 300,
+            "district": tags.get("addr:district") or tags.get("addr:city"),
+        })
+    return schools
+
+
 def fetch_school_zone(lat: float = 37.5081, lon: float = 127.0440, radius_m: float = 500.0) -> Dict[str, Any]:
     """반경 N m 내 어린이보호구역 + 시간대별 위험 multiplier.
 
     07:30-09:00 등교 / 13:30-15:00 하교 시간대 → multiplier ×1.5
     그 외 → ×1.2 (스쿨존 진입 시 기본).
+    v12.93: 우선순위 — vworld lt_c_spzzone (SCHOOL_ZONE_KEY) → OSM amenity=school (no-key) → stub.
     """
     from datetime import datetime
     now = datetime.utcnow()
@@ -813,13 +845,36 @@ def fetch_school_zone(lat: float = 37.5081, lon: float = 127.0440, radius_m: flo
             }
         except Exception as exc:
             log.warning("School zone API failed: %s", exc)
-            _record_fetch("school_zone", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
-            if not ALLOW_FALLBACK: raise
 
-    # fallback — 반경 N m 내 fixture
+    # v12.93: 2차 — OSM amenity=school no-key fallback
+    try:
+        osm_schools = _fetch_osm_schools(lat, lon, radius_m)
+        nearby_osm = []
+        for s in osm_schools:
+            d = _haversine_m_local(lat, lon, s["lat"], s["lon"])
+            if d <= radius_m + s.get("radius_m", 300):
+                nearby_osm.append({**s, "distance_m": round(d, 1),
+                                    "child_count_estimate": 500 if s.get("amenity") == "school" else 80})
+        nearby_osm.sort(key=lambda x: x["distance_m"])
+        _record_fetch("school_zone", "live", True)
+        return {
+            "source": "OpenStreetMap amenity=school (no-key fallback · live)",
+            "zones": nearby_osm, "count": len(nearby_osm),
+            "is_school_time_kst": is_school_time, "kst_hour": kst_hour,
+            "derived": {
+                "in_school_zone": len(nearby_osm) > 0,
+                "school_zone_multiplier": multiplier if nearby_osm else 1.0,
+                "child_count_estimate": sum(z.get("child_count_estimate", 0) for z in nearby_osm),
+            },
+        }
+    except Exception as exc:
+        log.warning("OSM school fallback failed: %s", exc)
+        _record_fetch("school_zone", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK: raise
+
+    # 3차 fallback — 반경 N m 내 fixture
     nearby = [z for z in _SCHOOL_ZONE_FALLBACK_POLYGONS
               if _haversine_m_local(lat, lon, z["lat"], z["lon"]) <= radius_m + z.get("radius_m", 0)]
-    _record_fetch("school_zone", "stub", True if nearby else False, f"{len(nearby)} fixture hits")
     return {
         "source": "어린이보호구역 GIS (stub — SCHOOL_ZONE_KEY 미설정)",
         "zones": nearby, "count": len(nearby),
@@ -1544,20 +1599,79 @@ _POLICE_CAM_FALLBACK = {
 }
 
 
+def _fetch_osm_speed_cameras(lat: float, lon: float, radius_m: float) -> list:
+    """OpenStreetMap Overpass (no-key) — highway=speed_camera + enforcement=maxspeed 라이브 fetch."""
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    radius_int = int(radius_m)
+    query = (
+        f'[out:json][timeout:10];'
+        f'(node["highway"="speed_camera"](around:{radius_int},{lat},{lon});'
+        f' node["enforcement"="maxspeed"](around:{radius_int},{lat},{lon});'
+        f' node["enforcement"="traffic_signals"](around:{radius_int},{lat},{lon}););'
+        f'out body 40;'
+    )
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
+    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
+    res.raise_for_status()
+    cams = []
+    for e in res.json().get("elements", [])[:40]:
+        tags = e.get("tags", {}) or {}
+        elat = e.get("lat"); elon = e.get("lon")
+        if elat is None or elon is None: continue
+        cam_type = "speed" if tags.get("highway") == "speed_camera" else \
+                   ("redlight" if tags.get("enforcement") == "traffic_signals" else "enforcement")
+        cams.append({
+            "id": f"OSM-{e.get('id')}",
+            "name": tags.get("name") or "OSM 단속카메라",
+            "lat": elat, "lon": elon,
+            "type": cam_type,
+            "maxspeed": tags.get("maxspeed"),
+            "violation_5y": 0,
+        })
+    return cams
+
+
 def fetch_police_cams(lat: float = 37.5665, lon: float = 126.9780,
                       radius_m: float = 800.0) -> Dict[str, Any]:
-    """반경 N m 내 단속 CCTV 위치 + 단속실적. 단속 밀집 = 사고다발 prior."""
-    url = POLICE_CAM_BASE_URL
-    params = {"serviceKey": POLICE_CAM_KEY, "type": "json",
-              "minLat": lat-0.01, "maxLat": lat+0.01,
-              "minLon": lon-0.01, "maxLon": lon+0.01}
+    """반경 N m 내 단속 CCTV 위치 + 단속실적. 단속 밀집 = 사고다발 prior.
+    v12.93: 우선순위 — 경찰청 API (POLICE_CAM_KEY) → OSM speed_camera (no-key) → stub."""
+    if POLICE_CAM_KEY:
+        try:
+            res = requests.get(POLICE_CAM_BASE_URL,
+                params={"serviceKey": POLICE_CAM_KEY, "type": "json",
+                        "minLat": lat-0.01, "maxLat": lat+0.01,
+                        "minLon": lon-0.01, "maxLon": lon+0.01},
+                timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("police_cam", "live", True)
+            return res.json()
+        except Exception as exc:
+            log.warning("Police cam API failed: %s", exc)
+    # 2차: OSM Overpass no-key fallback
     try:
-        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
-        res.raise_for_status()
+        osm_cams = _fetch_osm_speed_cameras(lat, lon, radius_m)
+        nearby_osm = []
+        for c in osm_cams:
+            d = _haversine_m_local(lat, lon, c["lat"], c["lon"])
+            nearby_osm.append({**c, "distance_m": round(d, 1)})
+        nearby_osm.sort(key=lambda x: x["distance_m"])
+        cam_count = len(nearby_osm)
+        enf_boost = min(0.10, cam_count * 0.025)
         _record_fetch("police_cam", "live", True)
-        return res.json()
+        return {
+            "source": "OpenStreetMap highway=speed_camera (no-key fallback · live)",
+            "cams": nearby_osm, "nearby": nearby_osm, "nearby_count": cam_count,
+            "derived": {
+                "cam_count_within_radius": cam_count,
+                "total_violations_5y": 0,
+                "enforcement_risk_boost": round(enf_boost, 3),
+                "is_enforcement_hotzone": cam_count >= 3,
+                "nearest_cam_type": nearby_osm[0]["type"] if nearby_osm else None,
+                "nearest_cam_distance_m": nearby_osm[0]["distance_m"] if nearby_osm else None,
+            },
+        }
     except Exception as exc:
-        log.warning("Police cam API failed: %s", exc)
+        log.warning("OSM speed_camera fallback failed: %s", exc)
         _record_fetch("police_cam", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if not ALLOW_FALLBACK:
             raise

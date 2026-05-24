@@ -193,7 +193,49 @@ def fetch_live_buses_nearby(lat: float, lon: float, radius_m: float = 150.0) -> 
             if not ALLOW_FALLBACK:
                 return {"mode": "error", "buses": [], "count": 0, "detail": str(exc)[:120]}
 
-    # fallback (시연용 fixture)
+    # v12.100: 2차 — OSM highway=bus_stop no-key fallback (실시간 차량은 없지만 정류장 위치 라이브)
+    try:
+        overpass_url = "https://overpass-api.de/api/interpreter"
+        # 반경 N m + 3배 (정류장은 좀 더 넓게 검색)
+        radius_int = int(radius_m * 3)
+        query = (
+            f'[out:json][timeout:8];'
+            f'(node["highway"="bus_stop"](around:{radius_int},{lat},{lon});'
+            f' node["public_transport"="stop_position"]["bus"="yes"](around:{radius_int},{lat},{lon}););'
+            f'out body 30;'
+        )
+        headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
+        r = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=7.0)
+        r.raise_for_status()
+        buses_from_stops = []
+        for e in r.json().get("elements", [])[:30]:
+            tags = e.get("tags", {}) or {}
+            blat, blon = e.get("lat"), e.get("lon")
+            if blat is None or blon is None: continue
+            d = _haversine_m(lat, lon, blat, blon)
+            buses_from_stops.append({
+                "plainNo": f"BUS-STOP-{e.get('id')}",
+                "routeName": tags.get("ref") or tags.get("name") or "정류장",
+                "lat": blat, "lon": blon,
+                "speed_kmh": 0.0,
+                "stopFlag": 1,
+                "distance_m": round(d, 1),
+                "stop_name": tags.get("name"),
+                "is_stop_position": True,
+            })
+        buses_from_stops.sort(key=lambda x: x["distance_m"])
+        res = {
+            "mode": "live",
+            "source": "OpenStreetMap highway=bus_stop (no-key fallback · 정류장 라이브)",
+            "buses": buses_from_stops,
+            "count": len(buses_from_stops),
+            "note": "실시간 차량 GPS 는 BIS_KEY 설정 시 활성화 — 현재 OSM 정류장 위치만",
+        }
+        _BUS_CACHE[cache_key] = {"ts": time.time(), "data": res}
+        return res
+    except Exception as exc:
+        log.warning("OSM bus_stop fallback failed: %s", exc)
+    # 3차: fallback (시연용 fixture)
     buses = []
     for b in _DEMO_LIVE_BUSES:
         d = _haversine_m(lat, lon, b["lat"], b["lon"])

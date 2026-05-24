@@ -33,6 +33,37 @@ log = logging.getLogger("auraview.public_api")
 ALLOW_FALLBACK = os.getenv("ALLOW_FALLBACK", "1") == "1"
 DEFAULT_TIMEOUT = float(os.getenv("PUBLIC_API_TIMEOUT", "3.0"))
 
+# v12.95: OSM Overpass 5분 in-memory 캐시 — Render 무료 tier 의 Overpass timeout 이슈 완화
+#   key = (kind, lat_round_3, lon_round_3, radius_round_100)
+#   value = (timestamp, result)
+import time as _time
+_OSM_CACHE: dict = {}
+_OSM_CACHE_TTL = 300.0  # 5 min
+
+
+def _osm_cache_key(kind: str, lat: float, lon: float, radius_m: float) -> tuple:
+    """좌표 round + radius bucket → 같은 ~100m 그리드는 캐시 공유."""
+    return (kind, round(lat, 3), round(lon, 3), int(radius_m // 100) * 100)
+
+
+def _osm_cache_get(key: tuple):
+    entry = _OSM_CACHE.get(key)
+    if not entry: return None
+    ts, val = entry
+    if _time.time() - ts > _OSM_CACHE_TTL:
+        _OSM_CACHE.pop(key, None)
+        return None
+    return val
+
+
+def _osm_cache_put(key: tuple, val) -> None:
+    _OSM_CACHE[key] = (_time.time(), val)
+    # 캐시 비대 방지 — 300개 넘으면 오래된 것 제거
+    if len(_OSM_CACHE) > 300:
+        oldest = sorted(_OSM_CACHE.items(), key=lambda kv: kv[1][0])[:50]
+        for k, _ in oldest:
+            _OSM_CACHE.pop(k, None)
+
 
 # ──────────────────────────────────────────────────────────────────────
 # 데이터 freshness 추적 — judge 가 "실제로 폴링되고 있나?" 검증용
@@ -485,6 +516,9 @@ _NEDIS_FALLBACK = {
 def _fetch_osm_hospitals(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
     """OpenStreetMap Overpass (no-key) — amenity=hospital 라이브 fetch.
     실시간 병상 정보는 없지만 정확한 병원 위치 + 응급실 태그 (emergency=yes) 제공."""
+    ck = _osm_cache_key("hospital", lat, lon, radius_m)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
     overpass_url = "https://overpass-api.de/api/interpreter"
     radius_int = int(radius_m)
     query = (
@@ -514,6 +548,7 @@ def _fetch_osm_hospitals(lat: float, lon: float, radius_m: float) -> Dict[str, A
             "ER_load": 0.5,  # 실시간 없음 - 중립값
             "ambulance_eta_min": 0,
         })
+    _osm_cache_put(ck, hospitals)
     return hospitals
 
 
@@ -776,6 +811,9 @@ def _haversine_m_local(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 def _fetch_osm_schools(lat: float, lon: float, radius_m: float) -> list:
     """OpenStreetMap Overpass (no-key) — amenity=school/kindergarten 라이브 fetch.
     스쿨존 게이트의 자명한 proxy (학교 반경 300m = 사실상 스쿨존)."""
+    ck = _osm_cache_key("school", lat, lon, radius_m)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
     overpass_url = "https://overpass-api.de/api/interpreter"
     radius_int = int(radius_m)
     query = (
@@ -801,6 +839,7 @@ def _fetch_osm_schools(lat: float, lon: float, radius_m: float) -> list:
             "radius_m": 300,
             "district": tags.get("addr:district") or tags.get("addr:city"),
         })
+    _osm_cache_put(ck, schools)
     return schools
 
 
@@ -1158,6 +1197,9 @@ _EV_FALLBACK = {
 
 def _fetch_osm_ev_chargers(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
     """OpenStreetMap Overpass (no-key) — amenity=charging_station 라이브 fetch."""
+    ck = _osm_cache_key("ev", lat, lon, radius_m)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
     overpass_url = "https://overpass-api.de/api/interpreter"
     radius_int = int(radius_m)
     query = (
@@ -1190,6 +1232,7 @@ def _fetch_osm_ev_chargers(lat: float, lon: float, radius_m: float) -> Dict[str,
             "access": tags.get("access", "yes"),
             "fee": tags.get("fee", "unknown"),
         })
+    _osm_cache_put(ck, stations)
     return stations
 
 
@@ -1601,6 +1644,9 @@ _POLICE_CAM_FALLBACK = {
 
 def _fetch_osm_speed_cameras(lat: float, lon: float, radius_m: float) -> list:
     """OpenStreetMap Overpass (no-key) — highway=speed_camera + enforcement=maxspeed 라이브 fetch."""
+    ck = _osm_cache_key("speedcam", lat, lon, radius_m)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
     overpass_url = "https://overpass-api.de/api/interpreter"
     radius_int = int(radius_m)
     query = (
@@ -1628,6 +1674,7 @@ def _fetch_osm_speed_cameras(lat: float, lon: float, radius_m: float) -> list:
             "maxspeed": tags.get("maxspeed"),
             "violation_5y": 0,
         })
+    _osm_cache_put(ck, cams)
     return cams
 
 
@@ -1732,6 +1779,9 @@ def _fetch_osm_crosswalks(lat: float, lon: float, radius_m: float) -> Dict[str, 
     v12.89: 한국 OSM 은 crossing 에 traffic_signals 태그가 거의 없음 →
     별도로 highway=traffic_signals 신호등 노드를 쿼리해서 signals 배열로 분리 반환.
     rate-limited 이므로 5분 캐시 권장. VWORLD 키 미설정 시 fallback."""
+    ck = _osm_cache_key("crosswalk", lat, lon, radius_m)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
     overpass_url = "https://overpass-api.de/api/interpreter"
     radius_int = int(radius_m)
     # 두 가지 노드 동시 쿼리 — crossing + 신호등 분리
@@ -1777,12 +1827,14 @@ def _fetch_osm_crosswalks(lat: float, lon: float, radius_m: float) -> Dict[str, 
             "is_school_zone": is_school,
             "crossing_type": tags.get("crossing", "unmarked"),
         })
-    return {
+    result = {
         "source": "OpenStreetMap Overpass (no-key fallback · live)",
         "lat": lat, "lon": lon, "radius_m": radius_m,
         "crosswalks": crosswalks,
         "signals": signals,   # v12.89: 별도 신호등 노드 배열
     }
+    _osm_cache_put(ck, result)
+    return result
 
 
 def fetch_crosswalk_gis(lat: float = 37.5665, lon: float = 126.9780,

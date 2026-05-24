@@ -2,9 +2,11 @@
 
 [![CI](https://github.com/leelang7/AuraView/actions/workflows/ci.yml/badge.svg)](https://github.com/leelang7/AuraView/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/badge/tests-118%2F118%20passed-brightgreen)](backend/tests/)
-[![endpoints](https://img.shields.io/badge/API_endpoints-90-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
+[![endpoints](https://img.shields.io/badge/API_endpoints-149-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
 [![system hub](https://img.shields.io/badge/SYSTEM_HUB-/competition/-00e09a)](https://auraview.allthatai.kr/competition/)
 [![scenarios](https://img.shields.io/badge/scenarios-8-00e09a)](https://auraview.allthatai.kr/occupancy/compare)
+[![live sources](https://img.shields.io/badge/live%20data-10%2F23%20no--key-00e09a)](https://auraview.allthatai.kr/fusion/sources)
+[![location gate](https://img.shields.io/badge/location__verified-43%25%20honest-00C8FF)](https://auraview.allthatai.kr/fleet/live)
 [![model AUC](https://img.shields.io/badge/Risk%20Transformer%20AUC-0.9403-00c8ff)](models/risk_transformer_trained_metric.json)
 [![inference p99](https://img.shields.io/badge/inference%20p99-1.04ms-7c3aed)](https://auraview.allthatai.kr/benchmark/all)
 [![license](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
@@ -21,7 +23,12 @@
 > 추가 데이터 2종: 📹 **경찰청 교통단속 CCTV** (단속 밀집 = 사고다발 prior) · 🚸 **국토부 횡단보도 GIS** (50m 접근 알림 + 스쿨존 횡단).
 > 핵심 개선: **임의 GPS (집/원거리)에서 거짓 red signal/TAAS/ER 알람 차단** — 위치 인식 stub 6종 (signal/TAAS/incident/ER/bike/horizontal 모두 bbox·lat/lon 기반 필터).
 > 신규 UI: `/fleet/` 대시보드 **라이브 HUD 미리보기 패널** (9 교차로 + 임의 GPS dropdown → 24 chip 실시간) + 양방향 hover 강조 + 이벤트 상세 모달.
-> 자가검증: [`GET /fleet/verify`](https://auraview.allthatai.kr/fleet/verify) (`location_accuracy`) · [`GET /fleet/demo-tour`](https://auraview.allthatai.kr/fleet/demo-tour) (8 known + 2 rural 단일 응답) · schema `fusion.v9-23src-2026.05.21` · 115/115 pytest PASS.
+> 자가검증: [`GET /fleet/verify`](https://auraview.allthatai.kr/fleet/verify) (`location_accuracy`) · [`GET /fleet/demo-tour`](https://auraview.allthatai.kr/fleet/demo-tour) (8 known + 2 rural 단일 응답) · schema `fusion.v9-23src-2026.05.21` · **118/118 pytest PASS**.
+>
+> 🆕 **v12.97 (2026-05-24) — 위치/속도 검증 게이트 + 10개 no-key 라이브 소스 + 오프라인 큐**
+> 데이터 신뢰성: 클라이언트+서버 양쪽에서 `signal_occluded`는 known 8교차로 100m 또는 OSM 신호 횡단보도 80m 또는 OSM 횡단보도 밀도(80m 내 3+) 내에서만 발화. `blind_spot`은 5km/h+ 주행 중에만. 정지 상태 false positive 자동 차단 + 옛 데이터 backfill 재평가 → `events_verified_pct` 부풀려진 100% → **정직한 43%**.
+> 라이브 외부 데이터 (no-key fallback): Open-Meteo 기상/대기, OSM Overpass 횡단보도/신호등/병원/EV충전소/단속카메라/학교/공사/도로표면, Citybikes 따릉이.
+> 네이티브앱: 카메라 init 시 추론 ticker 자동 시작 (REC OFF 에서도 ENT/MOT/voxel 라이브 표시), 업로드 50개 in-memory 재시도 큐 (약한 신호 야외 테스트 손실 방지).
 
 > 🆕 **v4 업데이트 (2026-05-16) — 12종 → 17종 공공데이터 + OG 공유 + 인터랙티브 시뮬레이터 + 8 시나리오 카드**
 > 추가 데이터 3종: 💨 **환경부 미세먼지 (PM10/PM2.5)** · 🎒 **어린이 통학로 GIS** · ⚡ **한국환경공단 EV 충전소**.

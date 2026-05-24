@@ -356,29 +356,100 @@ _KMA_FALLBACK = {
 }
 
 
-def fetch_weather(nx: int = 60, ny: int = 127) -> Dict[str, Any]:
-    """기상청 동네예보 (1시간 강수·시정·풍속). nx/ny=기상청 격자좌표 (서울 시청=60,127)."""
-    url = f"{KMA_BASE_URL}/getUltraSrtNcst"
-    from datetime import datetime, timedelta
-    now = datetime.utcnow() + timedelta(hours=9)  # KST
-    base_date = now.strftime("%Y%m%d")
-    base_time = now.strftime("%H00")
+def _kma_grid_to_latlon(nx: int, ny: int) -> tuple:
+    """KMA 격자 → 위경도 역변환 (서울 시청 60,127 ≈ 37.5665, 126.9780).
+    근사: 격자 5km, 위도 1° ≈ 111km, 경도 1° ≈ 88km (서울 기준)."""
+    base_lat, base_lon = 37.5665, 126.9780
+    base_nx, base_ny = 60, 127
+    lat = base_lat + (ny - base_ny) * 0.045
+    lon = base_lon + (nx - base_nx) * 0.057
+    return lat, lon
+
+
+def _fetch_open_meteo(lat: float, lon: float) -> Dict[str, Any]:
+    """Open-Meteo (no-key free API) — KMA 키 미설정 시 라이브 fallback. KMA 응답 스키마로 정규화."""
+    url = "https://api.open-meteo.com/v1/forecast"
     params = {
-        "serviceKey": KMA_KEY,
-        "dataType": "JSON",
-        "numOfRows": 60,
-        "pageNo": 1,
-        "base_date": base_date,
-        "base_time": base_time,
-        "nx": nx, "ny": ny,
+        "latitude": lat,
+        "longitude": lon,
+        "current": "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,weather_code,visibility",
+        "timezone": "Asia/Seoul",
     }
+    res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+    res.raise_for_status()
+    j = res.json()
+    c = j.get("current", {})
+    t1h = c.get("temperature_2m")
+    rn1 = c.get("precipitation") or 0.0
+    reh = c.get("relative_humidity_2m")
+    wsd = c.get("wind_speed_10m")
+    vec = c.get("wind_direction_10m")
+    vis = c.get("visibility")
+    wc = c.get("weather_code") or 0
+    # WMO weather code → KMA PTY/SKY 매핑
+    # 51-67 비 계열, 71-77 눈, 95-99 천둥, 0=맑음, 1-3=구름
+    pty = 1 if (51 <= wc <= 67) else (3 if (71 <= wc <= 77) else (2 if 95 <= wc else 0))
+    sky = 1 if wc == 0 else (3 if wc in (1, 2) else 4)
+    is_rain = pty in (1, 2)
+    low_vis = (vis or 9999) < 1000
+    return {
+        "source": "Open-Meteo (no-key fallback · live)",
+        "base_time": c.get("time"),
+        "lat": lat, "lon": lon,
+        "items": [
+            {"category": "T1H", "name": "기온",       "value": t1h, "unit": "°C"},
+            {"category": "RN1", "name": "1시간강수",   "value": rn1,  "unit": "mm"},
+            {"category": "REH", "name": "습도",       "value": reh,   "unit": "%"},
+            {"category": "VEC", "name": "풍향",       "value": vec,  "unit": "deg"},
+            {"category": "WSD", "name": "풍속",       "value": wsd,  "unit": "m/s"},
+            {"category": "SKY", "name": "하늘상태",   "value": sky,    "unit": "code"},
+            {"category": "PTY", "name": "강수형태",   "value": pty,    "unit": "code"},
+            {"category": "VIS", "name": "시정",       "value": vis or 9999,  "unit": "m"},
+        ],
+        "derived": {
+            "is_raining": is_rain,
+            "low_visibility": low_vis,
+            "wet_road_risk_boost": 0.18 if is_rain else 0.0,
+            "headlight_share_required": 0.62 if (is_rain or low_vis) else 0.30,
+        },
+    }
+
+
+def fetch_weather(nx: int = 60, ny: int = 127) -> Dict[str, Any]:
+    """기상청 동네예보 (1시간 강수·시정·풍속). nx/ny=기상청 격자좌표 (서울 시청=60,127).
+    우선순위: KMA 정부 API (KMA_KEY 있을 때) → Open-Meteo (no-key 라이브 fallback) → stub."""
+    # 1차: KMA 정부 API
+    if KMA_KEY:
+        url = f"{KMA_BASE_URL}/getUltraSrtNcst"
+        from datetime import datetime, timedelta
+        now = datetime.utcnow() + timedelta(hours=9)  # KST
+        base_date = now.strftime("%Y%m%d")
+        base_time = now.strftime("%H00")
+        params = {
+            "serviceKey": KMA_KEY,
+            "dataType": "JSON",
+            "numOfRows": 60,
+            "pageNo": 1,
+            "base_date": base_date,
+            "base_time": base_time,
+            "nx": nx, "ny": ny,
+        }
+        try:
+            res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("weather", "live", True)
+            return res.json()
+        except Exception as exc:
+            log.warning("KMA API failed for nx=%s,ny=%s: %s", nx, ny, exc)
+            # KMA 실패 → Open-Meteo fallback 시도
+    # 2차: Open-Meteo no-key 라이브 fallback
     try:
-        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
-        res.raise_for_status()
+        lat, lon = _kma_grid_to_latlon(nx, ny)
+        data = _fetch_open_meteo(lat, lon)
         _record_fetch("weather", "live", True)
-        return res.json()
+        return data
     except Exception as exc:
-        log.warning("KMA API failed for nx=%s,ny=%s: %s", nx, ny, exc)
+        log.warning("Open-Meteo fallback failed for nx=%s,ny=%s: %s", nx, ny, exc)
         _record_fetch("weather", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if ALLOW_FALLBACK:
             return _KMA_FALLBACK

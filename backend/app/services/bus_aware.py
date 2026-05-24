@@ -195,7 +195,7 @@ def fetch_live_buses_nearby(lat: float, lon: float, radius_m: float = 150.0) -> 
 
     # v12.100: 2차 — OSM highway=bus_stop no-key fallback (실시간 차량은 없지만 정류장 위치 라이브)
     try:
-        overpass_url = "https://overpass-api.de/api/interpreter"
+        from . import public_api as _pa
         # 반경 N m + 3배 (정류장은 좀 더 넓게 검색)
         radius_int = int(radius_m * 3)
         query = (
@@ -204,11 +204,9 @@ def fetch_live_buses_nearby(lat: float, lon: float, radius_m: float = 150.0) -> 
             f' node["public_transport"="stop_position"]["bus"="yes"](around:{radius_int},{lat},{lon}););'
             f'out body 30;'
         )
-        headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
-        r = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=7.0)
-        r.raise_for_status()
+        res_json = _pa._overpass_post(query)  # v12.101: mirror fallback 사용
         buses_from_stops = []
-        for e in r.json().get("elements", [])[:30]:
+        for e in res_json.get("elements", [])[:30]:
             tags = e.get("tags", {}) or {}
             blat, blon = e.get("lat"), e.get("lon")
             if blat is None or blon is None: continue

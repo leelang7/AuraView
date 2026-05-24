@@ -65,6 +65,35 @@ def _osm_cache_put(key: tuple, val) -> None:
             _OSM_CACHE.pop(k, None)
 
 
+# v12.101: Overpass mirror fallback — Render outbound 불안정 대응
+_OVERPASS_MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+]
+_OVERPASS_TIMEOUT = 12.0
+
+
+def _overpass_post(query: str) -> dict:
+    """Overpass POST — mirror 순차 fallback, 12s timeout 각.
+    Render 환경에서 overpass-api.de 가 자주 timeout → 다른 mirror 로 자동 전환."""
+    headers = {
+        "User-Agent": "AuraView/0.8 (auraview@allthatai.kr)",
+        "Accept": "application/json",
+    }
+    last_exc = None
+    for url in _OVERPASS_MIRRORS:
+        try:
+            r = requests.post(url, data={"data": query}, headers=headers,
+                              timeout=_OVERPASS_TIMEOUT)
+            r.raise_for_status()
+            return r.json()
+        except Exception as exc:
+            last_exc = exc
+            continue
+    raise RuntimeError(f"All Overpass mirrors failed: {last_exc}")
+
+
 # ──────────────────────────────────────────────────────────────────────
 # 데이터 freshness 추적 — judge 가 "실제로 폴링되고 있나?" 검증용
 # ──────────────────────────────────────────────────────────────────────
@@ -243,7 +272,7 @@ def _fetch_osm_construction(lat: float, lon: float, radius_m: float) -> list:
     ck = _osm_cache_key("construction", lat, lon, radius_m)
     cached = _osm_cache_get(ck)
     if cached is not None: return cached
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # v12.101: Overpass mirror fallback 사용 (overpass-api.de → kumi → mail.ru)
     radius_int = int(radius_m)
     query = (
         f'[out:json][timeout:10];'
@@ -255,11 +284,9 @@ def _fetch_osm_construction(lat: float, lon: float, radius_m: float) -> list:
         f');'
         f'out center 40;'
     )
-    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
-    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
-    res.raise_for_status()
+    res_json = _overpass_post(query)
     incs = []
-    for e in res.json().get("elements", [])[:40]:
+    for e in res_json.get("elements", [])[:40]:
         tags = e.get("tags", {}) or {}
         elat = e.get("lat") or (e.get("center") or {}).get("lat")
         elon = e.get("lon") or (e.get("center") or {}).get("lon")
@@ -577,7 +604,7 @@ def _fetch_osm_hospitals(lat: float, lon: float, radius_m: float) -> Dict[str, A
     ck = _osm_cache_key("hospital", lat, lon, radius_m)
     cached = _osm_cache_get(ck)
     if cached is not None: return cached
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # v12.101: Overpass mirror fallback 사용 (overpass-api.de → kumi → mail.ru)
     radius_int = int(radius_m)
     query = (
         f'[out:json][timeout:10];'
@@ -585,10 +612,8 @@ def _fetch_osm_hospitals(lat: float, lon: float, radius_m: float) -> Dict[str, A
         f' way["amenity"="hospital"](around:{radius_int},{lat},{lon}););'
         f'out center 30;'
     )
-    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
-    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
-    res.raise_for_status()
-    j = res.json()
+    res_json = _overpass_post(query)
+    j = res_json
     hospitals = []
     for e in j.get("elements", [])[:30]:
         tags = e.get("tags", {}) or {}
@@ -872,7 +897,7 @@ def _fetch_osm_schools(lat: float, lon: float, radius_m: float) -> list:
     ck = _osm_cache_key("school", lat, lon, radius_m)
     cached = _osm_cache_get(ck)
     if cached is not None: return cached
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # v12.101: Overpass mirror fallback 사용 (overpass-api.de → kumi → mail.ru)
     radius_int = int(radius_m)
     query = (
         f'[out:json][timeout:10];'
@@ -880,11 +905,9 @@ def _fetch_osm_schools(lat: float, lon: float, radius_m: float) -> list:
         f' way["amenity"~"^(school|kindergarten)$"](around:{radius_int},{lat},{lon}););'
         f'out center 40;'
     )
-    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
-    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
-    res.raise_for_status()
+    res_json = _overpass_post(query)
     schools = []
-    for e in res.json().get("elements", [])[:40]:
+    for e in res_json.get("elements", [])[:40]:
         tags = e.get("tags", {}) or {}
         elat = e.get("lat") or (e.get("center") or {}).get("lat")
         elon = e.get("lon") or (e.get("center") or {}).get("lon")
@@ -1258,7 +1281,7 @@ def _fetch_osm_ev_chargers(lat: float, lon: float, radius_m: float) -> Dict[str,
     ck = _osm_cache_key("ev", lat, lon, radius_m)
     cached = _osm_cache_get(ck)
     if cached is not None: return cached
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # v12.101: Overpass mirror fallback 사용 (overpass-api.de → kumi → mail.ru)
     radius_int = int(radius_m)
     query = (
         f'[out:json][timeout:10];'
@@ -1266,10 +1289,8 @@ def _fetch_osm_ev_chargers(lat: float, lon: float, radius_m: float) -> Dict[str,
         f' way["amenity"="charging_station"](around:{radius_int},{lat},{lon}););'
         f'out center 80;'
     )
-    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
-    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
-    res.raise_for_status()
-    j = res.json()
+    res_json = _overpass_post(query)
+    j = res_json
     stations = []
     for e in j.get("elements", [])[:80]:
         tags = e.get("tags", {}) or {}
@@ -1588,7 +1609,7 @@ def _fetch_osm_road_surface(lat: float, lon: float, radius_m: float) -> dict:
     ck = _osm_cache_key("surface", lat, lon, radius_m)
     cached = _osm_cache_get(ck)
     if cached is not None: return cached
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # v12.101: Overpass mirror fallback 사용 (overpass-api.de → kumi → mail.ru)
     radius_int = int(radius_m)
     # 주요 도로 (highway=primary/secondary/tertiary/residential)
     query = (
@@ -1596,14 +1617,12 @@ def _fetch_osm_road_surface(lat: float, lon: float, radius_m: float) -> dict:
         f'way["highway"~"^(primary|secondary|tertiary|residential|trunk)$"](around:{radius_int},{lat},{lon});'
         f'out tags 120;'
     )
-    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
-    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
-    res.raise_for_status()
+    res_json = _overpass_post(query)
     surfaces = {}
     has_smoothness_issue = 0
     total_ways = 0
     pothole_words = 0
-    for e in res.json().get("elements", [])[:120]:
+    for e in res_json.get("elements", [])[:120]:
         tags = e.get("tags", {}) or {}
         total_ways += 1
         surf = tags.get("surface", "unknown")
@@ -1783,7 +1802,7 @@ def _fetch_osm_speed_cameras(lat: float, lon: float, radius_m: float) -> list:
     ck = _osm_cache_key("speedcam", lat, lon, radius_m)
     cached = _osm_cache_get(ck)
     if cached is not None: return cached
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # v12.101: Overpass mirror fallback 사용 (overpass-api.de → kumi → mail.ru)
     radius_int = int(radius_m)
     query = (
         f'[out:json][timeout:10];'
@@ -1792,11 +1811,9 @@ def _fetch_osm_speed_cameras(lat: float, lon: float, radius_m: float) -> list:
         f' node["enforcement"="traffic_signals"](around:{radius_int},{lat},{lon}););'
         f'out body 40;'
     )
-    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
-    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
-    res.raise_for_status()
+    res_json = _overpass_post(query)
     cams = []
-    for e in res.json().get("elements", [])[:40]:
+    for e in res_json.get("elements", [])[:40]:
         tags = e.get("tags", {}) or {}
         elat = e.get("lat"); elon = e.get("lon")
         if elat is None or elon is None: continue
@@ -1918,7 +1935,7 @@ def _fetch_osm_crosswalks(lat: float, lon: float, radius_m: float) -> Dict[str, 
     ck = _osm_cache_key("crosswalk", lat, lon, radius_m)
     cached = _osm_cache_get(ck)
     if cached is not None: return cached
-    overpass_url = "https://overpass-api.de/api/interpreter"
+    # v12.101: Overpass mirror fallback 사용 (overpass-api.de → kumi → mail.ru)
     radius_int = int(radius_m)
     # 두 가지 노드 동시 쿼리 — crossing + 신호등 분리
     query = (
@@ -1929,10 +1946,8 @@ def _fetch_osm_crosswalks(lat: float, lon: float, radius_m: float) -> Dict[str, 
         f');'
         f'out body 80;'
     )
-    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
-    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
-    res.raise_for_status()
-    j = res.json()
+    res_json = _overpass_post(query)
+    j = res_json
     elements = j.get("elements", [])
     crosswalks = []
     signals = []

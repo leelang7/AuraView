@@ -272,6 +272,10 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
 .nv .live{display:flex;align-items:center;gap:5px;color:#00E09A;}
 .nv .live .pulse{width:6px;height:6px;border-radius:50%;background:#00E09A;box-shadow:0 0 6px #00E09A;animation:pls 1.4s infinite;}
 @keyframes pls{0%,100%{opacity:1;}50%{opacity:0.35;}}
+.nv .rd{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono','SF Mono',monospace;font-size:10px;font-weight:900;letter-spacing:0.8px;}
+.nv .rd .rdLv{color:#00C8FF;}
+.nv .rd .rdVf{color:#00E09A;}
+.nv .rd .rdDiv{width:1px;height:10px;background:rgba(255,255,255,0.20);}
 .nv a{color:rgba(255,255,255,0.6);text-decoration:none;padding:3px 8px;border-radius:99px;transition:color 0.15s;}
 .nv a:hover{color:#00C8FF;}
 
@@ -382,6 +386,13 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
   <div class="br"><span class="ic"></span><span>AURAVIEW</span></div>
   <span class="sep"></span>
   <div class="live"><span class="pulse"></span>LIVE</div>
+  <span class="sep"></span>
+  <!-- v12.94: readiness 뱃지 — 라이브 소스 + 검증률 한눈에 -->
+  <div class="rd" id="rdBadge" title="라이브 외부 데이터 소스 / 위치 검증 통과 비율">
+    <span class="rdLv">SRC <span id="rdLive">—</span>/23</span>
+    <span class="rdDiv"></span>
+    <span class="rdVf">VRF <span id="rdVf">—</span>%</span>
+  </div>
   <span class="sep"></span>
   <a href="/story/">STORY</a>
   <a href="/demos">DEMOS</a>
@@ -542,6 +553,19 @@ async function tick() {
         liveN.textContent = ln;
         const badge = document.getElementById('liveBadge');
         if (badge) badge.title = '실시간 ' + ln + '개: ' + ss.filter(s=>s.mode==='live').map(s=>s.id).join(', ');
+      }
+      // v12.94: NAV readiness 뱃지 — SRC N/23
+      const rdLive = document.getElementById('rdLive');
+      if (rdLive) rdLive.textContent = ln;
+    }
+    // v12.94: NAV readiness 뱃지 — VRF % (검증된 이벤트 비율)
+    if (live && live.events_verified_pct != null) {
+      const rdVf = document.getElementById('rdVf');
+      if (rdVf) {
+        const pct = live.events_verified_pct;
+        rdVf.textContent = pct.toFixed(0);
+        // 색상: ≥60% safe, ≥30% warn, <30% danger
+        rdVf.style.color = pct >= 60 ? '#00E09A' : pct >= 30 ? '#FFB020' : '#FF4040';
       }
     }
     // Slide 4: Hotspot top 5

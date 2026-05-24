@@ -6185,30 +6185,82 @@ class _CamBoxPainter extends CustomPainter {
       dx = (size.width - imgW * scale) / 2;
     }
 
-    // 1) raw 박스 모두 그리기 (filter 거부된 것은 옅게)
+    // v12.86: kept 박스 = 굵고 명확한 색상 + 한글 라벨 / 거부 박스 = 옅음
+    //   kept person → 빨강, kept car/vehicle → 사이언, 기타 kept → 초록, rejected → 노랑
     for (final d in rawDetections) {
       final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
       final kept = d['kept'] as bool? ?? false;
       final labels = d['labels']?.toString() ?? '';
       final rej = d['rej']?.toString();
-      final col = kept ? const Color(0xFF00C8FF) : const Color(0xFFFFB020);
       final r = Rect.fromLTWH(
         dx + box[0] * scale, dy + box[1] * scale,
         box[2] * scale, box[3] * scale);
-      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(3)),
-        Paint()..style = PaintingStyle.stroke..strokeWidth = kept ? 2.4 : 1.2
-          ..color = col.withValues(alpha: kept ? 0.95 : 0.5));
-      // 라벨 (cls 라벨 + 거부 사유 or kept 표시)
-      final tag = kept ? '✓ $labels' : '✗ $rej · $labels';
+
+      // 클래스별 색상 + 한글 라벨 매핑 (kept 만)
+      Color col; String kLabel; String icon;
+      final lbLow = labels.toLowerCase();
+      if (lbLow.contains('person') || lbLow.contains('pedestrian')) {
+        col = const Color(0xFFFF4040); kLabel = '사람'; icon = '🚶';
+      } else if (lbLow.contains('car') || lbLow.contains('vehicle') || lbLow.contains('truck') || lbLow.contains('bus')) {
+        col = const Color(0xFF00C8FF); kLabel = '차량'; icon = '🚗';
+      } else if (lbLow.contains('bicycle') || lbLow.contains('bike')) {
+        col = const Color(0xFF7C3AED); kLabel = '자전거'; icon = '🚲';
+      } else if (lbLow.contains('motorcycle')) {
+        col = const Color(0xFFFFB020); kLabel = '오토바이'; icon = '🏍';
+      } else if (kept) {
+        col = const Color(0xFF00E09A); kLabel = labels; icon = '●';
+      } else {
+        col = const Color(0xFFFFB020); kLabel = labels; icon = '';
+      }
+
+      // 박스 그리기 — kept 굵게, rejected 옅게
+      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)),
+        Paint()..style = PaintingStyle.stroke..strokeWidth = kept ? 4.0 : 1.2
+          ..color = col.withValues(alpha: kept ? 1.0 : 0.45));
+      // kept 만 추가 글로우
+      if (kept) {
+        canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)),
+          Paint()..style = PaintingStyle.stroke..strokeWidth = 7.0
+            ..color = col.withValues(alpha: 0.22)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 4));
+        // 네 모서리 작은 코너 표시 (Tesla 식)
+        const cornerLen = 12.0;
+        final cp = Paint()..color = col..strokeWidth = 3.0..style = PaintingStyle.stroke;
+        canvas.drawLine(r.topLeft, r.topLeft.translate(cornerLen, 0), cp);
+        canvas.drawLine(r.topLeft, r.topLeft.translate(0, cornerLen), cp);
+        canvas.drawLine(r.topRight, r.topRight.translate(-cornerLen, 0), cp);
+        canvas.drawLine(r.topRight, r.topRight.translate(0, cornerLen), cp);
+        canvas.drawLine(r.bottomLeft, r.bottomLeft.translate(cornerLen, 0), cp);
+        canvas.drawLine(r.bottomLeft, r.bottomLeft.translate(0, -cornerLen), cp);
+        canvas.drawLine(r.bottomRight, r.bottomRight.translate(-cornerLen, 0), cp);
+        canvas.drawLine(r.bottomRight, r.bottomRight.translate(0, -cornerLen), cp);
+      }
+
+      // 라벨 박스
+      final tag = kept
+        ? '$icon $kLabel'
+        : '✗ $rej';
       final tp = TextPainter(
         text: TextSpan(text: tag, style: TextStyle(
           color: kept ? Colors.white : const Color(0xFFFFCB6B),
-          fontSize: 9.5, fontWeight: FontWeight.w800,
-          backgroundColor: Colors.black.withValues(alpha: 0.65))),
+          fontSize: kept ? 12 : 9, fontWeight: FontWeight.w900,
+          letterSpacing: kept ? 0.4 : 0)),
         textDirection: TextDirection.ltr,
         maxLines: 1, ellipsis: '…',
       )..layout(maxWidth: r.width * 1.5);
-      tp.paint(canvas, Offset(r.left, r.top - tp.height - 1));
+      // 라벨 배경 박스 (kept 만 색칠)
+      if (kept) {
+        final tagRect = Rect.fromLTWH(r.left, r.top - tp.height - 4,
+          tp.width + 10, tp.height + 4);
+        canvas.drawRRect(RRect.fromRectAndRadius(tagRect, const Radius.circular(3)),
+          Paint()..color = col);
+        tp.paint(canvas, Offset(r.left + 5, r.top - tp.height - 2));
+      } else {
+        // rejected 박스는 라벨 배경 없이
+        canvas.drawRect(Rect.fromLTWH(r.left, r.top - tp.height - 1, tp.width + 4, tp.height + 1),
+          Paint()..color = Colors.black.withValues(alpha: 0.55));
+        tp.paint(canvas, Offset(r.left + 2, r.top - tp.height));
+      }
     }
   }
   @override
@@ -6371,14 +6423,21 @@ class _CleanBevPainter extends CustomPainter {
         _drawTopDownCarLocal(canvas, p, scale, const Color(0xFFA095FF), o.alpha);
       }
       final distM = 1.5 + 33.5 * o.y;
+      // v12.86: 큰 라벨 + 거리 (사람=빨강 박스, 차량=사이언 박스)
+      final isPed = o.cls == 'person';
+      final col = isPed ? const Color(0xFFFF4040) : const Color(0xFF00C8FF);
       final tp = TextPainter(
-        text: TextSpan(text: '${o.cls == "person" ? "👤" : "🚗"} ${distM.toStringAsFixed(1)}m',
-          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900,
-            backgroundColor: (o.cls == 'person' ? const Color(0xFFFF4040) : const Color(0xFFA095FF))
-              .withValues(alpha: 0.85 * o.alpha))),
+        text: TextSpan(text: '${isPed ? "🚶 사람" : "🚗 차량"}  ${distM.toStringAsFixed(1)}m',
+          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900,
+            letterSpacing: 0.4)),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - 22 * scale - tp.height));
+      final lblY = p.dy - 28 * scale - tp.height;
+      final lblRect = Rect.fromLTWH(p.dx - tp.width / 2 - 5, lblY - 2,
+        tp.width + 10, tp.height + 4);
+      canvas.drawRRect(RRect.fromRectAndRadius(lblRect, const Radius.circular(4)),
+        Paint()..color = col.withValues(alpha: 0.92 * o.alpha));
+      tp.paint(canvas, Offset(p.dx - tp.width / 2, lblY));
     }
   }
 
@@ -6387,8 +6446,9 @@ class _CleanBevPainter extends CustomPainter {
   //   차량: 넓고 낮은 큐브 클러스터 (5x3 ≈ 차량 ground footprint voxelize)
   void _drawVoxelCluster(Canvas canvas, Offset c, double scale, String cls, double alpha) {
     final isPed = cls == 'person';
-    final col = isPed ? const Color(0xFFFF4040) : const Color(0xFFA095FF);
-    final cubeSize = (isPed ? 3.5 : 4.2) * scale;
+    final col = isPed ? const Color(0xFFFF4040) : const Color(0xFF00C8FF);
+    // v12.86: cube 크기 50% 확대 (검출 객체 즉시 보이게)
+    final cubeSize = (isPed ? 5.2 : 6.5) * scale;
     final cols = isPed ? 3 : 5;
     final rows = isPed ? 5 : 3;
     // 컬럼별로 약간씩 offset → voxelize 느낌

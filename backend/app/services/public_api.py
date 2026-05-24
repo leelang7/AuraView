@@ -238,30 +238,88 @@ _INCIDENT_FALLBACK = {
 }
 
 
+def _fetch_osm_construction(lat: float, lon: float, radius_m: float) -> list:
+    """OpenStreetMap Overpass (no-key) — barrier=construction / construction=*  / highway=construction 라이브 fetch."""
+    ck = _osm_cache_key("construction", lat, lon, radius_m)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    radius_int = int(radius_m)
+    query = (
+        f'[out:json][timeout:10];'
+        f'('
+        f'node["highway"="construction"](around:{radius_int},{lat},{lon});'
+        f'node["construction"](around:{radius_int},{lat},{lon});'
+        f'way["highway"="construction"](around:{radius_int},{lat},{lon});'
+        f'way["construction"](around:{radius_int},{lat},{lon});'
+        f');'
+        f'out center 40;'
+    )
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
+    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
+    res.raise_for_status()
+    incs = []
+    for e in res.json().get("elements", [])[:40]:
+        tags = e.get("tags", {}) or {}
+        elat = e.get("lat") or (e.get("center") or {}).get("lat")
+        elon = e.get("lon") or (e.get("center") or {}).get("lon")
+        if elat is None or elon is None: continue
+        ctype = tags.get("construction") or tags.get("highway") or "construction"
+        incs.append({
+            "incidentId": f"OSM-CONST-{e.get('id')}",
+            "lat": elat, "lon": elon,
+            "type": "공사",
+            "construction_type": ctype,
+            "name": tags.get("name") or "OSM 공사구간",
+            "operator": tags.get("operator"),
+            "opening_date": tags.get("opening_date"),
+        })
+    _osm_cache_put(ck, incs)
+    return incs
+
+
 def fetch_incidents(num_of_rows: int = 100,
-                    bbox: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
-    """실시간 돌발상황(사고·낙하물·통제). v12.20: bbox 필터."""
-    url = f"{EX_OPEN_BASE_URL}/incidentapi/incidentAll"
-    params = {"key": EX_OPEN_KEY, "type": "json", "numOfRows": num_of_rows}
-    try:
-        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
-        res.raise_for_status()
-        _record_fetch("incidents", "live", True)
-        return res.json()
-    except Exception as exc:
-        log.warning("incident API failed: %s", exc)
-        _record_fetch("incidents", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
-        if ALLOW_FALLBACK:
+                    bbox: Optional[Dict[str, float]] = None,
+                    lat: Optional[float] = None, lon: Optional[float] = None) -> Dict[str, Any]:
+    """실시간 돌발상황(사고·낙하물·통제). v12.20: bbox 필터.
+    v12.96: EX_OPEN_KEY 실패 시 OSM construction (no-key) fallback."""
+    if EX_OPEN_KEY:
+        url = f"{EX_OPEN_BASE_URL}/incidentapi/incidentAll"
+        params = {"key": EX_OPEN_KEY, "type": "json", "numOfRows": num_of_rows}
+        try:
+            res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("incidents", "live", True)
+            return res.json()
+        except Exception as exc:
+            log.warning("incident API failed: %s", exc)
+    # v12.96: OSM construction no-key fallback (좌표 있을 때만)
+    if lat is not None and lon is not None:
+        try:
+            radius_m = 2000.0
             if bbox:
-                filtered = [
-                    i for i in _INCIDENT_FALLBACK["list"]
-                    if bbox["minLat"] <= i["lat"] <= bbox["maxLat"]
-                    and bbox["minLon"] <= i["lon"] <= bbox["maxLon"]
-                ]
-                return {**_INCIDENT_FALLBACK, "list": filtered,
-                        "filter_applied": "bbox"}
-            return _INCIDENT_FALLBACK
-        raise
+                radius_m = max(2000.0, 111000 * (bbox["maxLat"] - bbox["minLat"]) / 2)
+            osm_incs = _fetch_osm_construction(lat, lon, radius_m)
+            _record_fetch("incidents", "live", True)
+            return {
+                "source": "OpenStreetMap construction (no-key fallback · live)",
+                "list": osm_incs, "count": len(osm_incs),
+                "lat": lat, "lon": lon, "radius_m": radius_m,
+            }
+        except Exception as exc:
+            log.warning("OSM construction fallback failed: %s", exc)
+    _record_fetch("incidents", "stub" if ALLOW_FALLBACK else "error", False, "no live source")
+    if ALLOW_FALLBACK:
+        if bbox:
+            filtered = [
+                i for i in _INCIDENT_FALLBACK["list"]
+                if bbox["minLat"] <= i["lat"] <= bbox["maxLat"]
+                and bbox["minLon"] <= i["lon"] <= bbox["maxLon"]
+            ]
+            return {**_INCIDENT_FALLBACK, "list": filtered,
+                    "filter_applied": "bbox"}
+        return _INCIDENT_FALLBACK
+    raise RuntimeError("incidents: no live source and ALLOW_FALLBACK=0")
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -1524,20 +1582,98 @@ _ROAD_AGE_FALLBACK = {
 }
 
 
-def fetch_road_age(sido: str = "서울특별시") -> Dict[str, Any]:
-    """행안부 도로 노후도 — 노후 포장 비율 + 포트홀 밀도 → 인프라 위험 prior."""
-    url = f"{MOIS_ROAD_BASE_URL}/getRoadAgeBySido"
-    params = {"serviceKey": MOIS_ROAD_KEY, "sido": sido, "year": 2024, "format": "json"}
-    try:
-        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
-        res.raise_for_status()
-        _record_fetch("road_age", "live", True)
-        return res.json()
-    except Exception as exc:
-        log.warning("MOIS road age API failed: %s", exc)
-        _record_fetch("road_age", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
-        if not ALLOW_FALLBACK:
-            raise
+def _fetch_osm_road_surface(lat: float, lon: float, radius_m: float) -> dict:
+    """OpenStreetMap Overpass (no-key) — highway way surface 태그 라이브 fetch.
+    surface= asphalt(좋음) / paving_stones(중간) / unpaved/gravel/dirt(불량) → 노후도 추정."""
+    ck = _osm_cache_key("surface", lat, lon, radius_m)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    radius_int = int(radius_m)
+    # 주요 도로 (highway=primary/secondary/tertiary/residential)
+    query = (
+        f'[out:json][timeout:10];'
+        f'way["highway"~"^(primary|secondary|tertiary|residential|trunk)$"](around:{radius_int},{lat},{lon});'
+        f'out tags 120;'
+    )
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
+    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
+    res.raise_for_status()
+    surfaces = {}
+    has_smoothness_issue = 0
+    total_ways = 0
+    pothole_words = 0
+    for e in res.json().get("elements", [])[:120]:
+        tags = e.get("tags", {}) or {}
+        total_ways += 1
+        surf = tags.get("surface", "unknown")
+        surfaces[surf] = surfaces.get(surf, 0) + 1
+        smoothness = tags.get("smoothness")
+        if smoothness in ("bad", "very_bad", "horrible", "very_horrible", "impassable"):
+            has_smoothness_issue += 1
+        if "pothole" in (tags.get("hazard") or "").lower():
+            pothole_words += 1
+    # 노후도 추정: unpaved/gravel/dirt 비율
+    bad_count = sum(c for s, c in surfaces.items()
+                    if s in ("unpaved", "gravel", "dirt", "ground", "compacted", "fine_gravel"))
+    asphalt_count = surfaces.get("asphalt", 0) + surfaces.get("paved", 0)
+    aged_pct = bad_count / total_ways if total_ways else 0.0
+    result = {
+        "total_ways": total_ways,
+        "surfaces": surfaces,
+        "bad_surface_count": bad_count,
+        "asphalt_count": asphalt_count,
+        "smoothness_issue_count": has_smoothness_issue,
+        "aged_15y_plus_pct": round(aged_pct, 3),
+        "pothole_per_km": round(pothole_words / max(total_ways, 1) * 10, 2),
+    }
+    _osm_cache_put(ck, result)
+    return result
+
+
+def fetch_road_age(sido: str = "서울특별시",
+                   lat: Optional[float] = None, lon: Optional[float] = None) -> Dict[str, Any]:
+    """행안부 도로 노후도 — 노후 포장 비율 + 포트홀 밀도 → 인프라 위험 prior.
+    v12.96: MOIS_ROAD_KEY 미설정 시 OSM highway surface 태그 (no-key) fallback."""
+    if MOIS_ROAD_KEY:
+        url = f"{MOIS_ROAD_BASE_URL}/getRoadAgeBySido"
+        params = {"serviceKey": MOIS_ROAD_KEY, "sido": sido, "year": 2024, "format": "json"}
+        try:
+            res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("road_age", "live", True)
+            return res.json()
+        except Exception as exc:
+            log.warning("MOIS road age API failed: %s", exc)
+    # v12.96: OSM no-key fallback (좌표 있을 때만)
+    if lat is not None and lon is not None:
+        try:
+            osm = _fetch_osm_road_surface(lat, lon, 1500.0)
+            aged_pct = osm["aged_15y_plus_pct"]
+            pothole = osm["pothole_per_km"]
+            nat_avg = _ROAD_AGE_FALLBACK["national_avg_pothole_per_km"]
+            road_age_boost = min(0.10, max(0.0, (aged_pct - 0.30) * 0.20 + (pothole - nat_avg) * 0.025))
+            _record_fetch("road_age", "live", True)
+            return {
+                "source": "OpenStreetMap highway surface (no-key fallback · live)",
+                "lat": lat, "lon": lon,
+                "matched": {"sido": sido, **osm},
+                "derived": {
+                    "sido": sido,
+                    "aged_15y_plus_pct": aged_pct,
+                    "pothole_per_km": pothole,
+                    "pothole_national_avg": nat_avg,
+                    "above_national_avg": pothole > nat_avg,
+                    "road_age_risk_boost": round(road_age_boost, 3),
+                    "smoothness_issue_count": osm.get("smoothness_issue_count", 0),
+                    "total_ways_within_1500m": osm.get("total_ways", 0),
+                },
+            }
+        except Exception as exc:
+            log.warning("OSM road surface fallback failed: %s", exc)
+    _record_fetch("road_age", "stub" if ALLOW_FALLBACK else "error", False, "no live source")
+    if not ALLOW_FALLBACK:
+        raise RuntimeError("road_age: no live source")
 
     by_s = _ROAD_AGE_FALLBACK["by_sido"]
     matched = next((s for s in by_s if s["sido"] == sido), by_s[0])
@@ -2286,7 +2422,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
     tasks = {
         "signal":             lambda: fetch_signal_info(intersection_id),
         "vds":                lambda: fetch_vds_traffic(),
-        "incidents":          lambda: fetch_incidents(bbox=bbox),
+        "incidents":          lambda: fetch_incidents(bbox=bbox, lat=lat0, lon=lon0),
         "accidents_history":  lambda: fetch_taas_accidents(bbox=bbox),
         "its_link":           lambda: fetch_its_link(link_id or "1000000100"),
         "dsz_summary":        lambda: _build_dsz_summary(intersection_id),
@@ -2302,7 +2438,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         "vehicle_inspection": lambda: fetch_vehicle_inspection(district="강남구"),
         "dtg":                lambda: fetch_dtg_stats(vehicle_type="법인택시"),
         "nfa_dispatch":       lambda: fetch_nfa_dispatch(sido="서울특별시"),
-        "road_age":           lambda: fetch_road_age(sido="서울특별시"),
+        "road_age":           lambda: fetch_road_age(sido="서울특별시", lat=lat0, lon=lon0),
         "av_hub":             lambda: fetch_av_hub(region="판교"),
         "police_cam":         lambda: fetch_police_cams(lat=lat0, lon=lon0, radius_m=800.0),
         "crosswalk":          lambda: fetch_crosswalk_gis(lat=lat0, lon=lon0, radius_m=300.0),

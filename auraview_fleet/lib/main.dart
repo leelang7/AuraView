@@ -306,17 +306,26 @@ class _FleetHomeState extends State<FleetHome>
       }
     }
     // 2) OSM signaled crossings (서버 fetch 캐시 사용)
+    //    v12.88: 신호 있는 횡단보도 80m + 일반 횡단보도 50m (교차로 면적 + 정지 거리 고려)
+    //    정지 + 앞차로 신호등 가림은 AuraView KEY use case → 너무 좁으면 놓침
+    double? bestSignalKm, bestAnyKm;
     for (final cw in _nearbyCrosswalks) {
-      final hasSignal = cw['has_signal'] == true;
-      if (!hasSignal) continue;
       final clat = (cw['lat'] as num?)?.toDouble();
       final clon = (cw['lon'] as num?)?.toDouble();
       if (clat == null || clon == null) continue;
       final dKm = _haversineKm(p.latitude, p.longitude, clat, clon);
-      if (dKm < 0.040) {  // 40m
-        _locationGateReason = 'OSM signal ${(dKm*1000).toStringAsFixed(0)}m';
-        return true;
+      if (cw['has_signal'] == true) {
+        if (bestSignalKm == null || dKm < bestSignalKm) bestSignalKm = dKm;
       }
+      if (bestAnyKm == null || dKm < bestAnyKm) bestAnyKm = dKm;
+    }
+    if (bestSignalKm != null && bestSignalKm < 0.080) {
+      _locationGateReason = 'OSM signal ${(bestSignalKm*1000).toStringAsFixed(0)}m';
+      return true;
+    }
+    if (bestAnyKm != null && bestAnyKm < 0.050) {
+      _locationGateReason = 'OSM crossing ${(bestAnyKm*1000).toStringAsFixed(0)}m';
+      return true;
     }
     _locationGateReason = '신호등/교차로 미근접';
     return false;

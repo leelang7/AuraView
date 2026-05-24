@@ -167,9 +167,27 @@ def _verify_event_location(reason: str, lat: Optional[float], lon: Optional[floa
             return {"verified": True, "method": "known-intersection",
                     "distance_m": best_m,
                     "note": f"100m 내 known 교차로 ({best_m}m)"}
+        # v12.88: OSM signaled crossing 도 확인 (전국 어디서나 작동)
+        try:
+            from ..services import public_api as _pa
+            cw = _pa.fetch_crosswalk_gis(lat=lat, lon=lon, radius_m=300.0)
+            nearest_signal_m = None
+            for c in cw.get("crosswalks", []) or cw.get("nearby", []):
+                if c.get("has_signal") != True: continue
+                clat = c.get("lat"); clon = c.get("lon")
+                if clat is None or clon is None: continue
+                d = _planar_km(lat, lon, clat, clon)
+                if nearest_signal_m is None or d * 1000 < nearest_signal_m:
+                    nearest_signal_m = int(d * 1000)
+            if nearest_signal_m is not None and nearest_signal_m < 80:
+                return {"verified": True, "method": "osm-signaled-crossing",
+                        "distance_m": nearest_signal_m,
+                        "note": f"OSM 신호 횡단보도 {nearest_signal_m}m"}
+        except Exception:
+            pass
         return {"verified": False, "method": "no-nearby-infra",
                 "distance_m": best_m,
-                "note": f"가까운 known 교차로 {best_m or '?'}m (>100m)"}
+                "note": f"가까운 known 교차로 {best_m or '?'}m, OSM 신호도 80m 외"}
 
     # 속도-의존 reason (사각지대/저신뢰도/고불확실성) — 정지 상태 false positive 차단
     if reason in ("blind_spot_left", "blind_spot_right"):

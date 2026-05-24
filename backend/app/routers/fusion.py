@@ -145,6 +145,14 @@ def fusion_ev_charger(lat: float = Query(37.5665), lon: float = Query(126.9780),
     return public_api.fetch_ev_chargers(lat=lat, lon=lon, radius_m=radius_m)
 
 
+@router.get("/crosswalk")
+def fusion_crosswalk(lat: float = Query(37.5665), lon: float = Query(126.9780),
+                      radius_m: float = Query(300.0, ge=50.0, le=2000.0)):
+    """v12.88: 반경 N m 내 횡단보도 + 신호등 유무 + 스쿨존.
+    Flutter 앱이 위치 게이팅(_isNearTrafficSignal)용으로 호출 → OSM Overpass live."""
+    return public_api.fetch_crosswalk_gis(lat=lat, lon=lon, radius_m=radius_m)
+
+
 # v5 2026-05-18: 15 → 17종 확장
 @router.get("/road-surface")
 def fusion_road_surface(lat: float = Query(37.5665), lon: float = Query(126.9780),

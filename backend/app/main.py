@@ -605,17 +605,33 @@ async function tick() {
             const ts = ev.ts ? new Date(ev.ts.endsWith('Z') ? ev.ts : ev.ts + 'Z') : null;
             const diff = ts ? Math.floor((Date.now() - ts.getTime()) / 1000) : 0;
             const tStr = diff < 60 ? diff + 's' : Math.floor(diff/60) + 'm';
-            return '<div class="ev"><div class="ic ' + cls + '">' + ic + '</div><div class="meta">' + esc(ev.reason || '?') + '<span class="sub">' + esc(ev.intersection_id || '—') + ' · ' + tStr + ' ago</span></div><div class="ent ' + cls + '">' + ent.toFixed(2) + '</div></div>';
+            // v12.83: location_verified 배지 — verified=true (✓) / false (?) + 거리
+            const lv = ev.location_verified;
+            const isV = lv && (lv.verified === true);
+            const lvIcon = isV ? '✓' : '?';
+            const lvColor = isV ? '#00E09A' : 'rgba(255,176,32,0.7)';
+            const lvTitle = lv ? esc(lv.note || '') : '미검증';
+            const lvBadge = '<span title="' + lvTitle + '" style="color:' + lvColor + ';font-family:monospace;font-size:9px;margin-left:4px;border:1px solid ' + lvColor + ';border-radius:6px;padding:0 4px;font-weight:900;">' + lvIcon + '</span>';
+            return '<div class="ev"><div class="ic ' + cls + '">' + ic + '</div><div class="meta">' + esc(ev.reason || '?') + lvBadge + '<span class="sub">' + esc(ev.intersection_id || '—') + ' · ' + tStr + ' ago</span></div><div class="ent ' + cls + '">' + ent.toFixed(2) + '</div></div>';
           }).join('');
       document.getElementById('lsBody').innerHTML = html;
-      // 지도 이벤트 마커
+      // verified pct 헤더에 표시
+      if (live.events_verified_pct != null) {
+        const ct = document.getElementById('lsCt');
+        if (ct) ct.textContent = (live.events_total||0) + ' ev · ' + live.events_verified_pct + '% verified · ' + (live.active_devices_5m||0) + ' dev';
+      }
+      // 지도 이벤트 마커 — verified=true 는 채워진 원, false 는 점선 테두리
       evL.clearLayers();
       evs.forEach(ev => {
         if (ev.lat == null || ev.lon == null) return;
         const ent = ev.entropy || 0;
         const c = ent >= 0.8 ? '#FF4040' : ent >= 0.6 ? '#FFB020' : '#00E09A';
-        L.circleMarker([ev.lat, ev.lon], { radius: 4 + ent * 6, color: c, fillColor: c, fillOpacity: 0.6, weight: 1 })
-          .bindPopup('<b>' + esc(ev.reason || '?') + '</b><br>ent=' + ent.toFixed(2)).addTo(evL);
+        const isV = ev.location_verified && ev.location_verified.verified === true;
+        L.circleMarker([ev.lat, ev.lon], {
+          radius: 4 + ent * 6, color: c, fillColor: c,
+          fillOpacity: isV ? 0.6 : 0.10,
+          weight: isV ? 1 : 2, dashArray: isV ? null : '3,3'
+        }).bindPopup('<b>' + esc(ev.reason || '?') + '</b><br>ent=' + ent.toFixed(2) + (ev.location_verified ? '<br>📍 ' + esc(ev.location_verified.note||'') : '')).addTo(evL);
       });
     }
   } catch (e) { console.error('tick', e); }

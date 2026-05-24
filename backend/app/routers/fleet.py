@@ -96,10 +96,64 @@ async def contribute(
         entry["lat"] = round(lat, 3)
         entry["lon"] = round(lon, 3)
 
+    # v12.83: 서버 측 위치 검증 — signal_occluded/crosswalk_blocked 가 실제 신호등/횡단보도 근처인지 표시
+    #   * 데이터 무결성 증명 (앱이 게이팅 무시한 채 업로드한 경우 서버에서도 마킹)
+    #   * /fleet/live 응답에 location_verified 필드 노출 → /ui 에서 verified/unverified 구분 표시
+    entry["location_verified"] = _verify_event_location(
+        reason=reason, lat=lat, lon=lon, intersection_id=intersection_id)
+
     with MANIFEST.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-    return {"status": "ok", "stored": masked_path.name, "pseudo_device": pseudo}
+    return {"status": "ok", "stored": masked_path.name, "pseudo_device": pseudo,
+            "location_verified": entry["location_verified"]}
+
+
+# v12.83: 8 known + 위치 게이팅 헬퍼 (Flutter 앱 게이팅과 동일 로직)
+_KNOWN_INTERSECTIONS_LATLON = [
+    (37.5547, 127.1295),  # 1007 한양대역
+    (37.4979, 127.0276),  # 2024 강남역
+    (37.5723, 126.9769),  # 3015 광화문
+    (37.5133, 127.1000),  # 4011 잠실역
+    (37.5556, 126.9367),  # 5006 신촌
+    (37.4766, 126.9816),  # 6022 사당역
+    (37.5611, 127.0376),  # 7045 왕십리역
+    (37.5403, 127.0700),  # 8033 건대입구
+]
+
+
+def _planar_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    dx = (lat2 - lat1) * 111.0
+    dy = (lon2 - lon1) * 89.0
+    return (dx * dx + dy * dy) ** 0.5
+
+
+def _verify_event_location(reason: str, lat: Optional[float], lon: Optional[float],
+                            intersection_id: Optional[str]) -> dict:
+    """v12.83: 이벤트 위치 검증 — 위치-의존 reason 이 실제 인프라 근처에서 발생했는지.
+    Returns: {'verified': bool, 'method': str, 'distance_m': int|None, 'note': str}
+    """
+    # 위치 무관 reason 은 항상 verified=true
+    if reason in ("blind_spot_left", "blind_spot_right", "high_uncertainty", "low_confidence", "high_entropy"):
+        return {"verified": True, "method": "no-gate-needed", "distance_m": None,
+                "note": f"{reason} 는 어디서나 의미있음"}
+    if lat is None or lon is None:
+        return {"verified": False, "method": "no-gps", "distance_m": None,
+                "note": "GPS 좌표 없음"}
+    # 1) 100m 내 known intersection
+    best_km = None
+    for klat, klon in _KNOWN_INTERSECTIONS_LATLON:
+        d = _planar_km(lat, lon, klat, klon)
+        if best_km is None or d < best_km:
+            best_km = d
+    if best_km is not None and best_km < 0.100:
+        return {"verified": True, "method": "known-intersection",
+                "distance_m": int(best_km * 1000),
+                "note": f"100m 내 known 8 교차로 ({int(best_km*1000)}m)"}
+    # 2) 그 외 — gps-* iid 거나 멀리 떨어진 곳
+    return {"verified": False, "method": "no-nearby-infra",
+            "distance_m": int(best_km * 1000) if best_km else None,
+            "note": f"{reason} 인데 가장 가까운 known 교차로가 {int(best_km*1000) if best_km else '?'}m"}
 
 
 @router.get("/stats")
@@ -406,13 +460,30 @@ def live_feed(limit: int = Query(50, ge=1, le=200)):
                 continue
     rows.reverse()   # 최신 순
     out = rows[:limit]
+    # v12.83: 옛날 manifest 엔트리에 location_verified 없으면 즉시 계산해서 추가 (backfill)
+    for r in out:
+        if "location_verified" not in r:
+            r["location_verified"] = _verify_event_location(
+                reason=r.get("reason", ""), lat=r.get("lat"), lon=r.get("lon"),
+                intersection_id=r.get("intersection_id"))
     # 1분 내 이벤트 카운트
     from datetime import datetime, timedelta
     one_min_ago = datetime.utcnow() - timedelta(minutes=1)
     events_1m = 0
     devices_5m = set()
     five_min_ago = datetime.utcnow() - timedelta(minutes=5)
+    verified_count = 0
     for r in rows:
+        # 전체 rows 검증 카운트 (페이지네이션 무관)
+        v = r.get("location_verified")
+        if v is None:
+            v = _verify_event_location(
+                reason=r.get("reason", ""), lat=r.get("lat"), lon=r.get("lon"),
+                intersection_id=r.get("intersection_id"))
+        if isinstance(v, dict) and v.get("verified"):
+            verified_count += 1
+        elif v is True:
+            verified_count += 1
         try:
             ts = datetime.fromisoformat(r["ts"].replace("Z", ""))
             if ts > one_min_ago: events_1m += 1
@@ -422,6 +493,8 @@ def live_feed(limit: int = Query(50, ge=1, le=200)):
     return {
         "events": out,
         "events_total": len(rows),
+        "events_verified_total": verified_count,
+        "events_verified_pct": round(verified_count / len(rows) * 100, 1) if rows else 0.0,
         "events_1m": events_1m,
         "active_devices_5m": len(devices_5m),
         "unique_devices_all_time": len({r.get("pseudo_device") for r in rows}),

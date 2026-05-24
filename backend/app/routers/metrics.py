@@ -658,7 +658,7 @@ def audit():
 
     # 2) 이벤트 통계 (v12.92 backfill 로직)
     events_total = 0; verified_total = 0; recent = []
-    rejected_stationary = 0
+    by_method: Dict[str, int] = {}
     if _FM.exists():
         try:
             rows = []
@@ -677,7 +677,8 @@ def audit():
                                 speed_kmh=r.get("speed_kmh"), test_mode=bool(r.get("test_mode")))
                 if isinstance(v, dict):
                     if v.get("verified"): verified_total += 1
-                    if v.get("method") == "stationary": rejected_stationary += 1
+                    m = v.get("method") or "unknown"
+                    by_method[m] = by_method.get(m, 0) + 1
             for r in rows[-5:]:
                 lv = r.get("location_verified") or {}
                 recent.append({
@@ -687,6 +688,14 @@ def audit():
                 })
         except Exception: pass
     verified_pct = round(verified_total / events_total * 100, 1) if events_total else 0.0
+    # 거짓 양성 method (verified=false 만들어내는 사유)
+    _REJECT_METHODS = {"no-gps", "no-nearby-infra", "no-speed-and-no-road",
+                       "no-speed-but-near-road" if False else None,  # placeholder
+                       "stationary", "stationary-confidence"}
+    rejected_breakdown = {m: c for m, c in by_method.items()
+                          if m in {"no-gps", "no-nearby-infra", "no-speed-and-no-road",
+                                    "stationary", "stationary-confidence"}}
+    rejected_total = sum(rejected_breakdown.values())
 
     return {
         "as_of": _dt.utcnow().isoformat() + "Z",
@@ -706,9 +715,11 @@ def audit():
             "total": events_total,
             "verified_total": verified_total,
             "verified_pct": verified_pct,
-            "rejected_stationary_false_positive": rejected_stationary,
+            "rejected_total": rejected_total,
+            "rejected_breakdown_by_method": rejected_breakdown,
+            "by_method_full": by_method,
             "recent_5": recent,
-            "honesty_note": f"verified_pct {verified_pct}% — v12.92 자동 backfill 로 옛 부풀려진 100% → 정직 (정지 상태 blind_spot 자동 차단)",
+            "honesty_note": f"verified_pct {verified_pct}% — v12.92 자동 backfill 로 옛 부풀려진 100% → 정직 (정지 상태 + 신호등 부재 자동 차단)",
             "live_endpoint": "/fleet/live",
         },
         "score25_gates": {

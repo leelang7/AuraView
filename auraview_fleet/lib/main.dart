@@ -39,7 +39,7 @@ const String kApiBase = String.fromEnvironment(
   'AURAVIEW_API_BASE',
   defaultValue: 'https://auraview.allthatai.kr',
 );
-const Duration kShadowInterval = Duration(seconds: 4);
+const Duration kShadowInterval = Duration(seconds: 2);  // v12.90: 4s → 2s 더 빠른 라이브 추론 표시
 const double kEntropyThreshold = 0.55;
 
 // ── Theme tokens ──────────────────────────────────────────────────
@@ -1105,6 +1105,11 @@ class _FleetHomeState extends State<FleetHome>
         _imageStreamRunning = true;
         debugPrint('[AURAVIEW] startImageStream() OK');
         if (mounted) setState(() => _detectDebug = '카메라 stream OK (${attempt+1}/3)');
+        // v12.90: REC OFF 일 때도 항상 추론 ticker 돌림 (entropy/motion/voxel 라이브 표시)
+        //   _shadowTick 안에서 _shadowOn 체크 → 업로드만 gate
+        _ticker ??= Timer.periodic(kShadowInterval, (_) => _shadowTick());
+        _shadowTick();
+        debugPrint('[AURAVIEW] inference ticker started (always-on)');
         return;
       } catch (e, st) {
         debugPrint('[AURAVIEW] camera init exception: $e\n$st');
@@ -1386,13 +1391,8 @@ class _FleetHomeState extends State<FleetHome>
   void _toggleShadow() {
     HapticFeedback.lightImpact();
     setState(() => _shadowOn = !_shadowOn);
-    if (_shadowOn) {
-      _ticker = Timer.periodic(kShadowInterval, (_) => _shadowTick());
-      _shadowTick();
-    } else {
-      _ticker?.cancel();
-      _ticker = null;
-    }
+    // v12.90: ticker 는 카메라 init 시 항상 켜짐 — REC 토글은 setState 만
+    //   _shadowTick 내부에서 _shadowOn 체크 후 upload gate
   }
 
   Future<void> _shadowTick() async {
@@ -1420,11 +1420,15 @@ class _FleetHomeState extends State<FleetHome>
         unawaited(_broadcastV2V(entropy: feat.entropy));
       }
 
+      // v12.90: REC OFF 일 때는 추론만 돌고 업로드 X
+      // REC ON 일 때만 reason 발화 → 서버 업로드 (위치 게이트 통과한 reason 만)
       if (reason != null) {
         _lastReason = reason;
-        await _upload(bytes, feat.entropy, reason);
+        if (_shadowOn) {
+          await _upload(bytes, feat.entropy, reason);
+        }
       } else {
-        _lastReason = 'ok';
+        _lastReason = _shadowOn ? 'ok' : 'preview';
       }
       if (mounted) setState(() {});
       if (!kIsWeb) {
@@ -6083,14 +6087,18 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
                   imgW: widget.imgW, imgH: widget.imgH,
                 ),
               )),
-            // 좌상단 Tesla 라벨
+            // 좌상단 Tesla 라벨 (FPS 포함)
             Positioned(left: 12, top: 10, child: _TeslaLabel(
-              icon: Icons.videocam_rounded, label: 'CAM · LIVE', color: _danger)),
-            // 우상단 검출 카운트 + AI 상태
+              icon: Icons.videocam_rounded,
+              label: 'CAM · ${widget.fps > 0.5 ? widget.fps.toStringAsFixed(1) + " FPS" : "LIVE"}',
+              color: _danger)),
+            // 우상단 검출 카운트 + AI 상태 (큰 숫자)
             Positioned(right: 12, top: 10, child: _TeslaLabel(
               icon: Icons.center_focus_strong_rounded,
-              label: '검출 ${widget.detections.length}',
-              color: widget.detections.isNotEmpty ? _accent : Colors.white.withValues(alpha: 0.55))),
+              label: widget.detections.isNotEmpty
+                ? '✓ ${widget.detections.length} 검출'
+                : '대기 중',
+              color: widget.detections.isNotEmpty ? _safe : Colors.white.withValues(alpha: 0.55))),
           ]),
         ),
       )),

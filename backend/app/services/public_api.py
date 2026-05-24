@@ -838,20 +838,84 @@ _AIR_FALLBACK = {
 }
 
 
-def fetch_air_quality(sido: str = "서울") -> Dict[str, Any]:
-    """에어코리아 시도별 실시간 미세먼지."""
-    url = f"{AIR_BASE_URL}/getCtprvnRltmMesureDnsty"
+_SIDO_LATLON = {
+    "서울": (37.5665, 126.9780), "부산": (35.1796, 129.0756), "대구": (35.8714, 128.6014),
+    "인천": (37.4563, 126.7052), "광주": (35.1595, 126.8526), "대전": (36.3504, 127.3845),
+    "울산": (35.5384, 129.3114), "세종": (36.4801, 127.2890), "경기": (37.4138, 127.5183),
+    "강원": (37.8228, 128.1555), "충북": (36.6357, 127.4912), "충남": (36.5184, 126.8000),
+    "전북": (35.7175, 127.1530), "전남": (34.8679, 126.9910), "경북": (36.4919, 128.8889),
+    "경남": (35.4606, 128.2132), "제주": (33.4996, 126.5312),
+}
+
+
+def _fetch_open_meteo_air(lat: float, lon: float, sido: str) -> Dict[str, Any]:
+    """Open-Meteo Air Quality (no-key) — PM10/PM2.5 라이브. AIR_KEY 미설정 시 fallback."""
+    url = "https://air-quality-api.open-meteo.com/v1/air-quality"
     params = {
-        "serviceKey": AIR_KEY, "returnType": "json",
-        "sidoName": sido, "ver": "1.0", "numOfRows": 100, "pageNo": 1,
+        "latitude": lat, "longitude": lon,
+        "current": "pm10,pm2_5,european_aqi,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone",
+        "timezone": "Asia/Seoul",
     }
+    res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+    res.raise_for_status()
+    j = res.json()
+    c = j.get("current", {})
+    pm10 = c.get("pm10") or 0.0
+    pm25 = c.get("pm2_5") or 0.0
+    # European AQI → 한국 KHAI 등급 근사 매핑 (0-25→1, 26-50→2, 51-75→3, 76-100→4, 100+→5)
+    eu_aqi = c.get("european_aqi") or 0
+    khai_grade = 1 if eu_aqi <= 25 else 2 if eu_aqi <= 50 else 3 if eu_aqi <= 75 else 4 if eu_aqi <= 100 else 5
+    # PM10 → 시정 감소(m) 근사: 50µg/m³당 약 200m 감소
+    vis_red = round(min(800, (pm10 / 50.0) * 200), 1)
+    cam_pol_risk = round(min(0.30, pm10 / 400.0), 3)
+    risk_boost = round(min(0.12, (max(0, pm10 - 50) / 100.0) * 0.10 + (max(0, pm25 - 25) / 50.0) * 0.04), 3)
+    return {
+        "source": "Open-Meteo Air Quality (no-key fallback · live)",
+        "collected_at": c.get("time"),
+        "lat": lat, "lon": lon, "sido": sido,
+        "stations": [{
+            "stationName": sido, "sidoName": sido,
+            "pm10Value": round(pm10, 1), "pm25Value": round(pm25, 1),
+            "khaiGrade": khai_grade, "khaiValue": eu_aqi,
+            "co": c.get("carbon_monoxide"), "no2": c.get("nitrogen_dioxide"),
+            "so2": c.get("sulphur_dioxide"), "o3": c.get("ozone"),
+            "dataTime": c.get("time"),
+        }],
+        "derived": {
+            "pm10_avg": round(pm10, 1), "pm25_avg": round(pm25, 1),
+            "khai_grade": khai_grade,
+            "visibility_reduction_m": vis_red,
+            "camera_pollution_risk": cam_pol_risk,
+            "air_quality_risk_boost": risk_boost,
+        },
+    }
+
+
+def fetch_air_quality(sido: str = "서울") -> Dict[str, Any]:
+    """에어코리아 시도별 실시간 미세먼지.
+    우선순위: 에어코리아 정부 API (AIR_KEY 있을 때) → Open-Meteo Air Quality (no-key) → stub."""
+    # 1차: 에어코리아 정부 API
+    if AIR_KEY:
+        url = f"{AIR_BASE_URL}/getCtprvnRltmMesureDnsty"
+        params = {
+            "serviceKey": AIR_KEY, "returnType": "json",
+            "sidoName": sido, "ver": "1.0", "numOfRows": 100, "pageNo": 1,
+        }
+        try:
+            res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("air_quality", "live", True)
+            return res.json()
+        except Exception as exc:
+            log.warning("Air quality API failed: %s", exc)
+    # 2차: Open-Meteo Air Quality no-key fallback
     try:
-        res = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
-        res.raise_for_status()
+        lat, lon = _SIDO_LATLON.get(sido, _SIDO_LATLON["서울"])
+        data = _fetch_open_meteo_air(lat, lon, sido)
         _record_fetch("air_quality", "live", True)
-        return res.json()
+        return data
     except Exception as exc:
-        log.warning("Air quality API failed: %s", exc)
+        log.warning("Open-Meteo Air fallback failed: %s", exc)
         _record_fetch("air_quality", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if ALLOW_FALLBACK:
             return _AIR_FALLBACK
@@ -1373,9 +1437,42 @@ _CROSSWALK_FALLBACK = {
 }
 
 
+def _fetch_osm_crosswalks(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
+    """OpenStreetMap Overpass (no-key) — highway=crossing 노드 라이브 fetch.
+    rate-limited 이므로 5분 캐시 권장. VWORLD 키 미설정 시 fallback."""
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    radius_int = int(radius_m)
+    query = f'[out:json][timeout:10];(node["highway"="crossing"](around:{radius_int},{lat},{lon}););out body 60;'
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
+    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
+    res.raise_for_status()
+    j = res.json()
+    elements = j.get("elements", [])
+    crosswalks = []
+    for e in elements[:60]:
+        tags = e.get("tags", {}) or {}
+        has_signal = tags.get("crossing") in ("traffic_signals", "pelican", "toucan")
+        is_school = tags.get("crossing:island") == "yes" or tags.get("school_zone") == "yes"
+        crosswalks.append({
+            "id": f"OSM-{e.get('id')}",
+            "name": tags.get("name") or "OSM crossing",
+            "lat": e.get("lat"), "lon": e.get("lon"),
+            "has_signal": has_signal,
+            "width_m": int(tags.get("width", 10)) if str(tags.get("width", "10")).replace(".", "").isdigit() else 10,
+            "is_school_zone": is_school,
+            "crossing_type": tags.get("crossing", "unmarked"),
+        })
+    return {
+        "source": "OpenStreetMap Overpass (no-key fallback · live)",
+        "lat": lat, "lon": lon, "radius_m": radius_m,
+        "crosswalks": crosswalks,
+    }
+
+
 def fetch_crosswalk_gis(lat: float = 37.5665, lon: float = 126.9780,
                         radius_m: float = 300.0) -> Dict[str, Any]:
-    """반경 N m 내 횡단보도 GIS + 신호등 유무 + 스쿨존 여부."""
+    """반경 N m 내 횡단보도 GIS + 신호등 유무 + 스쿨존 여부.
+    우선순위: VWORLD lt_l_crwlk (KEY 있을 때) → OSM Overpass (no-key) → stub."""
     if CROSSWALK_KEY:
         try:
             params = {
@@ -1390,9 +1487,41 @@ def fetch_crosswalk_gis(lat: float = 37.5665, lon: float = 126.9780,
             return res.json()
         except Exception as exc:
             log.warning("Crosswalk GIS API failed: %s", exc)
-            _record_fetch("crosswalk", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
-            if not ALLOW_FALLBACK:
-                raise
+    # 2차: OSM Overpass no-key fallback
+    try:
+        osm = _fetch_osm_crosswalks(lat, lon, radius_m)
+        cws = osm["crosswalks"]
+        cws_with_dist = []
+        nearest_d = None
+        for c in cws:
+            if c.get("lat") is None: continue
+            d = _haversine_m_local(lat, lon, c["lat"], c["lon"])
+            cws_with_dist.append({**c, "distance_m": round(d, 1)})
+            if nearest_d is None or d < nearest_d:
+                nearest_d = d
+        cws_with_dist.sort(key=lambda x: x["distance_m"])
+        cw_count = len(cws_with_dist)
+        has_signal_pct = (sum(1 for c in cws_with_dist if c.get("has_signal")) / cw_count) if cw_count else 0.0
+        sz_count = sum(1 for c in cws_with_dist if c.get("is_school_zone"))
+        crosswalk_boost = min(0.08, cw_count * 0.015 + sz_count * 0.025)
+        _record_fetch("crosswalk", "live", True)
+        return {
+            **osm,
+            "nearby": cws_with_dist, "nearby_count": cw_count,
+            "derived": {
+                "crosswalk_count_within_radius": cw_count,
+                "nearest_crosswalk_m": int(nearest_d) if nearest_d is not None else None,
+                "approaching_crosswalk": (nearest_d is not None and nearest_d <= 50.0),
+                "signaled_crosswalk_pct": round(has_signal_pct, 2),
+                "school_zone_crosswalk_count": sz_count,
+                "crosswalk_pedestrian_boost": round(crosswalk_boost, 3),
+            },
+        }
+    except Exception as exc:
+        log.warning("OSM Overpass crosswalk fallback failed: %s", exc)
+        _record_fetch("crosswalk", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
+        if not ALLOW_FALLBACK:
+            raise
 
     nearby = []
     nearest_d = None

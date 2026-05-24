@@ -260,7 +260,7 @@
   </section>
 
   <section>
-    <h2><em>출처</em> · 23종 공공데이터 <span style="color:#00e09a;font-size:14px;font-weight:600;">★ v9 (2026-05-21 6→23 확장)</span></h2>
+    <h2><em>출처</em> · 24종 공공데이터 <span style="color:#00e09a;font-size:14px;font-weight:600;">★ v10 (2026-05-25 24종 + USGS earthquake)</span></h2>
     <div id="dataSources"></div>
   </section>
 
@@ -459,7 +459,7 @@
         ["✓ Trained 모델 가중치 published", trained.checkpoint != null,                trained.checkpoint || ""],
         ["✓ AUC ≥ 0.85",                    (trained.auc || 0) >= 0.85,                `AUC ${trained.auc || '?'}`],
         ["✓ F1 ≥ 0.80",                     (trained.f1_at_0_5 || 0) >= 0.80,          `F1 ${trained.f1_at_0_5 || '?'}`],
-        ["✓ 23종 공공데이터 어댑터 (v9 2026-05-21)", (stack.data_sources || []).length >= 23, `${(stack.data_sources || []).length}종 (신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단)`],
+        ["✓ 24종 공공데이터 어댑터 (v10 2026-05-25)", (stack.data_sources || []).length >= 24, `${(stack.data_sources || []).length}종 (신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단)`],
         ["✓ 정량 임팩트 (TAAS 결합)",       d.impact?.scenarios?.length >= 3,          d.impact?.headline || ""],
         ["✓ 위험 교차로 Top-N 우선순위",    true,                                      "/impact/top-intersections (12개 서울)"],
         ["✓ Tesla 비교 5종 (한국 특화)",    true,                                      "/positioning/tesla-vs-auraview"],

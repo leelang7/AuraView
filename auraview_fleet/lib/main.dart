@@ -126,6 +126,10 @@ class _FleetHomeState extends State<FleetHome>
   int _captures = 0;
   int _uploads = 0;
   int _failures = 0;
+  // v12.97: 업로드 실패 시 in-memory 재시도 큐 (현장 약한 신호 대응)
+  final List<Map<String, dynamic>> _uploadQueue = [];
+  Timer? _retryTimer;
+  int _retrySuccess = 0;
   double _lastEntropy = 0.0;
   String _lastReason = 'idle';
   int _serverTotal = 0;
@@ -420,6 +424,7 @@ class _FleetHomeState extends State<FleetHome>
     _bevTimer?.cancel();
     _scnRotateTimer?.cancel();
     _pollServerTimer?.cancel();
+    _retryTimer?.cancel();
     _posSub?.cancel();
     _cam?.dispose();
     _objDetector?.close();
@@ -1086,6 +1091,8 @@ class _FleetHomeState extends State<FleetHome>
       }
       _bevTimer ??= Timer.periodic(const Duration(milliseconds: 1500), (_) => _fetchBev());
       _pollServerTimer ??= Timer.periodic(const Duration(seconds: 30), (_) => _pollServer());
+      // v12.97: 큐 재시도 타이머 30초
+      _retryTimer ??= Timer.periodic(const Duration(seconds: 30), (_) => _processQueue());
       _refreshLocation();
     }
   }
@@ -1508,38 +1515,99 @@ class _FleetHomeState extends State<FleetHome>
   }
 
   Future<void> _upload(Uint8List jpg, double entropy, String reason) async {
-    final uri = Uri.parse('$kApiBase/fleet/contribute');
-    final req = http.MultipartRequest('POST', uri);
-    req.fields['device_id'] = _deviceId;
-    req.fields['entropy'] = entropy.toStringAsFixed(3);
-    req.fields['reason'] = reason;
-    if (_intersectionId != null && _intersectionId!.isNotEmpty) {
-      req.fields['intersection_id'] = _intersectionId!;
+    // v12.97: 즉시 시도 후 실패 시 큐에 적재 (현장 약한 신호 대응)
+    final ok = await _sendUpload(jpg, entropy, reason,
+      capturedLat: _pos?.latitude, capturedLon: _pos?.longitude,
+      capturedSpeed: _pos == null ? null : _pos!.speed * 3.6,
+      capturedTs: DateTime.now(),
+      isTest: _testMode,
+      intersection: _intersectionId);
+    if (ok) {
+      _uploads++;
+      _lastUploadAt = DateTime.now();
+      _pulseAnim.forward(from: 0);
+      // 성공 → 큐 잔여분 처리 시도
+      unawaited(_processQueue());
+    } else {
+      _failures++;
+      // 큐 적재 (최대 50개, 오래된 것 제거)
+      _uploadQueue.add({
+        'jpg': jpg, 'entropy': entropy, 'reason': reason,
+        'lat': _pos?.latitude, 'lon': _pos?.longitude,
+        'speed_kmh': _pos == null ? null : _pos!.speed * 3.6,
+        'ts': DateTime.now(),
+        'test_mode': _testMode,
+        'intersection': _intersectionId,
+        'attempts': 1,
+      });
+      if (_uploadQueue.length > 50) _uploadQueue.removeAt(0);
     }
-    if (_pos != null) {
-      req.fields['lat'] = _pos!.latitude.toStringAsFixed(5);
-      req.fields['lon'] = _pos!.longitude.toStringAsFixed(5);
-      // v12.87: 속도 동봉 — 서버 측 blind_spot/저신뢰도 false positive 차단용
-      final speedKmh = _pos!.speed * 3.6;
-      req.fields['speed_kmh'] = speedKmh.toStringAsFixed(1);
-    }
-    if (_testMode) req.fields['test_mode'] = 'true';
-    req.files.add(http.MultipartFile.fromBytes('image', jpg, filename: 'fleet.jpg'));
+    if (mounted) setState(() {});
+    Future.delayed(const Duration(seconds: 1), _pollServer);
+  }
+
+  /// 실제 HTTP 전송 — 큐 재시도에도 같은 경로 사용
+  Future<bool> _sendUpload(Uint8List jpg, double entropy, String reason, {
+    double? capturedLat, double? capturedLon, double? capturedSpeed,
+    DateTime? capturedTs, bool isTest = false, String? intersection,
+  }) async {
     try {
+      final uri = Uri.parse('$kApiBase/fleet/contribute');
+      final req = http.MultipartRequest('POST', uri);
+      req.fields['device_id'] = _deviceId;
+      req.fields['entropy'] = entropy.toStringAsFixed(3);
+      req.fields['reason'] = reason;
+      if (intersection != null && intersection.isNotEmpty) {
+        req.fields['intersection_id'] = intersection;
+      }
+      if (capturedLat != null && capturedLon != null) {
+        req.fields['lat'] = capturedLat.toStringAsFixed(5);
+        req.fields['lon'] = capturedLon.toStringAsFixed(5);
+        if (capturedSpeed != null) {
+          req.fields['speed_kmh'] = capturedSpeed.toStringAsFixed(1);
+        }
+      }
+      if (isTest) req.fields['test_mode'] = 'true';
+      req.files.add(http.MultipartFile.fromBytes('image', jpg, filename: 'fleet.jpg'));
       final res = await req.send().timeout(const Duration(seconds: 12));
-      if (res.statusCode >= 200 && res.statusCode < 300) {
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// v12.97: 큐에 쌓인 실패 업로드 재시도 (FIFO, 1회 batch 당 최대 5개)
+  Future<void> _processQueue() async {
+    if (_uploadQueue.isEmpty) return;
+    final batch = _uploadQueue.take(5).toList();
+    for (final item in batch) {
+      final ok = await _sendUpload(
+        item['jpg'] as Uint8List,
+        item['entropy'] as double,
+        item['reason'] as String,
+        capturedLat: item['lat'] as double?,
+        capturedLon: item['lon'] as double?,
+        capturedSpeed: item['speed_kmh'] as double?,
+        capturedTs: item['ts'] as DateTime?,
+        isTest: item['test_mode'] as bool? ?? false,
+        intersection: item['intersection'] as String?,
+      );
+      if (ok) {
+        _uploadQueue.remove(item);
+        _retrySuccess++;
         _uploads++;
         _lastUploadAt = DateTime.now();
-        _pulseAnim.forward(from: 0);
       } else {
-        _failures++;
+        item['attempts'] = (item['attempts'] as int? ?? 1) + 1;
+        // 5번 시도 후 포기
+        if ((item['attempts'] as int) >= 5) {
+          _uploadQueue.remove(item);
+          _failures++;
+        }
+        break;  // 한 건 실패 시 batch 중단 (네트워크 회복 대기)
       }
-      if (mounted) setState(() {});
-      Future.delayed(const Duration(seconds: 1), _pollServer);
-    } catch (_) {
-      _failures++;
-      if (mounted) setState(() {});
     }
+    if (mounted) setState(() {});
   }
 
   String _reasonKo(String r) => const {

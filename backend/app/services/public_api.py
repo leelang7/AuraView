@@ -567,20 +567,76 @@ _BIKE_FALLBACK = {
 }
 
 
+def _fetch_citybikes_seoul(lat: Optional[float], lon: Optional[float], radius_m: float) -> Dict[str, Any]:
+    """Citybikes API (no-key) — 서울 따릉이 네트워크 라이브 fetch.
+    BIKE_KEY 미설정 시 fallback. /v2/networks/ddareungi 직접 호출."""
+    url = "https://api.citybik.es/v2/networks/seoul-bike"
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)"}
+    res = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
+    res.raise_for_status()
+    j = res.json()
+    network = j.get("network", {})
+    raw_stations = network.get("stations", []) or []
+    stations = []
+    for s in raw_stations:
+        slat, slon = s.get("latitude"), s.get("longitude")
+        if slat is None or slon is None: continue
+        free = s.get("free_bikes", 0) or 0
+        empty = s.get("empty_slots", 0) or 0
+        total = free + empty
+        # shared = 빈 슬롯 비율 (회전율 proxy)
+        shared = (empty / total) if total > 0 else 0.0
+        stations.append({
+            "stationId": s.get("id"),
+            "name": s.get("name"),
+            "lat": slat, "lon": slon,
+            "rackTotCnt": total,
+            "parkingBikeTotCnt": free,
+            "shared": round(shared, 2),
+        })
+    # 반경 필터링
+    if lat is not None and lon is not None:
+        stations = [s for s in stations
+                    if _haversine_m_local(lat, lon, s["lat"], s["lon"]) <= radius_m]
+    stations.sort(key=lambda x: x.get("shared", 0), reverse=True)
+    active = sum(max(0, s["rackTotCnt"] - s["parkingBikeTotCnt"]) for s in stations)
+    peak = sum(1 for s in stations if s.get("shared", 0) >= 0.8)
+    return {
+        "source": "Citybikes (no-key fallback · live · ddareungi 서울 따릉이)",
+        "collected_at": network.get("source") or network.get("location", {}).get("city"),
+        "station_count": len(stations),
+        "stations": stations[:120],  # 응답 크기 제한
+        "derived": {
+            "active_riders_estimate": active,
+            "bike_lane_risk_boost": round(min(0.25, peak * 0.07), 3),
+            "peak_zone_count": peak,
+        },
+    }
+
+
 def fetch_bike_stations(num_of_rows: int = 50,
                         lat: Optional[float] = None, lon: Optional[float] = None,
                         radius_m: float = 1500.0) -> Dict[str, Any]:
     """서울시 공공자전거 실시간 거치 → 자전거도로 시나리오 prior 강화.
     v12.20: lat/lon 주어지면 반경 내 정거장만 derived 재계산 (위치 인식).
+    우선순위: 서울 OpenAPI (BIKE_KEY) → Citybikes (no-key) → stub.
     """
-    url = f"{BIKE_BASE_URL}/{BIKE_KEY}/json/bikeList/1/{num_of_rows}/"
+    if BIKE_KEY:
+        url = f"{BIKE_BASE_URL}/{BIKE_KEY}/json/bikeList/1/{num_of_rows}/"
+        try:
+            res = requests.get(url, timeout=DEFAULT_TIMEOUT)
+            res.raise_for_status()
+            _record_fetch("bike", "live", True)
+            return res.json()
+        except Exception as exc:
+            log.warning("Bike API failed: %s", exc)
+    # 2차: Citybikes no-key fallback
     try:
-        res = requests.get(url, timeout=DEFAULT_TIMEOUT)
-        res.raise_for_status()
+        data = _fetch_citybikes_seoul(lat, lon, radius_m)
         _record_fetch("bike", "live", True)
-        return res.json()
+        return data
     except Exception as exc:
-        log.warning("Bike API failed: %s", exc)
+        log.warning("Citybikes fallback failed: %s", exc)
         _record_fetch("bike", "stub" if ALLOW_FALLBACK else "error", False, str(exc)[:120])
         if ALLOW_FALLBACK:
             if lat is not None and lon is not None:
@@ -979,24 +1035,77 @@ _EV_FALLBACK = {
 }
 
 
+def _fetch_osm_ev_chargers(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
+    """OpenStreetMap Overpass (no-key) — amenity=charging_station 라이브 fetch."""
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    radius_int = int(radius_m)
+    query = (
+        f'[out:json][timeout:10];'
+        f'(node["amenity"="charging_station"](around:{radius_int},{lat},{lon});'
+        f' way["amenity"="charging_station"](around:{radius_int},{lat},{lon}););'
+        f'out center 80;'
+    )
+    headers = {"User-Agent": "AuraView/0.8 (auraview@allthatai.kr)", "Accept": "application/json"}
+    res = requests.post(overpass_url, data={"data": query}, headers=headers, timeout=8.0)
+    res.raise_for_status()
+    j = res.json()
+    stations = []
+    for e in j.get("elements", [])[:80]:
+        tags = e.get("tags", {}) or {}
+        elat = e.get("lat") or (e.get("center") or {}).get("lat")
+        elon = e.get("lon") or (e.get("center") or {}).get("lon")
+        if elat is None or elon is None: continue
+        cap_raw = tags.get("capacity") or tags.get("socket:type2_combo") or tags.get("socket:type2") or "0"
+        try: capacity = int(str(cap_raw).split(";")[0])
+        except Exception: capacity = 0
+        if capacity == 0 and "socket" in str(tags).lower(): capacity = 2  # 추정
+        stations.append({
+            "stationId": f"OSM-{e.get('id')}",
+            "name": tags.get("name") or tags.get("operator") or "EV 충전소",
+            "operator": tags.get("operator"),
+            "lat": elat, "lon": elon,
+            "charger_count": max(1, capacity),
+            "usage_pct": 0,  # OSM은 실시간 사용률 없음
+            "access": tags.get("access", "yes"),
+            "fee": tags.get("fee", "unknown"),
+        })
+    return stations
+
+
 def fetch_ev_chargers(lat: float = 37.5665, lon: float = 126.9780, radius_m: float = 500.0) -> Dict[str, Any]:
-    """반경 N m EV 충전소. 정차한 EV 패턴 이상 탐지에 활용."""
+    """반경 N m EV 충전소. 정차한 EV 패턴 이상 탐지에 활용.
+    우선순위: OSM Overpass (no-key) → 내장 fixture stub."""
     nearby = []
-    for s in _EV_FALLBACK["stations"]:
-        d = _haversine_m_local(lat, lon, s["lat"], s["lon"])
-        if d <= radius_m:
-            nearby.append({**s, "distance_m": round(d, 1)})
-    _record_fetch("ev_charger", "stub", True if nearby else False)
+    osm_mode = False
+    try:
+        osm_stations = _fetch_osm_ev_chargers(lat, lon, radius_m)
+        for s in osm_stations:
+            d = _haversine_m_local(lat, lon, s["lat"], s["lon"])
+            if d <= radius_m:
+                nearby.append({**s, "distance_m": round(d, 1)})
+        nearby.sort(key=lambda x: x["distance_m"])
+        if osm_stations:
+            osm_mode = True
+            _record_fetch("ev_charger", "live", True)
+    except Exception as exc:
+        log.warning("OSM ev_charger fallback failed: %s", exc)
+    if not osm_mode:
+        for s in _EV_FALLBACK["stations"]:
+            d = _haversine_m_local(lat, lon, s["lat"], s["lon"])
+            if d <= radius_m:
+                nearby.append({**s, "distance_m": round(d, 1)})
+        _record_fetch("ev_charger", "stub", True if nearby else False)
     total_chargers = sum(s.get("charger_count", 0) for s in nearby)
-    avg_usage = (sum(s.get("usage_pct", 0) for s in nearby) / len(nearby)) if nearby else 0
+    usable = [s for s in nearby if s.get("usage_pct") is not None and s.get("usage_pct") > 0]
+    avg_usage = (sum(s.get("usage_pct", 0) for s in usable) / len(usable)) if usable else 0
     return {
-        "source": "EV 충전소 (한국환경공단)",
+        "source": "OpenStreetMap amenity=charging_station (no-key fallback · live)" if osm_mode else "EV 충전소 (한국환경공단 stub)",
         "stations": nearby, "count": len(nearby),
         "derived": {
             "near_ev_station": len(nearby) > 0,
             "total_chargers": total_chargers,
             "avg_usage_pct": round(avg_usage, 1),
-            "ev_dwelling_likelihood": round(avg_usage / 100.0, 2),  # 정차한 EV가 있을 확률
+            "ev_dwelling_likelihood": round(avg_usage / 100.0, 2),
         },
     }
 

@@ -192,6 +192,19 @@ class _FleetHomeState extends State<FleetHome>
   int _detectKeptN = 0;
   DateTime? _detectLastAt;
 
+  // v12.82 2026-05-24: 위치 기반 게이팅 — signal_occluded/crosswalk_blocked 는
+  // 실제 신호등/횡단보도 근처에서만 발화. 테스트 모드 ON 일 때만 어디서나 발화.
+  bool _testMode = false;
+  // OSM live crosswalks (server /fusion/crosswalk 의 최근 결과, GPS 변경 시 refresh)
+  List<Map<String, dynamic>> _nearbyCrosswalks = const [];
+  DateTime? _crosswalksFetchedAt;
+  double? _crosswalksFetchedLat, _crosswalksFetchedLon;
+  // 최근 위치 게이팅 사유 (디버그 표시용)
+  String _locationGateReason = '';
+  // BEV 라이브 상태
+  DateTime? _bevLastFrameAt;
+  int _bevFrameCount = 0;
+
   // v12.4 2026-05-19: ML Kit raw 박스 (필터 전) — 카메라에 모두 표시
   //   { box[x,y,w,h], labels: 'A 0.9, B 0.6', kept: true/false, rejReason: '...' }
   List<Map<String, dynamic>> _rawDetections = const [];
@@ -265,6 +278,88 @@ class _FleetHomeState extends State<FleetHome>
     final dx = (lat2 - lat1) * 111.0;
     final dy = (lon2 - lon1) * 89.0;
     return math.sqrt(dx * dx + dy * dy);
+  }
+
+  /// v12.82: 현재 GPS 가 신호등/교차로 근처인지 게이트.
+  /// signal_occluded / crosswalk_blocked 같은 위치-의존적 reason 발화 직전에 호출.
+  ///   - 100m 내 known intersection → true (정확한 좌표 알고 있는 8 교차로)
+  ///   - 40m 내 OSM signaled crossing → true (서버 /fusion/crosswalk 최근 응답 사용)
+  ///   - 그 외 → false
+  /// 테스트 모드 ON 이면 무조건 true (실내 시연용).
+  bool _isNearTrafficSignal() {
+    if (_testMode) { _locationGateReason = 'test-mode bypass'; return true; }
+    final p = _pos;
+    if (p == null) { _locationGateReason = 'no GPS'; return false; }
+    // 1) known 8 교차로
+    for (final it in _knownIntersections) {
+      final dKm = _haversineKm(p.latitude, p.longitude,
+          (it['lat'] as num).toDouble(), (it['lon'] as num).toDouble());
+      if (dKm < 0.100) {  // 100m
+        _locationGateReason = 'known: ${it['name']} ${(dKm*1000).toStringAsFixed(0)}m';
+        return true;
+      }
+    }
+    // 2) OSM signaled crossings (서버 fetch 캐시 사용)
+    for (final cw in _nearbyCrosswalks) {
+      final hasSignal = cw['has_signal'] == true;
+      if (!hasSignal) continue;
+      final clat = (cw['lat'] as num?)?.toDouble();
+      final clon = (cw['lon'] as num?)?.toDouble();
+      if (clat == null || clon == null) continue;
+      final dKm = _haversineKm(p.latitude, p.longitude, clat, clon);
+      if (dKm < 0.040) {  // 40m
+        _locationGateReason = 'OSM signal ${(dKm*1000).toStringAsFixed(0)}m';
+        return true;
+      }
+    }
+    _locationGateReason = '신호등/교차로 미근접';
+    return false;
+  }
+
+  /// v12.82: 현재 GPS 가 횡단보도 근처인지 게이트.
+  bool _isNearCrosswalk() {
+    if (_testMode) return true;
+    final p = _pos;
+    if (p == null) return false;
+    for (final cw in _nearbyCrosswalks) {
+      final clat = (cw['lat'] as num?)?.toDouble();
+      final clon = (cw['lon'] as num?)?.toDouble();
+      if (clat == null || clon == null) continue;
+      final dKm = _haversineKm(p.latitude, p.longitude, clat, clon);
+      if (dKm < 0.030) return true;   // 30m
+    }
+    return false;
+  }
+
+  /// v12.82: GPS 가 충분히 이동했을 때만 서버에서 OSM crosswalk 라이브 fetch.
+  Future<void> _refreshNearbyCrosswalksIfMoved() async {
+    final p = _pos;
+    if (p == null) return;
+    // 이미 200m 이내에서 fetch 했고 60초 안 지났으면 skip
+    if (_crosswalksFetchedLat != null && _crosswalksFetchedLon != null) {
+      final dKm = _haversineKm(_crosswalksFetchedLat!, _crosswalksFetchedLon!,
+          p.latitude, p.longitude);
+      final age = _crosswalksFetchedAt == null
+          ? 999.0
+          : DateTime.now().difference(_crosswalksFetchedAt!).inSeconds.toDouble();
+      if (dKm < 0.200 && age < 60) return;
+    }
+    try {
+      final r = await http.get(Uri.parse(
+        '$kApiBase/fusion/crosswalk?lat=${p.latitude.toStringAsFixed(5)}'
+        '&lon=${p.longitude.toStringAsFixed(5)}&radius_m=300'
+      )).timeout(const Duration(seconds: 6));
+      if (r.statusCode == 200) {
+        final body = jsonDecode(r.body) as Map<String, dynamic>;
+        final cws = (body['crosswalks'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+        if (mounted) setState(() {
+          _nearbyCrosswalks = cws;
+          _crosswalksFetchedAt = DateTime.now();
+          _crosswalksFetchedLat = p.latitude;
+          _crosswalksFetchedLon = p.longitude;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -380,7 +475,11 @@ class _FleetHomeState extends State<FleetHome>
           try { final f = File(shot.path); if (await f.exists()) await f.delete(); } catch (_) {}
         }
         if (voxel != null && mounted) {
-          setState(() => _bev = voxel);
+          setState(() {
+            _bev = voxel;
+            _bevLastFrameAt = DateTime.now();
+            _bevFrameCount++;
+          });
         }
       } catch (e) {
         // v12.4 디버그: takePicture 또는 voxelize 예외 화면에 표시
@@ -391,6 +490,8 @@ class _FleetHomeState extends State<FleetHome>
     // 도시정보 결합 (signal/VDS/TAAS) — voxel 위에 라이브 라인 표시용
     // intersection_id 우선순위: 사용자 설정값 → GPS 자동 감지값
     _autoDetectIntersection();
+    // v12.82: GPS 변경 시 OSM crosswalk 라이브 캐시 갱신 (위치 게이팅용)
+    unawaited(_refreshNearbyCrosswalksIfMoved());
     final iid = (_intersectionId != null && _intersectionId!.isNotEmpty)
         ? _intersectionId!
         : _autoIntersectionId;
@@ -1289,7 +1390,11 @@ class _FleetHomeState extends State<FleetHome>
       // v12.62: voxel grid 생성 활성화 (이전 _fetchBev if(false) 가드로 끊겨있던 경로 복원)
       // 4 정밀 reason (signal_occluded / crosswalk_blocked / blind_spot_left/right) 작동에 필수
       final voxel = _voxelizeOnDevice(bytes);
-      if (voxel != null && mounted) setState(() => _bev = voxel);
+      if (voxel != null && mounted) setState(() {
+        _bev = voxel;
+        _bevLastFrameAt = DateTime.now();
+        _bevFrameCount++;
+      });
       final feat = _entropyAndMotion(bytes);
       _lastEntropy = feat.entropy;
       final reason = _classifyReason(feat);
@@ -1415,6 +1520,8 @@ class _FleetHomeState extends State<FleetHome>
   /// AuraView 컨셉 trigger — 신호 가림 / 횡단보도 가림 / 사각지대 감지.
   /// voxel grid (_bev) 가 있으면 occlusion 패턴 우선,
   /// 없으면 entropy/motion 폴백.
+  /// v12.82: 위치 기반 게이팅 — signal_occluded/crosswalk_blocked 는
+  ///   실제 신호등/횡단보도 근처에서만 발화. 테스트 모드 ON 일 때만 어디서나.
   String? _classifyReason(_FrameFeat feat) {
     final flat = _bev?['grid_flat'];
     if (flat is List && flat.length == 1600) {
@@ -1444,15 +1551,18 @@ class _FleetHomeState extends State<FleetHome>
       }
 
       // 임계값 — 대략 cell ≥ 0.4 일 때 채워진 걸로 본다
-      // 신호 가림: 전방 멀리 중앙 점유 누적 ≥ 30
-      if (upperCenter >= 30) return 'signal_occluded';
-      // 횡단보도 가림 (큰 객체 중앙 점유): bigBlob ≥ 60
-      if (bigBlobCenter >= 60) return 'crosswalk_blocked';
-      // 사각지대: 좌/우 측면 누적 ≥ 25
+      // v12.82: 위치-의존 reason 은 GPS 게이트 통과한 경우에만
+      final nearSignal = _isNearTrafficSignal();
+      final nearCw = _isNearCrosswalk() || nearSignal;
+      // 신호 가림: 전방 멀리 중앙 점유 누적 ≥ 30 + 실제 신호등 근처
+      if (upperCenter >= 30 && nearSignal) return 'signal_occluded';
+      // 횡단보도 가림 (큰 객체 중앙 점유): bigBlob ≥ 60 + 실제 횡단보도 근처
+      if (bigBlobCenter >= 60 && nearCw) return 'crosswalk_blocked';
+      // 사각지대: 좌/우 측면 누적 ≥ 25 — 어디서나 의미있음 (위치 게이트 없음)
       if (leftEdge >= 25)  return 'blind_spot_left';
       if (rightEdge >= 25) return 'blind_spot_right';
     }
-    // 폴백 (voxel 정보 없을 때) — 일반 entropy/motion
+    // 폴백 (voxel 정보 없을 때) — 일반 entropy/motion (위치 무관)
     if (feat.entropy >= 0.75 || feat.motion >= 0.7) return 'high_uncertainty';
     if (feat.entropy >= kEntropyThreshold) return 'low_confidence';
     return null;
@@ -1667,10 +1777,11 @@ class _FleetHomeState extends State<FleetHome>
                   ),
                   const SizedBox(height: 6),
 
-                  // BEV split — 화면 거의 전체 사용 (하단 floating REC 자리만 비움)
+                  // BEV split — 화면 거의 전체 사용 (하단 floating REC + 디버그 pill 자리 비움)
+                  // v12.82: 하단 패딩 56 → 86 (REC pill 48px + 디버그 pill ~24px + 여백)
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 56),
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 86),
                       child: _CameraBevSplit(
                         camera: _cam,
                         detections: _bevDetections,
@@ -1737,24 +1848,73 @@ class _FleetHomeState extends State<FleetHome>
               ),
             ),
 
-            // v11.1 2026-05-19: 검출 디버그 pill (왜 안 잡히는지 표시)
+            // v12.82: 통합 상태 pill — DET / BEV / GATE 한 줄
             Positioned(
-              left: 10, bottom: 56,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xDD000000),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: (_detectRawN > 0 ? _safe : _warn).withValues(alpha: 0.5),
-                    width: 0.8),
-                ),
-                child: Text(
-                  '🔍 $_detectDebug${_detectLastAt != null ? " · ${DateTime.now().difference(_detectLastAt!).inSeconds}s ago" : ""}',
-                  style: TextStyle(
-                    color: _detectRawN > 0 ? _safe : _warn,
-                    fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
-                ),
+              left: 10, right: 10, bottom: 60,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // 좌측: 검출 상태
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xDD000000),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: (_detectRawN > 0 ? _safe : _warn).withValues(alpha: 0.5),
+                        width: 0.8),
+                    ),
+                    child: Text(
+                      'DET $_detectRawN/$_detectKeptN${_detectLastAt != null ? " · ${DateTime.now().difference(_detectLastAt!).inSeconds}s" : ""}',
+                      style: TextStyle(
+                        color: _detectRawN > 0 ? _safe : _warn,
+                        fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  // 가운데: BEV 라이브 여부
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xDD000000),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: (_bev != null ? _safe : _muted).withValues(alpha: 0.5),
+                        width: 0.8),
+                    ),
+                    child: Text(
+                      _bev == null
+                        ? 'BEV ✗'
+                        : 'BEV ✓ ${_bevFrameCount}f${_bevLastFrameAt != null ? " · ${DateTime.now().difference(_bevLastFrameAt!).inSeconds}s" : ""}',
+                      style: TextStyle(
+                        color: _bev != null ? _safe : _muted,
+                        fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  // 우측: 위치 게이트 (테스트 모드 / 신호등 근접)
+                  GestureDetector(
+                    onLongPress: () {
+                      setState(() => _testMode = !_testMode);
+                      _toast(_testMode ? 'TEST 모드 ON — 위치 무관 발화' : 'TEST 모드 OFF — 실제 신호등 근처에서만',
+                        color: _testMode ? _warn : _accent);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xDD000000),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: (_testMode ? _warn : (_locationGateReason.startsWith('known') || _locationGateReason.startsWith('OSM') ? _safe : _muted)).withValues(alpha: 0.5),
+                          width: 0.8),
+                      ),
+                      child: Text(
+                        _testMode ? 'TEST 모드' : (_locationGateReason.isEmpty ? 'GPS 대기' : _locationGateReason),
+                        style: TextStyle(
+                          color: _testMode ? _warn : (_locationGateReason.startsWith('known') || _locationGateReason.startsWith('OSM') ? _safe : _muted),
+                          fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

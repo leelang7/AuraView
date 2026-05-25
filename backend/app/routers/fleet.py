@@ -601,6 +601,87 @@ def live_feed(limit: int = Query(50, ge=1, le=200)):
     }
 
 
+@router.get("/proof/{event_idx}")
+def event_proof(event_idx: int):
+    """v12.120: 단일 이벤트 forensic evidence trail — 심사위원이 클릭 한 번으로 검증.
+
+    event_idx: /fleet/live 응답 events 배열의 0-base index (0 = 가장 최근).
+    응답: 해당 이벤트의 전체 verification 근거 — 위치 + 속도 + OSM nearby + 이미지 URL.
+    """
+    if not MANIFEST.exists():
+        raise HTTPException(status_code=404, detail="no events")
+    rows = []
+    with MANIFEST.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try: rows.append(json.loads(line))
+                except: pass
+    rows.reverse()
+    if event_idx < 0 or event_idx >= len(rows):
+        raise HTTPException(status_code=404, detail=f"event_idx {event_idx} out of range [0, {len(rows)})")
+    e = rows[event_idx]
+
+    # 1) location_verified 재계산 (v12.92 deprecated method 자동 갱신)
+    lv = e.get("location_verified")
+    if not lv or not isinstance(lv, dict) or lv.get("method") in {"no-gate-needed", "test-mode", "no-gps"}:
+        lv = _verify_event_location(
+            reason=e.get("reason", ""), lat=e.get("lat"), lon=e.get("lon"),
+            intersection_id=e.get("intersection_id"),
+            speed_kmh=e.get("speed_kmh"), test_mode=bool(e.get("test_mode")))
+
+    # 2) OSM nearby — 검증 근거 (crosswalks/signals 8개) 라이브 fetch
+    osm_nearby = {}
+    if e.get("lat") and e.get("lon"):
+        try:
+            from ..services import public_api as _pa
+            cw = _pa.fetch_crosswalk_gis(lat=e["lat"], lon=e["lon"], radius_m=200.0)
+            nearby_within_100m = []
+            signals_within_100m = []
+            for c in (cw.get("crosswalks", []) or []):
+                d = c.get("distance_m", 9999)
+                if d < 100:
+                    if c.get("has_signal"):
+                        signals_within_100m.append({"name": c.get("name"), "distance_m": d, "lat": c.get("lat"), "lon": c.get("lon")})
+                    else:
+                        nearby_within_100m.append({"name": c.get("name"), "distance_m": d, "lat": c.get("lat"), "lon": c.get("lon")})
+            osm_nearby = {
+                "source": cw.get("source"),
+                "crosswalk_count_total": len(cw.get("crosswalks", []) or []),
+                "crosswalks_within_100m": len(nearby_within_100m),
+                "signals_within_100m": len(signals_within_100m),
+                "nearest_signal_m": cw.get("derived", {}).get("nearest_signal_m"),
+                "signals_sample": signals_within_100m[:3],
+                "crosswalks_sample": nearby_within_100m[:3],
+            }
+        except Exception as exc:
+            osm_nearby = {"error": str(exc)[:120]}
+
+    # 3) 응답 — 단일 이벤트 forensic trail
+    return {
+        "event_idx": event_idx,
+        "event": {
+            "ts": e.get("ts"),
+            "reason": e.get("reason"),
+            "intersection_id": e.get("intersection_id"),
+            "lat": e.get("lat"), "lon": e.get("lon"),
+            "speed_kmh": e.get("speed_kmh"),
+            "entropy": e.get("entropy"),
+            "test_mode": e.get("test_mode", False),
+            "pseudo_device": e.get("pseudo_device"),
+            "image_url_admin_only": f"/fleet/image/{e.get('path')}",
+        },
+        "location_verified": lv,
+        "osm_nearby_at_event_time_NOW": osm_nearby,
+        "gate_logic_documentation": {
+            "client_gate_md": "GPS proximity to known 8 intersections (100m) OR OSM signaled crossings (80m) OR OSM crosswalk density (3+ in 80m) OR adjacent crossing (1+ in 30m)",
+            "server_gate_md": "v12.87 speed_kmh + lat/lon + reason → method strings",
+        },
+        "audit_url": "/metrics/audit",
+        "checked_at": datetime.utcnow().isoformat() + "Z",
+    }
+
+
 @router.post("/auth")
 def admin_auth(token: str = Body(..., embed=True)):
     """토큰 검증 — 프론트가 localStorage 저장 전에 한번 호출."""

@@ -5,6 +5,46 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.25 — 25번째 데이터 소스 (OSM 철도 건널목) + /fleet/proof forensic + 전체 surface 일관성 (2026-05-25)
+
+### Added — 25번째 데이터 소스 (v12.130)
+- **railway_crossing**: OSM `railway=level_crossing` + `railway=crossing` (no-key) — KORAIL 사고다발 지점
+  - `GET /fusion/railway-crossing?lat=&lon=&radius_m=2000` (50-10000m)
+  - `derived`: nearest_crossing_m, approaching_railway_crossing (100m), unbarriered_crossing_count, railway_risk_boost (1개+0.03, 차단기없으면+0.05, supervised-0.02, 최대+0.10)
+  - IntersectionFusion 통합 + ThreadPool 병렬 fetch
+  - schema_version: v10-24src → **v11-2026.05.25-25src**
+
+### Added — Forensic 증거 + 1-step 검증
+- **`/fleet/proof/{event_idx}` (v12.120)**: 단일 이벤트 forensic trail
+  - event detail + location_verified 자동 재계산 + OSM nearby 라이브 fetch (crosswalks/signals 100m sample) + gate logic docs
+- **`/ui` LIVE STREAM 이벤트별 🔍 PROOF 링크 (v12.121)**: 새 탭으로 forensic 검증
+
+### Added — UI/UX
+- `/ui` NAV git_sha 표시 (v12.112): /metrics/audit 폴링 → 클릭 시 GitHub commit 페이지 새 탭
+
+### Fixed — Surface 일관성 (v12.114~v12.127, v12.129)
+- 모든 정적 페이지 (`competition/scorecard/slides/kiosk/gallery/policy/safezone/privacy/fleet/reel/summary/story`) 23종 → 24/25종 + v10/v11 갱신
+- 4 SVG (`og_card/fusion_diagram/hud_mockup/before_after`) v10-24src 반영
+- 4 docs (`DATASETS/REPRODUCIBILITY/ROADMAP/screenshots`) 24종 갱신
+- API 응답 `sources_fused` 23 → 24/25, `schema_version` v9-23src → v10/v11
+- /healthz/details `tests`: 99→118
+- /metrics/audit `tests_passing`: 119→118 (정확 정정)
+- Flutter app `_expectedSchemaPrefix`: 'fusion.v9-23src' → 'fusion.v' (호환 완화)
+- Flutter pubspec version: 0.1.0+1 → 12.123.0+12123 (정렬)
+
+### Performance — OSM 안정화 (v12.110~v12.111)
+- TTL 5min → 30min + 24h stale-cache fallback (Overpass 실패해도 만료 캐시 우선)
+- Cold-start pre-warm: app startup 백그라운드 8 known + Seoul 시청 × 5 OSM helper
+
+### Cleanup
+- /metrics/audit `rejected_breakdown_by_method` 추가 (false positive 사유별 분해)
+- honesty_note 조건부 메시지 (events <= 10 → Render 재시작 후 시드만 vs > 10 → backfill 메시지)
+
+### Tests
+- pytest **118/118** PASS (test_endpoints v10/v11 호환 확장)
+
+---
+
 ## v0.24 — 24번째 데이터 소스 (USGS 지진) + Overpass mirror fallback + /metrics/audit (2026-05-25)
 
 ### Added — 24번째 데이터 소스 (v12.100~v12.104)

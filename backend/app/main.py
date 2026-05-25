@@ -443,6 +443,7 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
   <a href="/scorecard/">SCORECARD</a>
   <a href="/bev3d/">BEV3D</a>
   <a href="/metrics/audit" target="_blank" title="라이브 시스템 헬스 + 25점 항목 + 데이터 신뢰성 (단일 GET)">AUDIT</a>
+  <a href="/impact/proposal-pdf" target="_blank" title="2026 제출용 기획서 PDF (3-page A4, 현재 상태 자동 반영) 다운로드">📄 PROPOSAL</a>
   <span class="sep"></span>
   <a id="navGit" href="https://github.com/leelang7/AuraView" target="_blank" title="현재 배포된 git commit (자동 갱신)" style="font-family:monospace;font-size:10px;color:rgba(255,255,255,0.45);">git —</a>
 </div>

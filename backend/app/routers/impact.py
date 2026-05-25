@@ -9,6 +9,7 @@ Impact Calculator — 정량적 사고 예방 효과 (수상용 헤드라인 숫
 
 from __future__ import annotations
 
+from datetime import datetime
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
@@ -49,6 +50,26 @@ def policy_pdf(
     from ..services import policy_pdf as pdf_service
     pdf_bytes = pdf_service.render_policy_pdf(coverage=coverage, lead_time_s=lead)
     fname = f"AuraView_Policy_Impact_{int(coverage*100)}pct_{lead:.2f}s.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{fname}"'},
+    )
+
+
+@router.get("/proposal-pdf")
+def proposal_pdf():
+    """v12.136: 2026 공모전 제출용 기획서 PDF 자동 생성 (3-page A4).
+    매 호출마다 현재 시스템 상태 (25 소스 / live 카운트 / git_sha / tests) 반영.
+    페이지 구성:
+    1. 표지 + 한 줄 가치 + 25점 항목 매트릭스 + 임팩트 + 시스템 헬스
+    2. 25종 데이터 분류 (국내공공 vs 보조) + 8 시나리오 + Tesla 차별화 5종
+    3. 1-step 검증 URL + 라이브 데모 + 재현 가이드 + 라이센스
+    """
+    from ..services import proposal_pdf as pdf_service
+    pdf_bytes = pdf_service.render_proposal_pdf()
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    fname = f"AuraView_Proposal_{ts}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

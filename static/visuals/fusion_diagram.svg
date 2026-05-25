@@ -75,12 +75,12 @@
 
   <!-- ── TITLE AREA ──────────────────────────────────────────── -->
   <text x="600" y="38" text-anchor="middle" font-size="28" font-weight="900" fill="#E8EDF8">
-    23종 공공데이터 →
+    24종 공공데이터 →
     <tspan fill="#00E09A"> 한 응답</tspan>
     <tspan fill="#E8EDF8">으로 융합</tspan>
   </text>
   <text x="600" y="58" text-anchor="middle" font-size="12" fill="#666">
-    fusion.v9-23src-2026.05.21 · GET /fusion/intersection/{id}
+    fusion.v10-2026.05.25-24src · GET /fusion/intersection/{id}
   </text>
 
   <!-- ── SECTION LABELS ──────────────────────────────────────── -->
@@ -452,7 +452,7 @@
 
   <!-- Schema -->
   <text x="600" y="397" text-anchor="middle" font-size="8" fill="#509070">schema_version:</text>
-  <text x="600" y="410" text-anchor="middle" font-size="9" fill="#00E09A">fusion.v9-23src</text>
+  <text x="600" y="410" text-anchor="middle" font-size="9" fill="#00E09A">fusion.v10-24src</text>
 
   <!-- Divider -->
   <line x1="510" y1="420" x2="690" y2="420" stroke="#00E09A" stroke-width="0.5" opacity="0.3"/>
@@ -571,10 +571,10 @@
   ═══════════════════════════════════════════════════════════ -->
   <line x1="40" y1="618" x2="1160" y2="618" stroke="#1E2535" stroke-width="1"/>
   <text x="600" y="638" text-anchor="middle" font-size="10" fill="#404860">
-    AuraView · AuraView K-Perception · 23종 공공데이터 실시간 융합 플랫폼
+    AuraView · AuraView K-Perception · 24종 공공데이터 실시간 융합 플랫폼
   </text>
   <text x="600" y="656" text-anchor="middle" font-size="9" fill="#303550">
-    GET /fusion/intersection/{id} · schema_version: fusion.v9-23src · © 2026 ThinkU Team
+    GET /fusion/intersection/{id} · schema_version: fusion.v10-24src · © 2026 ThinkU Team
   </text>
 
   <!-- Corner decorations -->

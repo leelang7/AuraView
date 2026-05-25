@@ -254,7 +254,7 @@
 
     <!-- Schema + intersection -->
     <text x="490" y="50" font-size="9" fill="#5a7a9a" font-weight="700">SCHEMA</text>
-    <text x="490" y="62" font-size="11" fill="#00C8FF" font-weight="800" font-family="monospace">v9-23src</text>
+    <text x="490" y="62" font-size="11" fill="#00C8FF" font-weight="800" font-family="monospace">v10-24src</text>
     <text x="490" y="80" font-size="9" fill="#5a7a9a" font-weight="700">IID · 한양대역</text>
     <text x="490" y="92" font-size="11" fill="#fff" font-weight="700">1007</text>
 
@@ -266,6 +266,6 @@
 
   <!-- ─── Footer info ─── -->
   <text x="360" y="1430" text-anchor="middle" font-size="9" fill="#3a4860">
-    AuraView K-Perception · 23종 공공데이터 융합 · fusion.v9-23src-2026.05.21
+    AuraView K-Perception · 24종 공공데이터 융합 · fusion.v10-2026.05.25-24src
   </text>
 </svg>

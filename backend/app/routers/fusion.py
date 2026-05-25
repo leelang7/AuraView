@@ -306,6 +306,9 @@ def fusion_risk_breakdown(intersection_id: str):
         {"id": "road_age",           "label": "도로 노후",           "raw": f"{round((s.get('road_aged_15y_plus_pct', 0) or 0)*100)}%", "value": s.get("road_age_risk_boost", 0) or 0, "weight": 0.06},
         {"id": "police_cam",         "label": "단속 CCTV",          "raw": f"{s.get('enforcement_cam_count', 0)}대", "value": s.get("enforcement_risk_boost", 0) or 0, "weight": 0.04},
         {"id": "crosswalk",          "label": "횡단보도",            "raw": "50m 접근" if s.get("approaching_crosswalk") else f"{s.get('crosswalk_count_within_radius', 0)}개소", "value": s.get("crosswalk_pedestrian_boost", 0) or 0, "weight": 0.05},
+        # v12.133: 24-25 source 추가 (USGS 지진 + OSM 철도건널목)
+        {"id": "earthquake",         "label": "지진 인프라",         "raw": f"M{s.get('earthquake_max_mag', 0.0):.1f} (24h: {s.get('earthquake_recent_24h', 0)}건)" if s.get("earthquake_max_mag") else "—", "value": s.get("earthquake_risk_boost", 0) or 0, "weight": 0.03},
+        {"id": "railway_crossing",   "label": "철도 건널목",         "raw": f"{s.get('railway_crossing_count', 0)}개 (가까운 {s.get('nearest_railway_m', '—')}m)" if s.get("railway_crossing_count") else "—", "value": s.get("railway_risk_boost", 0) or 0, "weight": 0.04},
     ]
     for it in items:
         it["contribution"] = round(it["value"] * it["weight"], 4)

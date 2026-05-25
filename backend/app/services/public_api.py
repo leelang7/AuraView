@@ -2435,6 +2435,9 @@ class IntersectionFusion:
         #         + 결빙0.06 + 보행자다발0.05 + 스쿨존0.08 + 통학로0.05 + 미세먼지0.03
         #         + EV0.02 + 도로노면0.06 + 자동차검사0.04 + DTG0.06 + 119출동0.05
         #         + 도로노후0.06 + 자율주행V2X(-) av_risk_reduce 감산
+        # v10-v11 신규 (USGS earthquake + OSM railway_crossing)
+        eq_boost = (self.earthquake.get("derived", {}) if isinstance(self.earthquake, dict) else {}).get("infrastructure_risk_boost", 0.0) or 0.0
+        rail_boost = (self.railway_crossing.get("derived", {}) if isinstance(self.railway_crossing, dict) else {}).get("railway_risk_boost", 0.0) or 0.0
         base = (
             (1.0 - min(avg_speed, 80) / 80) * 0.13 +
             min(incident_count, 3) / 3 * 0.08 +
@@ -2454,7 +2457,9 @@ class IntersectionFusion:
             severity_boost * 0.05 +
             road_age_boost * 0.06 +
             enf_boost * 0.04 +
-            cw_boost * 0.05
+            cw_boost * 0.05 +
+            eq_boost * 0.03 +      # v10: 지진 인프라
+            rail_boost * 0.04      # v11: 철도 건널목
         )
         # v9: 50m 내 횡단보도 접근 시 추가 부스트 (보행자 충돌 위험)
         if approaching_cw:
@@ -2521,6 +2526,16 @@ class IntersectionFusion:
                 "approaching_crosswalk": approaching_cw,
                 "crosswalk_pedestrian_boost": cw_boost,
                 "school_zone_crosswalk_count": cw_school_count,
+                # v10 신규 필드 (USGS 지진 — 터널/교량 인프라 안전)
+                "earthquake_max_mag": (self.earthquake.get("derived", {}) if isinstance(self.earthquake, dict) else {}).get("max_magnitude", 0.0) or 0.0,
+                "earthquake_recent_24h": (self.earthquake.get("derived", {}) if isinstance(self.earthquake, dict) else {}).get("recent_24h_count", 0) or 0,
+                "earthquake_risk_boost": (self.earthquake.get("derived", {}) if isinstance(self.earthquake, dict) else {}).get("infrastructure_risk_boost", 0.0) or 0.0,
+                "earthquake_tunnel_bridge_alert": (self.earthquake.get("derived", {}) if isinstance(self.earthquake, dict) else {}).get("tunnel_bridge_alert", False),
+                # v11 신규 필드 (OSM 철도 건널목 — 한국 KORAIL 사고다발)
+                "railway_crossing_count": (self.railway_crossing.get("derived", {}) if isinstance(self.railway_crossing, dict) else {}).get("crossing_count" if False else "unbarriered_crossing_count", 0) or len((self.railway_crossing.get("crossings", []) if isinstance(self.railway_crossing, dict) else [])),
+                "nearest_railway_m": (self.railway_crossing.get("derived", {}) if isinstance(self.railway_crossing, dict) else {}).get("nearest_crossing_m"),
+                "approaching_railway_crossing": (self.railway_crossing.get("derived", {}) if isinstance(self.railway_crossing, dict) else {}).get("approaching_railway_crossing", False),
+                "railway_risk_boost": (self.railway_crossing.get("derived", {}) if isinstance(self.railway_crossing, dict) else {}).get("railway_risk_boost", 0.0) or 0.0,
                 "fusion_risk_score": risk_score,
                 "risk_level": "HIGH" if risk_score >= 0.6 else ("MEDIUM" if risk_score >= 0.35 else "LOW"),
                 "fused_at": datetime.utcnow().isoformat() + "Z",

@@ -2217,7 +2217,89 @@ def fetch_usgs_earthquakes(lat: float = 37.5665, lon: float = 126.9780,
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Unified fusion view (24-source v10 2026-05-25)
+# 25. OSM railway=level_crossing (v11 2026-05-25) — 철도·도로 교차점 도로 안전
+#     no-key, OSM Overpass — 차단기/경고등 유무 + 위치
+# ──────────────────────────────────────────────────────────────────────
+
+
+def fetch_railway_level_crossings(lat: float = 37.5665, lon: float = 126.9780,
+                                    radius_m: float = 2000.0) -> Dict[str, Any]:
+    """OSM railway=level_crossing — 반경 N m 내 철도-도로 교차점 (건널목).
+    no-key, OSM Overpass live. 한국 도로 안전 핵심 (KORAIL 사고 다발 지점)."""
+    ck = _osm_cache_key("levelxing", lat, lon, radius_m)
+    cached = _osm_cache_get(ck)
+    if cached is not None: return cached
+    radius_int = int(radius_m)
+    query = (
+        f'[out:json][timeout:10];'
+        f'(node["railway"="level_crossing"](around:{radius_int},{lat},{lon});'
+        f' node["railway"="crossing"](around:{radius_int},{lat},{lon}););'
+        f'out body 40;'
+    )
+    try:
+        res_json = _overpass_post(query)
+        crossings = []
+        nearest_m = None
+        for e in res_json.get("elements", [])[:40]:
+            tags = e.get("tags", {}) or {}
+            elat = e.get("lat"); elon = e.get("lon")
+            if elat is None or elon is None: continue
+            d_m = _haversine_m_local(lat, lon, elat, elon)
+            if d_m > radius_m: continue
+            has_barrier = tags.get("crossing:barrier") == "yes" or tags.get("crossing:bell") == "yes"
+            has_light = tags.get("crossing:light") == "yes" or tags.get("crossing:supervised") == "yes"
+            crossings.append({
+                "id": f"OSM-XING-{e.get('id')}",
+                "lat": elat, "lon": elon,
+                "distance_m": round(d_m, 1),
+                "railway_type": tags.get("railway", "level_crossing"),
+                "has_barrier": has_barrier,
+                "has_light": has_light,
+                "supervised": tags.get("crossing:supervised", "no"),
+                "name": tags.get("name"),
+            })
+            if nearest_m is None or d_m < nearest_m: nearest_m = d_m
+        crossings.sort(key=lambda x: x["distance_m"])
+        # 건널목 1개당 +0.03 위험 (차단기 없으면 +0.05, supervised 면 -0.02)
+        risk_boost = 0.0
+        for c in crossings:
+            base = 0.05 if not c.get("has_barrier") else 0.03
+            if c.get("supervised") == "yes": base -= 0.02
+            risk_boost += base
+        risk_boost = min(0.10, risk_boost)
+        result = {
+            "source": "OpenStreetMap railway=level_crossing (no-key · live)",
+            "lat": lat, "lon": lon, "radius_m": radius_m,
+            "crossings": crossings,
+            "count": len(crossings),
+            "derived": {
+                "nearest_crossing_m": int(nearest_m) if nearest_m is not None else None,
+                "approaching_railway_crossing": (nearest_m is not None and nearest_m <= 100.0),
+                "unbarriered_crossing_count": sum(1 for c in crossings if not c.get("has_barrier")),
+                "railway_risk_boost": round(risk_boost, 3),
+            },
+        }
+        _record_fetch("railway_crossing", "live", True)
+        _osm_cache_put(ck, result)
+        return result
+    except Exception as exc:
+        log.warning("OSM railway_crossing fetch failed: %s", exc)
+        _record_fetch("railway_crossing", "stub", False, str(exc)[:120])
+        # 빈 fallback
+        return {
+            "source": "OSM railway_crossing (stub — fetch failed)",
+            "crossings": [], "count": 0,
+            "derived": {
+                "nearest_crossing_m": None,
+                "approaching_railway_crossing": False,
+                "unbarriered_crossing_count": 0,
+                "railway_risk_boost": 0.0,
+            },
+        }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Unified fusion view (25-source v11 2026-05-25)
 # ──────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -2255,6 +2337,8 @@ class IntersectionFusion:
     crosswalk: Dict[str, Any] = field(default_factory=dict)
     # v10 2026-05-25: 24-source 확장 (USGS 실시간 지진 — 터널/교량 인프라 안전)
     earthquake: Dict[str, Any] = field(default_factory=dict)
+    # v11 2026-05-25: 25-source 확장 (OSM 철도 건널목 — 한국 KORAIL 사고다발)
+    railway_crossing: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         from datetime import datetime
@@ -2384,8 +2468,8 @@ class IntersectionFusion:
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 24,
-                "schema_version": "fusion.v10-2026.05.25-24src",
+                "sources_fused": 25,
+                "schema_version": "fusion.v11-2026.05.25-25src",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,
@@ -2472,6 +2556,8 @@ class IntersectionFusion:
                 "crosswalk":           {"provider": "국토부 vworld 횡단보도 GIS",      "data": self.crosswalk},
                 # v10 신규 1종 (USGS 실시간 지진 — 터널/교량 인프라 안전)
                 "earthquake":          {"provider": "USGS FDSN 지진 (no-key)",         "data": self.earthquake},
+                # v11 신규 1종 (OSM 철도 건널목 — 한국 KORAIL 사고다발)
+                "railway_crossing":    {"provider": "OSM 철도 건널목 (no-key)",         "data": self.railway_crossing},
                 "av_hub":              {"provider": "KOTSA 자율주행 데이터허브 (V2X)",  "data": self.av_hub},
             },
         }
@@ -2586,6 +2672,7 @@ def fetch_fusion(intersection_id: str, link_id: Optional[str] = None,
         "police_cam":         lambda: fetch_police_cams(lat=lat0, lon=lon0, radius_m=800.0),
         "crosswalk":          lambda: fetch_crosswalk_gis(lat=lat0, lon=lon0, radius_m=300.0),
         "earthquake":         lambda: fetch_usgs_earthquakes(lat=lat0, lon=lon0, radius_km=500.0, days_back=30, min_magnitude=2.0),
+        "railway_crossing":   lambda: fetch_railway_level_crossings(lat=lat0, lon=lon0, radius_m=2000.0),
     }
 
     with ThreadPoolExecutor(max_workers=12) as ex:

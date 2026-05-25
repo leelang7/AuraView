@@ -70,6 +70,8 @@ def list_sources():
         {"id": "crosswalk",          "name": "국토부 횡단보도 GIS",                "origin": "api.vworld.kr (lt_l_crwlk)",             "gain": "보행자 prior +0.05 / 50m 접근 ×1.10",       "added": "v9-2026.05.21"},
         # v10 2026-05-25: 23 → 24종 확장 (USGS 지진 — 터널/교량 인프라 안전)
         {"id": "earthquake",         "name": "USGS 실시간 지진 (M2.0+)",            "origin": "earthquake.usgs.gov/fdsnws (no-key)",   "gain": "터널/교량 인프라 위험 prior +0.02 / 진앙 50km 내 알림", "added": "v10-2026.05.25"},
+        # v11 2026-05-25: 24 → 25종 확장 (OSM 철도 건널목 — 한국 KORAIL 사고다발 지점)
+        {"id": "railway_crossing",   "name": "OSM 철도 건널목 (level_crossing)",     "origin": "OSM Overpass railway=level_crossing (no-key)", "gain": "건널목 1개당 +0.03 (차단기 없으면 +0.05) / 100m 접근 알림", "added": "v11-2026.05.25"},
     ]
     for s in sources:
         meta = fresh.get(s["id"]) or {}
@@ -80,7 +82,7 @@ def list_sources():
     return {
         "sources": sources,
         "count": len(sources),
-        "schema_version": "fusion.v10-2026.05.25-24src",
+        "schema_version": "fusion.v11-2026.05.25-25src",
         "checked_at": now_ts.isoformat() + "Z",
     }
 
@@ -164,6 +166,14 @@ def fusion_earthquake(lat: float = Query(37.5665), lon: float = Query(126.9780),
     반경 N km, 최근 N일, M? 이상. 응답: events[] + derived (max_mag, 24h count, risk_boost)."""
     return public_api.fetch_usgs_earthquakes(lat=lat, lon=lon,
         radius_km=radius_km, days_back=days_back, min_magnitude=min_magnitude)
+
+
+@router.get("/railway-crossing")
+def fusion_railway_crossing(lat: float = Query(37.5665), lon: float = Query(126.9780),
+                              radius_m: float = Query(2000.0, ge=100.0, le=10000.0)):
+    """v11 2026-05-25: OSM 철도 건널목 (no-key) — 한국 KORAIL 사고다발 지점.
+    반경 N m, 차단기/경고등 유무 표시. 응답: crossings[] + derived (nearest_m, unbarriered count)."""
+    return public_api.fetch_railway_level_crossings(lat=lat, lon=lon, radius_m=radius_m)
 
 
 # v5 2026-05-18: 15 → 17종 확장

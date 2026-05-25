@@ -425,8 +425,8 @@ def competition_manifest():
         ],
         "tests_passed": 118,
         "tests_breakdown": "68 기존 + 50 신규 (privacy·ai·competition·dsz 가점 25점 router + v12.83 location_verified · v12.87 speed_kmh 게이트)",
-        "data_sources_total": 24,
-        "data_sources_live_potential": 11,
+        "data_sources_total": 25,
+        "data_sources_live_potential": 12,
         "live_source_list": [
             "weather (Open-Meteo no-key)",
             "air_quality (Open-Meteo Air no-key)",
@@ -439,6 +439,7 @@ def competition_manifest():
             "incidents (OSM highway=construction no-key)",
             "road_age (OSM highway surface tag no-key)",
             "earthquake (USGS FDSN no-key, v10 2026-05-25)",
+            "railway_crossing (OSM railway=level_crossing no-key, v11 2026-05-25)",
         ],
         "location_verification": {
             "client_gate": "GPS proximity to known 8 intersections (100m) OR OSM signaled crossings (80m) OR OSM crosswalk density (3+ in 80m) OR adjacent crossing (1+ in 30m)",
@@ -497,7 +498,7 @@ def _compute_live_evidence() -> Dict[str, Any]:
     return {
         "checked_at": _dt.utcnow().isoformat() + "Z",
         "data_sources": {
-            "total": 24,
+            "total": 25,
             "live_now": live_count,
             "live_ids": live_ids,
         },
@@ -511,7 +512,7 @@ def _compute_live_evidence() -> Dict[str, Any]:
         "system_health": {
             "tests_passing": 118,
             "ci_status_url": "https://github.com/leelang7/AuraView/actions",
-            "schema_version": "fusion.v10-2026.05.25-24src",
+            "schema_version": "fusion.v11-2026.05.25-25src",
         },
     }
 
@@ -653,7 +654,7 @@ def audit():
     no_key_live = [i for i in live_ids if i in {
         "weather", "air_quality", "crosswalk", "bike", "ev_charger",
         "medical", "police_cam", "school_zone", "incidents", "road_age",
-        "earthquake",
+        "earthquake", "railway_crossing",
     }]
 
     # 2) 이벤트 통계 (v12.92 backfill 로직)
@@ -701,7 +702,7 @@ def audit():
         "as_of": _dt.utcnow().isoformat() + "Z",
         "git_sha": _git_sha(),
         "data_sources": {
-            "total": 24,
+            "total": 25,
             "live_count": len(live_ids),
             "live_ids": live_ids,
             "no_key_live_count": len(no_key_live),
@@ -737,7 +738,7 @@ def audit():
         },
         "system": {
             "tests_passing": 118,
-            "schema_version": "fusion.v10-2026.05.25-24src",
+            "schema_version": "fusion.v11-2026.05.25-25src",
             "ci_url": "https://github.com/leelang7/AuraView/actions",
             "live_demo": "https://auraview.allthatai.kr/ui",
             "manifest": "/metrics/manifest",

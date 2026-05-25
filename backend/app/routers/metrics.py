@@ -509,7 +509,7 @@ def _compute_live_evidence() -> Dict[str, Any]:
             "note": "verified_pct 가 42% 부근인 이유: v12.92 backfill 로 정지 상태 false positive 자동 차단 (옛 100% inflated 가 아닌 정직한 신뢰도)",
         },
         "system_health": {
-            "tests_passing": 119,
+            "tests_passing": 118,
             "ci_status_url": "https://github.com/leelang7/AuraView/actions",
             "schema_version": "fusion.v9-23src-2026.05.21 (+ v10 earthquake 2026-05-25)",
         },
@@ -731,7 +731,7 @@ def audit():
             "total_claimed": 25,
         },
         "system": {
-            "tests_passing": 119,
+            "tests_passing": 118,
             "schema_version": "fusion.v10-2026.05.25-24src (USGS earthquake)",
             "ci_url": "https://github.com/leelang7/AuraView/actions",
             "live_demo": "https://auraview.allthatai.kr/ui",

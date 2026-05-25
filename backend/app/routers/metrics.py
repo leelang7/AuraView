@@ -719,7 +719,12 @@ def audit():
             "rejected_breakdown_by_method": rejected_breakdown,
             "by_method_full": by_method,
             "recent_5": recent,
-            "honesty_note": f"verified_pct {verified_pct}% — v12.92 자동 backfill 로 옛 부풀려진 100% → 정직 (정지 상태 + 신호등 부재 자동 차단)",
+            "honesty_note": (
+                f"verified_pct {verified_pct}% — v12.83~v12.92 위치/속도 검증 게이트 (8 known 교차로 100m + OSM 신호 80m + 횡단보도 밀도 3+/80m + 1+/30m + speed_kmh≥5km/h 게이트). "
+                "Render 무료 tier 재시작 시 manifest 휘발 → /fleet/seed-demo 자동 시드(8 known 교차로 fixture)만 남는 경우 100% 가 정확."
+                if events_total <= 10
+                else "v12.92 자동 backfill 로 옛 부풀려진 100% → 정직 (정지 상태 + 신호등 부재 자동 차단)"
+            ),
             "live_endpoint": "/fleet/live",
         },
         "score25_gates": {

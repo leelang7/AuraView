@@ -1381,7 +1381,7 @@ class _FleetHomeState extends State<FleetHome>
   /// v12.13: /fusion/sources 헬시 체크 (schema 버전 / N/21 live 소스 카운트)
   ///   bootstrap 1회 + _pollServer 와 함께 주기적으로 호출.
   ///   v12.14: schema 불일치 경고 추가 (네이티브 expectedSchema vs 서버 응답)
-  static const String _expectedSchemaPrefix = 'fusion.v9-23src';
+  static const String _expectedSchemaPrefix = 'fusion.v';  // v12.129: v9-23src → v 로 완화 (v10-24src + 미래 확장 모두 호환)
   bool _schemaMismatch = false;
   Future<void> _checkFusionHealth() async {
     try {
@@ -4625,7 +4625,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                 ]),
                 const SizedBox(height: 6),
                 const Text(
-                  '운전자가 못 보는 곳을 23종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI. 평균 3.38초 먼저 위험 감지, 매년 21명 보호.',
+                  '운전자가 못 보는 곳을 24종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI. 평균 3.38초 먼저 위험 감지, 매년 21명 보호.',
                   style: TextStyle(color: _text, fontSize: 12, height: 1.55),
                 ),
                 const SizedBox(height: 10),
@@ -5656,7 +5656,7 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
     _OnboardPage(
       icon: '👀',
       title: 'AuraView가 뭐예요?',
-      body: '운전 중 트럭에 가려진 신호등, 사각지대 보행자를\n23종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI 입니다.',
+      body: '운전 중 트럭에 가려진 신호등, 사각지대 보행자를\n24종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI 입니다.',
       accent: Color(0xFFFFB020),
     ),
     _OnboardPage(

@@ -6,9 +6,9 @@
 
 ---
 
-## 0. 프로젝트 가점 25점 달성 현황
+## 0. 프로젝트 25점 항목 달성 현황
 
-| 가점 항목 | 점수 | 핵심 증빙 | 증빙 엔드포인트 |
+| 평가 항목 | 점수 | 핵심 증빙 | 증빙 엔드포인트 |
 |---|:---:|---|---|
 | **AI 학습** | 5점 | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) | `GET /ai/model-card` |
 | **AI 분석** | 5점 | 4종 시나리오 분류 · Attention 피처 중요도 · ROC 50pt | `GET /ai/scenario-analysis` |
@@ -184,7 +184,7 @@ AuraView는 위 네 가지를 **"보이지 않는 공간의 확률 모델링"** 
            + 0.15 × bus.pedestrian_prior_boost
    ```
 
-응답에 `risk_local_only` vs `risk_fused` + `lift_from_v2v_bus_bidir` 동봉 → 발표·심사용 **"단독 vs 협업 비교 그림"** 즉시 가능.
+응답에 `risk_local_only` vs `risk_fused` + `lift_from_v2v_bus_bidir` 동봉 → 발표·검증용 **"단독 vs 협업 비교 그림"** 즉시 가능.
 
 > 시연 데이터 시드: `POST /collab/v2v/seed-demo` 호출 한 번이면 마주오는 차 2대 + 같은 방향 1대가 V2V 풀에 들어가 즉시 시연 가능.
 

@@ -1,5 +1,5 @@
 """
-AI 학습·분석 시각화 엔드포인트 (프로젝트 AI활용 가점 10점).
+AI 학습·분석 시각화 엔드포인트 (프로젝트 AI활용 점수 10점).
 
   GET /ai/model-card          모델 카드 (학습 근거 + 분석 근거 통합 문서)
   GET /ai/training-history    학습 곡선 (loss, AUC per epoch)
@@ -8,7 +8,7 @@ AI 학습·분석 시각화 엔드포인트 (프로젝트 AI활용 가점 10점)
   GET /ai/feature-importance  피처 중요도 (어텐션 가중치 기반)
   GET /ai/scenario-analysis   4종 시나리오별 분석 결과
   POST /ai/live-inference     실시간 추론 시연 (단일 입력)
-  GET /ai/evidence-report     AI활용 가점 10점 증빙 보고서
+  GET /ai/evidence-report     AI활용 점수 10점 증빙 보고서
 """
 
 from __future__ import annotations
@@ -524,7 +524,7 @@ def v1_vs_v2_comparison():
 
 @router.get("/evidence-report")
 def evidence_report():
-    """AI활용 프로젝트 가점 10점 증빙 보고서. v2 metric 가 있으면 v1/v2 비교 포함."""
+    """AI활용 프로젝트 점수 10점 증빙 보고서. v2 metric 가 있으면 v1/v2 비교 포함."""
     m = _load_metrics()
     m2 = _load_metrics_v2()
     v2_block = None
@@ -541,7 +541,7 @@ def evidence_report():
             "comparison_endpoint": "GET /ai/v1-vs-v2",
         }
     return {
-        "title": "AuraView AI 활용 가점 증빙 보고서",
+        "title": "AuraView AI 활용 점수 증빙 보고서",
         "competition": "AuraView K-Perception",
         "score_category": "AI활용 10점 (학습 5점 + 분석 5점)",
         **({"학습_v2_9src": v2_block} if v2_block else {}),

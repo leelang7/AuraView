@@ -5,7 +5,7 @@ Latency benchmark — Risk Transformer 추론·6종 융합 호출 등 핵심 경
   GET /benchmark/v2v-merge?n=50   V2V merge_into_occupancy() 평균 latency
   GET /benchmark/all              요약본 한 번에
 
-심사 시 'AUC 0.94' 만큼이나 'P95 추론 지연 N ms' 도 객관 수치로 노출.
+검증 시 'AUC 0.94' 만큼이나 'P95 추론 지연 N ms' 도 객관 수치로 노출.
 """
 
 from __future__ import annotations

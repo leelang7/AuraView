@@ -5,7 +5,7 @@ RAG 엔드포인트 — 정보검색 프로젝트 수상형 구조.
   POST /qa/index      ─ {chunks} 또는 {jsonl_path} 로 corpus 인덱싱
   POST /qa/index-docs ─ AuraView 자체 docs 자동 인덱싱 (관리자 only)
   GET  /qa/health     ─ 인덱스/모델/CUDA 상태
-  GET  /qa/info       ─ 모델·라이브러리 정보 (심사용)
+  GET  /qa/info       ─ 모델·라이브러리 정보 (검증용)
 """
 
 from __future__ import annotations

@@ -130,7 +130,7 @@ pip install -r ../requirements.txt pytest httpx
 ALLOW_FALLBACK=1 SERVICE_KEY=test-stub pytest tests/ -v
 ```
 
-기대 결과: `90 passed` (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 가점 25점 증빙 router).
+기대 결과: `90 passed` (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 25점 항목 증빙 router).
 
 ---
 

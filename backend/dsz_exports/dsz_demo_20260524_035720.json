@@ -1,0 +1,637 @@
+{
+  "purpose": "TAAS 교통사고이력 × 한국도로공사 VDS 결합분석 — 교차로 위험도 공간 분포",
+  "analysis_period": "2024-01-01 ~ 2024-12-31",
+  "source_a": "TAAS 교통사고분석시스템 (도로교통공단)",
+  "source_b": "VDS 차량검지시스템 (한국도로공사)",
+  "join_keys": [
+    "district_code",
+    "date_hour_bucket",
+    "link_id"
+  ],
+  "k_anonymity_k": 5,
+  "export_type": "집계통계 (개별 레코드 미포함)",
+  "schema": [
+    "district_code: 시군구코드 (5자리, 비식별)",
+    "date_hour_bucket: 일자+1시간 bucket (일반화)",
+    "link_id: 도로링크구간코드 (익명화)",
+    "accident_count: 해당 bucket 사고 건수 (집계)",
+    "accident_severity_dist: 경상/중상/사망 분포 (집계)",
+    "avg_speed_kmh: 평균속도 km/h (집계)",
+    "avg_volume: 평균 교통량 (집계)",
+    "avg_occupancy: 평균 점유율 (집계)",
+    "pedestrian_accident_share: 보행자 사고 비율 (집계)"
+  ],
+  "dsz_export_approved": true,
+  "dsz_session_id": "DSZ-2024-AV-763C3D26",
+  "rows": [
+    {
+      "district_code": "11680",
+      "date_hour_bucket": "2024-08-14-08",
+      "link_id": "111680123",
+      "accident_count": 4,
+      "accident_severity_dist": {
+        "경상": 3,
+        "중상": 0,
+        "사망": 0
+      },
+      "avg_speed_kmh": 43.3,
+      "avg_volume": 1247,
+      "avg_occupancy": 0.125,
+      "pedestrian_accident_share": 0.39
+    },
+    {
+      "district_code": "11680",
+      "date_hour_bucket": "2024-08-18-09",
+      "link_id": "111680101",
+      "accident_count": 1,
+      "accident_severity_dist": {
+        "경상": 1,
+        "중상": 0,
+        "사망": 1
+      },
+      "avg_speed_kmh": 45.7,
+      "avg_volume": 557,
+      "avg_occupancy": 0.716,
+      "pedestrian_accident_share": 0.54
+    },
+    {
+      "district_code": "11680",
+      "date_hour_bucket": "2024-08-06-18",
+      "link_id": "111680148",
+      "accident_count": 0,
+      "accident_severity_dist": {
+        "경상": 3,
+        "중상": 1,
+        "사망": 1
+      },
+      "avg_speed_kmh": 34.3,
+      "avg_volume": 1546,
+      "avg_occupancy": 0.787,
+      "pedestrian_accident_share": 0.6
+    },
+    {
+      "district_code": "11680",
+      "date_hour_bucket": "2024-08-18-19",
+      "link_id": "111680184",
+      "accident_count": 7,
+      "accident_severity_dist": {
+        "경상": 1,
+        "중상": 0,
+        "사망": 1
+      },
+      "avg_speed_kmh": 30.4,
+      "avg_volume": 239,
+      "avg_occupancy": 0.496,
+      "pedestrian_accident_share": 0.33
+    },
+    {
+      "district_code": "11680",
+      "date_hour_bucket": "2024-08-24-20",
+      "link_id": "111680140",
+      "accident_count": 0,
+      "accident_severity_dist": {
+        "경상": 0,
+        "중상": 2,
+        "사망": 1
+      },
+      "avg_speed_kmh": 46.7,
+      "avg_volume": 1207,
+      "avg_occupancy": 0.171,
+      "pedestrian_accident_share": 0.58
+    },
+    {
+      "district_code": "11680",
+      "date_hour_bucket": "2024-08-03-07",
+      "link_id": "111680123",
+      "accident_count": 1,
+      "accident_severity_dist": {
+        "경상": 4,
+        "중상": 0,
+        "사망": 0
+      },
+      "avg_speed_kmh": 41.0,
+      "avg_volume": 1286,
+      "avg_occupancy": 0.24,
+      "pedestrian_accident_share": 0.36
+    },
+    {
+      "district_code": "11680",
+      "date_hour_bucket": "2024-08-20-17",
+      "link_id": "111680110",
+      "accident_count": 6,
+      "accident_severity_dist": {
+        "경상": 5,
+        "중상": 2,
+        "사망": 1
+      },
+      "avg_speed_kmh": 71.3,
+      "avg_volume": 538,
+      "avg_occupancy": 0.566,
+      "pedestrian_accident_share": 0.19
+    },
+    {
+      "district_code": "11680",
+      "date_hour_bucket": "2024-08-09-21",
+      "link_id": "111680150",
+      "accident_count": 2,
+      "accident_severity_dist": {
+        "경상": 5,
+        "중상": 2,
+        "사망": 1
+      },
+      "avg_speed_kmh": 44.1,
+      "avg_volume": 1659,
+      "avg_occupancy": 0.771,
+      "pedestrian_accident_share": 0.01
+    },
+    {
+      "district_code": "11710",
+      "date_hour_bucket": "2024-08-20-08",
+      "link_id": "111710172",
+      "accident_count": 1,
+      "accident_severity_dist": {
+        "경상": 0,
+        "중상": 2,
+        "사망": 0
+      },
+      "avg_speed_kmh": 46.8,
+      "avg_volume": 391,
+      "avg_occupancy": 0.769,
+      "pedestrian_accident_share": 0.53
+    },
+    {
+      "district_code": "11710",
+      "date_hour_bucket": "2024-08-29-09",
+      "link_id": "111710131",
+      "accident_count": 5,
+      "accident_severity_dist": {
+        "경상": 2,
+        "중상": 0,
+        "사망": 1
+      },
+      "avg_speed_kmh": 65.5,
+      "avg_volume": 1560,
+      "avg_occupancy": 0.283,
+      "pedestrian_accident_share": 0.59
+    },
+    {
+      "district_code": "11710",
+      "date_hour_bucket": "2024-08-26-18",
+      "link_id": "111710183",
+      "accident_count": 8,
+      "accident_severity_dist": {
+        "경상": 0,
+        "중상": 2,
+        "사망": 1
+      },
+      "avg_speed_kmh": 71.1,
+      "avg_volume": 332,
+      "avg_occupancy": 0.773,
+      "pedestrian_accident_share": 0.08
+    },
+    {
+      "district_code": "11710",
+      "date_hour_bucket": "2024-08-04-19",
+      "link_id": "111710113",
+      "accident_count": 8,
+      "accident_severity_dist": {
+        "경상": 1,
+        "중상": 1,
+        "사망": 1
+      },
+      "avg_speed_kmh": 52.5,
+      "avg_volume": 1589,
+      "avg_occupancy": 0.314,
+      "pedestrian_accident_share": 0.41
+    },
+    {
+      "district_code": "11710",
+      "date_hour_bucket": "2024-08-28-20",
+      "link_id": "111710133",
+      "accident_count": 8,
+      "accident_severity_dist": {
+        "경상": 3,
+        "중상": 1,
+        "사망": 0
+      },
+      "avg_speed_kmh": 23.3,
+      "avg_volume": 987,
+      "avg_occupancy": 0.689,
+      "pedestrian_accident_share": 0.03
+    },
+    {
+      "district_code": "11710",
+      "date_hour_bucket": "2024-08-11-07",
+      "link_id": "111710198",
+      "accident_count": 2,
+      "accident_severity_dist": {
+        "경상": 5,
+        "중상": 1,
+        "사망": 0
+      },
+      "avg_speed_kmh": 60.3,
+      "avg_volume": 1249,
+      "avg_occupancy": 0.593,
+      "pedestrian_accident_share": 0.34
+    },
+    {
+      "district_code": "11710",
+      "date_hour_bucket": "2024-08-04-17",
+      "link_id": "111710109",
+      "accident_count": 2,
+      "accident_severity_dist": {
+        "경상": 4,
+        "중상": 0,
+        "사망": 1
+      },
+      "avg_speed_kmh": 51.2,
+      "avg_volume": 423,
+      "avg_occupancy": 0.381,
+      "pedestrian_accident_share": 0.03
+    },
+    {
+      "district_code": "11710",
+      "date_hour_bucket": "2024-08-12-21",
+      "link_id": "111710105",
+      "accident_count": 5,
+      "accident_severity_dist": {
+        "경상": 1,
+        "중상": 2,
+        "사망": 0
+      },
+      "avg_speed_kmh": 56.0,
+      "avg_volume": 844,
+      "avg_occupancy": 0.651,
+      "pedestrian_accident_share": 0.53
+    },
+    {
+      "district_code": "11740",
+      "date_hour_bucket": "2024-08-14-08",
+      "link_id": "111740179",
+      "accident_count": 2,
+      "accident_severity_dist": {
+        "경상": 1,
+        "중상": 0,
+        "사망": 0
+      },
+      "avg_speed_kmh": 68.2,
+      "avg_volume": 170,
+      "avg_occupancy": 0.188,
+      "pedestrian_accident_share": 0.55
+    },
+    {
+      "district_code": "11740",
+      "date_hour_bucket": "2024-08-26-09",
+      "link_id": "111740152",
+      "accident_count": 3,
+      "accident_severity_dist": {
+        "경상": 2,
+        "중상": 0,
+        "사망": 0
+      },
+      "avg_speed_kmh": 39.8,
+      "avg_volume": 199,
+      "avg_occupancy": 0.711,
+      "pedestrian_accident_share": 0.13
+    },
+    {
+      "district_code": "11740",
+      "date_hour_bucket": "2024-08-27-18",
+      "link_id": "111740158",
+      "accident_count": 5,
+      "accident_severity_dist": {
+        "경상": 2,
+        "중상": 0,
+        "사망": 0
+      },
+      "avg_speed_kmh": 19.3,
+      "avg_volume": 515,
+      "avg_occupancy": 0.357,
+      "pedestrian_accident_share": 0.17
+    },
+    {
+      "district_code": "11740",
+      "date_hour_bucket": "2024-08-03-19",
+      "link_id": "111740198",
+      "accident_count": 4,
+      "accident_severity_dist": {
+        "경상": 2,
+        "중상": 2,
+        "사망": 1
+      },
+      "avg_speed_kmh": 56.7,
+      "avg_volume": 1218,
+      "avg_occupancy": 0.305,
+      "pedestrian_accident_share": 0.02
+    },
+    {
+      "district_code": "11740",
+      "date_hour_bucket": "2024-08-29-20",
+      "link_id": "111740133",
+      "accident_count": 2,
+      "accident_severity_dist": {
+        "경상": 4,
+        "중상": 1,
+        "사망": 0
+      },
+      "avg_speed_kmh": 24.2,
+      "avg_volume": 1009,
+      "avg_occupancy": 0.316,
+      "pedestrian_accident_share": 0.47
+    },
+    {
+      "district_code": "11740",
+      "date_hour_bucket": "2024-08-14-07",
+      "link_id": "111740177",
+      "accident_count": 8,
+      "accident_severity_dist": {
+        "경상": 0,
+        "중상": 1,
+        "사망": 0
+      },
+      "avg_speed_kmh": 32.5,
+      "avg_volume": 1571,
+      "avg_occupancy": 0.386,
+      "pedestrian_accident_share": 0.31
+    },
+    {
+      "district_code": "11740",
+      "date_hour_bucket": "2024-08-26-17",
+      "link_id": "111740168",
+      "accident_count": 3,
+      "accident_severity_dist": {
+        "경상": 2,
+        "중상": 1,
+        "사망": 0
+      },
+      "avg_speed_kmh": 72.1,
+      "avg_volume": 796,
+      "avg_occupancy": 0.53,
+      "pedestrian_accident_share": 0.4
+    },
+    {
+      "district_code": "11740",
+      "date_hour_bucket": "2024-08-04-21",
+      "link_id": "111740192",
+      "accident_count": 4,
+      "accident_severity_dist": {
+        "경상": 4,
+        "중상": 1,
+        "사망": 1
+      },
+      "avg_speed_kmh": 36.6,
+      "avg_volume": 1547,
+      "avg_occupancy": 0.278,
+      "pedestrian_accident_share": 0.08
+    },
+    {
+      "district_code": "11200",
+      "date_hour_bucket": "2024-08-14-08",
+      "link_id": "111200185",
+      "accident_count": 6,
+      "accident_severity_dist": {
+        "경상": 5,
+        "중상": 2,
+        "사망": 0
+      },
+      "avg_speed_kmh": 53.1,
+      "avg_volume": 736,
+      "avg_occupancy": 0.363,
+      "pedestrian_accident_share": 0.5
+    },
+    {
+      "district_code": "11200",
+      "date_hour_bucket": "2024-08-10-09",
+      "link_id": "111200136",
+      "accident_count": 3,
+      "accident_severity_dist": {
+        "경상": 3,
+        "중상": 2,
+        "사망": 1
+      },
+      "avg_speed_kmh": 44.5,
+      "avg_volume": 1025,
+      "avg_occupancy": 0.57,
+      "pedestrian_accident_share": 0.31
+    },
+    {
+      "district_code": "11200",
+      "date_hour_bucket": "2024-08-26-18",
+      "link_id": "111200194",
+      "accident_count": 2,
+      "accident_severity_dist": {
+        "경상": 5,
+        "중상": 0,
+        "사망": 1
+      },
+      "avg_speed_kmh": 47.4,
+      "avg_volume": 1416,
+      "avg_occupancy": 0.527,
+      "pedestrian_accident_share": 0.06
+    },
+    {
+      "district_code": "11200",
+      "date_hour_bucket": "2024-08-31-19",
+      "link_id": "111200196",
+      "accident_count": 3,
+      "accident_severity_dist": {
+        "경상": 5,
+        "중상": 1,
+        "사망": 0
+      },
+      "avg_speed_kmh": 64.0,
+      "avg_volume": 421,
+      "avg_occupancy": 0.069,
+      "pedestrian_accident_share": 0.15
+    },
+    {
+      "district_code": "11200",
+      "date_hour_bucket": "2024-08-16-20",
+      "link_id": "111200178",
+      "accident_count": 1,
+      "accident_severity_dist": {
+        "경상": 3,
+        "중상": 1,
+        "사망": 0
+      },
+      "avg_speed_kmh": 58.9,
+      "avg_volume": 906,
+      "avg_occupancy": 0.431,
+      "pedestrian_accident_share": 0.15
+    },
+    {
+      "district_code": "11200",
+      "date_hour_bucket": "2024-08-21-07",
+      "link_id": "111200188",
+      "accident_count": 0,
+      "accident_severity_dist": {
+        "경상": 0,
+        "중상": 1,
+        "사망": 0
+      },
+      "avg_speed_kmh": 28.0,
+      "avg_volume": 1545,
+      "avg_occupancy": 0.449,
+      "pedestrian_accident_share": 0.03
+    },
+    {
+      "district_code": "11200",
+      "date_hour_bucket": "2024-08-08-17",
+      "link_id": "111200115",
+      "accident_count": 7,
+      "accident_severity_dist": {
+        "경상": 1,
+        "중상": 1,
+        "사망": 1
+      },
+      "avg_speed_kmh": 72.2,
+      "avg_volume": 1026,
+      "avg_occupancy": 0.522,
+      "pedestrian_accident_share": 0.43
+    },
+    {
+      "district_code": "11200",
+      "date_hour_bucket": "2024-08-17-21",
+      "link_id": "111200154",
+      "accident_count": 8,
+      "accident_severity_dist": {
+        "경상": 3,
+        "중상": 0,
+        "사망": 1
+      },
+      "avg_speed_kmh": 43.7,
+      "avg_volume": 1659,
+      "avg_occupancy": 0.24,
+      "pedestrian_accident_share": 0.38
+    },
+    {
+      "district_code": "11215",
+      "date_hour_bucket": "2024-08-25-08",
+      "link_id": "111215199",
+      "accident_count": 8,
+      "accident_severity_dist": {
+        "경상": 3,
+        "중상": 2,
+        "사망": 0
+      },
+      "avg_speed_kmh": 33.7,
+      "avg_volume": 278,
+      "avg_occupancy": 0.599,
+      "pedestrian_accident_share": 0.14
+    },
+    {
+      "district_code": "11215",
+      "date_hour_bucket": "2024-08-11-09",
+      "link_id": "111215140",
+      "accident_count": 8,
+      "accident_severity_dist": {
+        "경상": 0,
+        "중상": 0,
+        "사망": 0
+      },
+      "avg_speed_kmh": 31.2,
+      "avg_volume": 1541,
+      "avg_occupancy": 0.168,
+      "pedestrian_accident_share": 0.13
+    },
+    {
+      "district_code": "11215",
+      "date_hour_bucket": "2024-08-14-18",
+      "link_id": "111215152",
+      "accident_count": 5,
+      "accident_severity_dist": {
+        "경상": 4,
+        "중상": 1,
+        "사망": 1
+      },
+      "avg_speed_kmh": 21.5,
+      "avg_volume": 980,
+      "avg_occupancy": 0.35,
+      "pedestrian_accident_share": 0.46
+    },
+    {
+      "district_code": "11215",
+      "date_hour_bucket": "2024-08-31-19",
+      "link_id": "111215189",
+      "accident_count": 0,
+      "accident_severity_dist": {
+        "경상": 4,
+        "중상": 1,
+        "사망": 1
+      },
+      "avg_speed_kmh": 18.3,
+      "avg_volume": 840,
+      "avg_occupancy": 0.28,
+      "pedestrian_accident_share": 0.23
+    },
+    {
+      "district_code": "11215",
+      "date_hour_bucket": "2024-08-29-20",
+      "link_id": "111215153",
+      "accident_count": 8,
+      "accident_severity_dist": {
+        "경상": 5,
+        "중상": 2,
+        "사망": 0
+      },
+      "avg_speed_kmh": 45.8,
+      "avg_volume": 678,
+      "avg_occupancy": 0.386,
+      "pedestrian_accident_share": 0.02
+    },
+    {
+      "district_code": "11215",
+      "date_hour_bucket": "2024-08-11-07",
+      "link_id": "111215185",
+      "accident_count": 6,
+      "accident_severity_dist": {
+        "경상": 5,
+        "중상": 0,
+        "사망": 1
+      },
+      "avg_speed_kmh": 70.4,
+      "avg_volume": 1394,
+      "avg_occupancy": 0.461,
+      "pedestrian_accident_share": 0.54
+    },
+    {
+      "district_code": "11215",
+      "date_hour_bucket": "2024-08-19-17",
+      "link_id": "111215172",
+      "accident_count": 0,
+      "accident_severity_dist": {
+        "경상": 0,
+        "중상": 2,
+        "사망": 1
+      },
+      "avg_speed_kmh": 25.7,
+      "avg_volume": 1065,
+      "avg_occupancy": 0.19,
+      "pedestrian_accident_share": 0.16
+    },
+    {
+      "district_code": "11215",
+      "date_hour_bucket": "2024-08-11-21",
+      "link_id": "111215127",
+      "accident_count": 7,
+      "accident_severity_dist": {
+        "경상": 2,
+        "중상": 1,
+        "사망": 1
+      },
+      "avg_speed_kmh": 33.9,
+      "avg_volume": 983,
+      "avg_occupancy": 0.244,
+      "pedestrian_accident_share": 0.05
+    }
+  ],
+  "summary": {
+    "total_groups": 40,
+    "districts_covered": 5,
+    "time_slots": 8,
+    "avg_accident_count": 4.08,
+    "avg_speed_kmh": 45.6
+  },
+  "exported_at": "2024-12-20T09:30:00Z",
+  "export_approved_by": "국토교통 데이터안심구역 운영사무국"
+}

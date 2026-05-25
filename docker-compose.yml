@@ -1,4 +1,4 @@
-# AuraView 로컬·심사 환경 한 줄 가동
+# AuraView 로컬·검증 환경 한 줄 가동
 #   docker compose up -d              # 백엔드 + nginx (HTTPS 필요시 외부 reverse-proxy)
 #   docker compose logs -f auraview
 #   docker compose down

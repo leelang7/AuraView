@@ -19,7 +19,7 @@ adb pull /sdcard/auraview_hud.png ./docs/screenshots/auraview_hud_$(date +%Y%m%d
 
 ## 캡쳐 권장 시점
 
-심사 자료용 화면:
+검증 자료용 화면:
 1. **메인 HUD** — 카메라 + BEV split + chip row (위험점수, 신호, VDS, TAAS, ER, 스쿨존, 단속존, 횡단보도 등)
 2. **위치인식 stub 동작** — gps-* 모드 (집/임의 위치) — GPS 배지 + 활성 chip 없음
 3. **단속존 진입 시** — 적색 "단속존 N대" chip + 횡단보도 50m 적색 알람
@@ -37,4 +37,4 @@ adb pull /sdcard/auraview_hud.png ./docs/screenshots/auraview_hud_$(date +%Y%m%d
 
 - ADB 로는 잠금 해제 불가 (PIN 입력 필요)
 - 카메라/GPS 권한도 사용자 수동 부여 필요
-- 따라서 심사 자료 캡쳐는 수동 시연 시 1회 진행 권장
+- 따라서 검증 자료 캡쳐는 수동 시연 시 1회 진행 권장

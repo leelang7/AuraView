@@ -1,13 +1,13 @@
 """
-가명정보결합 파이프라인 증빙 라우터 (프로젝트 가점 5점)
+가명정보결합 파이프라인 증빙 라우터 (프로젝트 점수 5점)
 
 국토교통 데이터안심구역(DSZ) 표준에 따른 가명정보 결합 전 과정을 시연하는 엔드포인트.
 
-  GET  /privacy/pipeline-spec       파이프라인 명세 (심사자용 기술 문서)
+  GET  /privacy/pipeline-spec       파이프라인 명세 (검증자용 기술 문서)
   POST /privacy/pseudonymize        식별자 가명화 시연
   POST /privacy/k-anonymize         k-익명성 검증 시연
   POST /privacy/demo-join           TAAS × VDS 결합 전 과정 시연 (샘플 데이터)
-  GET  /privacy/evidence-report     증빙 보고서 (가점 제출용)
+  GET  /privacy/evidence-report     증빙 보고서 (점수 제출용)
 """
 
 from __future__ import annotations
@@ -278,11 +278,11 @@ def demo_join(req: DemoJoinRequest):
 @router.get("/evidence-report")
 def evidence_report():
     """
-    가명정보결합 프로젝트 가점 증빙 보고서.
-    심사자가 가점 5점을 확인할 수 있는 기술 근거 요약.
+    가명정보결합 프로젝트 점수 증빙 보고서.
+    검증자가 점수 5점을 확인할 수 있는 기술 근거 요약.
     """
     return {
-        "title": "AuraView 가명정보결합 가점 증빙 보고서",
+        "title": "AuraView 가명정보결합 점수 증빙 보고서",
         "competition": "AuraView K-Perception",
         "score_category": "가명정보결합 5점",
         "summary": (

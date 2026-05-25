@@ -2233,7 +2233,7 @@ class _UnifiedStatusBar extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             // v12.11: ★ 버튼 제거 — 웹 페이지 wrap 이라 네이티브 기능 아님 (사용자 지적)
-            //   심사 페이지 보고 싶으면 브라우저로 https://auraview.allthatai.kr/scorecard/
+            //   검증 페이지 보고 싶으면 브라우저로 https://auraview.allthatai.kr/scorecard/
             // ⚙ 설정
             GestureDetector(
               onTap: onSettingsTap,
@@ -4252,7 +4252,7 @@ class _IdleStatusCard extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         // v9 2026-05-18: "3D" 버튼 제거 — 메인 라이브 화면 자체가 3D BEV이므로 별도 진입점 불필요.
-        // v7.4 2026-05-18: 개발자 가산점 모드 (⭐ → /scorecard webview)
+        // v7.4 2026-05-18: 개발자 점수 모드 (⭐ → /scorecard webview)
         Builder(builder: (ctx) => GestureDetector(
           onTap: () => Navigator.of(ctx).push(MaterialPageRoute(
             builder: (_) => const _JudgeModeScreen(),
@@ -4799,7 +4799,7 @@ class _DetailSheetState extends State<_DetailSheet> {
           _KV('백엔드', kApiBase.replaceFirst('https://', '')),
 
           const SizedBox(height: 18),
-          _SectionTitle('// 프로젝트 KPI · 심사 검증용'),
+          _SectionTitle('// 프로젝트 KPI · 검증 검증용'),
           GestureDetector(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const _CompetitionKpiScreen()),
@@ -5873,8 +5873,8 @@ class _AuraView3DBevScreenState extends State<AuraView3DBevScreen> {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// v7.4 2026-05-18: 개발자 가산점 모드 (★)
-//   - 4탭: ⭐ 가산점 25점 · 🔒 PII · 🛡️ 안전구역 · 🎬 스토리
+// v7.4 2026-05-18: 개발자 점수 모드 (★)
+//   - 4탭: ⭐ 25점 항목 · 🔒 PII · 🛡️ 안전구역 · 🎬 스토리
 //   - 각 탭은 WebView 로 https://auraview.allthatai.kr/{path}/ 로드
 // ═══════════════════════════════════════════════════════════════
 class _JudgeModeScreen extends StatefulWidget {
@@ -5890,7 +5890,7 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
   bool _loaded = false;
 
   static const _tabs = <Map<String, String>>[
-    {'name': '가산점',  'icon': '★', 'url': 'https://auraview.allthatai.kr/scorecard/'},
+    {'name': '점수',  'icon': '★', 'url': 'https://auraview.allthatai.kr/scorecard/'},
     {'name': '정책',    'icon': '⚖', 'url': 'https://auraview.allthatai.kr/policy/'},
     {'name': 'PII',     'icon': '🔒', 'url': 'https://auraview.allthatai.kr/privacy/'},
     {'name': '안전구역','icon': '🛡', 'url': 'https://auraview.allthatai.kr/safezone/'},
@@ -5937,7 +5937,7 @@ class _JudgeModeScreenState extends State<_JudgeModeScreen> {
             boxShadow: [BoxShadow(color: _safe, blurRadius: 6)],
           )),
           const SizedBox(width: 8),
-          const Text('개발자 모드 · 가산점 25점',
+          const Text('개발자 모드 · 25점 항목',
               style: TextStyle(color: _text, fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
         ]),
         actions: [

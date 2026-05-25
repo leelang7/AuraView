@@ -103,10 +103,10 @@
 
   <!-- === BADGES === -->
   <rect x="40" y="80" width="110" height="22" rx="11" fill="#00E09A" opacity="0.15" stroke="#00E09A" stroke-width="1"/>
-  <text x="95" y="95" font-size="11" fill="#00E09A" text-anchor="middle" font-weight="700">AI 학습 가점 5점</text>
+  <text x="95" y="95" font-size="11" fill="#00E09A" text-anchor="middle" font-weight="700">AI 학습 점수 5점</text>
 
   <rect x="160" y="80" width="120" height="22" rx="11" fill="#00C8FF" opacity="0.15" stroke="#00C8FF" stroke-width="1"/>
-  <text x="220" y="95" font-size="11" fill="#00C8FF" text-anchor="middle" font-weight="700">AI 분석 가점 5점</text>
+  <text x="220" y="95" font-size="11" fill="#00C8FF" text-anchor="middle" font-weight="700">AI 분석 점수 5점</text>
 
   <rect x="290" y="80" width="130" height="22" rx="11" fill="#FFB020" opacity="0.15" stroke="#FFB020" stroke-width="1"/>
   <text x="355" y="95" font-size="11" fill="#FFB020" text-anchor="middle" font-weight="700">p99 추론 1.04ms CPU</text>
@@ -503,7 +503,7 @@
   </g>
 
   <!-- Right: watermark / credit -->
-  <text x="1148" y="560" font-size="10" fill="#2A3450" text-anchor="end">AuraView · AuraView K-Perception · AI 활용 가점 증빙</text>
+  <text x="1148" y="560" font-size="10" fill="#2A3450" text-anchor="end">AuraView · AuraView K-Perception · AI 활용 점수 증빙</text>
 
   <!-- === KEY METRICS SUMMARY ROW === -->
   <!-- Big number highlights at bottom -->

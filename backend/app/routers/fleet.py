@@ -603,7 +603,7 @@ def live_feed(limit: int = Query(50, ge=1, le=200)):
 
 @router.get("/proof/{event_idx}")
 def event_proof(event_idx: int):
-    """v12.120: 단일 이벤트 forensic evidence trail — 심사위원이 클릭 한 번으로 검증.
+    """v12.120: 단일 이벤트 forensic evidence trail — 개발자가 클릭 한 번으로 검증.
 
     event_idx: /fleet/live 응답 events 배열의 0-base index (0 = 가장 최근).
     응답: 해당 이벤트의 전체 verification 근거 — 위치 + 속도 + OSM nearby + 이미지 URL.
@@ -684,7 +684,7 @@ def event_proof(event_idx: int):
 
 @router.get("/proof/recent")
 def event_proof_recent(n: int = Query(5, ge=1, le=20)):
-    """v12.132: 최근 N개 이벤트의 forensic 결과를 한 번에 묶음 (심사 효율).
+    """v12.132: 최근 N개 이벤트의 forensic 결과를 한 번에 묶음 (검증 효율).
     개별 /fleet/proof/{idx} 를 N번 호출 대신 한 응답으로.
     OSM nearby 는 비싸므로 first event 만 라이브 fetch, 나머지는 location_verified 만."""
     if not MANIFEST.exists():

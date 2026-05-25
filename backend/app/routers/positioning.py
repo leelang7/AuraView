@@ -1,7 +1,7 @@
 """
 Positioning — AuraView vs Tesla FSD 항목별 비교.
 
-심사용 한 줄 요약: "Tesla 가 못 하는 한국 특화 5종".
+검증용 한 줄 요약: "Tesla 가 못 하는 한국 특화 5종".
 구조화된 JSON → 프론트가 표로 렌더 (slides/submission/kiosk 모두 동일 데이터).
 """
 

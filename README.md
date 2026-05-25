@@ -15,7 +15,7 @@
 > **K-Perception Platform — 블랙박스 한 대로 사각지대까지 계산한다.**
 > Tesla-style occupancy · fleet-learning · end-to-end risk prediction 에 **Tesla 도 못 하는 한국 도로 협업 인지(V2V + Bus + Bidirectional)** 까지 결합한 안전 주행 지원 시스템.
 
-> 📋 **수상 심사용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
+> 📋 **수상 검증용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
 > 🖼️ **HUD 미리보기 (v9 23-chip mockup):** [`static/visuals/hud_mockup.svg`](static/visuals/hud_mockup.svg) — Tesla 스타일 카메라+BEV+chip row+속도계+위험점수
 >
@@ -50,9 +50,9 @@
 
 > **<https://auraview.allthatai.kr/competition/>** — KPI 4종 + 검증 URL 11개 + 라이브 데모 5종 + 8 시나리오 + 문서 5종 한 화면. JSON 직접 호출 없이 시각적으로 모두 가능.
 
-## 🏅 프로젝트 가점 25점 — 항목별 증빙 엔드포인트
+## 🏅 프로젝트 25점 항목 — 항목별 증빙 엔드포인트
 
-| 가점 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
+| 평가 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
 |---|:---:|---|---|
 | **AI 학습** | 5점 | [`GET /ai/model-card`](https://auraview.allthatai.kr/ai/model-card) · [`GET /ai/training-history`](https://auraview.allthatai.kr/ai/training-history) | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) |
 | **AI 분석** | 5점 | [`GET /ai/scenario-analysis`](https://auraview.allthatai.kr/ai/scenario-analysis) · [`GET /ai/feature-importance`](https://auraview.allthatai.kr/ai/feature-importance) · [`GET /ai/roc-curve`](https://auraview.allthatai.kr/ai/roc-curve) | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt |
@@ -99,7 +99,7 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 | 📖 **일반인용 스토리** | 30초 이해 + 인터랙티브 시뮬레이터 + 시나리오 프리셋 | [/story/](https://auraview.allthatai.kr/story/) |
 | 🎥 **1분 자동 시연** | 풀스크린 시네마틱 16 장면 무한루프 (시연 부스용) | [/reel/](https://auraview.allthatai.kr/reel/) |
 | 🖼️ **시각자료 갤러리** | 18 SVG 종합 + 필터/라이트박스 | [/gallery/](https://auraview.allthatai.kr/gallery/) |
-| 🏆 **개발자 허브** | 11 검증 URL + 5 데모 + 8 시나리오 + 가점 25점 | [/competition/](https://auraview.allthatai.kr/competition/) |
+| 🏆 **개발자 허브** | 11 검증 URL + 5 데모 + 8 시나리오 + 25점 항목 | [/competition/](https://auraview.allthatai.kr/competition/) |
 | 🎬 **풀 대시보드** | 10탭 라이브 데모 (Fusion / BEV / Fleet / V2V 등) | [/ui](https://auraview.allthatai.kr/ui) |
 | 🎞️ **발표 슬라이드** | Reveal.js 14장 (Cover → CTA) | [/slides/](https://auraview.allthatai.kr/slides/) |
 | 📺 **무인 키오스크** | 자동 순회 13 장면 | [/kiosk/](https://auraview.allthatai.kr/kiosk/) |
@@ -189,7 +189,7 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 | 추론 latency **p99** | **1.04ms** | `/benchmark/all` · CPU 단일 코어 100회 측정 |
 | 평균 선행 경고 시간 | **3.38s** | 트레인드 모델 평균 (회피율 84.5%) |
 | 협업 인지 lift (단독 vs Fused) | **+10~31%p** | TAB ⑨ 실시간 시연 |
-| 통합 테스트 | **90 / 90 PASS** | `backend/tests/` (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 가점 25점 증빙) |
+| 통합 테스트 | **90 / 90 PASS** | `backend/tests/` (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 25점 항목 증빙) |
 
 ---
 
@@ -324,7 +324,7 @@ github.com/leelang7/AuraView
 | `POST` | **`/collab/v2v/seed-demo`** | 시연 시드 |
 | `POST` | **`/collab/bus-context`** · **`/collab/bidirectional`** | 버스/상행하행 분석 |
 | `POST` | **`/collab/fused-occupancy`** ★ | **단독 vs 협업 결합 비교** |
-| `GET`  | **`/metrics/manifest`** ⭐ | **🏆 심사용 single-source-of-truth — 11 검증 URL + 5 데모 + git_sha** |
+| `GET`  | **`/metrics/manifest`** ⭐ | **🏆 검증용 single-source-of-truth — 11 검증 URL + 5 데모 + git_sha** |
 | `GET`  | **`/metrics/competition`** ★ | **시스템 통합 KPI (모델·임팩트·공공데이터·검증·RAG)** |
 | `GET`  | **`/metrics/scoreboard`** ★ | **5개 평가 항목 자체 채점** |
 | `GET`  | **`/impact/policy-pdf?coverage=0.05&lead=3.38`** ★ | **A4 1-pager 정책 임팩트 PDF** |

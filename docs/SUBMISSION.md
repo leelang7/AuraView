@@ -90,9 +90,9 @@
 
 ---
 
-## 🏅 프로젝트 가점 25점 — 항목별 증빙 엔드포인트
+## 🏅 프로젝트 25점 항목 — 항목별 증빙 엔드포인트
 
-| 가점 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
+| 평가 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
 |---|:---:|---|---|
 | **AI 학습** | 5점 | `GET /ai/model-card` · `GET /ai/training-history` · `GET /ai/roc-curve` | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10,000 샘플, 15 epoch) |
 | **AI 분석** | 5점 | `GET /ai/scenario-analysis` · `GET /ai/feature-importance` · `GET /ai/confusion-matrix` | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt + 혼동행렬 |

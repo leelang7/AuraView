@@ -240,7 +240,7 @@ _mount_static(app, ["static", "story"], "/story")        # v3 2026-05-16: 일반
 _mount_static(app, ["static", "reel"], "/reel")          # v5 2026-05-16: 72초 자동재생 시네마틱 시퀀스 (영상 대체)
 _mount_static(app, ["static", "gallery"], "/gallery")    # v6 2026-05-17: 17 SVG 시각자료 갤러리 (필터+라이트박스)
 _mount_static(app, ["static", "bev3d"], "/bev3d")        # v7 2026-05-18: AuraView 자체 Three.js 3D BEV (네이티브앱 WebView 임베드용)
-_mount_static(app, ["static", "scorecard"], "/scorecard")  # v7 2026-05-18: 심사 가산점 25점 적격 증거표 (judge-facing)
+_mount_static(app, ["static", "scorecard"], "/scorecard")  # v7 2026-05-18: 검증 25점 항목 적격 증거표 (judge-facing)
 _mount_static(app, ["static", "privacy"], "/privacy")    # v7 2026-05-18: 가명정보 처리 파이프라인 라이브 데모 (5pt 실증)
 _mount_static(app, ["static", "safezone"], "/safezone")  # v7 2026-05-18: 안전구역 라이브 대시보드 (5pt 실증)
 _mount_static(app, ["static", "policy"], "/policy")      # v8 2026-05-18: 수집→통계분석→정책의사결정 (Tesla fleet)
@@ -441,7 +441,7 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
   <a href="/policy/">POLICY</a>
   <a href="/scorecard/">SCORECARD</a>
   <a href="/bev3d/">BEV3D</a>
-  <a href="/metrics/audit" target="_blank" title="라이브 시스템 헬스 + 가점 25점 + 데이터 신뢰성 (단일 GET)">AUDIT</a>
+  <a href="/metrics/audit" target="_blank" title="라이브 시스템 헬스 + 25점 항목 + 데이터 신뢰성 (단일 GET)">AUDIT</a>
   <span class="sep"></span>
   <a id="navGit" href="https://github.com/leelang7/AuraView" target="_blank" title="현재 배포된 git commit (자동 갱신)" style="font-family:monospace;font-size:10px;color:rgba(255,255,255,0.45);">git —</a>
 </div>
@@ -2205,7 +2205,7 @@ def demos_9tabs():
                     <div class="status-meta">최신 합본: <a href="/showreel/latest.mp4" target="_blank" style="color:var(--accent);">/showreel/latest.mp4</a></div>
                   </div>
 
-                  <!-- 어드민/심사용 — 수동 빌드 트리거 (접힘) -->
+                  <!-- 어드민/검증용 — 수동 빌드 트리거 (접힘) -->
                   <details style="margin-top:14px;">
                     <summary style="color:var(--muted);font-size:12px;cursor:pointer;letter-spacing:1.5px;font-family:'JetBrains Mono',monospace;">
                       // ADMIN · 사용자 영상 업로드 (블랙박스 → AuraView 추론)
@@ -2396,7 +2396,7 @@ def demos_9tabs():
               <div class="card-tag" style="background:linear-gradient(135deg,var(--accent),var(--safe));">PUBLIC DATA · LIVE · 9 SOURCES ★</div>
               <div class="section-label">// 24종 공공데이터 어댑터 실시간 상태 — 자동 새로고침 3초 주기 · v10-2026.05.25 · 11/24 no-key live</div>
               <div style="margin-top:10px;font-family:'Black Han Sans',sans-serif;font-size:22px;line-height:1.3;">
-                심사 검증용 — 폴링 모드(live/stub/error) · 마지막 호출 시각 · age 그대로 노출.
+                검증 검증용 — 폴링 모드(live/stub/error) · 마지막 호출 시각 · age 그대로 노출.
                 <span style="font-size:13px;color:var(--accent2);">신호·VDS·돌발·TAAS·ITS·DSZ + <b>기상·응급실·따릉이 ★ NEW</b></span>
               </div>
               <div id="pdLiveSummary" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;"></div>

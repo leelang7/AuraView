@@ -1,7 +1,7 @@
 """
 신규 router 통합 테스트 — /privacy · /ai · /competition
 
-프로젝트 가점 25점 증빙 엔드포인트 전체 smoke test.
+프로젝트 25점 항목 증빙 엔드포인트 전체 smoke test.
 """
 
 from __future__ import annotations
@@ -250,7 +250,7 @@ def test_competition_checklist_passes_basic_items():
     # 반드시 True여야 하는 항목들
     by_item = {c["item"]: c["ok"] for c in j["checklist"]}
     assert by_item.get("AI 증빙 엔드포인트 응답 (GET /ai/evidence-report)") is True
-    assert by_item.get("프로젝트 가점 스코어카드 (GET /competition/scorecard)") is True
+    assert by_item.get("프로젝트 점수 스코어카드 (GET /competition/scorecard)") is True
 
 
 # ─── /dsz 신규 엔드포인트 ─────────────────────────────────────────────────────

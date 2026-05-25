@@ -115,7 +115,7 @@ def healthz():
 
 @router.get("/details")
 def healthz_details():
-    """심사·운영 점검용 풀 메타."""
+    """검증·운영 점검용 풀 메타."""
     from .. import main as main_mod
 
     routes = []
@@ -163,7 +163,7 @@ def healthz_details():
         "features": feature_flags,
         "model_metric": metric,
         "trained_model_metric": _read_trained_metric(),
-        "tests": "118 passed (68 기존 + 50 신규: /privacy·/ai·/competition·/dsz 가점 25점 증빙 + v12.83 location_verified · v12.87 speed_kmh 게이트 · v12.102 USGS earthquake)",
+        "tests": "118 passed (68 기존 + 50 신규: /privacy·/ai·/competition·/dsz 25점 항목 증빙 + v12.83 location_verified · v12.87 speed_kmh 게이트 · v12.102 USGS earthquake)",
         "scenarios_supported": [
             "truck_occlusion", "motorcycle_blindspot", "signal_occlusion",
             "rainy_intersection", "right_turn_pedestrian",

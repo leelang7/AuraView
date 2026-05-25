@@ -1,5 +1,5 @@
 """
-프로젝트 심사용 통합 KPI 엔드포인트.
+프로젝트 검증용 통합 KPI 엔드포인트.
 
   GET /metrics/competition  ─ 단일 응답으로 모델 성능·임팩트·데이터 freshness·테스트 종합
 
@@ -140,7 +140,7 @@ def competition_kpis():
         "scenarios_supported": scenarios_supported,
         "differentiation": differentiation,
         "verification": {
-            "tests": "90 passed (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 가점 25점 증빙)",
+            "tests": "90 passed (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 25점 항목 증빙)",
             "ci": ".github/workflows/ci.yml — 4 jobs (Python/Flutter/Docker/Docs)",
             "fallback_mode": os.getenv("ALLOW_FALLBACK", "1") == "1",
         },
@@ -358,7 +358,7 @@ def data_attribution():
 
 @router.get("/manifest")
 def competition_manifest():
-    """심사용 single-source-of-truth — 모든 검증 가능한 artifact URL flat list.
+    """검증용 single-source-of-truth — 모든 검증 가능한 artifact URL flat list.
 
     judge 가 한 번 호출로 슬라이드·PDF·KPI·테스트·법적근거·라이센스 모두 검증 가능.
     """
@@ -377,7 +377,7 @@ def competition_manifest():
             "종합_스코어카드":  "/competition/scorecard",
         },
         "verification_in_one_step": [
-            {"label": "가점 25점 종합 스코어카드", "url": "/competition/scorecard"},
+            {"label": "25점 항목 종합 스코어카드", "url": "/competition/scorecard"},
             {"label": "AI 학습·분석 증빙 보고서",  "url": "/ai/evidence-report"},
             {"label": "가명정보결합 파이프라인 명세", "url": "/privacy/pipeline-spec"},
             {"label": "안심구역 활용 보고서",       "url": "/dsz/pipeline-report"},
@@ -424,7 +424,7 @@ def competition_manifest():
             "school_zone", "bicycle_lane", "night_pedestrian",
         ],
         "tests_passed": 118,
-        "tests_breakdown": "68 기존 + 50 신규 (privacy·ai·competition·dsz 가점 25점 router + v12.83 location_verified · v12.87 speed_kmh 게이트)",
+        "tests_breakdown": "68 기존 + 50 신규 (privacy·ai·competition·dsz 25점 항목 router + v12.83 location_verified · v12.87 speed_kmh 게이트)",
         "data_sources_total": 25,
         "data_sources_live_potential": 12,
         "live_source_list": [
@@ -452,7 +452,7 @@ def competition_manifest():
 
 def _compute_live_evidence() -> Dict[str, Any]:
     """v12.103: 실시간 계산 — manifest 호출 시점의 진짜 상태 (캐시 X).
-    심사위원이 한 번 GET 으로 시스템 현재 작동 여부 즉시 검증."""
+    개발자가 한 번 GET 으로 시스템 현재 작동 여부 즉시 검증."""
     from datetime import datetime as _dt
     import json as _json
     from ..routers.fleet import MANIFEST as _FLEET_MANIFEST, _verify_event_location as _verify
@@ -625,7 +625,7 @@ def api_directory():
 
 @router.get("/audit")
 def audit():
-    """v12.107: 라이브 시스템 헬스 한 응답 — 심사 + 자가 검증용.
+    """v12.107: 라이브 시스템 헬스 한 응답 — 검증 + 자가 검증용.
 
     /metrics/manifest 는 정적 + live_evidence 일부 포함.
     /metrics/audit 는 100% 라이브 계산 — 호출 시점 진짜 상태만 반환.
@@ -633,7 +633,7 @@ def audit():
     포함:
     - data_sources: 24개 中 live/stub/derived 분포 + 라이브 id 목록
     - fleet_events: 총 N건, verified % (정직), 최근 5건 reason+verified
-    - gates: 4 가점 항목 readiness (라이브 URL 응답 가능 여부)
+    - gates: 4 평가 항목 readiness (라이브 URL 응답 가능 여부)
     - system: tests 118, git_sha, schema_version, uptime hint
     - data_quality: 정지 false positive 자동 차단 evidence
     """
@@ -748,7 +748,7 @@ def audit():
 
 @router.get("/scoreboard")
 def scoreboard():
-    """프로젝트 가점 25점 항목별 자체 채점 — 개발자 가독성."""
+    """프로젝트 25점 항목 항목별 자체 채점 — 개발자 가독성."""
     m = _read_json("models/risk_transformer_trained_metric.json")
     return {
         "as_of": datetime.utcnow().isoformat() + "Z",

@@ -1,11 +1,11 @@
 """
-데이터안심구역 반입/조회 엔드포인트 (프로젝트 가점 5점).
+데이터안심구역 반입/조회 엔드포인트 (프로젝트 점수 5점).
 
   POST /dsz/verify             안심구역에서 반출한 결과물(JSON) 해시 검증 + 등록
   GET  /dsz/artifacts          등록된 안심구역 결합분석 결과물 목록
   POST /dsz/join/taas-vds      (시연용) 로컬 TAAS × VDS 결합 샘플 수행
   POST /dsz/seed-demo          데모 안심구역 아티팩트 로컬 생성 및 검증 등록
-  GET  /dsz/pipeline-report    안심구역 활용 파이프라인 보고서 (심사자용)
+  GET  /dsz/pipeline-report    안심구역 활용 파이프라인 보고서 (검증자용)
   GET  /dsz/compliance-status  현재 안심구역 연동 상태 및 준수 현황
 
 관련 표준: 국토교통 데이터안심구역(dsz.ex.co.kr) 반입·결합·반출 절차.
@@ -119,7 +119,7 @@ def seed_demo_artifact():
 
 @router.get("/pipeline-report")
 def pipeline_report():
-    """안심구역 활용 파이프라인 전체 보고서 (프로젝트 가점 5점 증빙)."""
+    """안심구역 활용 파이프라인 전체 보고서 (프로젝트 점수 5점 증빙)."""
     registered = dsz_adapter.list_imported()
 
     return {
@@ -201,7 +201,7 @@ def compliance_status():
         "audit_log_path": "dsz_exports/manifest.jsonl",
         "next_action": (
             "GET /dsz/seed-demo 실행 후 POST /dsz/verify로 실제 반출물 검증 가능"
-            if not has_demo else "데모 아티팩트 등록 완료. 심사 제출 준비됨."
+            if not has_demo else "데모 아티팩트 등록 완료. 검증 제출 준비됨."
         ),
     }
 

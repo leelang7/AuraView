@@ -1,5 +1,5 @@
 # AuraView K-Perception backend — single-stage image with optional GPU LLM stack.
-# 시연·심사: `docker compose up` 한 줄로 백엔드 + 정적 자산 가동.
+# 시연·검증: `docker compose up` 한 줄로 백엔드 + 정적 자산 가동.
 # RAG (Qwen2.5-7B + bge-m3 + bge-reranker-v2-m3): GPU 필수 (CUDA 12+), 4bit 양자화 ~5GB VRAM.
 # 빌드 모드:
 #   ARG ENABLE_LLM=false    (기본 — 가벼움, RAG 엔드포인트는 /qa/health 만 동작)

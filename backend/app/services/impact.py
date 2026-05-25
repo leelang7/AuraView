@@ -1,7 +1,7 @@
 """
 AuraView Impact Calculator — 정량적 사고 예방 효과 추정.
 
-심사 임팩트 메시지: "AuraView 가 연간 N 건 사고 / M 명 사상자 예방"
+검증 임팩트 메시지: "AuraView 가 연간 N 건 사고 / M 명 사상자 예방"
 모든 수치는 출처 + 가정을 투명하게 노출 (judging 시 검증 가능).
 
 Sources (2024 기준 공개 통계):

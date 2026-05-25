@@ -153,7 +153,7 @@ def fetch_alternatives(
 def aggregate_for_transit_planner(top_hazards: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     상습 위험 교차로 데이터를 K-MaaS 노선 운영팀에 환원하는 요약 빌더.
-    심사 메시지: "AuraView 가 시민에게는 안전 경로, 운영자에겐 노선 개선 데이터를 동시에 제공"
+    검증 메시지: "AuraView 가 시민에게는 안전 경로, 운영자에겐 노선 개선 데이터를 동시에 제공"
     """
     by_district: Dict[str, int] = {}
     suggestions: List[Dict[str, Any]] = []

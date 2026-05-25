@@ -147,7 +147,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - `test_metrics_manifest_lists_all_artifacts` 갱신: `competition.startswith('AuraView')`
 
 ### Cleanup — 용어 표준화 (v12.76)
-- 33 파일에서 '경진대회/심사위원/JUDGE' 일괄 제거 → 'AuraView K-Perception / 시스템 허브 / 개발자'
+- 33 파일에서 '경진대회/개발자/JUDGE' 일괄 제거 → 'AuraView K-Perception / 시스템 허브 / 개발자'
 - Flutter main.dart + 33 백엔드/도큐/SVG/CI 파일 정리
 
 ---
@@ -362,7 +362,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ### Updated — Flutter v7.5 ★ 모드 5탭 확장
 - _JudgeModeScreen: 4탭 → 5탭
-  - ★ 가산점 · ⚖ 정책 · 🔒 PII · 🛡 안전구역 · 📖 스토리
+  - ★ 점수 · ⚖ 정책 · 🔒 PII · 🛡 안전구역 · 📖 스토리
 - /policy/ 새 페이지를 ★ 두번째 탭으로 우선 배치
 
 ### Static pages
@@ -372,10 +372,10 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
-## v0.16 — 가산점 25점 적격 증거 페이지 + 19종 융합 + 자체 3D BEV (2026-05-18)
+## v0.16 — 25점 항목 적격 증거 페이지 + 19종 융합 + 자체 3D BEV (2026-05-18)
 
 ### Added — judge-facing 페이지 4종 신규
-- **`/scorecard/`** — 가산점 25점 적격 증거표 1-page (AI 10 + 데이터융합 5 + 가명정보 5 + 안전구역 5)
+- **`/scorecard/`** — 25점 항목 적격 증거표 1-page (AI 10 + 데이터융합 5 + 가명정보 5 + 안전구역 5)
   - 카테고리별 색상 카드 (cyan / purple / orange / green)
   - 각 카드: 평가기준 → 구현 5개 증거 → 라이브 링크 버튼
   - 하단: 개발자 즉시 검증 라이브 엔드포인트 8개 카탈로그
@@ -411,7 +411,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - `AndroidWebViewController.setOnPlatformPermissionRequest((r) => r.grant())` — WebView getUserMedia 자동 허용
 - `setMediaPlaybackRequiresUserGesture(false)` — 자동 카메라 시작
 - `webview_flutter_android ^4.0.0` 명시적 의존성 추가
-- 상단 nav 핀 추가 (`/story/`, `/gallery/`): `⭐ 가산점 25점` / `🎮 3D BEV` / `🔒 PII 데모` / `🛡️ 안전구역`
+- 상단 nav 핀 추가 (`/story/`, `/gallery/`): `⭐ 25점 항목` / `🎮 3D BEV` / `🔒 PII 데모` / `🛡️ 안전구역`
 
 ### Fixed
 - MetroEyes 전체 운영자 페이지(지하철/버스 대시보드) 통째로 임베드한 실수 → 3D 시각화만 적용한 자체 페이지로 교체
@@ -489,7 +489,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - `test_data_attribution_lists_17_public_sources` (전 _15_ 교체)
 
 ### Why
-- 가점 데이터융합 5점 강화: 17종 = 한국 도로 인프라가 측정 중인 거의 모든 신호
+- 점수 데이터융합 5점 강화: 17종 = 한국 도로 인프라가 측정 중인 거의 모든 신호
 - 도로 노면 = 결빙·블랙아이스 정확도 ↑ (KMA 파생 + RWIS 직접)
 - 자동차검사 = 잠재 사고 위험 차량 사전 식별 (정비 부적합 차량 ↑ 사고 위험 ↑)
 - 모든 추가 데이터가 API 키 1개 (SERVICE_KEY 또는 EX_OPEN_KEY) 로 작동
@@ -612,7 +612,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 ### Updated — Reveal.js 14장 슬라이드 전면 갱신 (`/static/slides/`)
 - 기존 12장 → **14장** 풀 갱신 (46.8KB, Reveal.js 4.5.0 CDN).
 - SVG 7종 인라인 임베드 (`before_after`, `timeline_57s`, `impact_waffle`, `og_card`, `scenarios/01~08`).
-- 흐름: Cover → Problem → Insight → Solution → Architecture → 15-source → AI → V2V → 시나리오 8종 → Impact → Top-10 → 법적 근거 → 가점 25점 → Live Demo CTA
+- 흐름: Cover → Problem → Insight → Solution → Architecture → 15-source → AI → V2V → 시나리오 8종 → Impact → Top-10 → 법적 근거 → 25점 항목 → Live Demo CTA
 - 한국어 폰트 시스템 fallback (외부 폰트 의존 없음)
 
 ### Fixed — 시나리오 SVG 03 (신호등 고증)
@@ -692,7 +692,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
   - Section 2: 3.38초 타임라인 SVG
   - Section 3: 매년 21명 waffle chart SVG
   - Section 4: 12종 데이터 카드 그리드 (v1/v2/v3 NEW 배지)
-  - Section 5: 6 CTA (라이브 대시보드·심사허브·12종 JSON·슬라이드·GitHub·API)
+  - Section 5: 6 CTA (라이브 대시보드·검증허브·12종 JSON·슬라이드·GitHub·API)
   - IntersectionObserver 스크롤 페이드인, 반응형 디자인
 - main.py `_mount_static(["static", "story"], "/story")` 마운트
 
@@ -711,7 +711,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ### Why
 - "12종 융합" 슬로건 + 일반인용 직관 페이지 = 개발자·관람객·시민 3 청중 모두 30초 안에 가치 전달.
-- 스쿨존/결빙/보행자다발은 가점 카테고리 "데이터융합" + "AI분석" 동시 보강. API 키 추가 없음 (3종 모두 기존 키 재사용 또는 GIS fallback).
+- 스쿨존/결빙/보행자다발은 점수 카테고리 "데이터융합" + "AI분석" 동시 보강. API 키 추가 없음 (3종 모두 기존 키 재사용 또는 GIS fallback).
 - SVG 시각자료는 백엔드 오프라인 상태에서도 작동 — 시연 안정성 ↑.
 
 ---
@@ -779,8 +779,8 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - flutter analyze: **0 error**, 기존 deprecated info/warning 만 남음
 
 ### Why
-- "AI활용 5점 학습" 가점 보강 — v1 (10-feature) + v2 (13-feature 9-source) 두 체크포인트로 학습 진화 증빙.
-- 시연 즉시성 — 심사 시연 시 BIS 라이브 버스가 앱 HUD에 실시간 노출되어 "한국 V2X" 차별점이 즉시 보임.
+- "AI활용 5점 학습" 점수 보강 — v1 (10-feature) + v2 (13-feature 9-source) 두 체크포인트로 학습 진화 증빙.
+- 시연 즉시성 — 검증 시연 시 BIS 라이브 버스가 앱 HUD에 실시간 노출되어 "한국 V2X" 차별점이 즉시 보임.
 
 ---
 
@@ -809,7 +809,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ### Why
 - "한국 V2X / C-ITS 차별점" 의 실제 증빙 강화 — Tesla 가 못 하는 한국 BIS 실시간 도로 협업 인지.
-- 가점 데이터융합 5점 + AI분석 5점 동시 보강 (실시간 버스 위치가 보행자 prior 정밀도 +5~12%p 상승).
+- 점수 데이터융합 5점 + AI분석 5점 동시 보강 (실시간 버스 위치가 보행자 prior 정밀도 +5~12%p 상승).
 
 ---
 
@@ -834,8 +834,8 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - **`/fusion/sources`** 응답 9 항목 + `gain` + `added` 메타 (v1 / v2-2026.05.15 구분)
 
 ### Changed
-- 모든 가시화 (대시보드 TAB ③/⑩, 개발자 허브, summary 페이지, landing 가점표) "6종" 표기를 "9종" 으로 일관 갱신
-- README 가점 매핑 + Quick Verify + API 표 9종 반영
+- 모든 가시화 (대시보드 TAB ③/⑩, 개발자 허브, summary 페이지, landing 점수표) "6종" 표기를 "9종" 으로 일관 갱신
+- README 점수 매핑 + Quick Verify + API 표 9종 반영
 - `health.py /healthz/details` `score_25pt_summary.데이터융합_5점.sources=9`
 
 ### Tests (89 → 95)
@@ -846,7 +846,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - 기존 `test_data_attribution_lists_6_public_sources` → `_lists_9_` 로 갱신
 
 ### Why
-- 가점 5점 "데이터융합" 항목 강화 + 개발자에게 "기상/응급실/자전거 같은 비교통 공공데이터까지 융합한 한국 특화 인지" 메시지 전달.
+- 점수 5점 "데이터융합" 항목 강화 + 개발자에게 "기상/응급실/자전거 같은 비교통 공공데이터까지 융합한 한국 특화 인지" 메시지 전달.
 - 우천·심야·자전거 시나리오의 외부 신호를 실측 공공데이터로 대체 → "라이브 데모 신뢰도" 향상.
 
 ---
@@ -865,7 +865,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - **`POST /qa/index`** (admin) — chunks 업로드 + BM25/dense 인덱스 빌드
 - **`POST /qa/index-docs`** (admin) — 프로젝트 자체 docs 자동 시드
 - **`GET /qa/health`** — 인덱스/모델/CUDA 상태
-- **`GET /qa/info`** — 스택 구성 + 출력 계약 명시 (심사용)
+- **`GET /qa/info`** — 스택 구성 + 출력 계약 명시 (검증용)
 - **`backend/app/services/qa_engine.py`** — 핵심 엔진 (lazy load, GPU 강제, 디스크 복원)
 - **Dockerfile**: `ARG ENABLE_LLM=true` 빌드 + `/models/hf-cache` + `/models/qa` volume
 - **docker-compose**: `--profile gpu` 로 NVIDIA GPU 활성화 (auraview-gpu 서비스)
@@ -972,7 +972,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - **Trained PyTorch Transformer** (`models/risk_transformer.pt`, 278 KB · 67,970 params): AUC **0.9403**, F1 **0.9412** · 4 시나리오 (혼합/러시아워/야간/우천) · 15 epochs AdamW. baseline linear logistic 대비 +1.0%p AUC.
 - **합성 시나리오 6종** (`services/scenario.py`): crosswalk_truck, motorcycle_blindspot, signal_occluded, ⭐ v2v_collab, 🌧️ rainy_intersection, 🌙 night_blindspot. 모두 1080p 24fps + procedural 경고음 (sine beep) + 시네마틱 컬러 그레이딩.
 - **`/showreel/build`** + **`/showreel/latest.mp4`**: 6장면 합본 영상 자동 생성, 안정 URL.
-- **`/healthz`** + **`/healthz/details`**: 운영·심사 점검용 시스템 메타.
+- **`/healthz`** + **`/healthz/details`**: 운영·검증 점검용 시스템 메타.
 - **`/summary.json`** + **`/submission`**: 원페이지 제출 요약 (baseline vs trained 모델 비교 표 포함).
 - **Flutter Fleet 앱 V2V broadcast**: 실시간 위치·heading·속도 + entropy 기반 anomaly detection 송신.
 - **시네마틱 시나리오 후처리**: vignette · 글로우 · teal-orange 컬러 그레이딩.
@@ -990,7 +990,7 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 ### Changed
 - 메인 README 단일화 — `auraview_fleet/README.md` + `landing/README.md` 흡수.
 - `auraview_fleet/` Flutter 앱 — Perception Eye 아이콘 + 풀스크린 카메라 UX (단일 알약 버튼 + Haptic + 펄스 링).
-- 모든 공개 자료에서 "프로젝트/가점/특별상/출품" 단정적 표현 제거 (제출 전 톤 다운).
+- 모든 공개 자료에서 "프로젝트/점수/특별상/출품" 단정적 표현 제거 (제출 전 톤 다운).
 
 ### Tests
 - 18 통합 테스트 (`test_endpoints.py`) + 12 유닛 테스트 (`test_collab_units.py`) = **30/30 PASS**.

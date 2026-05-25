@@ -37,41 +37,44 @@ def list_sources():
         except Exception:
             return None
 
+    # v12.135: category 필드 추가 — 공모전 정직성 (국내 공공 vs 글로벌 보조)
+    #   "국내공공": 한국 정부/공공기관 공식 API (가점 평가 대상)
+    #   "보조인프라": 글로벌 오픈데이터 (no-key fallback 용도, 정확도 보강)
     sources = [
-        {"id": "signal",    "name": "교통안전 실시간 신호정보",       "origin": "apis.data.go.kr",    "gain": "교차로 신호 위상", "added": "v1"},
-        {"id": "vds",       "name": "한국도로공사 VDS 실시간 소통",   "origin": "data.ex.co.kr",      "gain": "속도·교통량·점유율", "added": "v1"},
-        {"id": "incidents", "name": "한국도로공사 돌발상황",          "origin": "data.ex.co.kr",      "gain": "사고·낙하물·공사", "added": "v1"},
-        {"id": "taas",      "name": "TAAS 교통사고분석",              "origin": "taas.koroad.or.kr",  "gain": "과거 사고이력 prior", "added": "v1"},
-        {"id": "its",       "name": "ITS 국가교통정보센터",            "origin": "openapi.its.go.kr",  "gain": "표준링크 속도·소요", "added": "v1"},
-        {"id": "dsz",       "name": "국토교통 데이터안심구역 결합결과","origin": "dsz.ex.co.kr",       "gain": "TAAS×VDS k-익명 결합", "added": "v1"},
-        {"id": "weather",   "name": "기상청 동네예보 (KMA)",          "origin": "apis.data.go.kr/1360000", "gain": "강수·시정·노면위험", "added": "v2-2026.05.15"},
-        {"id": "medical",   "name": "E-Gen 응급실 실시간 가용병상",   "origin": "apis.data.go.kr/B552657", "gain": "사고 심각도 보정·환자이송", "added": "v2-2026.05.15"},
-        {"id": "bike",      "name": "서울시 공공자전거 따릉이 실시간","origin": "openapi.seoul.go.kr", "gain": "자전거도로 prior +0.22", "added": "v2-2026.05.15"},
+        {"id": "signal",    "name": "교통안전 실시간 신호정보",       "origin": "apis.data.go.kr",    "gain": "교차로 신호 위상",       "category": "국내공공", "added": "v1"},
+        {"id": "vds",       "name": "한국도로공사 VDS 실시간 소통",   "origin": "data.ex.co.kr",      "gain": "속도·교통량·점유율",     "category": "국내공공", "added": "v1"},
+        {"id": "incidents", "name": "한국도로공사 돌발상황",          "origin": "data.ex.co.kr",      "gain": "사고·낙하물·공사",       "category": "국내공공", "added": "v1"},
+        {"id": "taas",      "name": "TAAS 교통사고분석",              "origin": "taas.koroad.or.kr",  "gain": "과거 사고이력 prior",   "category": "국내공공", "added": "v1"},
+        {"id": "its",       "name": "ITS 국가교통정보센터",            "origin": "openapi.its.go.kr",  "gain": "표준링크 속도·소요",     "category": "국내공공", "added": "v1"},
+        {"id": "dsz",       "name": "국토교통 데이터안심구역 결합결과","origin": "dsz.ex.co.kr",       "gain": "TAAS×VDS k-익명 결합",  "category": "국내공공", "added": "v1"},
+        {"id": "weather",   "name": "기상청 동네예보 (KMA)",          "origin": "apis.data.go.kr/1360000", "gain": "강수·시정·노면위험",   "category": "국내공공", "added": "v2-2026.05.15"},
+        {"id": "medical",   "name": "E-Gen 응급실 실시간 가용병상",   "origin": "apis.data.go.kr/B552657", "gain": "사고 심각도 보정·환자이송", "category": "국내공공", "added": "v2-2026.05.15"},
+        {"id": "bike",      "name": "서울시 공공자전거 따릉이 실시간","origin": "openapi.seoul.go.kr", "gain": "자전거도로 prior +0.22", "category": "국내공공", "added": "v2-2026.05.15"},
         # v3 2026-05-16: 9 → 12종 확장
-        {"id": "school_zone",        "name": "어린이보호구역 GIS",           "origin": "api.vworld.kr (lt_c_spzzone)", "gain": "스쿨존 위험 ×1.5 (등하교)", "added": "v3-2026.05.16"},
-        {"id": "black_ice",          "name": "도로결빙 위험구간 (KMA 파생)", "origin": "T1H+PTY+RN1 결합",              "gain": "블랙아이스 +0.32", "added": "v3-2026.05.16"},
-        {"id": "pedestrian_hotspot", "name": "보행자 사고다발지역",          "origin": "taas.koroad.or.kr (ped)",       "gain": "보행자 prior +0.30", "added": "v3-2026.05.16"},
+        {"id": "school_zone",        "name": "어린이보호구역 GIS",           "origin": "api.vworld.kr (lt_c_spzzone)", "gain": "스쿨존 위험 ×1.5 (등하교)", "category": "국내공공", "added": "v3-2026.05.16"},
+        {"id": "black_ice",          "name": "도로결빙 위험구간 (KMA 파생)", "origin": "T1H+PTY+RN1 결합",              "gain": "블랙아이스 +0.32",        "category": "국내공공", "added": "v3-2026.05.16"},
+        {"id": "pedestrian_hotspot", "name": "보행자 사고다발지역",          "origin": "taas.koroad.or.kr (ped)",       "gain": "보행자 prior +0.30",      "category": "국내공공", "added": "v3-2026.05.16"},
         # v4 2026-05-16: 12 → 15종 확장
-        {"id": "air_quality",  "name": "환경부 미세먼지 (PM10/PM2.5)", "origin": "apis.data.go.kr/B552584", "gain": "시정·카메라오염 +0.06", "added": "v4-2026.05.16"},
-        {"id": "school_route", "name": "어린이 통학로 GIS",            "origin": "도로교통공단 통학로",     "gain": "통학시간 boost +0.18",  "added": "v4-2026.05.16"},
-        {"id": "ev_charger",   "name": "EV 충전소 위치/사용률",        "origin": "apis.data.go.kr/B552584 (Ev)", "gain": "EV 정차 패턴 이상탐지", "added": "v4-2026.05.16"},
+        {"id": "air_quality",  "name": "환경부 미세먼지 (PM10/PM2.5)", "origin": "apis.data.go.kr/B552584", "gain": "시정·카메라오염 +0.06",   "category": "국내공공", "added": "v4-2026.05.16"},
+        {"id": "school_route", "name": "어린이 통학로 GIS",            "origin": "도로교통공단 통학로",     "gain": "통학시간 boost +0.18",   "category": "국내공공", "added": "v4-2026.05.16"},
+        {"id": "ev_charger",   "name": "EV 충전소 위치/사용률",        "origin": "apis.data.go.kr/B552584 (Ev)", "gain": "EV 정차 패턴 이상탐지", "category": "국내공공", "added": "v4-2026.05.16"},
         # v5 2026-05-18: 15 → 17종 확장
-        {"id": "road_surface",       "name": "도로 노면 상태 (RWIS)",         "origin": "data.ex.co.kr/openapi/rwisapi",          "gain": "노면 위험 (frost +0.35)",         "added": "v5-2026.05.18"},
-        {"id": "vehicle_inspection", "name": "KOTSA 자동차검사통계",          "origin": "apis.data.go.kr/B552014/InspectionStats", "gain": "구별 부적합률 → 잠재 위험", "added": "v5-2026.05.18"},
+        {"id": "road_surface",       "name": "도로 노면 상태 (RWIS)",         "origin": "data.ex.co.kr/openapi/rwisapi",          "gain": "노면 위험 (frost +0.35)",         "category": "국내공공", "added": "v5-2026.05.18"},
+        {"id": "vehicle_inspection", "name": "KOTSA 자동차검사통계",          "origin": "apis.data.go.kr/B552014/InspectionStats", "gain": "구별 부적합률 → 잠재 위험", "category": "국내공공", "added": "v5-2026.05.18"},
         # v6 2026-05-18: 17 → 19종 확장
-        {"id": "dtg",                "name": "KOTSA DTG 디지털운행기록",        "origin": "apis.data.go.kr/B552014/DtgStats",       "gain": "사업용 차량 위험운전 +0.10",   "added": "v6-2026.05.18"},
-        {"id": "nfa_dispatch",       "name": "소방청 119 교통사고 출동",        "origin": "apis.data.go.kr/1661000/TfcAcdntDsptch", "gain": "사고 심각도 + 골든타임 라우팅", "added": "v6-2026.05.18"},
+        {"id": "dtg",                "name": "KOTSA DTG 디지털운행기록",        "origin": "apis.data.go.kr/B552014/DtgStats",       "gain": "사업용 차량 위험운전 +0.10",   "category": "국내공공", "added": "v6-2026.05.18"},
+        {"id": "nfa_dispatch",       "name": "소방청 119 교통사고 출동",        "origin": "apis.data.go.kr/1661000/TfcAcdntDsptch", "gain": "사고 심각도 + 골든타임 라우팅", "category": "국내공공", "added": "v6-2026.05.18"},
         # v7 2026-05-19: 19 → 21종 확장
-        {"id": "road_age",           "name": "행정안전부 도로 노후도",           "origin": "apis.data.go.kr/1741000/RoadAgeStats",   "gain": "노후포장+포트홀 인프라 위험 +0.10", "added": "v7-2026.05.19"},
-        {"id": "av_hub",             "name": "KOTSA 자율주행 데이터허브 (V2X)",  "origin": "apis.data.go.kr/B552014/AvHub",          "gain": "V2X RSU + HD map → 위험 감산", "added": "v7-2026.05.19"},
+        {"id": "road_age",           "name": "행정안전부 도로 노후도",           "origin": "apis.data.go.kr/1741000/RoadAgeStats",   "gain": "노후포장+포트홀 인프라 위험 +0.10", "category": "국내공공", "added": "v7-2026.05.19"},
+        {"id": "av_hub",             "name": "KOTSA 자율주행 데이터허브 (V2X)",  "origin": "apis.data.go.kr/B552014/AvHub",          "gain": "V2X RSU + HD map → 위험 감산",   "category": "국내공공", "added": "v7-2026.05.19"},
         # v8 2026-05-21: 21 → 22종 확장
-        {"id": "police_cam",         "name": "경찰청 교통단속 CCTV 위치",         "origin": "apis.data.go.kr/1320000/CityTrafficCctv","gain": "단속 밀집 = 사고다발 prior +0.04", "added": "v8-2026.05.21"},
+        {"id": "police_cam",         "name": "경찰청 교통단속 CCTV 위치",         "origin": "apis.data.go.kr/1320000/CityTrafficCctv","gain": "단속 밀집 = 사고다발 prior +0.04", "category": "국내공공", "added": "v8-2026.05.21"},
         # v9 2026-05-21: 22 → 23종 확장
-        {"id": "crosswalk",          "name": "국토부 횡단보도 GIS",                "origin": "api.vworld.kr (lt_l_crwlk)",             "gain": "보행자 prior +0.05 / 50m 접근 ×1.10",       "added": "v9-2026.05.21"},
-        # v10 2026-05-25: 23 → 24종 확장 (USGS 지진 — 터널/교량 인프라 안전)
-        {"id": "earthquake",         "name": "USGS 실시간 지진 (M2.0+)",            "origin": "earthquake.usgs.gov/fdsnws (no-key)",   "gain": "터널/교량 인프라 위험 prior +0.02 / 진앙 50km 내 알림", "added": "v10-2026.05.25"},
-        # v11 2026-05-25: 24 → 25종 확장 (OSM 철도 건널목 — 한국 KORAIL 사고다발 지점)
-        {"id": "railway_crossing",   "name": "OSM 철도 건널목 (level_crossing)",     "origin": "OSM Overpass railway=level_crossing (no-key)", "gain": "건널목 1개당 +0.03 (차단기 없으면 +0.05) / 100m 접근 알림", "added": "v11-2026.05.25"},
+        {"id": "crosswalk",          "name": "국토부 횡단보도 GIS",                "origin": "api.vworld.kr (lt_l_crwlk)",             "gain": "보행자 prior +0.05 / 50m 접근 ×1.10",       "category": "국내공공", "added": "v9-2026.05.21"},
+        # v10 2026-05-25: 23 → 24종 확장 (USGS 지진 — 글로벌 보조 인프라)
+        {"id": "earthquake",         "name": "USGS 실시간 지진 (M2.0+)",            "origin": "earthquake.usgs.gov/fdsnws (no-key)",   "gain": "터널/교량 인프라 위험 prior +0.02 / 진앙 50km 내 알림", "category": "보조인프라", "added": "v10-2026.05.25"},
+        # v11 2026-05-25: 24 → 25종 확장 (OSM 철도 건널목 — 글로벌 보조 인프라)
+        {"id": "railway_crossing",   "name": "OSM 철도 건널목 (level_crossing)",     "origin": "OSM Overpass railway=level_crossing (no-key)", "gain": "건널목 1개당 +0.03 (차단기 없으면 +0.05) / 100m 접근 알림", "category": "보조인프라", "added": "v11-2026.05.25"},
     ]
     for s in sources:
         meta = fresh.get(s["id"]) or {}
@@ -79,9 +82,24 @@ def list_sources():
         s["age_s"] = _age(meta.get("ts"))
         s["mode"] = meta.get("mode", "stub")   # live | stub | cached
         s["last_success"] = meta.get("ok")
+    # v12.135: 카테고리별 카운트 (공모전 정직성 — 국내공공 vs 보조인프라 분리)
+    domestic = [s for s in sources if s.get("category") == "국내공공"]
+    aux = [s for s in sources if s.get("category") == "보조인프라"]
     return {
         "sources": sources,
         "count": len(sources),
+        "categories": {
+            "국내공공": {
+                "count": len(domestic),
+                "ids": [s["id"] for s in domestic],
+                "note": "한국 정부/공공기관 공식 API (공모전 평가 대상 데이터)",
+            },
+            "보조인프라": {
+                "count": len(aux),
+                "ids": [s["id"] for s in aux],
+                "note": "글로벌 오픈데이터 (no-key fallback, 정확도 보강 용도)",
+            },
+        },
         "schema_version": "fusion.v11-2026.05.25-25src",
         "checked_at": now_ts.isoformat() + "Z",
     }

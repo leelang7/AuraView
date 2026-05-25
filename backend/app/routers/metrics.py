@@ -737,7 +737,7 @@ def audit():
         },
         "system": {
             "tests_passing": 118,
-            "schema_version": "fusion.v10-2026.05.25-24src (USGS earthquake)",
+            "schema_version": "fusion.v10-2026.05.25-24src",
             "ci_url": "https://github.com/leelang7/AuraView/actions",
             "live_demo": "https://auraview.allthatai.kr/ui",
             "manifest": "/metrics/manifest",

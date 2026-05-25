@@ -5,7 +5,7 @@
 [![endpoints](https://img.shields.io/badge/API_endpoints-149-7c3aed)](https://auraview.allthatai.kr/metrics/api-directory)
 [![system hub](https://img.shields.io/badge/SYSTEM_HUB-/competition/-00e09a)](https://auraview.allthatai.kr/competition/)
 [![scenarios](https://img.shields.io/badge/scenarios-8-00e09a)](https://auraview.allthatai.kr/occupancy/compare)
-[![live sources](https://img.shields.io/badge/live%20data-11%2F24%20no--key-00e09a)](https://auraview.allthatai.kr/fusion/sources)
+[![live sources](https://img.shields.io/badge/live%20data-12%2F25%20no--key-00e09a)](https://auraview.allthatai.kr/fusion/sources)
 [![location gate](https://img.shields.io/badge/location__verified-43%25%20honest-00C8FF)](https://auraview.allthatai.kr/fleet/live)
 [![model AUC](https://img.shields.io/badge/Risk%20Transformer%20AUC-0.9403-00c8ff)](models/risk_transformer_trained_metric.json)
 [![inference p99](https://img.shields.io/badge/inference%20p99-1.04ms-7c3aed)](https://auraview.allthatai.kr/benchmark/all)

@@ -678,7 +678,7 @@ async function tick() {
       const evs = live.events || [];
       const html = evs.length === 0
         ? '<div class="empty">아직 업로드 없음 — 네이티브앱 REC 활성화 시 표시</div>'
-        : evs.slice(0, 14).map(ev => {
+        : evs.slice(0, 14).map((ev, idx) => {
             const ent = ev.entropy || 0;
             const cls = ent >= 0.8 ? 'hi' : ent >= 0.6 ? 'mi' : 'lo';
             const ic = ent >= 0.8 ? '⚠' : ent >= 0.6 ? '⚡' : '●';
@@ -692,7 +692,9 @@ async function tick() {
             const lvColor = isV ? '#00E09A' : 'rgba(255,176,32,0.7)';
             const lvTitle = lv ? esc(lv.note || '') : '미검증';
             const lvBadge = '<span title="' + lvTitle + '" style="color:' + lvColor + ';font-family:monospace;font-size:9px;margin-left:4px;border:1px solid ' + lvColor + ';border-radius:6px;padding:0 4px;font-weight:900;">' + lvIcon + '</span>';
-            return '<div class="ev"><div class="ic ' + cls + '">' + ic + '</div><div class="meta">' + esc(ev.reason || '?') + lvBadge + '<span class="sub">' + esc(ev.intersection_id || '—') + ' · ' + tStr + ' ago</span></div><div class="ent ' + cls + '">' + ent.toFixed(2) + '</div></div>';
+            // v12.121: PROOF 링크 — /fleet/proof/{idx} 새 탭 forensic 검증
+            const proofLink = '<a href="/fleet/proof/' + idx + '" target="_blank" title="forensic evidence trail" style="margin-left:6px;color:rgba(0,200,255,0.7);font-family:monospace;font-size:9px;text-decoration:none;border:1px solid rgba(0,200,255,0.3);border-radius:6px;padding:0 4px;font-weight:900;" onclick="event.stopPropagation();">🔍</a>';
+            return '<div class="ev"><div class="ic ' + cls + '">' + ic + '</div><div class="meta">' + esc(ev.reason || '?') + lvBadge + proofLink + '<span class="sub">' + esc(ev.intersection_id || '—') + ' · ' + tStr + ' ago</span></div><div class="ent ' + cls + '">' + ent.toFixed(2) + '</div></div>';
           }).join('');
       document.getElementById('lsBody').innerHTML = html;
       // verified pct 헤더에 표시

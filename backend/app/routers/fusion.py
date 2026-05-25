@@ -80,7 +80,7 @@ def list_sources():
     return {
         "sources": sources,
         "count": len(sources),
-        "schema_version": "fusion.v9-23src-2026.05.21",
+        "schema_version": "fusion.v10-2026.05.25-24src",
         "checked_at": now_ts.isoformat() + "Z",
     }
 

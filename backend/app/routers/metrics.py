@@ -511,7 +511,7 @@ def _compute_live_evidence() -> Dict[str, Any]:
         "system_health": {
             "tests_passing": 118,
             "ci_status_url": "https://github.com/leelang7/AuraView/actions",
-            "schema_version": "fusion.v9-23src-2026.05.21 (+ v10 earthquake 2026-05-25)",
+            "schema_version": "fusion.v10-2026.05.25-24src",
         },
     }
 

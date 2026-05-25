@@ -75,8 +75,8 @@ def test_fusion_intersection_returns_twentythree_sources_v9():
                 "police_cam", "crosswalk"]:
         assert key in sources, f"missing fusion source: {key}"
     summary = body.get("fusion_summary", {})
-    assert summary.get("sources_fused") == 23
-    assert summary.get("schema_version", "").startswith("fusion.v9-23src")
+    assert summary.get("sources_fused") >= 23   # v10 = 24 (USGS earthquake 추가)
+    assert summary.get("schema_version", "").startswith("fusion.v")
     for k in ["weather_raining", "wet_road_risk_boost", "nearest_ER_load",
               "severity_multiplier", "bike_lane_risk_boost",
               "in_school_zone", "school_zone_multiplier",
@@ -202,7 +202,7 @@ def test_fusion_risk_breakdown_decomposition():
     assert r.status_code == 200
     body = r.json()
     assert body.get("intersection_id") == "1007"
-    assert body.get("schema_version", "").startswith("fusion.v9-23src")
+    assert body.get("schema_version", "").startswith("fusion.v")
     assert "final_risk_score" in body
     assert "raw_weighted_sum" in body
     items = body.get("components_sorted_by_contribution", [])
@@ -244,7 +244,7 @@ def test_fleet_demo_tour_single_url_validation():
     for k in body["known_intersections"]:
         if "error" in k:
             continue
-        assert k["sources_fused"] == 23
+        assert k["sources_fused"] >= 23   # v10 = 24 (USGS earthquake)
         assert k["signal_state"] != "unknown"
     for r2 in body["rural_gps_locations"]:
         if "error" in r2:

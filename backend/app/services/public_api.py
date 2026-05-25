@@ -2384,8 +2384,8 @@ class IntersectionFusion:
         return {
             "intersection_id": self.intersection_id,
             "fusion_summary": {
-                "sources_fused": 23,
-                "schema_version": "fusion.v9-23src-2026.05.21",
+                "sources_fused": 24,
+                "schema_version": "fusion.v10-2026.05.25-24src",
                 "avg_vds_speed_kmh": round(avg_speed, 1),
                 "avg_vds_volume": round(avg_volume, 0),
                 "active_incidents": incident_count,

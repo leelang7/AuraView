@@ -682,6 +682,53 @@ def event_proof(event_idx: int):
     }
 
 
+@router.get("/proof/recent")
+def event_proof_recent(n: int = Query(5, ge=1, le=20)):
+    """v12.132: 최근 N개 이벤트의 forensic 결과를 한 번에 묶음 (심사 효율).
+    개별 /fleet/proof/{idx} 를 N번 호출 대신 한 응답으로.
+    OSM nearby 는 비싸므로 first event 만 라이브 fetch, 나머지는 location_verified 만."""
+    if not MANIFEST.exists():
+        return {"events": [], "count": 0, "checked_at": datetime.utcnow().isoformat() + "Z"}
+    rows = []
+    with MANIFEST.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try: rows.append(json.loads(line))
+                except: pass
+    rows.reverse()
+    out = []
+    for idx, e in enumerate(rows[:n]):
+        lv = e.get("location_verified")
+        if not lv or not isinstance(lv, dict) or lv.get("method") in {"no-gate-needed", "test-mode", "no-gps"}:
+            lv = _verify_event_location(
+                reason=e.get("reason", ""), lat=e.get("lat"), lon=e.get("lon"),
+                intersection_id=e.get("intersection_id"),
+                speed_kmh=e.get("speed_kmh"), test_mode=bool(e.get("test_mode")))
+        item = {
+            "event_idx": idx,
+            "ts": e.get("ts"),
+            "reason": e.get("reason"),
+            "lat": e.get("lat"), "lon": e.get("lon"),
+            "speed_kmh": e.get("speed_kmh"),
+            "entropy": e.get("entropy"),
+            "verified": lv.get("verified") if isinstance(lv, dict) else False,
+            "method": lv.get("method") if isinstance(lv, dict) else None,
+            "distance_m": lv.get("distance_m") if isinstance(lv, dict) else None,
+            "note": lv.get("note") if isinstance(lv, dict) else None,
+            "proof_url": f"/fleet/proof/{idx}",   # 개별 forensic (OSM nearby 포함) 링크
+        }
+        out.append(item)
+    verified_in_batch = sum(1 for it in out if it.get("verified"))
+    return {
+        "events": out,
+        "count": len(out),
+        "verified_in_batch": verified_in_batch,
+        "verified_pct_in_batch": round(verified_in_batch / len(out) * 100, 1) if out else 0.0,
+        "checked_at": datetime.utcnow().isoformat() + "Z",
+    }
+
+
 @router.post("/auth")
 def admin_auth(token: str = Body(..., embed=True)):
     """토큰 검증 — 프론트가 localStorage 저장 전에 한번 호출."""

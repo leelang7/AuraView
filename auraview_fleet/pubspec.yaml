@@ -1,7 +1,7 @@
 name: auraview_fleet
 description: "AuraView Fleet — Tesla-style shadow-mode dashcam contribution client"
 publish_to: 'none'
-version: 12.167.0+12167
+version: 12.168.0+12168
 
 environment:
   sdk: ^3.11.5
@@ -13,9 +13,10 @@ dependencies:
 
   # Camera + media
   camera: ^0.11.2
-  # v12.7 2026-05-19: Galaxy Z Fold 3 + camera_android(camera2) → frame 콜백 안 옴 버그.
-  # camera_android_camerax 로 강제 교체 (CameraX 기반 — 최신 단말 호환 더 좋음).
-  camera_android_camerax: ^0.6.30
+  # v12.168 2026-05-26: camera_android_camerax (Z Fold 3 hung) → camera_android (camera2) 강제.
+  # camera 0.11 의 default Android impl 이 camera_android_camerax 라 transitive dep 으로 들어옴.
+  # camera_android 를 명시 dependency + dependency_overrides 로 camerax 무력화.
+  camera_android: ^0.10.10
   path_provider: ^2.1.4
   image: ^4.5.4
 

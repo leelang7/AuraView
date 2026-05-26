@@ -16,7 +16,8 @@ import 'dart:math';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
-import 'package:camera_android_camerax/camera_android_camerax.dart' as cx;
+// v12.168: camera_android_camerax (Z Fold 3 hung) → camera_android (camera2) 강제 교체
+import 'package:camera_android/camera_android.dart' as ca;
 import 'package:camera_platform_interface/camera_platform_interface.dart' show CameraPlatform;
 import 'package:flutter/scheduler.dart';
 import 'dart:ui' as ui show ImageFilter;
@@ -42,7 +43,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 5);  // v12.163: 2s → 5s (발열 감소, 검출 0건이면 빠르게 도는 의미 없음)
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.167';
+const String kAppVersion = 'v12.168';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -60,9 +61,9 @@ late List<CameraDescription> _cameras;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // v12.7: camera_android_camerax 강제 — Galaxy Z Fold 3 camera2 frame 콜백 안 오는 버그 회피
+  // v12.168: camera_android_camerax (Z Fold 3 hung) → camera_android (camera2) 강제 사용
   if (!kIsWeb) {
-    try { CameraPlatform.instance = cx.AndroidCameraCameraX(); } catch (_) {}
+    try { CameraPlatform.instance = ca.AndroidCamera(); } catch (_) {}
   }
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,

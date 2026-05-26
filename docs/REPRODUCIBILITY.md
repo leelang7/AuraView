@@ -21,8 +21,10 @@ docker compose up -d && curl http://localhost:8000/metrics/competition
 - `model_performance.p99_inference_ms` = **1.04** (CPU 단일 코어, 100회 측정)
 - `impact_estimate.headline_pilot_5pct.prevented_deaths_yr` = **21**
 - `impact_estimate.headline_pilot_5pct.prevented_incidents_yr` = **1,694**
-- `public_data_fusion.sources_total` = **6** · `sources_live` / `sources_stub` / `sources_error` 카운트
-- `verification.tests` = **90 passed**
+- `public_data_fusion.sources_total` = **25** (국내공공 23 + 보조 2) · `sources_live` / `sources_stub` / `sources_error` 카운트
+- `verification.tests` = **119 passed**
+
+> D-3 자가 진단 한 줄: `curl https://auraview.allthatai.kr/impact/submission-ready` → `ready=true, passed=9/9` 확인 (v12.144+).
 
 ---
 
@@ -54,7 +56,8 @@ curl -O https://auraview.allthatai.kr/impact/policy-pdf
 curl -O "https://auraview.allthatai.kr/impact/policy-pdf?coverage=0.25"
 ```
 
-산출물: ~88KB A4 PDF 파일. KPI 카드 4종 + 5행 시나리오표 + 24종 공공데이터 상태 + 기술 차별화 4섹션.
+산출물: ~88KB A4 PDF 파일. KPI 카드 4종 + 5행 시나리오표 + 25종 공공데이터 상태 + 기술 차별화 4섹션.
+3-page 기획서 PDF 자동 생성 (v12.140 가로 막대 차트 포함): `curl -O https://auraview.allthatai.kr/impact/proposal-pdf` — 호출 시점 git_sha 반영.
 
 ---
 
@@ -130,7 +133,7 @@ pip install -r ../requirements.txt pytest httpx
 ALLOW_FALLBACK=1 SERVICE_KEY=test-stub pytest tests/ -v
 ```
 
-기대 결과: `90 passed` (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 25점 항목 증빙 router).
+기대 결과: `119 passed` (90 초기 + 28 fusion/fleet/v12.83 location/v12.87 speed-gate + 1 v12.150 /impact/submission-ready 회귀 보호).
 
 ---
 

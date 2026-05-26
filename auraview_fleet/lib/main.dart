@@ -39,10 +39,10 @@ const String kApiBase = String.fromEnvironment(
   'AURAVIEW_API_BASE',
   defaultValue: 'https://auraview.allthatai.kr',
 );
-const Duration kShadowInterval = Duration(seconds: 2);  // v12.90: 4s → 2s 더 빠른 라이브 추론 표시
+const Duration kShadowInterval = Duration(seconds: 5);  // v12.163: 2s → 5s (발열 감소, 검출 0건이면 빠르게 도는 의미 없음)
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.162';
+const String kAppVersion = 'v12.163';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -1386,61 +1386,12 @@ class _FleetHomeState extends State<FleetHome>
         _bevLastFrameAt = DateTime.now();
         _bevFrameCount++;
       });
-      // v12.161: ML Kit detection 도 takePicture 경로에서 직접 호출.
-      //   Galaxy Z Fold 3 + CameraX 에서 image stream callback (_processFrame) 이 firing 안 함 →
-      //   _bevDetections 영영 비어있고 BEV 가 '탐지 대기 중' placeholder 만 표시.
-      //   v12.138 에서 takePicture 기반 _pushDetectionsToBev 를 dead 라 삭제했던 실수 복구.
-      if (_objDetector != null && !_mlkitBusy) {
-        _mlkitBusy = true;
-        try {
-          final inputImage = InputImage.fromFilePath(shot.path);
-          final objects = await _objDetector!.processImage(inputImage);
-          final src = img.decodeJpg(bytes);
-          if (src != null) {
-            final imgW = src.width, imgH = src.height;
-            final imgArea = (imgW * imgH).toDouble();
-            final dets = <Map<String, dynamic>>[];
-            final raws = <Map<String, dynamic>>[];
-            for (final obj in objects) {
-              final box = obj.boundingBox;
-              final w = (box.right - box.left).abs();
-              final h = (box.bottom - box.top).abs();
-              final areaRatio = (w * h) / imgArea;
-              final labelStr = obj.labels.isEmpty
-                  ? 'unlabeled'
-                  : obj.labels.take(2).map((l) => '${l.text}:${(l.confidence * 100).toInt()}%').join(',');
-              // v12.162: filter 대폭 완화 — ML Kit base mode 가 잡는 거의 모든 객체 표시.
-              //   이전 threshold (0.15% 이하 reject) → 0.05% 로 3배 완화 + aspect 0.05~20.
-              //   목적: BEV 에 '실제 검출 작동' 시각 증명 (책상/실내 환경에서도 가구/식물 등 detect).
-              bool kept = true;
-              if (areaRatio < 0.0005 || areaRatio > 0.95 || w < 8 || h < 8) kept = false;
-              else {
-                final ac = h / w;
-                if (ac < 0.05 || ac > 20.0) kept = false;
-              }
-              raws.add({'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()],
-                        'labels': labelStr, 'kept': kept});
-              if (!kept) continue;
-              final cls = (h / w) > 1.4 ? 'person' : 'car';
-              double score = obj.labels.isNotEmpty ? obj.labels.first.confidence : 0.6;
-              dets.add({'cls': cls, 'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()], 'score': score});
-            }
-            if (mounted) setState(() {
-              _bevDetections = dets;
-              _rawDetections = raws;
-              _bevImgW = imgW; _bevImgH = imgH;
-              _detectRawN = objects.length;
-              _detectKeptN = dets.length;
-              _detectLastAt = DateTime.now();
-              _detectDebug = 'shadowTick raw=${objects.length} kept=${dets.length}';
-            });
-          }
-        } catch (e) {
-          if (mounted) setState(() => _detectDebug = 'shadowTick detect 예외: $e');
-        } finally {
-          _mlkitBusy = false;
-        }
-      }
+      // v12.163: shadowTick 내 ML Kit detection 블록 제거 (v12.161+v12.162 추가분 revert).
+      //   사용자 시험 결과: ML Kit base ObjectDetector 가 책상/실내 환경에서 의미있는 검출 0건 →
+      //   takePicture (~430ms) + JPEG decode + ML Kit + ImageLabeler 모두 매 tick 실행 = 발열만 발생.
+      //   진짜 해결책 (TFLite COCO-SSD) 까지는 ML Kit 호출 제거. 카메라 frame 콜백도 동작 안 하니
+      //   검출 자체가 0건이므로 ML Kit 폴링은 순수 배터리 낭비.
+      //   voxel grid 는 유지 (entropy/motion 계산에 사용) — 단, FPS 부담은 _processFrame 부재로 낮음.
       final feat = _entropyAndMotion(bytes);
       _lastEntropy = feat.entropy;
       final reason = _classifyReason(feat);

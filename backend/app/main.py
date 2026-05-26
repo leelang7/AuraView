@@ -475,7 +475,7 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
   <div class="slide on" data-i="0">
     <div class="ttl">FUSION RISK · 한양대 1007</div>
     <div class="big"><span id="s1Risk">—</span><sub id="s1Lv"></sub></div>
-    <div class="sub" id="s1Schema">schema: fusion.v9-23src · 5s 폴링</div>
+    <div class="sub" id="s1Schema">schema: fusion.v11-25src · 5s 폴링</div>
   </div>
   <!-- Slide 2: 4 KPI 그리드 -->
   <div class="slide" data-i="1">

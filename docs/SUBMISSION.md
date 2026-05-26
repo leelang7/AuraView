@@ -141,7 +141,7 @@ curl https://auraview.allthatai.kr/metrics/api-directory
 
 | 항목 | 값 |
 |---|---|
-| **테스트** | **118 / 118 PASS** — `pytest backend/tests/` (+ test_endpoints/test_competition_features/v12.83 location_verified/v12.87 speed_kmh 게이트 50건 신규) |
+| **테스트** | **119 / 119 PASS** — `pytest backend/tests/` (+ test_endpoints/test_competition_features/v12.83 location_verified/v12.87 speed_kmh 게이트 50건 + v12.150 submission-ready 회귀 보호) |
 | **CI** | GitHub Actions 4 jobs (Python / Flutter / Docker / Docs) |
 | **Docker** | 한 줄 가동 — `docker compose up` |
 | **서버 (현재)** | AWS EC2 t3.small (2 vCPU · 1.87 GB RAM · Ubuntu Linux 6.8) — `/healthz/details.resources` 라이브 |

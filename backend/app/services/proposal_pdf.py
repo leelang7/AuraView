@@ -150,7 +150,7 @@ def render_proposal_pdf() -> bytes:
         health = [
             f"데이터 소스: 25 (국내공공 {domestic_count} + 보조 {aux_count})",
             f"라이브 소스: {live_count} 개 (Open-Meteo · OSM · Citybikes · USGS no-key fallback)",
-            f"테스트: 118 / 118 PASS",
+            f"테스트: 119 / 119 PASS",
             f"Risk Transformer: AUC 0.9403, F1 0.9412, p99 1.04ms",
             f"git_sha: {git_sha}",
             f"라이브 검증: https://auraview.allthatai.kr/metrics/audit",
@@ -274,7 +274,7 @@ def render_proposal_pdf() -> bytes:
             "GitHub: https://github.com/leelang7/AuraView (MIT)",
             "Docker: docker compose up (한 줄 가동)",
             "재현: docs/REPRODUCIBILITY.md (10 sections)",
-            "테스트: python -m pytest backend/tests/  → 118 / 118 PASS",
+            "테스트: python -m pytest backend/tests/  → 119 / 119 PASS",
             "재학습: notebooks/train_risk_transformer.ipynb (CPU 8분)",
             "Native APK: auraview_fleet/ Flutter v12.139 (Galaxy Z Fold 3 검증)",
         ]

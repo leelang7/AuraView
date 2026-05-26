@@ -167,7 +167,7 @@ def main():
                 "  - Docker:        docker compose up (Dockerfile + docker-compose.yml 동봉)",
                 "",
                 "테스트 재현:",
-                "  python -m pytest backend/tests/    # 118/118 PASS 기대",
+                "  python -m pytest backend/tests/    # 119/119 PASS 기대",
                 "",
                 f"git_sha: {snapshot.get('git_sha', 'unknown')}",
             ]),

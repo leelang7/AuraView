@@ -15,10 +15,17 @@
 > **K-Perception Platform — 블랙박스 한 대로 사각지대까지 계산한다.**
 > Tesla-style occupancy · fleet-learning · end-to-end risk prediction 에 **Tesla 도 못 하는 한국 도로 협업 인지(V2V + Bus + Bidirectional)** 까지 결합한 안전 주행 지원 시스템.
 
-> 📋 **수상 검증용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
+> 📋 **검증용 한 페이지 자료:** [`docs/PRESS_KIT.md`](docs/PRESS_KIT.md) — 임팩트·차별화·성능·재현 모두 1쪽 정리
 
-> 🖼️ **HUD 미리보기 (v9 23-chip mockup):** [`static/visuals/hud_mockup.svg`](static/visuals/hud_mockup.svg) — Tesla 스타일 카메라+BEV+chip row+속도계+위험점수
+> 🖼️ **HUD 미리보기 (v11 25-chip mockup):** [`static/visuals/hud_mockup.svg`](static/visuals/hud_mockup.svg) — Tesla 스타일 카메라+BEV+chip row+속도계+위험점수
 >
+> 🆕 **v0.26 업데이트 (2026-05-26 · D-3) — 자가 진단 + Native UX + 전 site 25/v11 일관성**
+> 신규 단일 URL 자가 진단: [`GET /impact/submission-ready`](https://auraview.allthatai.kr/impact/submission-ready) — 9 게이트 (sources/schema/PDF/manifest/모델/git/license/font/banned-words) 한 응답 PASS 확인. **라이브 9/9 PASS · ready=true**.
+> Native App v12.138 + APK 56MB: Galaxy Z Fold 3 회전 보정 (`setPreferredOrientations`) · status bar 앱 버전 chip · 업로드 큐 가시화 chip ('재시도 N') · BEV 의미 툴팁 · BEV heatmap **색맹 친화 palette** (적록색약 구분).
+> Proposal PDF Page 1 **가로 막대 차트** 추가 (예방 건수 시각화). Native APK 버전 동기 + 천 단위 구분.
+> **외부 노출 정직성** 일괄 정리: 21 파일 (14 static HTML + 4 SVG + 4 backend + SUBMISSION.md) 24/v10 → **25/v11** + 'judge'/'공모전' 잔재 0. OpenAPI /docs · API 응답 모두 검증자 친화 문구로 통일.
+> LICENSE 추가 (MIT + 개인정보보호법 28조의2 + 국토부 훈령 1456호 컴플라이언스 명시). 검증 1-step 허브: [`/metrics/audit`](https://auraview.allthatai.kr/metrics/audit).
+
 > 🆕 **v9 업데이트 (2026-05-21~22) — 21종 → 23종 + 위치 인식 stub + 라이브 HUD + 1-URL 검증**
 > 추가 데이터 2종: 📹 **경찰청 교통단속 CCTV** (단속 밀집 = 사고다발 prior) · 🚸 **국토부 횡단보도 GIS** (50m 접근 알림 + 스쿨존 횡단).
 > 핵심 개선: **임의 GPS (집/원거리)에서 거짓 red signal/TAAS/ER 알람 차단** — 위치 인식 stub 6종 (signal/TAAS/incident/ER/bike/horizontal 모두 bbox·lat/lon 기반 필터).

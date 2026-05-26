@@ -2556,9 +2556,9 @@ def demos_9tabs():
               </div>
             </div>
 
-            <!-- ★ KPI vs 목표 시각화 — 공모전 평가지표 -->
+            <!-- ★ KPI vs 목표 시각화 -->
             <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,224,154,0.05),rgba(0,200,255,0.03));">
-              <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">📊 KPI vs TARGET · 공모전 평가지표</div>
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--safe),var(--accent));">📊 KPI vs TARGET</div>
               <div class="section-label">// 한국 도심 가려진 신호등 조기 감지 — 정량 KPI 달성 현황</div>
               <div id="kpiTargetGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px;">
                 <div class="placeholder" style="grid-column:1/-1;">로딩 중…</div>

@@ -1,4 +1,4 @@
-"""기획서 PDF 자동 생성 — 2026 공모전 제출용 단일 PDF.
+"""기획서 PDF 자동 생성 — 2026 제출용 단일 PDF.
 
 매 호출마다 현재 시스템 상태 (25 소스 / 라이브 / git_sha / tests) 반영하여 즉석 출력.
 docs/SUBMISSION.md + 라이브 metrics 결합한 A4 다중 페이지 PDF.
@@ -162,7 +162,7 @@ def render_proposal_pdf() -> bytes:
         _txt(ax, 0.06, 0.97, "데이터 융합 + 8 시나리오", fontsize=16, weight="bold", color="#fff")
 
         _section_header(ax, 0.06, 0.90, "5. 25종 공공데이터 융합")
-        _txt(ax, 0.08, 0.87, f"국내공공 {domestic_count}종 (공모전 평가 대상)", fontsize=10, weight="bold", color="#0066CC")
+        _txt(ax, 0.08, 0.87, f"국내공공 {domestic_count}종 (정부/공공기관 공식 API)", fontsize=10, weight="bold", color="#0066CC")
 
         domestic = [s for s in sources_list if s.get("category") == "국내공공"]
         for i, s in enumerate(domestic):

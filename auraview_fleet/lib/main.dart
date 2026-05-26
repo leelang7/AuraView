@@ -2447,7 +2447,7 @@ class _BevPanelState extends State<_BevPanel>
       Text('BEV · 3D OCCUPANCY',
            style: TextStyle(color: _accent, fontSize: 11,
                             fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-      // v12.138: BEV 의미 툴팁 — 처음 사용자/심사용 데모 시 도움
+      // v12.138: BEV 의미 툴팁 — 처음 사용자/외부 데모 시 도움
       const SizedBox(width: 4),
       Tooltip(
         message: 'Bird Eye View · 카메라 한 대로 추정한 위에서 본 2.5D 점유 격자.\n'

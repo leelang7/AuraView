@@ -37,8 +37,8 @@ def list_sources():
         except Exception:
             return None
 
-    # v12.135: category 필드 추가 — 공모전 정직성 (국내 공공 vs 글로벌 보조)
-    #   "국내공공": 한국 정부/공공기관 공식 API (가점 평가 대상)
+    # v12.135: category 필드 추가 — 출처 정직성 (국내 공공 vs 글로벌 보조)
+    #   "국내공공": 한국 정부/공공기관 공식 API (주력 평가 대상)
     #   "보조인프라": 글로벌 오픈데이터 (no-key fallback 용도, 정확도 보강)
     sources = [
         {"id": "signal",    "name": "교통안전 실시간 신호정보",       "origin": "apis.data.go.kr",    "gain": "교차로 신호 위상",       "category": "국내공공", "added": "v1"},
@@ -82,7 +82,7 @@ def list_sources():
         s["age_s"] = _age(meta.get("ts"))
         s["mode"] = meta.get("mode", "stub")   # live | stub | cached
         s["last_success"] = meta.get("ok")
-    # v12.135: 카테고리별 카운트 (공모전 정직성 — 국내공공 vs 보조인프라 분리)
+    # v12.135: 카테고리별 카운트 (출처 정직성 — 국내공공 vs 보조인프라 분리)
     domestic = [s for s in sources if s.get("category") == "국내공공"]
     aux = [s for s in sources if s.get("category") == "보조인프라"]
     return {
@@ -92,7 +92,7 @@ def list_sources():
             "국내공공": {
                 "count": len(domestic),
                 "ids": [s["id"] for s in domestic],
-                "note": "한국 정부/공공기관 공식 API (공모전 평가 대상 데이터)",
+                "note": "한국 정부/공공기관 공식 API (주력 평가 대상 데이터)",
             },
             "보조인프라": {
                 "count": len(aux),

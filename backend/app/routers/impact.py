@@ -59,7 +59,7 @@ def policy_pdf(
 
 @router.get("/proposal-pdf")
 def proposal_pdf():
-    """v12.136: 2026 공모전 제출용 기획서 PDF 자동 생성 (3-page A4).
+    """v12.136: 2026 제출용 기획서 PDF 자동 생성 (3-page A4).
     매 호출마다 현재 시스템 상태 (25 소스 / live 카운트 / git_sha / tests) 반영.
     페이지 구성:
     1. 표지 + 한 줄 가치 + 25점 항목 매트릭스 + 임팩트 + 시스템 헬스

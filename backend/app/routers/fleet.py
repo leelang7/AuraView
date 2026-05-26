@@ -512,9 +512,9 @@ def demo_tour():
         "known_intersections": known_snaps,
         "rural_gps_locations": rural_snaps,
         "validation_notes": {
-            "known": "8개 known 교차로 — 24/24 소스 활성 + 신호 cycle (go/warning/stop)",
+            "known": "8개 known 교차로 — 25/25 소스 활성 + 신호 cycle (go/warning/stop)",
             "rural": "강원/경기 외곽 GPS — 모두 unknown signal + TAAS 0 + ER 0 + LOW risk (위치 인식 stub 검증)",
-            "reviewers": "이 응답 하나로 fusion v10-24src (USGS earthquake 추가) + 위치 인식 정확성 전체 확인 가능",
+            "reviewers": "이 응답 하나로 fusion v11-25src (USGS earthquake + OSM 철도건널목 추가) + 위치 인식 정확성 전체 확인 가능",
         },
         "performance": {
             "cache_ttl_s": _DEMO_TOUR_TTL,

@@ -352,7 +352,7 @@ def data_attribution():
             "Ultralytics YOLO": "AGPL-3.0",
         },
         "verification_endpoint": "/fusion/sources",
-        "note": "stub fallback 응답인 경우 mode='stub' 으로 명시 — judge 가 즉시 식별 가능. ALLOW_FALLBACK=0 으로 설정 시 fallback 비활성.",
+        "note": "stub fallback 응답인 경우 mode='stub' 으로 명시 — 검증자가 즉시 식별 가능. ALLOW_FALLBACK=0 으로 설정 시 fallback 비활성.",
     }
 
 
@@ -360,7 +360,7 @@ def data_attribution():
 def competition_manifest():
     """검증용 single-source-of-truth — 모든 검증 가능한 artifact URL flat list.
 
-    judge 가 한 번 호출로 슬라이드·PDF·KPI·테스트·법적근거·라이센스 모두 검증 가능.
+    한 번 호출로 슬라이드·PDF·KPI·테스트·법적근거·라이센스 모두 검증 가능.
     """
     return {
         "as_of": datetime.utcnow().isoformat() + "Z",
@@ -578,7 +578,7 @@ def visuals_index():
 
 @router.get("/api-directory")
 def api_directory():
-    """시스템 평가용 — 전체 엔드포인트 그룹별 디렉토리 (judge friendly).
+    """시스템 평가용 — 전체 엔드포인트 그룹별 디렉토리 (검증 친화).
 
     /healthz/details 와 비슷하지만 prefix(group)별로 묶어 한눈에 검토 가능.
     """

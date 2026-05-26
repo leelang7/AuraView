@@ -159,9 +159,9 @@
   </nav>
 
   <header class="hero">
-    <span class="eyebrow"><span style="color:var(--safe);">●</span> 24종 공공데이터 + 폰 fleet — 라이브</span>
+    <span class="eyebrow"><span style="color:var(--safe);">●</span> 25종 공공데이터 + 폰 fleet — 라이브</span>
     <h1><span class="g">지금 이 순간</span> 어떤 공공데이터를 쓰고 있나</h1>
-    <p>AuraView 서버가 <b style="color:var(--text);">24종 공공데이터</b>를 실시간 호출/캐시 중. 아래 grid 의 각 카드는
+    <p>AuraView 서버가 <b style="color:var(--text);">25종 공공데이터</b>를 실시간 호출/캐시 중. 아래 grid 의 각 카드는
        마지막 호출 시간(age) + 모드(live/stub) + 직전 응답 성공 여부를 5초마다 갱신.
        동시에 네이티브앱들이 익명 위험 이벤트를 업로드하면 우측 피드에 표시됩니다.</p>
 
@@ -179,10 +179,10 @@
     </div>
   </header>
 
-  <!-- v12.44+v12.46: 24종 공공데이터 라이브 grid — 위치 선택 dropdown 포함 -->
+  <!-- v12.44+v12.46: 25종 공공데이터 라이브 grid — 위치 선택 dropdown 포함 -->
   <section class="panel" style="margin-top:14px;">
     <h3>
-      24종 공공데이터 실시간 호출 현황
+      25종 공공데이터 실시간 호출 현황
       <span style="display:flex;gap:10px;align-items:center;font-size:10px;letter-spacing:1.2px;color:var(--muted);font-weight:700;">
         <select id="srcs-iid" onchange="refreshSources()" style="background:#0A0E18;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;">
           <option value="1007">한양대역 (1007)</option>
@@ -515,7 +515,7 @@ async function refreshHud() {
     push('V2X', Math.round((sum.av_confidence || 0)*100) + '%', '#7CE4B0', sum.high_v2x_zone);
     push('DTG', sum.dtg_danger_score?.toFixed(2), '#A095FF', (sum.dtg_risk_boost || 0) > 0.03);
     push('119', '×' + (sum.nfa_severity_multiplier || 1.0).toFixed(2), '#FF8866', sum.golden_time_at_risk);
-    // v12.34: 잔여 chip — 자전거/통학로/EV/노면/검사 + 스쿨존횡단 (23종 완전 커버)
+    // v12.34: 잔여 chip — 자전거/통학로/EV/노면/검사 + 스쿨존횡단 (25종 완전 커버)
     push('자전거', '+' + Math.round((sum.bike_lane_risk_boost || 0)*100) + '%', '#FFB020', (sum.bike_lane_risk_boost || 0) > 0.05);
     push('통학로', '+' + Math.round((sum.walk_route_boost || 0)*100) + '%', '#FFCB6B', sum.on_school_route);
     push('EV', Math.round((sum.ev_dwelling_likelihood || 0)*100) + '%', '#7CE4B0', sum.near_ev_station && (sum.ev_dwelling_likelihood || 0) >= 0.7);
@@ -544,7 +544,7 @@ async function refreshHud() {
 refreshHud();
 setInterval(refreshHud, 5000);
 
-// v12.44+v12.45: 24종 공공데이터 라이브 grid + 카드별 실제 derived 응답값
+// v12.44+v12.45: 25종 공공데이터 라이브 grid + 카드별 실제 derived 응답값
 // 카드의 dropdown 교차로 기준 현재 응답(샘플) 1줄을 함께 표시
 const SOURCE_VALUE = (id, sum, sources) => {
   switch (id) {

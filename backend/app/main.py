@@ -241,7 +241,7 @@ _mount_static(app, ["static", "story"], "/story")        # v3 2026-05-16: 일반
 _mount_static(app, ["static", "reel"], "/reel")          # v5 2026-05-16: 72초 자동재생 시네마틱 시퀀스 (영상 대체)
 _mount_static(app, ["static", "gallery"], "/gallery")    # v6 2026-05-17: 17 SVG 시각자료 갤러리 (필터+라이트박스)
 _mount_static(app, ["static", "bev3d"], "/bev3d")        # v7 2026-05-18: AuraView 자체 Three.js 3D BEV (네이티브앱 WebView 임베드용)
-_mount_static(app, ["static", "scorecard"], "/scorecard")  # v7 2026-05-18: 검증 25점 항목 적격 증거표 (judge-facing)
+_mount_static(app, ["static", "scorecard"], "/scorecard")  # v7 2026-05-18: 검증 25점 항목 적격 증거표 (검증자용)
 _mount_static(app, ["static", "privacy"], "/privacy")    # v7 2026-05-18: 가명정보 처리 파이프라인 라이브 데모 (5pt 실증)
 _mount_static(app, ["static", "safezone"], "/safezone")  # v7 2026-05-18: 안전구역 라이브 대시보드 (5pt 실증)
 _mount_static(app, ["static", "policy"], "/policy")      # v8 2026-05-18: 수집→통계분석→정책의사결정 (Tesla fleet)
@@ -2029,7 +2029,7 @@ def demos_9tabs():
           <div class="tab-panel" id="tab3">
             <div class="card">
               <div class="card-tag">FUSION · 5점 · v2 ★</div>
-              <div class="section-label">// 24종 공공데이터 한 응답 결합 (v10-2026.05.25 USGS earthquake 추가)</div>
+              <div class="section-label">// 25종 공공데이터 한 응답 결합 (v11-2026.05.25 OSM 철도건널목 추가)</div>
               <div class="hero-copy">
                 <div class="hero-title">교차로 한 곳 = 9종 데이터 한 호출</div>
                 <div class="hero-desc">신호 · VDS · 돌발 · TAAS · ITS · 안심구역 · <b style="color:var(--accent2);">기상(KMA) · 응급실(NEDIS) · 따릉이</b> — 각 어댑터가 동일 교차로에 대해 동시 조회 후 단일 JSON 으로 결합 반환합니다. 기상 가중치(우천+0.18) · 응급실 심각도 보정 · 자전거도로 prior(+0.22) 가 자동 합산됩니다.</div>
@@ -2392,11 +2392,11 @@ def demos_9tabs():
             </div>
           </div>
 
-          <!-- TAB 10 : 공공데이터 라이브 — judge-검증용 실시간 9종 소스 상태 (v2: 6→9 확장) -->
+          <!-- TAB 10 : 공공데이터 라이브 — 검증용 실시간 소스 상태 (v11: 6→25 확장) -->
           <div class="tab-panel" id="tab10">
             <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(0,200,255,0.08),rgba(0,224,154,0.04));border:1px solid rgba(0,200,255,0.30);">
-              <div class="card-tag" style="background:linear-gradient(135deg,var(--accent),var(--safe));">PUBLIC DATA · LIVE · 9 SOURCES ★</div>
-              <div class="section-label">// 24종 공공데이터 어댑터 실시간 상태 — 자동 새로고침 3초 주기 · v10-2026.05.25 · 11/24 no-key live</div>
+              <div class="card-tag" style="background:linear-gradient(135deg,var(--accent),var(--safe));">PUBLIC DATA · LIVE · 25 SOURCES ★</div>
+              <div class="section-label">// 25종 공공데이터 어댑터 실시간 상태 — 자동 새로고침 3초 주기 · v11-2026.05.25 · 12/25 no-key live</div>
               <div style="margin-top:10px;font-family:'Black Han Sans',sans-serif;font-size:22px;line-height:1.3;">
                 검증 검증용 — 폴링 모드(live/stub/error) · 마지막 호출 시각 · age 그대로 노출.
                 <span style="font-size:13px;color:var(--accent2);">신호·VDS·돌발·TAAS·ITS·DSZ + <b>기상·응급실·따릉이 ★ NEW</b></span>
@@ -2405,7 +2405,7 @@ def demos_9tabs():
             </div>
 
             <div class="card">
-              <div class="section-label">// 24종 공공데이터 어댑터 (v1 6종 + v2~v10 18종 — 11종 no-key 라이브)</div>
+              <div class="section-label">// 25종 공공데이터 어댑터 (v1 6종 + v2~v11 19종 — 12종 no-key 라이브)</div>
               <div id="pdSourceList" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
                 <div class="placeholder">로딩 중…</div>
               </div>
@@ -2474,7 +2474,7 @@ def demos_9tabs():
             <!-- 데이터 freshness 배지 -->
             <div class="card" style="margin-bottom:14px;">
               <div class="card-tag">DATA FRESHNESS · LIVE POLLING · 9src</div>
-              <div class="section-label">// 24종 공공데이터 마지막 호출 시각 + 응답 모드 (v10-2026.05.25)</div>
+              <div class="section-label">// 25종 공공데이터 마지막 호출 시각 + 응답 모드 (v11-2026.05.25)</div>
               <div id="freshGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px;">로딩 중…</div>
             </div>
 

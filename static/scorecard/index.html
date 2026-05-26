@@ -140,6 +140,16 @@
       <span data-probe="/safezone/" style="color:var(--muted);">⏳ SAFEZONE</span>
       <span id="schema-info" style="color:var(--muted);margin-left:auto;">SCHEMA: ...</span>
     </div>
+
+    <!-- v12.145: 제출 readiness 자동 진단 strip — 9 게이트 한 응답 PASS -->
+    <div id="ready-strip" style="display:flex;gap:10px;margin-top:8px;align-items:center;flex-wrap:wrap;
+      padding:9px 14px;background:rgba(0,224,154,0.06);border:1px solid rgba(0,224,154,0.30);
+      border-radius:99px;font-size:11px;font-weight:800;letter-spacing:1px;">
+      <span style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;">SUBMISSION:</span>
+      <span id="ready-status" style="color:var(--muted);font-family:'JetBrains Mono',monospace;">⏳ checking…</span>
+      <span id="ready-passed" style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;"></span>
+      <a href="/impact/submission-ready" target="_blank" style="margin-left:auto;color:var(--accent);text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:10px;">RAW JSON →</a>
+    </div>
   </header>
 
   <div class="grid">
@@ -252,7 +262,8 @@
   <section class="legend">
     <h3>핵심 라이브 엔드포인트 (즉시 검증용)</h3>
     <ul>
-      <li><b>🎯 1-URL 통합 검증 (v9 신규)</b> · <code>GET /fleet/demo-tour</code> — 8 known + 2 rural GPS schema/위치인식 한 응답 입증</li>
+      <li><b>★ 제출 readiness 자가 진단 (v12.144 신규)</b> · <code>GET /impact/submission-ready</code> — 9 게이트 (sources/schema/PDF/manifest/모델/git/license/font/banned-words) 한 응답 PASS 확인</li>
+      <li><b>🎯 1-URL 통합 검증</b> · <code>GET /fleet/demo-tour</code> — 8 known + 2 rural GPS schema/위치인식 한 응답 입증</li>
       <li><b>25 소스 카탈로그</b> · <code>GET /fusion/sources</code></li>
       <li><b>교차로 실시간 융합</b> · <code>GET /fusion/intersection/{id}</code></li>
       <li><b>위험도 추론</b> · <code>POST /risk/predict</code></li>
@@ -306,6 +317,27 @@
       span.textContent = '✗ ' + label;
     }
   });
+  // v12.145: 제출 readiness 자동 진단 — /impact/submission-ready 한번 호출 후 strip 갱신
+  fetch('/impact/submission-ready').then(r => r.json()).then(j => {
+    const st = document.getElementById('ready-status');
+    const ps = document.getElementById('ready-passed');
+    if (st) {
+      if (j.ready) {
+        st.textContent = '✓ READY';
+        st.style.color = '#00E09A';
+      } else {
+        st.textContent = '△ ' + (j.blockers || []).join(', ');
+        st.style.color = '#FFB020';
+      }
+    }
+    if (ps) {
+      ps.textContent = `${j.passed}/${j.total} gates · git ${(j.checks || []).find(c => c.id === 'git_sha')?.detail || '?'}`;
+    }
+  }).catch(() => {
+    const st = document.getElementById('ready-status');
+    if (st) { st.textContent = '✗ unreachable'; st.style.color = '#FF6B6B'; }
+  });
+
   // 스키마 버전 + v12.47 23 소스 mini strip
   fetch('/fusion/sources').then(r => r.json()).then(j => {
     const s = document.getElementById('schema-info');

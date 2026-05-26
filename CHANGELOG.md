@@ -53,8 +53,25 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 - v12.146 의 `_try_install_noto_kr_runtime()` 제거 — noto-cjk GitHub LFS 가 raw URL 다운로드 차단 + production 코드 외부 fetch 는 보안 분류기에 의해 정당하게 차단됨
 - 대안: render.yaml `runtime: docker` (Dockerfile 이미 `fonts-noto-cjk` 설치) 또는 backend/fonts/ 사전 번들
 
+### Added — README + CHANGELOG + docs surface refresh (v12.148 + v12.149 + v12.152 + v12.153)
+- CHANGELOG v0.26 entry — Added/Fixed/Improved/Removed/Reverted/Tests 키워드별 정리
+- README hero v0.26 banner: D-3 자가 진단 1줄 검증 + Native v12.138 + 25/v11 + LICENSE 컴플라이언스 (개인정보보호법 28조의2 · 국토부 훈령 1456호)
+- HUD 미리보기 라벨 'v9 23-chip' → 'v11 25-chip' 동기
+- 4 GitHub-visible docs 일괄 sync: PRESS_KIT (3곳 + 시스템 아키텍처 ASCII 도면), DATASETS (제목+표 헤더+체크리스트, USGS+OSM row 추가), ROADMAP (Week1/Week2), WHITEPAPER_KR (평가표+본문 5곳+6.1+부록), screenshots/README (온보딩 카피)
+- REPRODUCIBILITY.md: sources_total 6 → 25, tests 90 → 119, 4축 KPI 섹션에 D-3 자가 진단 1줄 추가
+- Flutter onboarding 두 곳 (about + _OnboardPage 'AuraView가 뭐예요?') 24→25종
+
+### Improved — 회귀 보호 + 정량 정직성 (v12.150 + v12.151)
+- `test_impact_submission_ready_passes_all_gates` 신규 — 9 게이트 id + ok 상태 회귀 detect (118 → 119)
+- 외부 노출 6 surface 의 test 카운트 118 → 119 일괄 동기 (README badge, /metrics/audit 응답, /healthz/details, proposal_pdf 2곳, SUBMISSION.md, kiosk slide, bundle README)
+
+### Added — Native APK v12.153 (rebuilt)
+- pubspec.yaml 12.138.0+12138 → 12.153.0+12153
+- kAppVersion 'v12.138' → 'v12.153' (status bar chip 표시값 동기)
+- APK 56MB (app-release.apk) — Onboarding 텍스트 25종 반영
+
 ### Tests
-- pytest 98/98 PASS (test_competition_features + test_endpoints + test_new_routers) — QA RAG 제외
+- pytest 119/119 PASS (98 외 21 fusion/fleet + v12.150 회귀)
 - forward-compatible (assertion 모두 `>= 23` / `>= 24` → 25 에서도 PASS)
 
 ---

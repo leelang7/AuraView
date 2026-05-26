@@ -87,7 +87,7 @@ def render_proposal_pdf() -> bytes:
         # 차별화 요약 박스
         _section_header(ax, 0.06, 0.81, "1. 핵심 차별점", badge="WHY AuraView")
         items = [
-            "■ 25종 공공데이터 실시간 융합 — 신호·VDS·돌발·TAAS·ITS·DSZ·KMA + 보조 12종 (Open-Meteo·OSM)",
+            "■ 25종 공공데이터 실시간 융합 — 신호·VDS·돌발·TAAS·ITS·DSZ·KMA·119·DTG·KOTSA·환경부 + 보조 (USGS·OSM)",
             "■ 8 시나리오 K-Perception — 트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간",
             "■ 한국 차별화 V2V+Bus+Bidirectional — Tesla 가 다루지 못하는 한국 도로 협업 인지",
             "■ Risk Transformer 실 학습 — AUC 0.9403 / F1 0.9412 / p99 1.04ms",
@@ -113,23 +113,33 @@ def render_proposal_pdf() -> bytes:
             _txt(ax, 0.26, y, evidence, fontsize=8.5, color="#444")
             _txt(ax, 0.94, y, url, fontsize=7.5, color="#0066CC", ha="right")
 
-        # 임팩트 박스
-        _section_header(ax, 0.06, 0.46, "3. 정량 임팩트 (TAAS 2024 baseline)", color="#E07A00")
+        # 임팩트 박스 (표 + 시각 막대)
+        _section_header(ax, 0.06, 0.46, "3. 정량 임팩트 (TAAS 2024 baseline · lead=3.38s)", color="#E07A00")
         impact_rows = [
-            ("Pilot 5%", "1,694", "21", "2,370"),
-            ("확산 25%", "8,470", "105", "11,852"),
-            ("전국 100%", "33,880", "421", "47,408"),
+            ("Pilot 5%", 1694, 21, 2370),
+            ("확산 25%", 8470, 105, 11852),
+            ("전국 100%", 33880, 421, 47408),
         ]
         _txt(ax, 0.08, 0.43, "도입 비율", fontsize=9, weight="bold", color="#666")
-        _txt(ax, 0.30, 0.43, "사고 예방/년", fontsize=9, weight="bold", color="#666")
-        _txt(ax, 0.55, 0.43, "사망 감소", fontsize=9, weight="bold", color="#666")
-        _txt(ax, 0.75, 0.43, "부상 감소", fontsize=9, weight="bold", color="#666")
+        _txt(ax, 0.22, 0.43, "사고 예방/년", fontsize=9, weight="bold", color="#666")
+        _txt(ax, 0.42, 0.43, "사망 감소", fontsize=9, weight="bold", color="#666")
+        _txt(ax, 0.56, 0.43, "부상 감소", fontsize=9, weight="bold", color="#666")
+        _txt(ax, 0.70, 0.43, "예방 건수 시각화", fontsize=9, weight="bold", color="#666")
+        # 최대치를 100% 로 정규화
+        max_prev = max(r[1] for r in impact_rows)
+        bar_x0, bar_w = 0.70, 0.24
         for i, (cov, prev, dead, hurt) in enumerate(impact_rows):
-            y = 0.40 - i * 0.022
+            y = 0.40 - i * 0.025
             _txt(ax, 0.08, y, cov, fontsize=10, weight="bold", color="#111")
-            _txt(ax, 0.30, y, f"{prev} 건", fontsize=10, color="#E07A00")
-            _txt(ax, 0.55, y, f"{dead} 명", fontsize=10, color="#C00")
-            _txt(ax, 0.75, y, f"{hurt} 명", fontsize=10, color="#444")
+            _txt(ax, 0.22, y, f"{prev:,} 건", fontsize=10, color="#E07A00")
+            _txt(ax, 0.42, y, f"{dead} 명", fontsize=10, color="#C00")
+            _txt(ax, 0.56, y, f"{hurt:,} 명", fontsize=10, color="#444")
+            # 가로 막대 (예방 건수 시각화)
+            bar_len = (prev / max_prev) * bar_w
+            ax.add_patch(Rectangle((bar_x0, y - 0.008), bar_w, 0.010, color="#EEE",
+                                   transform=ax.transAxes, clip_on=False))
+            ax.add_patch(Rectangle((bar_x0, y - 0.008), bar_len, 0.010, color="#E07A00",
+                                   transform=ax.transAxes, clip_on=False))
 
         # 시스템 헬스
         _section_header(ax, 0.06, 0.30, "4. 시스템 헬스 (현재)", color="#7C3AED")
@@ -262,7 +272,7 @@ def render_proposal_pdf() -> bytes:
             "재현: docs/REPRODUCIBILITY.md (10 sections)",
             "테스트: python -m pytest backend/tests/  → 118 / 118 PASS",
             "재학습: notebooks/train_risk_transformer.ipynb (CPU 8분)",
-            "Native APK: auraview_fleet/ Flutter v12.123 (Galaxy Z Fold 3 검증)",
+            "Native APK: auraview_fleet/ Flutter v12.139 (Galaxy Z Fold 3 검증)",
         ]
         for i, t in enumerate(repro):
             _txt(ax, 0.08, 0.43 - i * 0.022, t, fontsize=10, color="#333")

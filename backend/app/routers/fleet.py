@@ -307,18 +307,26 @@ def verify_pipeline():
     }
 
     # 2) 이미지 파일 존재율 (실 업로드의 무결성)
+    # v12.158: seed-demo fixture (path 'demo_*.jpg') 는 의도적으로 파일 없음 → 분모에서 제외.
     hard_dir = FLEET_DIR / "hard_samples"
     file_exists_count = 0
+    real_uploads = [r for r in rows if not r.get("path", "").startswith("demo_")]
     if hard_dir.exists():
-        for r in rows:
+        for r in real_uploads:
             p = hard_dir / r.get("path", "")
             if p.exists() and p.stat().st_size > 100:
                 file_exists_count += 1
+    fixture_count = len(rows) - len(real_uploads)
+    # 실 업로드 0건이면 manifest 가 fixture 뿐이므로 integrity 통과 (Render free tier 흔한 상태)
+    integrity_ok = (file_exists_count == len(real_uploads)) if real_uploads else True
     report["components"]["image_integrity"] = {
-        "ok": (file_exists_count > 0) if rows else True,
+        "ok": integrity_ok,
         "files_present": file_exists_count,
+        "real_uploads": len(real_uploads),
+        "fixture_entries": fixture_count,
         "entries": len(rows),
-        "integrity_pct": round(file_exists_count / len(rows) * 100, 1) if rows else 100.0,
+        "integrity_pct": round(file_exists_count / len(real_uploads) * 100, 1) if real_uploads else 100.0,
+        "note": "fixture (seed-demo) 는 파일 없음 — 분모에서 제외. 실 업로드만 무결성 검사." if fixture_count else None,
     }
 
     # 3) PII 처리 무결성

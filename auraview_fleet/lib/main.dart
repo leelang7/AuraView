@@ -42,7 +42,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 2);  // v12.90: 4s → 2s 더 빠른 라이브 추론 표시
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.159';
+const String kAppVersion = 'v12.160';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -6195,27 +6195,19 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
         child: ClipRRect(
           borderRadius: BorderRadius.circular(19),
           child: Stack(fit: StackFit.expand, children: [
-            // v12.84: voxel grid heatmap (40×40) — 실제 카메라→voxel 변환 결과 시각화
-            //   사용자가 BEV 가 살아있는지 즉시 확인 가능 (cell 색이 변함)
-            if (widget.voxelFlat != null && widget.voxelFlat!.length == 1600)
-              IgnorePointer(child: RepaintBoundary(child: CustomPaint(
-                size: Size.infinite,
-                painter: _VoxelHeatmapPainter(flat: widget.voxelFlat!),
-              ))),
+            // v12.160: voxel heatmap (바둑판) 제거. 카메라 픽셀 edge+motion 의 거리별 색칠은
+            //   실제 객체 인식 결과가 아니라 화면 픽셀 패턴 시각화일 뿐 — 사용자에게 의미 불명.
+            //   대신 검출 객체 (footprint + 실루엣) 만 표시 → 깔끔한 BEV. 검출 0건이면 그저 EGO + grid 만.
             RepaintBoundary(child: CustomPaint(
               size: Size.infinite,
               painter: _CleanBevPainter(objs: _objs, t: _t),
             )),
             Positioned(left: 12, top: 10, child: _TeslaLabel(
               icon: Icons.view_in_ar_rounded,
-              label: widget.voxelFlat == null
-                ? 'BEV · 0 FPS · VOXEL ✗'
-                : 'BEV · ${widget.fps > 0.5 ? widget.fps.toStringAsFixed(1) : "0"} FPS · VOXEL ✓',
-              color: widget.voxelFlat == null ? _muted : _safe)),
-            // v12.85: BEV 범례 (좌측 중앙) — 색상이 뭘 의미하는지 표시
-            const Positioned(left: 10, bottom: 36, child: _BevLegend()),
-            // 검출 객체 0개 + voxel 비어있으면 안내 메시지
-            if (_objs.isEmpty && (widget.voxelFlat == null || widget.voxelFlat!.isEmpty))
+              label: 'BEV · ML Kit ${widget.fps > 0.5 ? widget.fps.toStringAsFixed(1) : "0"} FPS',
+              color: widget.fps > 0.5 ? _safe : _muted)),
+            // v12.160: 검출 객체 0개면 placeholder (voxel heatmap 제거 후 비어있는 BEV 가 의도된 상태)
+            if (_objs.isEmpty)
               Center(child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
@@ -6229,7 +6221,7 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
                   Text('탐지 대기 중',
                     style: TextStyle(color: _accent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                   const SizedBox(height: 2),
-                  Text('카메라에 사람/차량/사물이 잡히면 표시',
+                  Text('카메라에 사람/차량이 잡히면 footprint + 실루엣 표시',
                     style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w600)),
                 ]),
               )),

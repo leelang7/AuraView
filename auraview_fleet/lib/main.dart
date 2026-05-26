@@ -42,7 +42,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 5);  // v12.163: 2s → 5s (발열 감소, 검출 0건이면 빠르게 도는 의미 없음)
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.166';
+const String kAppVersion = 'v12.167';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -175,6 +175,10 @@ class _FleetHomeState extends State<FleetHome>
   // v12.164: ImageLabeler frame-level 라벨 표시 (BEV bbox 분류 불가능 → frame 라벨로 정직)
   List<Map<String, dynamic>> _frameLabels = const [];   // [{text, confidence, index}]
   DateTime? _frameLabelsAt;
+  // v12.167: CameraPreview SurfaceTexture 가 Z Fold 3 + CameraX 에서 검정 (image stream callback X).
+  //   takePicture 결과 bytes 를 state 에 저장 → Image.memory 로 5초 주기 still-frame 표시.
+  Uint8List? _lastShotBytes;
+  DateTime? _lastShotAt;
   // v12.6: image stream 으로 받는 마지막 프레임 (takePicture 폐기)
   CameraImage? _lastCameraFrame;
   bool _imageStreamRunning = false;
@@ -1389,6 +1393,11 @@ class _FleetHomeState extends State<FleetHome>
         _bevLastFrameAt = DateTime.now();
         _bevFrameCount++;
       });
+      // v12.167: takePicture bytes 를 카메라 영역 still-frame fallback 으로 저장
+      if (mounted) setState(() {
+        _lastShotBytes = bytes;
+        _lastShotAt = DateTime.now();
+      });
       // v12.165: ImageLabeler 호출도 제거 (v12.164 추가분 폐기).
       //   사용자 피드백: 'Sky 80%' 같은 generic frame label 은 도로 안전 AI 와 무관 → 시연 마이너스.
       //   온디바이스 객체 검출/분류는 현 기기/ML Kit base 로는 의미있게 동작 X → UI 자체 숨김이 정직.
@@ -1889,6 +1898,7 @@ class _FleetHomeState extends State<FleetHome>
                         lastFusionOk: _lastFusionFetchOk,
                         voxelFlat: _bev?['grid_flat'] as List?,   // v12.84
                         frameLabels: _frameLabels,   // v12.164: ImageLabeler 라벨
+                        lastShotBytes: _lastShotBytes,   // v12.167: still-frame fallback
                       ),
                     ),
                   ),
@@ -6042,6 +6052,7 @@ class _CameraBevSplit extends StatefulWidget {
   final DateTime? lastFusionOk;
   final List? voxelFlat;   // v12.84: 1600개 voxel cell occupancy [0..1]
   final List<Map<String, dynamic>> frameLabels;   // v12.164: ImageLabeler frame-level 라벨
+  final Uint8List? lastShotBytes;   // v12.167: takePicture still-frame fallback
   const _CameraBevSplit({
     required this.camera, required this.detections,
     this.rawDetections = const [],
@@ -6053,6 +6064,7 @@ class _CameraBevSplit extends StatefulWidget {
     this.lastFusionOk,
     this.voxelFlat,
     this.frameLabels = const [],
+    this.lastShotBytes,
   });
   @override
   State<_CameraBevSplit> createState() => _CameraBevSplitState();
@@ -6155,7 +6167,7 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
         child: ClipRRect(
           borderRadius: BorderRadius.circular(19),
           child: Stack(fit: StackFit.expand, children: [
-            // 카메라
+            // 카메라 — CameraPreview SurfaceTexture (Z Fold 3 에서 검정 가능)
             if (widget.camera != null && widget.camera!.value.isInitialized)
               _FullCameraPreview(controller: widget.camera!)
             else
@@ -6165,6 +6177,13 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
                 Text('카메라 권한 필요',
                   style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w800)),
               ])),
+            // v12.167: CameraPreview 검정 fallback — takePicture still-frame 을 위에 덮어 표시.
+            //   image stream callback 미동작 시에도 5초 주기로 프레임 보이게.
+            if (widget.lastShotBytes != null)
+              Positioned.fill(child: Image.memory(
+                widget.lastShotBytes!, fit: BoxFit.cover,
+                gaplessPlayback: true,
+              )),
             // v12.4: ML Kit raw 박스 (filter 전/후 다른 색)
             if (widget.camera != null && widget.camera!.value.isInitialized)
               IgnorePointer(child: CustomPaint(

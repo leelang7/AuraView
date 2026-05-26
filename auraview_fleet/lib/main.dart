@@ -42,7 +42,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 5);  // v12.163: 2s → 5s (발열 감소, 검출 0건이면 빠르게 도는 의미 없음)
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.165';
+const String kAppVersion = 'v12.166';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -6140,9 +6140,9 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
     for (final o in _objs) { if (o.cls == 'person') pc++; else vc++; }
 
     return Column(children: [
-      // ── 상단 절반: 카메라 + ML Kit 박스 (Tesla 풍 카드)
+      // v12.166: BEV 영역 통째 제거 (사용자: '없애버리라고 bev창'). 카메라 frame 만 전체 표시.
+      // 카메라 + ML Kit 박스 (Tesla 풍 카드) — 화면 전체
       Expanded(flex: 5, child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: Colors.black,
           borderRadius: BorderRadius.circular(20),
@@ -6193,75 +6193,7 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
           ]),
         ),
       )),
-      // ── 하단 절반: 순수 합성 3D BEV
-      Expanded(flex: 5, child: Container(
-        decoration: BoxDecoration(
-          gradient: const RadialGradient(
-            center: Alignment(0, 0.9), radius: 1.2,
-            colors: [Color(0xFF0A1322), Color(0xFF02050A)],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 18, offset: const Offset(0, 6)),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(19),
-          child: Stack(fit: StackFit.expand, children: [
-            // v12.160: voxel heatmap (바둑판) 제거. 카메라 픽셀 edge+motion 의 거리별 색칠은
-            //   실제 객체 인식 결과가 아니라 화면 픽셀 패턴 시각화일 뿐 — 사용자에게 의미 불명.
-            //   대신 검출 객체 (footprint + 실루엣) 만 표시 → 깔끔한 BEV. 검출 0건이면 그저 EGO + grid 만.
-            RepaintBoundary(child: CustomPaint(
-              size: Size.infinite,
-              painter: _CleanBevPainter(objs: _objs, t: _t),
-            )),
-            Positioned(left: 12, top: 10, child: _TeslaLabel(
-              icon: Icons.view_in_ar_rounded,
-              label: 'BEV · ML Kit ${widget.fps > 0.5 ? widget.fps.toStringAsFixed(1) : "0"} FPS',
-              color: widget.fps > 0.5 ? _safe : _muted)),
-            // v12.160: 검출 객체 0개면 placeholder (voxel heatmap 제거 후 비어있는 BEV 가 의도된 상태)
-            if (_objs.isEmpty)
-              Center(child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                ),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.radar_rounded, size: 28, color: _accent.withValues(alpha: 0.6)),
-                  const SizedBox(height: 6),
-                  Text('탐지 대기 중',
-                    style: TextStyle(color: _accent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                  const SizedBox(height: 2),
-                  Text('카메라에 사람/차량이 잡히면 footprint + 실루엣 표시',
-                    style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w600)),
-                ]),
-              )),
-            Positioned(right: 12, top: 10, child: _TeslaLabel(
-              icon: Icons.tag_faces_rounded, label: '$pc 보행 · $vc 차량',
-              color: (pc + vc) > 0 ? _accent : Colors.white.withValues(alpha: 0.55))),
-            // v12.13: 서버 헬시 배지 (좌하단) — N/21 live + 스키마 v
-            if (widget.serverTotalSources > 0)
-              Positioned(left: 12, bottom: 10, child: _TeslaLabel(
-                icon: Icons.lan_rounded,
-                label: '${widget.serverLiveSources}/${widget.serverTotalSources}'
-                       '${widget.serverSchema.contains("v7") ? " · v7" : (widget.serverSchema.isNotEmpty ? " · ${widget.serverSchema.split("-").first.replaceAll("fusion.", "")}" : "")}',
-                color: widget.serverLiveSources > 0
-                  ? _safe
-                  : Colors.white.withValues(alpha: 0.45))),
-            // v12.13: 마지막 fetch (우하단)
-            if (widget.lastFusionOk != null)
-              Positioned(right: 12, bottom: 10, child: _TeslaLabel(
-                icon: Icons.sync_rounded,
-                label: '${DateTime.now().difference(widget.lastFusionOk!).inSeconds}s',
-                color: DateTime.now().difference(widget.lastFusionOk!).inSeconds < 10
-                  ? _safe : _warn)),
-          ]),
-        ),
-      )),
+      // v12.166: BEV 영역 (EGO + placeholder + 서버 헬시 배지) 통째 삭제. 카메라 화면이 전체 차지.
     ]);
   }
 }

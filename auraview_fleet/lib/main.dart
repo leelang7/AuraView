@@ -42,7 +42,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 5);  // v12.163: 2s → 5s (발열 감소, 검출 0건이면 빠르게 도는 의미 없음)
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.163';
+const String kAppVersion = 'v12.164';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -172,6 +172,9 @@ class _FleetHomeState extends State<FleetHome>
   ObjectDetector? _objDetector;
   ImageLabeler? _imgLabeler;   // v12.9: 더 광범위 카테고리 (Person/Car/Dog 등 400+ labels)
   bool _mlkitBusy = false;
+  // v12.164: ImageLabeler frame-level 라벨 표시 (BEV bbox 분류 불가능 → frame 라벨로 정직)
+  List<Map<String, dynamic>> _frameLabels = const [];   // [{text, confidence, index}]
+  DateTime? _frameLabelsAt;
   // v12.6: image stream 으로 받는 마지막 프레임 (takePicture 폐기)
   CameraImage? _lastCameraFrame;
   bool _imageStreamRunning = false;
@@ -1386,12 +1389,27 @@ class _FleetHomeState extends State<FleetHome>
         _bevLastFrameAt = DateTime.now();
         _bevFrameCount++;
       });
-      // v12.163: shadowTick 내 ML Kit detection 블록 제거 (v12.161+v12.162 추가분 revert).
-      //   사용자 시험 결과: ML Kit base ObjectDetector 가 책상/실내 환경에서 의미있는 검출 0건 →
-      //   takePicture (~430ms) + JPEG decode + ML Kit + ImageLabeler 모두 매 tick 실행 = 발열만 발생.
-      //   진짜 해결책 (TFLite COCO-SSD) 까지는 ML Kit 호출 제거. 카메라 frame 콜백도 동작 안 하니
-      //   검출 자체가 0건이므로 ML Kit 폴링은 순수 배터리 낭비.
-      //   voxel grid 는 유지 (entropy/motion 계산에 사용) — 단, FPS 부담은 _processFrame 부재로 낮음.
+      // v12.164: ImageLabeler 만 호출 (ObjectDetector 의 거짓 car/person 분류 폐기).
+      //   ImageLabeler 는 frame 전체 라벨 (Vehicle/Person/Plant/Furniture 등 400+) + confidence 반환.
+      //   bbox 없이 frame-level 이지만 라벨이 진짜 의미 있음. 5초 주기 호출 → 발열 부담 미미.
+      if (_imgLabeler != null && !_mlkitBusy) {
+        _mlkitBusy = true;
+        try {
+          final inputImage = InputImage.fromFilePath(shot.path);
+          final labels = await _imgLabeler!.processImage(inputImage);
+          final top = labels.take(5).map((l) => {
+            'text': l.label,
+            'confidence': (l.confidence * 100).toInt(),
+            'index': l.index,
+          }).toList();
+          if (mounted) setState(() {
+            _frameLabels = top;
+            _frameLabelsAt = DateTime.now();
+          });
+        } catch (_) {/* labeler 실패 — 다음 tick 에서 재시도 */} finally {
+          _mlkitBusy = false;
+        }
+      }
       final feat = _entropyAndMotion(bytes);
       _lastEntropy = feat.entropy;
       final reason = _classifyReason(feat);
@@ -1888,6 +1906,7 @@ class _FleetHomeState extends State<FleetHome>
                         serverSchema: _serverSchema,
                         lastFusionOk: _lastFusionFetchOk,
                         voxelFlat: _bev?['grid_flat'] as List?,   // v12.84
+                        frameLabels: _frameLabels,   // v12.164: ImageLabeler 라벨
                       ),
                     ),
                   ),
@@ -6040,6 +6059,7 @@ class _CameraBevSplit extends StatefulWidget {
   final String serverSchema;
   final DateTime? lastFusionOk;
   final List? voxelFlat;   // v12.84: 1600개 voxel cell occupancy [0..1]
+  final List<Map<String, dynamic>> frameLabels;   // v12.164: ImageLabeler frame-level 라벨
   const _CameraBevSplit({
     required this.camera, required this.detections,
     this.rawDetections = const [],
@@ -6050,6 +6070,7 @@ class _CameraBevSplit extends StatefulWidget {
     this.serverSchema = '',
     this.lastFusionOk,
     this.voxelFlat,
+    this.frameLabels = const [],
   });
   @override
   State<_CameraBevSplit> createState() => _CameraBevSplitState();
@@ -6184,6 +6205,63 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
                 ? '✓ ${widget.detections.length} 검출'
                 : '대기 중',
               color: widget.detections.isNotEmpty ? _safe : Colors.white.withValues(alpha: 0.55))),
+            // v12.164: ImageLabeler frame-level 라벨 (정직 — bbox 없이 frame 전체 라벨)
+            //   ML Kit base ObjectDetector 의 거짓 'car/person' 대신 진짜 의미있는 라벨 표시
+            if (widget.frameLabels.isNotEmpty)
+              Positioned(
+                left: 12, right: 12, bottom: 10,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        border: Border.all(color: _accent.withValues(alpha: 0.30), width: 0.6),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(children: [
+                            Icon(Icons.label_outline_rounded, size: 11, color: _accent),
+                            const SizedBox(width: 4),
+                            Text('FRAME LABELS · ML Kit (frame-level, no bbox)',
+                              style: TextStyle(color: _accent, fontSize: 8.5,
+                                fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                          ]),
+                          const SizedBox(height: 4),
+                          Wrap(spacing: 6, runSpacing: 4,
+                            children: widget.frameLabels.take(5).map((lbl) {
+                              final txt = lbl['text']?.toString() ?? '';
+                              final conf = (lbl['confidence'] as int?) ?? 0;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: _accent.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(99),
+                                  border: Border.all(color: _accent.withValues(alpha: 0.35), width: 0.6),
+                                ),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Text(txt, style: TextStyle(color: Colors.white,
+                                    fontSize: 10, fontWeight: FontWeight.w800)),
+                                  const SizedBox(width: 4),
+                                  Text('$conf%', style: TextStyle(
+                                    color: _accent.withValues(alpha: 0.85),
+                                    fontSize: 9, fontWeight: FontWeight.w700,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                                ]),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ]),
         ),
       )),

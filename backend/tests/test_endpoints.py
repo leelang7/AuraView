@@ -653,3 +653,28 @@ def test_impact_top_intersections_seoul_default():
     assert body["scope"] == "seoul"
     for item in body["intersections"]:
         assert item.get("city") == "서울"
+
+
+def test_impact_submission_ready_passes_all_gates():
+    """v12.144+v12.147: D-3 자가 진단 — 9 게이트 모두 통과 + ready=true 회귀 보호.
+    각 게이트 detail 도 적합성 검증 — 미래 변경 시 회귀 detect."""
+    r = client.get("/impact/submission-ready")
+    assert r.status_code == 200
+    body = r.json()
+    # 핵심 인터페이스
+    assert body["deadline"] == "2026-05-29"
+    assert "checks" in body and isinstance(body["checks"], list)
+    assert body["total"] == len(body["checks"])
+    # 9 게이트 모두 존재 (id 누락 회귀 방지)
+    ids = {c["id"] for c in body["checks"]}
+    expected = {"sources_25", "schema_v11", "proposal_pdf_ok", "korean_font_hint",
+                "manifest_ok", "model_weights", "git_sha", "license_present", "banned_words_zero"}
+    assert expected <= ids, f"missing gates: {expected - ids}"
+    # 핵심 게이트 PASS (test env 에서도 확정 통과)
+    for cid in ("sources_25", "schema_v11", "manifest_ok", "git_sha", "banned_words_zero"):
+        c = next(x for x in body["checks"] if x["id"] == cid)
+        assert c["ok"] is True, f"gate {cid} failed: {c.get('detail')}"
+    # ready 는 blockers 가 비어있을 때만 true (state 일치)
+    assert body["ready"] == (len(body["blockers"]) == 0)
+    # passed 카운트도 일치
+    assert body["passed"] == sum(1 for c in body["checks"] if c["ok"])

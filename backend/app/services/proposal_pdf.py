@@ -87,11 +87,11 @@ def render_proposal_pdf() -> bytes:
         # 차별화 요약 박스
         _section_header(ax, 0.06, 0.81, "1. 핵심 차별점", badge="WHY AuraView")
         items = [
-            "🎯 25종 공공데이터 실시간 융합 — 신호·VDS·돌발·TAAS·ITS·DSZ·KMA + 보조 12종 (Open-Meteo·OSM)",
-            "🚦 8 시나리오 K-Perception — 트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간",
-            "🚌 한국 차별화 V2V+Bus+Bidirectional — Tesla 가 다루지 못하는 한국 도로 협업 인지",
-            "📊 Risk Transformer 실 학습 — AUC 0.9403 / F1 0.9412 / p99 1.04ms",
-            "🔒 가명정보결합 + 안심구역 — HMAC-SHA256 + k≥5 + dsz.ex.co.kr 반입/결합/반출",
+            "■ 25종 공공데이터 실시간 융합 — 신호·VDS·돌발·TAAS·ITS·DSZ·KMA + 보조 12종 (Open-Meteo·OSM)",
+            "■ 8 시나리오 K-Perception — 트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간",
+            "■ 한국 차별화 V2V+Bus+Bidirectional — Tesla 가 다루지 못하는 한국 도로 협업 인지",
+            "■ Risk Transformer 실 학습 — AUC 0.9403 / F1 0.9412 / p99 1.04ms",
+            "■ 가명정보결합 + 안심구역 — HMAC-SHA256 + k≥5 + dsz.ex.co.kr 반입/결합/반출",
         ]
         for i, item in enumerate(items):
             _txt(ax, 0.08, 0.78 - i * 0.022, item, fontsize=10, color="#333")
@@ -181,15 +181,16 @@ def render_proposal_pdf() -> bytes:
             _txt(ax, 0.08, y, f"● {s['name'][:50]}", fontsize=7.5, color=color)
 
         _section_header(ax, 0.06, 0.53, "6. 8 시나리오 K-Perception")
+        # 한글 폰트가 일부 이모지 (🚴 🌙 🌧️) 미지원 — 텍스트 마커로 대체
         scenarios = [
-            ("🚛 트럭 가림", "도로교통법 27조 (보행자 보호)", "occlusion shadow +0.55"),
-            ("◀ 좌측 사각 이륜", "19조의2", "BEV 사각 sweep"),
-            ("🚦 신호 가림", "5조", "신호 API + V2V"),
-            ("🌧️ 우천", "19조 + 시행규칙", "환경 가중 +0.45"),
-            ("🚸 우회전 보행자", "25조 4항 + 2022도10752", "회전 sweep zone"),
-            ("🏫 스쿨존", "12조 + 민식이법", "DSZ +0.62 (등하교)"),
-            ("🚴 자전거", "13조 + 자전거이용활성화법", "자전거 GIS prior +0.40"),
-            ("🌙 야간", "48조", "V2V 헤드라이트 share"),
+            ("[1] 트럭 가림",       "도로교통법 27조 (보행자 보호)", "occlusion shadow +0.55"),
+            ("[2] 좌측 사각 이륜",  "19조의2",                   "BEV 사각 sweep"),
+            ("[3] 신호 가림",       "5조",                       "신호 API + V2V"),
+            ("[4] 우천",           "19조 + 시행규칙",           "환경 가중 +0.45"),
+            ("[5] 우회전 보행자",  "25조 4항 + 2022도10752",    "회전 sweep zone"),
+            ("[6] 스쿨존",         "12조 + 민식이법",           "DSZ +0.62 (등하교)"),
+            ("[7] 자전거",         "13조 + 자전거이용활성화법",  "자전거 GIS prior +0.40"),
+            ("[8] 야간 보행자",     "48조",                     "V2V 헤드라이트 share"),
         ]
         y0 = 0.50
         for i, (name, law, prior) in enumerate(scenarios):

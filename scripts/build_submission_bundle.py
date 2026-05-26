@@ -120,9 +120,14 @@ def fetch_live_snapshot() -> dict:
 
 
 def main():
+    # Windows cp949 stdout 에서 한글 깨짐 방지 (Python 3.7+ reconfigure)
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_path = OUT_DIR / f"auraview_submission_{ts}.zip"
-    print(f"\n📦 Building submission bundle: {out_path.name}")
+    print(f"\n[Bundle] Building submission bundle: {out_path.name}")
     print(f"   Project root: {ROOT}\n")
 
     files = collect_files()
@@ -169,7 +174,7 @@ def main():
         )
 
     size_mb = out_path.stat().st_size / (1024 * 1024)
-    print(f"\n✅ Done: {out_path}")
+    print(f"\n[OK] Done: {out_path}")
     print(f"   Size: {size_mb:.2f} MB")
     print(f"   git_sha (live): {snapshot.get('git_sha', 'unknown')}")
     print(f"\n다음 단계:")

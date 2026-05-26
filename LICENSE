@@ -1,0 +1,47 @@
+MIT License
+
+Copyright (c) 2026 leelang7 (AuraView K-Perception)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Public Data Sources Compliance
+
+This project uses Korean public data via:
+- apis.data.go.kr (대한민국 공공데이터포털) — 각 API 의 약관 준수
+- taas.koroad.or.kr (도로교통공단 TAAS) — 비상업 연구·교육 목적 허용 범위
+- openapi.its.go.kr (국가교통정보센터 ITS)
+- openapi.seoul.go.kr (서울 열린데이터 광장)
+- data.ex.co.kr (한국도로공사 ROAD+)
+- dsz.ex.co.kr (국토교통 데이터안심구역)
+- api.vworld.kr (국토교통부 V-World)
+
+And global open-data fallbacks:
+- Open-Meteo (CC-BY-4.0)
+- OpenStreetMap (ODbL-1.0)
+- USGS Earthquake (Public Domain)
+- Citybikes (CC-BY-4.0)
+
+Detailed attribution: https://auraview.allthatai.kr/metrics/data-attribution
+
+## PII Compliance (개인정보보호법)
+- 얼굴/번호판: on-device blur (frame 전송 전)
+- 가명결합: HMAC-SHA256 + k≥5 익명
+- 안심구역 (DSZ): 국토부 훈령 1456호 절차 (반입→결합→반출 SHA-256 검증)

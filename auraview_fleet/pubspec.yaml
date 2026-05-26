@@ -1,7 +1,7 @@
 name: auraview_fleet
 description: "AuraView Fleet — Tesla-style shadow-mode dashcam contribution client"
 publish_to: 'none'
-version: 12.160.0+12160
+version: 12.162.0+12162
 
 environment:
   sdk: ^3.11.5

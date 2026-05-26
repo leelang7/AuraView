@@ -42,7 +42,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 2);  // v12.90: 4s → 2s 더 빠른 라이브 추론 표시
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.160';
+const String kAppVersion = 'v12.162';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -410,9 +410,12 @@ class _FleetHomeState extends State<FleetHome>
     if (!kIsWeb) {
       try {
         // v12.4: stream 모드는 ImageStream 용 — single 로 되돌림 (processImage one-shot 호환)
+        // v12.162: stream → single 로 변경. takePicture(파일 경로) one-shot 호출 패턴에 맞춤.
+        //   stream 모드는 연속 frame 추적용이라 내부 state 유지 — file path 호출 시 매번 새 객체로 인식 X.
+        //   single 모드가 frame 마다 독립 검출이라 takePicture 폴링과 매칭.
         _objDetector = ObjectDetector(
           options: ObjectDetectorOptions(
-            mode: DetectionMode.stream,
+            mode: DetectionMode.single,
             classifyObjects: true,
             multipleObjects: true,
           ),
@@ -1383,6 +1386,61 @@ class _FleetHomeState extends State<FleetHome>
         _bevLastFrameAt = DateTime.now();
         _bevFrameCount++;
       });
+      // v12.161: ML Kit detection 도 takePicture 경로에서 직접 호출.
+      //   Galaxy Z Fold 3 + CameraX 에서 image stream callback (_processFrame) 이 firing 안 함 →
+      //   _bevDetections 영영 비어있고 BEV 가 '탐지 대기 중' placeholder 만 표시.
+      //   v12.138 에서 takePicture 기반 _pushDetectionsToBev 를 dead 라 삭제했던 실수 복구.
+      if (_objDetector != null && !_mlkitBusy) {
+        _mlkitBusy = true;
+        try {
+          final inputImage = InputImage.fromFilePath(shot.path);
+          final objects = await _objDetector!.processImage(inputImage);
+          final src = img.decodeJpg(bytes);
+          if (src != null) {
+            final imgW = src.width, imgH = src.height;
+            final imgArea = (imgW * imgH).toDouble();
+            final dets = <Map<String, dynamic>>[];
+            final raws = <Map<String, dynamic>>[];
+            for (final obj in objects) {
+              final box = obj.boundingBox;
+              final w = (box.right - box.left).abs();
+              final h = (box.bottom - box.top).abs();
+              final areaRatio = (w * h) / imgArea;
+              final labelStr = obj.labels.isEmpty
+                  ? 'unlabeled'
+                  : obj.labels.take(2).map((l) => '${l.text}:${(l.confidence * 100).toInt()}%').join(',');
+              // v12.162: filter 대폭 완화 — ML Kit base mode 가 잡는 거의 모든 객체 표시.
+              //   이전 threshold (0.15% 이하 reject) → 0.05% 로 3배 완화 + aspect 0.05~20.
+              //   목적: BEV 에 '실제 검출 작동' 시각 증명 (책상/실내 환경에서도 가구/식물 등 detect).
+              bool kept = true;
+              if (areaRatio < 0.0005 || areaRatio > 0.95 || w < 8 || h < 8) kept = false;
+              else {
+                final ac = h / w;
+                if (ac < 0.05 || ac > 20.0) kept = false;
+              }
+              raws.add({'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()],
+                        'labels': labelStr, 'kept': kept});
+              if (!kept) continue;
+              final cls = (h / w) > 1.4 ? 'person' : 'car';
+              double score = obj.labels.isNotEmpty ? obj.labels.first.confidence : 0.6;
+              dets.add({'cls': cls, 'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()], 'score': score});
+            }
+            if (mounted) setState(() {
+              _bevDetections = dets;
+              _rawDetections = raws;
+              _bevImgW = imgW; _bevImgH = imgH;
+              _detectRawN = objects.length;
+              _detectKeptN = dets.length;
+              _detectLastAt = DateTime.now();
+              _detectDebug = 'shadowTick raw=${objects.length} kept=${dets.length}';
+            });
+          }
+        } catch (e) {
+          if (mounted) setState(() => _detectDebug = 'shadowTick detect 예외: $e');
+        } finally {
+          _mlkitBusy = false;
+        }
+      }
       final feat = _entropyAndMotion(bytes);
       _lastEntropy = feat.entropy;
       final reason = _classifyReason(feat);

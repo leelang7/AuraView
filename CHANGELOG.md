@@ -5,6 +5,60 @@ Format: keep a [keep-a-changelog](https://keepachangelog.com/en/1.1.0/) style + 
 
 ---
 
+## v0.26 — D-3 자가 진단 + Native UX 폴리시 + 전 site 25/v11 일관성 (2026-05-26)
+
+### Added — 제출 readiness 자가 진단 (v12.144 + v12.145 + v12.147)
+- **`GET /impact/submission-ready`** — 9 게이트 단일 URL JSON readiness 체크
+  - `sources_25` / `schema_v11` / `proposal_pdf_ok` (≥40KB Render 호환) / `manifest_ok` / `model_weights` / `git_sha` / `license_present` / `banned_words_zero` / `korean_font_hint` (advisory)
+  - 응답: `{ ready: bool, passed: N/M, blockers: [...], checks: [...], deadline: 2026-05-29 }`
+  - 외부 호출 없이 로컬 자원만 검사 → Render 무료 tier 즉시 응답
+  - 로컬 9/9 PASS, 라이브 9/9 PASS 검증 완료
+- **scorecard 페이지 hero strip** — SUBMISSION readiness 라이브 진단 (✓ READY / N/M gates / RAW JSON →)
+- 핵심 엔드포인트 목록 최상단에 ★ 표시 우선 노출
+
+### Added — Native App UX 폴리시 (v12.138)
+- Galaxy Z Fold 3 카메라 회전 충돌 방지 (`SystemChrome.setPreferredOrientations` 명시)
+- Status bar 앱 버전 chip (`kAppVersion` 표시 — 현장 디버깅 단축)
+- 업로드 재시도 큐 가시화 chip ('재시도 N' — 약전계/오프라인 안심 시그널)
+- BEV 헤더 의미 툴팁 (Bird Eye View 40×40 voxel 설명)
+- BEV heatmap 색맹 친화 palette (근거리 red → magenta-red `#FF2880` — 적록색약 구분 강화)
+- APK 빌드 완료 (`app-release.apk` 56MB · v12.138.0+12138)
+
+### Added — 제출 자산
+- `LICENSE` (MIT + 공공데이터 컴플라이언스 명시: 개인정보보호법 28조의2 · 국토부 훈령 1456호)
+- `scripts/build_submission_bundle.py` 한글 출력 보정 (Windows cp949 mojibake 방지)
+- 121 files / 0.91MB ZIP / live manifest snapshot 자동 포함
+
+### Fixed — 외부 노출 텍스트 정직성 (v12.139 + v12.143)
+- `'공모전/가점/심사/judges'` 외부 노출 잔재 일괄 제거 (홈 카드, /impact OpenAPI docs, /fusion/sources note, Dart 주석, /metrics/manifest note, /metrics/api-directory docstring, /scorecard 헤더, PRESENTATION_SCRIPT)
+- 사이트 전체 14 static HTML + 4 SVG + 4 backend 파일 24/v10 → **25/v11** 일관성 정리
+  - story (7), summary (2), slides (6), scorecard (8), competition (2), fleet (5), kiosk (5), gallery (4), policy (3), privacy (2), safezone (2), reel (1)
+  - fusion_diagram.svg (4), hud_mockup.svg (2), og_card.svg (1), before_after.svg (1)
+  - main.py 홈 TAB3/TAB10 / fleet.py /demo-tour 응답 / metrics.py 'judge' / public_api.py
+- `docs/SUBMISSION.md` 24종/11 no-key → 25종/12 no-key
+
+### Improved — Proposal PDF (v12.140)
+- Page 1 임팩트 표에 **가로 막대 차트** 추가 (예방 건수 시각화 — 텍스트만 → 시각 비교 가능)
+- Native APK 버전 표기 동기 (v12.123 → v12.139)
+- 천 단위 구분 (1694 → 1,694, 11852 → 11,852 — 가독성)
+- PDF 154KB (Noto Sans KR 환경) · Render 53KB (DejaVu fallback — 한글 □ 박스, 추후 render.yaml `runtime: docker` 또는 폰트 번들로 해결 예정)
+
+### Removed — Dead code (v12.138)
+- `_logFirstFrameOnce` 1회 디버그 플래그
+- `if (false)` takePicture 경로 dead block 26줄 (camera stream 으로 대체됨)
+- `_bevWvCtrl` WebView 컨트롤러 + push 분기 (WebView BEV 폐기 후 잔존)
+- `_mlkitBusy` 가드는 Dart 단일 스레드 보장 (race condition 오인 — 주석 추가)
+
+### Reverted (v12.147)
+- v12.146 의 `_try_install_noto_kr_runtime()` 제거 — noto-cjk GitHub LFS 가 raw URL 다운로드 차단 + production 코드 외부 fetch 는 보안 분류기에 의해 정당하게 차단됨
+- 대안: render.yaml `runtime: docker` (Dockerfile 이미 `fonts-noto-cjk` 설치) 또는 backend/fonts/ 사전 번들
+
+### Tests
+- pytest 98/98 PASS (test_competition_features + test_endpoints + test_new_routers) — QA RAG 제외
+- forward-compatible (assertion 모두 `>= 23` / `>= 24` → 25 에서도 PASS)
+
+---
+
 ## v0.25 — 25번째 데이터 소스 (OSM 철도 건널목) + /fleet/proof forensic + 전체 surface 일관성 (2026-05-25)
 
 ### Added — 25번째 데이터 소스 (v12.130)

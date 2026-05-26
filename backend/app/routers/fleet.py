@@ -277,7 +277,7 @@ def verify_pipeline():
     - manifest 존재 + 누적 N건
     - PII 마스킹 적용 비율 (cv2 가 import 가능했고 실 mask 됐는지)
     - 최근 1분 활동 / 5분 디바이스
-    - schema_version 일치 (fusion.v7-21src)
+    - schema_version 일치 (fusion.v* — v7-21src 부터 현행 v11-25src 까지 forward-compatible)
     - 이미지 파일 무결성 (path 존재율)
     """
     import os
@@ -362,9 +362,8 @@ def verify_pipeline():
         f = known                                # alias for fusion_schema check
         schema = f["fusion_summary"]["schema_version"]
         sources_n = f["fusion_summary"]["sources_fused"]
-        schema_ok = (schema.startswith("fusion.v7-21src")
-                  or schema.startswith("fusion.v8-22src")
-                  or schema.startswith("fusion.v9-23src"))
+        # v12.157: forward-compatible — fusion.v 로 시작하는 모든 schema (v7-21src ~ v11-25src+) 호환
+        schema_ok = schema.startswith("fusion.v")
     except Exception as e:
         schema, sources_n, schema_ok = f"error: {e}", 0, False
         known = home_like = None
@@ -372,7 +371,7 @@ def verify_pipeline():
         "ok": schema_ok,
         "schema_version": schema,
         "sources_fused": sources_n,
-        "expected_prefix": "fusion.v9-23src (또는 v8/v7)",
+        "expected_prefix": "fusion.v* (forward-compatible · 현행 v11-25src)",
     }
 
     # 6) v12.20: 위치 인식 정확성 — 임의 GPS는 unknown/0, known 교차로는 정상값 반환?

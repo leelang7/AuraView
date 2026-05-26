@@ -41,6 +41,8 @@ const String kApiBase = String.fromEnvironment(
 );
 const Duration kShadowInterval = Duration(seconds: 2);  // v12.90: 4s → 2s 더 빠른 라이브 추론 표시
 const double kEntropyThreshold = 0.55;
+// v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
+const String kAppVersion = 'v12.138';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -68,6 +70,12 @@ Future<void> main() async {
     systemNavigationBarColor: _bg,
     systemNavigationBarIconBrightness: Brightness.light,
   ));
+  // v12.138: Galaxy Z Fold 3 폴딩 시 카메라 회전 충돌 방지 — 가로 양방향 + 세로 고정
+  await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   try {
     _cameras = await availableCameras();
   } catch (_) {
@@ -183,8 +191,7 @@ class _FleetHomeState extends State<FleetHome>
   DateTime? _lastFusionFetchOk;
   int _fusionRetryDelay = 1500;   // ms, 실패 시 exponential backoff
 
-  // v9.2 2026-05-18: BEV WebView 컨트롤러 (검출 결과를 JS aurDetect() 로 push)
-  WebViewController? _bevWvCtrl;
+  // v12.138 2026-05-26: WebView BEV 제거 — Flutter 네이티브 오버레이만 사용 (_bevWvCtrl 삭제)
   // v9.3 2026-05-18: ML Kit 검출 결과 보관 (Flutter 네이티브 BEV 오버레이용)
   //   각 항목: { cls, box[x,y,w,h], score, vw, vh }
   List<Map<String, dynamic>> _bevDetections = const [];
@@ -476,48 +483,7 @@ class _FleetHomeState extends State<FleetHome>
   /// _fetchBev 는 fusion/intersection polling 만 담당.
   Future<void> _fetchBev() async {
     debugPrint('[AURAVIEW] _fetchBev() called (fusion poll only)');
-    // 카메라 정보는 stream 으로 갱신되니 skip
-    if (false) {  // v12.6: takePicture 경로 비활성
-      try {
-        final shot = await _cam!.takePicture();
-        final bytes = await shot.readAsBytes();
-        // 1) voxel grid (edge + motion) 생성 — 100% on-device
-        final voxel = _voxelizeOnDevice(bytes);
-
-        // 2) ★ ML Kit on-device 객체 검출 (Google ML Kit, 외부 서버 X)
-        //    bbox 크기 필터로 false positive 방지 (≥4% image area)
-        if (voxel != null && _objDetector != null && !_mlkitBusy) {
-          _mlkitBusy = true;
-          try {
-            final cg = await _detectObjectsToClassGrid(shot.path, bytes, 40, 40);
-            if (cg != null) voxel['class_grid_flat'] = cg;
-          } catch (_) {} finally {
-            _mlkitBusy = false;
-          }
-        }
-
-        // 2.5) v12.3: BEV 검출 push — 항상 실행 (WebView 폐기 후 가드 제거)
-        //   _pushDetectionsToBev 가 _bevDetections state 를 갱신 → _CameraBevSplit 가 받아 렌더.
-        //   (이전 _bevWvCtrl != null 가드가 WebView 제거 후에도 남아있어 push 가 영원히 차단됐던 버그)
-        await _pushDetectionsToBev(shot.path, bytes);
-
-        // 3) 임시 파일 정리
-        if (!kIsWeb) {
-          try { final f = File(shot.path); if (await f.exists()) await f.delete(); } catch (_) {}
-        }
-        if (voxel != null && mounted) {
-          setState(() {
-            _bev = voxel;
-            _bevLastFrameAt = DateTime.now();
-            _bevFrameCount++;
-          });
-        }
-      } catch (e) {
-        // v12.4 디버그: takePicture 또는 voxelize 예외 화면에 표시
-        if (mounted) setState(() => _detectDebug =
-          'fetchBev 예외: ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}');
-      }
-    }
+    // v12.138: takePicture 경로 영구 제거 (카메라 stream 으로만 frame 수집)
     // 도시정보 결합 (signal/VDS/TAAS) — voxel 위에 라이브 라인 표시용
     // intersection_id 우선순위: 사용자 설정값 → GPS 자동 감지값
     _autoDetectIntersection();
@@ -869,14 +835,6 @@ class _FleetHomeState extends State<FleetHome>
           }
         });
       }
-      // (옵션) WebView 가 살아있을 때 push 도 진행 (legacy WebView BEV 화면 호환)
-      final wv = _bevWvCtrl;
-      if (wv != null) {
-        final payload = jsonEncode({'detections': dets, 'vw': imgW, 'vh': imgH});
-        try {
-          await wv.runJavaScript('window.aurDetect && window.aurDetect($payload)');
-        } catch (_) {}
-      }
     } catch (e) {
       if (mounted) setState(() => _detectDebug = 'detect 예외: ${e.toString().substring(0, e.toString().length > 60 ? 60 : e.toString().length)}');
     }
@@ -1190,7 +1148,8 @@ class _FleetHomeState extends State<FleetHome>
   }
 
   // v12.8: stream 프레임 → ML Kit 검출 (NV21 format direct)
-  bool _logFirstFrameOnce = false;
+  // v12.138: Dart single-threaded 라 _mlkitBusy 체크-셋 사이 await 없음 → race 없음.
+  //   if (busy) return; ... busy=true; try { await ... } finally { busy=false; }
   Future<void> _processFrame(CameraImage frame) async {
     if (_objDetector == null || _mlkitBusy) return;
     // v12.12: FPS 계산 (최근 10 처리 시각 기록)
@@ -1209,10 +1168,6 @@ class _FleetHomeState extends State<FleetHome>
       final Uint8List nv21 = frame.planes.length == 1
         ? frame.planes[0].bytes
         : _yuv420ToNv21(frame);
-      if (!_logFirstFrameOnce) {
-        _logFirstFrameOnce = true;
-        debugPrint('[AURAVIEW] First frame: planes=${frame.planes.length}, W=$imgW H=$imgH, byte0=${nv21[0]}, byte1k=${nv21.length > 1000 ? nv21[1000] : "?"}, byteN=${nv21[nv21.length - 1]}');
-      }
       final inputImage = InputImage.fromBytes(
         bytes: nv21,
         metadata: InputImageMetadata(
@@ -1876,6 +1831,8 @@ class _FleetHomeState extends State<FleetHome>
                       online: _serverError.isEmpty,
                       pos: _pos,
                       totalKm: _totalKm,
+                      queueSize: _uploadQueue.length,
+                      retrySuccess: _retrySuccess,
                       onSettingsTap: _openDetailSheet,
                     ),
                   ),
@@ -2104,6 +2061,8 @@ class _UnifiedStatusBar extends StatelessWidget {
   final bool online;
   final Position? pos;
   final double totalKm;   // v12.12: 총 주행거리 km
+  final int queueSize;    // v12.138: 업로드 재시도 큐 사이즈
+  final int retrySuccess; // v12.138: 재시도 성공 누적
   final VoidCallback? onSettingsTap;
   const _UnifiedStatusBar({
     required this.shadowOn,
@@ -2111,6 +2070,8 @@ class _UnifiedStatusBar extends StatelessWidget {
     required this.online,
     required this.pos,
     this.totalKm = 0,
+    this.queueSize = 0,
+    this.retrySuccess = 0,
     this.onSettingsTap,
   });
 
@@ -2168,11 +2129,20 @@ class _UnifiedStatusBar extends StatelessWidget {
                   letterSpacing: 2.5, height: 1.0,
                 )),
               const SizedBox(height: 1),
-              Text('K-PERCEPTION',
-                style: TextStyle(
-                  color: brandCol.withValues(alpha: 0.75), fontSize: 7.5,
-                  fontWeight: FontWeight.w800, letterSpacing: 1.6, height: 1.0,
-                )),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('K-PERCEPTION',
+                  style: TextStyle(
+                    color: brandCol.withValues(alpha: 0.75), fontSize: 7.5,
+                    fontWeight: FontWeight.w800, letterSpacing: 1.6, height: 1.0,
+                  )),
+                const SizedBox(width: 4),
+                Text('· $kAppVersion',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.30), fontSize: 7.5,
+                    fontWeight: FontWeight.w700, letterSpacing: 0.5, height: 1.0,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  )),
+              ]),
             ]),
             const SizedBox(width: 14),
             Container(width: 1, height: 22, color: Colors.white.withValues(alpha: 0.10)),
@@ -2224,6 +2194,16 @@ class _UnifiedStatusBar extends StatelessWidget {
               color: uploads > 0 ? _safe : Colors.white.withValues(alpha: 0.40),
               filled: false,
             ),
+            // v12.138: 업로드 큐가 쌓이면 사용자에게 가시화 — 약전계/오프라인 시 안심 시그널
+            if (queueSize > 0) ...[
+              const SizedBox(width: 6),
+              _TeslaChip(
+                icon: Icons.hourglass_bottom_rounded,
+                label: '재시도 $queueSize',
+                color: queueSize >= 20 ? _warn : Colors.white.withValues(alpha: 0.60),
+                filled: queueSize >= 20,
+              ),
+            ],
             const SizedBox(width: 6),
             _TeslaChip(
               icon: online ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
@@ -2467,6 +2447,23 @@ class _BevPanelState extends State<_BevPanel>
       Text('BEV · 3D OCCUPANCY',
            style: TextStyle(color: _accent, fontSize: 11,
                             fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+      // v12.138: BEV 의미 툴팁 — 처음 사용자/심사용 데모 시 도움
+      const SizedBox(width: 4),
+      Tooltip(
+        message: 'Bird Eye View · 카메라 한 대로 추정한 위에서 본 2.5D 점유 격자.\n'
+                 '40×40 voxel grid · 각 셀 = 도로 위 약 0.5m × 0.5m 영역.\n'
+                 '색상은 점유 강도 (낮음 → 높음) 를 표시합니다.',
+        textStyle: const TextStyle(color: Colors.white, fontSize: 11, height: 1.35),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _accent.withValues(alpha: 0.45), width: 0.6),
+        ),
+        padding: const EdgeInsets.all(8),
+        waitDuration: const Duration(milliseconds: 300),
+        child: Icon(Icons.help_outline_rounded,
+                    size: 13, color: Colors.white.withValues(alpha: 0.45)),
+      ),
       const Spacer(),
       // 모드 토글
       GestureDetector(
@@ -6381,13 +6378,13 @@ class _VoxelHeatmapPainter extends CustomPainter {
     // 0..0.4 보다 큰 occupancy 만 표시. alpha 는 occupancy 비례
     final alpha = (0.18 + (v - 0.4) * 0.85).clamp(0.18, 0.78);
     if (row < 14) {
-      // 근거리: RED (#FF4040)
-      return Color.fromRGBO(255, 64, 64, alpha);
+      // v12.138 근거리: MAGENTA-RED (#FF2880) — 적록색약/녹색맹도 노랑과 명확 구분
+      return Color.fromRGBO(255, 40, 128, alpha);
     } else if (row < 27) {
-      // 중거리: YELLOW (#FFB020)
+      // 중거리: YELLOW (#FFB020) — 광학적 휘도 가장 높음, 보편 가시성
       return Color.fromRGBO(255, 176, 32, alpha);
     } else {
-      // 원거리: CYAN (#00C8FF)
+      // 원거리: CYAN (#00C8FF) — 청황 대비 (protanopia/deuteranopia 안전)
       return Color.fromRGBO(0, 200, 255, alpha);
     }
   }
@@ -6434,7 +6431,7 @@ class _BevLegend extends StatelessWidget {
               color: Color(0xFF00C8FF), fontSize: 8,
               fontFamily: 'monospace', fontWeight: FontWeight.w900, letterSpacing: 1.4)),
           const SizedBox(height: 4),
-          _legendRow(const Color(0xFFFF4040), '0-5m 위험'),
+          _legendRow(const Color(0xFFFF2880), '0-5m 위험'),
           _legendRow(const Color(0xFFFFB020), '5-15m 주의'),
           _legendRow(const Color(0xFF00C8FF), '15m+ 안전'),
         ],

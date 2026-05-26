@@ -42,7 +42,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 2);  // v12.90: 4s → 2s 더 빠른 라이브 추론 표시
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.153';
+const String kAppVersion = 'v12.159';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -6512,8 +6512,9 @@ class _CleanBevPainter extends CustomPainter {
     for (final o in sorted) {
       final p = _project(o.x.clamp(-0.92, 0.92), o.y.clamp(0.0, 0.95), size);
       final scale = (1.0 - o.y * 0.70).clamp(0.30, 1.0);
-      // v10.1: Tesla AI Day 식 3D voxel 클러스터 (검출 객체 위치에 cube column)
-      _drawVoxelCluster(canvas, p, scale, o.cls, o.alpha);
+      // v12.159: cube column (LED 봉) 제거. 진짜 ground-footprint 박스 → top-down silhouette 순으로 그림.
+      //   ML Kit bbox 의 화면 위치를 BEV 평면에 (1) 점유 footprint 사각형 + (2) 차량/사람 실루엣으로 표시.
+      _drawObjectFootprint(canvas, p, scale, o.cls, o.alpha);
       if (o.cls == 'person') {
         _drawPersonLocal(canvas, p, scale, o.alpha, o.phase);
       } else {
@@ -6538,43 +6539,37 @@ class _CleanBevPainter extends CustomPainter {
     }
   }
 
-  // v10.1: Tesla AI Day 식 voxel 클러스터 — 검출 객체 자리에 3D 큐브 컬럼
-  //   사람: 좁고 높은 컬럼 (3x6 큐브 ≈ 사람 윤곽 voxelize)
-  //   차량: 넓고 낮은 큐브 클러스터 (5x3 ≈ 차량 ground footprint voxelize)
-  void _drawVoxelCluster(Canvas canvas, Offset c, double scale, String cls, double alpha) {
+  // v12.159: cube column 제거 → 객체 ground footprint 표시 (실제 차량/사람 점유 영역).
+  //   차량: 4m × 1.8m 직사각형 (top-down 차량 footprint)
+  //   사람: 0.6m × 0.6m 작은 사각형 (보행자 점유 발자국)
+  //   픽셀 환산: 화면상 거리 grid (5m, 15m, 30m, 50m+) 기준 비례. 실제 ML Kit bbox 의 BEV 매핑.
+  void _drawObjectFootprint(Canvas canvas, Offset c, double scale, String cls, double alpha) {
     final isPed = cls == 'person';
     final col = isPed ? const Color(0xFFFF4040) : const Color(0xFF00C8FF);
-    // v12.86: cube 크기 50% 확대 (검출 객체 즉시 보이게)
-    final cubeSize = (isPed ? 5.2 : 6.5) * scale;
-    final cols = isPed ? 3 : 5;
-    final rows = isPed ? 5 : 3;
-    // 컬럼별로 약간씩 offset → voxelize 느낌
-    for (int r = 0; r < rows; r++) {
-      for (int co = 0; co < cols; co++) {
-        // 외곽 cell skip (사람=중앙 columns 만, 차량=직사각)
-        if (isPed) {
-          // 사람: 정 중앙 1열은 머리(상단) + 몸통(중) + 다리 끝(아래) — 셀 패턴
-          if (r == 0 && co != 1) continue;  // 머리 1개만
-          if (r >= 3 && (co == 0 || co == 2)) continue;  // 다리는 좌우 2 column
-        }
-        final dx = (co - (cols - 1) / 2) * cubeSize * 1.05;
-        final dy = (r - (rows - 1) / 2) * cubeSize * 0.95 - (isPed ? cubeSize * 1.0 : cubeSize * 0.5);
-        final pos = c.translate(dx, dy);
-        // 큐브 본체
-        final cubeAlpha = alpha * (0.45 + 0.55 * (1 - r / rows));   // 위쪽 cube 더 흐림
-        canvas.drawRect(
-          Rect.fromCenter(center: pos, width: cubeSize, height: cubeSize),
-          Paint()..color = col.withValues(alpha: cubeAlpha));
-        // 위쪽 하이라이트 (입체감)
-        canvas.drawRect(
-          Rect.fromLTWH(pos.dx - cubeSize / 2, pos.dy - cubeSize / 2,
-            cubeSize, cubeSize * 0.30),
-          Paint()..color = col.withValues(alpha: cubeAlpha * 0.55));
-        // 외곽선
-        canvas.drawRect(
-          Rect.fromCenter(center: pos, width: cubeSize, height: cubeSize),
-          Paint()..style = PaintingStyle.stroke..strokeWidth = 0.6
-            ..color = Colors.white.withValues(alpha: cubeAlpha * 0.5));
+    // 차량 = 가로 28 × 세로 16 (top-down 비율), 사람 = 가로 8 × 세로 8
+    final fpW = (isPed ? 8.0 : 28.0) * scale;
+    final fpH = (isPed ? 8.0 : 16.0) * scale;
+    final rect = Rect.fromCenter(center: c, width: fpW, height: fpH);
+    // 1) 외곽 footprint 박스 (반투명 fill — 객체 점유 영역 표시)
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(isPed ? 4 : 3)),
+      Paint()..color = col.withValues(alpha: alpha * 0.18));
+    // 2) 박스 외곽선 (선명한 stroke — 검출됨을 명확히)
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(isPed ? 4 : 3)),
+      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.4
+        ..color = col.withValues(alpha: alpha * 0.85));
+    // 3) 코너 액센트 (4 모서리만 굵게 — Tesla FSD UI 스타일)
+    final cornerLen = (isPed ? 3.0 : 5.5) * scale;
+    final cornerP = Paint()..color = col.withValues(alpha: alpha * 0.95)
+      ..strokeWidth = 2.0..style = PaintingStyle.stroke;
+    for (final dx in [-fpW / 2, fpW / 2]) {
+      for (final dy in [-fpH / 2, fpH / 2]) {
+        final cx = c.dx + dx, cy = c.dy + dy;
+        canvas.drawLine(Offset(cx, cy),
+          Offset(cx + (dx < 0 ? cornerLen : -cornerLen), cy), cornerP);
+        canvas.drawLine(Offset(cx, cy),
+          Offset(cx, cy + (dy < 0 ? cornerLen : -cornerLen)), cornerP);
       }
     }
   }

@@ -12,7 +12,7 @@
 |---|:---:|---|---|
 | **AI 학습** | 5점 | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) | `GET /ai/model-card` |
 | **AI 분석** | 5점 | 4종 시나리오 분류 · Attention 피처 중요도 · ROC 50pt | `GET /ai/scenario-analysis` |
-| **데이터융합** | 5점 | **24종 공공데이터** 실시간 융합 (신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진) v10-2026.05.25 (USGS earthquake 추가) | `GET /fusion/sources` |
+| **데이터융합** | 5점 | **25종 공공데이터** 실시간 융합 (신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진·철도건널목) v11-2026.05.25 (국내공공 23 + 보조 2: USGS earthquake + OSM 철도건널목) | `GET /fusion/sources` |
 | **가명정보결합** | 5점 | HMAC-SHA256 가명화 · k-익명성(k≥5) · TAAS×VDS 결합 | `GET /privacy/pipeline-spec` |
 | **안심구역** | 5점 | dsz.ex.co.kr 반입→결합→반출 파이프라인 · SHA-256 해시 검증 | `GET /dsz/pipeline-report` |
 | **합계** | **25점** | 종합 스코어카드 | `GET /competition/scorecard` |
@@ -34,7 +34,7 @@
 
 기존 ADAS가 '보이는 것'을 2D 박스로 분류하는 데 그친다면, AuraView는 **가려진 공간**을 3D 확률 점유 필드로 복원하고, **가려진 보행자·이륜차의 의도**를 시계열 예측하며, **향후 5초 이내 충돌 위험**을 end-to-end로 출력한다.
 
-모든 추론은 **한국 공공 인프라 데이터 24종(신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진)** 과 융합되어 운영된다 (v10-2026.05.25 (USGS earthquake 추가)).
+모든 추론은 **한국 공공 인프라 데이터 25종(신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진·철도건널목)** 과 융합되어 운영된다 (v11-2026.05.25 — 국내공공 23 + 보조 2).
 
 ### 정량 임팩트 (TAAS 2024 기준)
 
@@ -196,7 +196,7 @@ AuraView는 위 네 가지를 **"보이지 않는 공간의 확률 모델링"** 
 |---|---|---|
 | AI · 학습 | HydraNet · Risk Transformer · Intent Predictor + Fleet 하드샘플 | `notebooks/`, `services/risk_transformer.py`, `routers/fleet.py` |
 | AI · 분석 | Occupancy BEV 추정 · 위험 확률 · attention 해석 · 사고 재현 영상 + 합본 Showreel | `POST /occupancy/infer`, `/scenario/reenact`, `/showreel/build` |
-| 데이터 융합 | 신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단 **24종 어댑터 한 응답 결합** (v9-23src) | `GET /fusion/intersection/{id}` · `services/public_api.py` |
+| 데이터 융합 | 신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진·철도건널목 **25종 어댑터 한 응답 결합** (v11-25src) | `GET /fusion/intersection/{id}` · `services/public_api.py` |
 | 가명정보 결합 | HMAC 가명화 · k=5 익명성 · 얼굴·번호판 블러 · TAAS×VDS 결합 | `services/pii.py`, `POST /dsz/join/taas-vds` |
 | 안심구역 | 반입·결합분석·해시 검증 반출 + Top-N 정책 리포트(HTML/JSON) | `services/dsz_adapter.py`, `POST /dsz/verify`, `/reports/generate` |
 | ⭐ K-MaaS | 위험 교차로 → 대중교통 우회 추천 + 노선 운영팀 환원 데이터 | `services/kmaas.py`, `/kmaas/alternatives`, `/kmaas/operator-report` |
@@ -229,7 +229,7 @@ AuraView 의 K-MaaS 통합:
                           ▼
 ┌────────────────────── Cloud ────────────────────┐
 │ FastAPI + SQLite(→ PostgreSQL) + Ultralytics    │
-│   ├─ /fusion  (24종 공공 API 어댑터 v10)            │
+│   ├─ /fusion  (25종 공공 API 어댑터 v11)            │
 │   ├─ /occupancy  (서버 추론 / 시연)                │
 │   ├─ /fleet  (하드샘플 기여 & 통계)                 │
 │   ├─ /dsz  (안심구역 반입/검증/결합)                │
@@ -242,7 +242,7 @@ AuraView 의 K-MaaS 통합:
 
 ## 6. 데이터 파이프라인
 
-### 6.1 24종 공공데이터 (v10-2026.05.25 (USGS earthquake 추가))
+### 6.1 25종 공공데이터 (v11-2026.05.25 — 국내공공 23 + 보조 2: USGS earthquake + OSM 철도건널목)
 
 | # | 출처 | 내용 | 사용 위치 |
 |---|---|---|---|
@@ -363,7 +363,7 @@ API: `GET /benchmark/risk?n=200` · `GET /benchmark/v2v-merge?n=50` · `GET /ben
 
 - [x] 기술백서 (본 문서)
 - [x] 기능 매트릭스
-- [x] 24종 공공데이터 어댑터 + 라이브 freshness 추적 + 위치 인식 stub (`/fusion/sources`)
+- [x] 25종 공공데이터 어댑터 + 라이브 freshness 추적 + 위치 인식 stub (`/fusion/sources`)
 - [x] Occupancy · HydraNet · Risk · Intent 서비스 코드
 - [x] 가명결합 · 안심구역 반입/검증
 - [x] Fleet Learning contribute 엔드포인트
@@ -415,7 +415,7 @@ curl -OJ https://auraview.allthatai.kr/impact/policy-pdf # A4 1-pager PDF 다운
 - https://auraview.allthatai.kr/showreel/latest.mp4 — 6 시나리오 합본 (음향 포함)
 - https://auraview.allthatai.kr/impact — 정량 사고 예방 효과 (TAAS 결합)
 - https://auraview.allthatai.kr/positioning/tesla-vs-auraview — Tesla 5종 비교
-- https://auraview.allthatai.kr/fusion/sources — 24종 데이터 freshness
+- https://auraview.allthatai.kr/fusion/sources — 25종 데이터 freshness
 - https://auraview.allthatai.kr/healthz/details — 운영 상태
 - https://auraview.allthatai.kr/benchmark/all — 추론 latency 실측
 - https://github.com/leelang7/AuraView — 소스 (MIT)

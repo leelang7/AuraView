@@ -1,10 +1,10 @@
 # Datasets · 가명결합 · 안심구역 가이드
 
-> 24종 공공데이터 융합 (v10-2026.05.25-24src (USGS earthquake 추가)) + 가명결합 + 국토교통 데이터안심구역 절차를 통합한 AuraView 데이터 플로우 문서.
+> 25종 공공데이터 융합 (v11-2026.05.25-25src — 국내공공 23 + 보조 2: USGS earthquake + OSM 철도건널목) + 가명결합 + 국토교통 데이터안심구역 절차를 통합한 AuraView 데이터 플로우 문서.
 
 ---
 
-## A. 실시간 공공 API (24종 — v10-2026.05.25)
+## A. 실시간 공공 API (25종 — v11-2026.05.25)
 
 | # | 소스 | Base URL | 어댑터 함수 |
 |---|---|---|---|
@@ -31,8 +31,11 @@
 | 21 | KOTSA 자율주행 V2X 허브 | `apis.data.go.kr/B552014/AvHub` | `public_api.fetch_av_hub()` |
 | 22 | 경찰청 교통단속 CCTV | `apis.data.go.kr/1320000/CityTrafficCctv` | `public_api.fetch_police_cams()` |
 | 23 | 국토부 횡단보도 GIS | `api.vworld.kr/req/wfs lt_l_crwlk` | `public_api.fetch_crosswalk_gis()` |
+| 24 | USGS 실시간 지진 (보조) | `earthquake.usgs.gov/fdsnws` (no-key) | `public_api.fetch_earthquake()` |
+| 25 | OSM 철도 건널목 (보조) | OSM Overpass `railway=level_crossing` (no-key) | `public_api.fetch_railway_crossings()` |
 
 키 발급: 각 포털에서 개별 발급 후 `.env` 의 `EX_OPEN_KEY`, `TAAS_KEY`, `ITS_KEY`, `KMA_KEY`, `NEDIS_KEY`, `BIKE_KEY`, `VWORLD_KEY`, `AIR_KEY`, `EV_KEY`, `POLICE_CAM_KEY` 등에 등록.
+보조 2종 (USGS 지진 + OSM 철도건널목) 은 글로벌 오픈데이터로 키 불필요 — fallback 기본 활성.
 
 ---
 
@@ -129,7 +132,7 @@ joined = pii.join_taas_vds(taas_records, vds_records)
 
 ## E. 제출 시 데이터 관련 체크리스트
 
-- [ ] 24종 API 키 발급 증빙 스크린샷
+- [ ] 25종 API 키 발급 증빙 스크린샷 (보조 2종 USGS+OSM 은 키 불필요)
 - [ ] 안심구역 이용 승인서 스크린샷
 - [ ] 가명결합 스크립트 + k-익명성 테스트 결과
 - [ ] 반출 결과물 SHA-256 해시 목록

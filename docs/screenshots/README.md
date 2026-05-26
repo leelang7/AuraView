@@ -24,7 +24,7 @@ adb pull /sdcard/auraview_hud.png ./docs/screenshots/auraview_hud_$(date +%Y%m%d
 2. **위치인식 stub 동작** — gps-* 모드 (집/임의 위치) — GPS 배지 + 활성 chip 없음
 3. **단속존 진입 시** — 적색 "단속존 N대" chip + 횡단보도 50m 적색 알람
 4. **스쿨존 등하교 시간대** — `스쿨존 ×1.5` chip + 스쿨횡단 N
-5. **온보딩 첫 화면** — "24종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI"
+5. **온보딩 첫 화면** — "25종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI"
 
 ## 파일 명명 규칙
 

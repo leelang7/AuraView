@@ -4622,7 +4622,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                 ]),
                 const SizedBox(height: 6),
                 const Text(
-                  '운전자가 못 보는 곳을 24종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI. 평균 3.38초 먼저 위험 감지, 매년 21명 보호.',
+                  '운전자가 못 보는 곳을 25종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI. 평균 3.38초 먼저 위험 감지, 매년 21명 보호.',
                   style: TextStyle(color: _text, fontSize: 12, height: 1.55),
                 ),
                 const SizedBox(height: 10),
@@ -5653,7 +5653,7 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
     _OnboardPage(
       icon: '👀',
       title: 'AuraView가 뭐예요?',
-      body: '운전 중 트럭에 가려진 신호등, 사각지대 보행자를\n24종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI 입니다.',
+      body: '운전 중 트럭에 가려진 신호등, 사각지대 보행자를\n25종 공공데이터와 V2V로 미리 알려주는 한국 도로 안전 AI 입니다.',
       accent: Color(0xFFFFB020),
     ),
     _OnboardPage(

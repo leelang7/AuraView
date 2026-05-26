@@ -13,7 +13,7 @@
 - [x] 라우터(/occupancy, /fleet, /fusion, /dsz) 배선 + 대시보드 탭 10개
 - [x] `requirements.txt` 확장 후 서버 기동 확인
 - [x] 샘플 이미지로 `/occupancy/infer` · `/occupancy/demo` 정상 동작
-- [x] 공공 API 키 확보 (VDS, TAAS, ITS) 또는 fallback 확정 — fallback 24종 모두 구비 (v10-2026.05.25-24src (USGS earthquake 추가))
+- [x] 공공 API 키 확보 (VDS, TAAS, ITS) 또는 fallback 확정 — fallback 25종 모두 구비 (v11-2026.05.25-25src — 국내공공 23 + 보조 2: USGS earthquake + OSM 철도건널목)
 
 **Acceptance:** `curl /occupancy/demo` 가 `grid_b64` 포함 200 응답.
 
@@ -26,7 +26,7 @@
 - [x] `notebooks/train_hydranet.ipynb` — AIHub · K-LISA 데이터로 1 epoch 이상 학습
 - [x] `notebooks/train_risk_transformer.ipynb` — 합성 데이터로 **AUC 0.9403** (목표 0.85 초과)
 - [x] `notebooks/dsz_join_demo.ipynb` — TAAS × VDS 결합 시연 (k=5)
-- [x] `/fusion/intersection/1007` 응답에 24종 모두 채움 (fallback 허용)
+- [x] `/fusion/intersection/1007` 응답에 25종 모두 채움 (fallback 허용)
 - [x] 가명결합 결과물 → 안심구역 반출 서식으로 export
 
 **Acceptance:** 모든 기능 항목 별 증빙 파일 1개 이상 존재.

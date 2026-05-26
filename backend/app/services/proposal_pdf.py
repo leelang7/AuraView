@@ -16,54 +16,20 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.patches import FancyBboxPatch, Rectangle
 
 
-_NOTO_KR_URL = (
-    "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
-)
-_NOTO_KR_CACHE = "/tmp/auraview_noto_kr.otf"
-
-
-def _try_install_noto_kr_runtime():
-    """Render/buildpack 환경에서 한글 폰트 부재 시 1회 다운로드 후 matplotlib 에 등록.
-    실패해도 DejaVu fallback 로 PDF 는 생성됨 (한글이 □ 박스로 표시될 뿐)."""
-    import os
-    if os.path.exists(_NOTO_KR_CACHE) and os.path.getsize(_NOTO_KR_CACHE) > 100_000:
-        try:
-            matplotlib.font_manager.fontManager.addfont(_NOTO_KR_CACHE)
-            return True
-        except Exception:
-            pass
-    try:
-        import urllib.request
-        req = urllib.request.Request(_NOTO_KR_URL, headers={"User-Agent": "AuraView PDF"})
-        with urllib.request.urlopen(req, timeout=15) as r:
-            data = r.read()
-        if len(data) < 100_000:
-            return False
-        with open(_NOTO_KR_CACHE, "wb") as f:
-            f.write(data)
-        matplotlib.font_manager.fontManager.addfont(_NOTO_KR_CACHE)
-        return True
-    except Exception:
-        return False
-
-
 def _setup_korean_font():
+    """시스템 설치된 한글 폰트만 사용 (외부 다운로드 X — production 안전).
+    Render Python buildpack 처럼 폰트가 없으면 DejaVu Sans fallback → 한글이 박스로 표시되나 PDF 자체는 valid.
+    한글 정상 렌더링을 원할 경우: (1) Dockerfile 의 fonts-noto-cjk 활용 → render.yaml runtime: docker 명시
+    또는 (2) backend/fonts/ 에 NotoSansKR-Regular.otf 사전 번들."""
     candidates = [
         "Noto Sans CJK KR", "Noto Sans KR", "Malgun Gothic",
-        "AppleGothic", "Nanum Gothic",
+        "AppleGothic", "Nanum Gothic", "DejaVu Sans",
     ]
     available = {f.name for f in matplotlib.font_manager.fontManager.ttflist}
     for c in candidates:
         if c in available:
             matplotlib.rcParams["font.family"] = c
             return c
-    # 시스템에 한글 폰트가 없으면 Noto Sans KR 런타임 다운로드 시도 (Render 무료 tier 대응)
-    if _try_install_noto_kr_runtime():
-        available = {f.name for f in matplotlib.font_manager.fontManager.ttflist}
-        for c in ("Noto Sans KR", "Noto Sans CJK KR"):
-            if c in available:
-                matplotlib.rcParams["font.family"] = c
-                return c
     return "DejaVu Sans"
 
 _FONT = _setup_korean_font()

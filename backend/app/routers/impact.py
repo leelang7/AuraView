@@ -140,11 +140,12 @@ def submission_ready():
         kr_fonts = [n for n in ("Noto Sans CJK KR", "Noto Sans KR", "Malgun Gothic",
                                 "AppleGothic", "Nanum Gothic") if n in avail]
         # Korean font 부재는 deployment hint 일 뿐 ready=true 차단하지 않음 (PDF 자체는 valid)
-        checks.append({
-            "id": "korean_font_hint",
-            "ok": True,  # advisory only
-            "detail": f"{len(kr_fonts)} KR fonts" + (f": {kr_fonts[0]}" if kr_fonts else " — DejaVu fallback (Render 환경)"),
-        })
+        if kr_fonts:
+            detail = f"{len(kr_fonts)} KR fonts: {kr_fonts[0]}"
+        else:
+            detail = ("0 KR fonts — DejaVu fallback (한글 □ 박스). "
+                      "fix: render.yaml `runtime: docker` 또는 backend/fonts/NotoSansKR-Regular.otf 번들")
+        checks.append({"id": "korean_font_hint", "ok": True, "detail": detail})
     except Exception as exc:
         checks.append({"id": "korean_font_hint", "ok": True, "detail": f"check skipped: {exc}"})
 

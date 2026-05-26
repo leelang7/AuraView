@@ -1,10 +1,10 @@
 # 제출용 1-pager — AuraView K-Perception
 
-> **AuraView K-Perception** · Tesla FSD 영감 + 한국 도로 협업 인지 + **24종 공공데이터 융합** (v10-2026.05.25, USGS earthquake 추가)
-> 11종 no-key 라이브 (Open-Meteo · OSM Overpass · Citybikes · USGS FDSN) + 13종 정부 API stub
-> 위치/속도 검증 게이트 — `events_verified_pct` 부풀려진 100% → 정직한 43% (v12.92 자동 backfill)
-> 개발자 1-step 검증 허브: <https://auraview.allthatai.kr/competition/>
-> 실시간 매니페스트 (단일 GET): <https://auraview.allthatai.kr/metrics/manifest> (live_evidence 블록 포함)
+> **AuraView K-Perception** · Tesla FSD 영감 + 한국 도로 협업 인지 + **25종 공공데이터 융합** (v11-2026.05.25, OSM 철도 건널목 추가)
+> 12종 no-key 라이브 (Open-Meteo · OSM Overpass · Citybikes · USGS FDSN) + 정부 API stub
+> 위치/속도 검증 게이트 — `events_verified_pct` 부풀려진 100% → 정직한 ~43% (v12.92 자동 backfill)
+> 검증 1-step 허브: <https://auraview.allthatai.kr/metrics/audit> (라이브 시스템 헬스 + 25점 readiness)
+> 기획서 PDF 자동 생성: <https://auraview.allthatai.kr/impact/proposal-pdf> (3-page A4 · 호출 시점 git_sha 반영)
 
 ---
 
@@ -60,19 +60,24 @@
 
 ---
 
-## 6 공공데이터 융합
+## 25종 공공데이터 융합 (국내공공 23 + 보조 2)
 
-| 출처 | 제공기관 | AuraView 활용 위치 |
+| 출처 (대표) | 제공기관 | AuraView 활용 위치 |
 |---|---|---|
 | 신호 실시간 | 도로교통공단 | `/fusion/intersection/{id}`, signal_occlusion |
 | VDS 실시간 소통 | 한국도로공사 | `/fusion`, services/bidirectional.py |
-| 한국도로공사 돌발 | 한국도로공사 | `/fusion/intersection/{id}` |
-| TAAS 사고이력 | 도로교통공단 | `/heatmap/taas`, `/impact baseline` |
+| 돌발 / 노면 (RWIS) / 도로 노후 | 한국도로공사 · 행안부 | `/fusion/intersection/{id}`, pothole/frost prior |
+| TAAS 사고이력 / 보행자 다발 | 도로교통공단 | `/heatmap/taas`, pedestrian_hotspot |
 | ITS 국가교통정보 | 국토교통부 | `/fusion`, motorcycle_blindspot |
-| 데이터안심구역 (DSZ) | 국토교통부 | `/dsz/verify`, `/dsz/join`, school_zone |
+| DSZ (가명정보 안심구역) | 국토교통부 | `/dsz/verify`, `/dsz/join`, school_zone |
+| KMA 동네예보 / PM10·PM2.5 / 결빙 | 기상청 · 환경부 | weather, air_quality, black_ice |
+| E-Gen 응급실 / 119 출동 | 보건복지부 · 소방청 | medical, nfa_dispatch |
+| KOTSA 검사 / DTG / V2X 허브 | 한국교통안전공단 | vehicle_inspection, dtg, av_hub |
+| 단속 CCTV / 횡단보도 / 스쿨존 | 경찰청 · 국토부 | police_cam, crosswalk, school_zone |
+| 보조: USGS 지진 / OSM 철도 건널목 | 글로벌 오픈 | earthquake (M2.0+), railway_crossing |
 
-라이센스 + 활용 위치 명시: `/metrics/data-attribution`.
-실시간 freshness (live/stub/error): `/fusion/sources` (3초 폴링).
+전체 25 종 + 라이브 freshness: `/fusion/sources` (3초 폴링). 카테고리별 분리 (`categories.국내공공` / `categories.보조인프라`).
+라이센스 + 활용 위치: `/metrics/data-attribution`.
 
 ---
 
@@ -96,7 +101,7 @@
 |---|:---:|---|---|
 | **AI 학습** | 5점 | `GET /ai/model-card` · `GET /ai/training-history` · `GET /ai/roc-curve` | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10,000 샘플, 15 epoch) |
 | **AI 분석** | 5점 | `GET /ai/scenario-analysis` · `GET /ai/feature-importance` · `GET /ai/confusion-matrix` | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt + 혼동행렬 |
-| **데이터융합** | 5점 | `GET /fusion/sources` · `GET /fusion/intersection/{id}` · `GET /fusion/earthquake` | 신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·**지진** **24종 실시간 융합** (v10) — 11종 no-key 라이브 (Open-Meteo · OSM · Citybikes · USGS) |
+| **데이터융합** | 5점 | `GET /fusion/sources` · `GET /fusion/intersection/{id}` · `GET /fusion/earthquake` | 신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진·**철도건널목** **25종 실시간 융합** (v11) — 12종 no-key 라이브 (Open-Meteo · OSM Overpass · Citybikes · USGS FDSN) |
 | **가명정보결합** | 5점 | `GET /privacy/pipeline-spec` · `POST /privacy/demo-join` · `GET /privacy/evidence-report` | HMAC-SHA256 가명화 + k-익명성(k≥5) + TAAS×VDS 결합 전 과정 |
 | **안심구역** | 5점 | `GET /dsz/pipeline-report` · `POST /dsz/seed-demo` · `GET /dsz/compliance-status` | dsz.ex.co.kr 반입→결합→반출 전 과정 (SHA-256 해시 검증 + 감사 로그) |
 | **종합 스코어카드** | — | `GET /competition/scorecard` | 25점 항목별 달성 현황 + 증거 링크 원스톱 |

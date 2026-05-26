@@ -42,7 +42,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 5);  // v12.163: 2s → 5s (발열 감소, 검출 0건이면 빠르게 도는 의미 없음)
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.164';
+const String kAppVersion = 'v12.165';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -1389,27 +1389,9 @@ class _FleetHomeState extends State<FleetHome>
         _bevLastFrameAt = DateTime.now();
         _bevFrameCount++;
       });
-      // v12.164: ImageLabeler 만 호출 (ObjectDetector 의 거짓 car/person 분류 폐기).
-      //   ImageLabeler 는 frame 전체 라벨 (Vehicle/Person/Plant/Furniture 등 400+) + confidence 반환.
-      //   bbox 없이 frame-level 이지만 라벨이 진짜 의미 있음. 5초 주기 호출 → 발열 부담 미미.
-      if (_imgLabeler != null && !_mlkitBusy) {
-        _mlkitBusy = true;
-        try {
-          final inputImage = InputImage.fromFilePath(shot.path);
-          final labels = await _imgLabeler!.processImage(inputImage);
-          final top = labels.take(5).map((l) => {
-            'text': l.label,
-            'confidence': (l.confidence * 100).toInt(),
-            'index': l.index,
-          }).toList();
-          if (mounted) setState(() {
-            _frameLabels = top;
-            _frameLabelsAt = DateTime.now();
-          });
-        } catch (_) {/* labeler 실패 — 다음 tick 에서 재시도 */} finally {
-          _mlkitBusy = false;
-        }
-      }
+      // v12.165: ImageLabeler 호출도 제거 (v12.164 추가분 폐기).
+      //   사용자 피드백: 'Sky 80%' 같은 generic frame label 은 도로 안전 AI 와 무관 → 시연 마이너스.
+      //   온디바이스 객체 검출/분류는 현 기기/ML Kit base 로는 의미있게 동작 X → UI 자체 숨김이 정직.
       final feat = _entropyAndMotion(bytes);
       _lastEntropy = feat.entropy;
       final reason = _classifyReason(feat);
@@ -6205,63 +6187,9 @@ class _CameraBevSplitState extends State<_CameraBevSplit> with SingleTickerProvi
                 ? '✓ ${widget.detections.length} 검출'
                 : '대기 중',
               color: widget.detections.isNotEmpty ? _safe : Colors.white.withValues(alpha: 0.55))),
-            // v12.164: ImageLabeler frame-level 라벨 (정직 — bbox 없이 frame 전체 라벨)
-            //   ML Kit base ObjectDetector 의 거짓 'car/person' 대신 진짜 의미있는 라벨 표시
-            if (widget.frameLabels.isNotEmpty)
-              Positioned(
-                left: 12, right: 12, bottom: 10,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
-                        border: Border.all(color: _accent.withValues(alpha: 0.30), width: 0.6),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(children: [
-                            Icon(Icons.label_outline_rounded, size: 11, color: _accent),
-                            const SizedBox(width: 4),
-                            Text('FRAME LABELS · ML Kit (frame-level, no bbox)',
-                              style: TextStyle(color: _accent, fontSize: 8.5,
-                                fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                          ]),
-                          const SizedBox(height: 4),
-                          Wrap(spacing: 6, runSpacing: 4,
-                            children: widget.frameLabels.take(5).map((lbl) {
-                              final txt = lbl['text']?.toString() ?? '';
-                              final conf = (lbl['confidence'] as int?) ?? 0;
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: _accent.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(99),
-                                  border: Border.all(color: _accent.withValues(alpha: 0.35), width: 0.6),
-                                ),
-                                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text(txt, style: TextStyle(color: Colors.white,
-                                    fontSize: 10, fontWeight: FontWeight.w800)),
-                                  const SizedBox(width: 4),
-                                  Text('$conf%', style: TextStyle(
-                                    color: _accent.withValues(alpha: 0.85),
-                                    fontSize: 9, fontWeight: FontWeight.w700,
-                                    fontFeatures: const [FontFeature.tabularFigures()])),
-                                ]),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            // v12.165: ImageLabeler frame label UI 제거 (v12.164 추가분 폐기).
+            //   사용자: '이런 시연 ui는 없는게 낫다' — generic frame label (Sky/Indoor 등) 은
+            //   도로 안전 AI 와 무관 → 시연에서 마이너스. UI 완전 숨김.
           ]),
         ),
       )),
@@ -6551,28 +6479,9 @@ class _CleanBevPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
 
-    // ── 가로 거리 grid (cyan 옅음)
-    final gp = Paint()..strokeWidth = 1;
-    final labels = [
-      [0.10, '5m'], [0.30, '15m'], [0.55, '30m'], [0.80, '50m+'],
-    ];
-    for (final entry in labels) {
-      final yNorm = entry[0] as double;
-      final txt = entry[1] as String;
-      final yPx = h * (0.88 - yNorm * 0.78);
-      final scale = 0.52 + (1 - yNorm) * 0.35;
-      gp.color = const Color(0xFF00C8FF).withValues(alpha: 0.10 + (1 - yNorm) * 0.10);
-      canvas.drawLine(Offset(w / 2 - w * scale * 0.92, yPx),
-        Offset(w / 2 + w * scale * 0.92, yPx), gp);
-      // 거리 텍스트
-      final tp = TextPainter(
-        text: TextSpan(text: txt, style: TextStyle(
-          color: const Color(0xFF5A7A9A).withValues(alpha: 0.75), fontSize: 9,
-          fontWeight: FontWeight.w800)),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(w / 2 - w * scale * 0.92 - tp.width - 4, yPx - tp.height / 2));
-    }
+    // v12.165: 거리 grid (5m/15m/30m/50m+) 제거.
+    //   카메라 캘리브레이션 없이 화면 y 좌표를 거리로 매핑한 가짜 grid → 사용자 지적 '필요없다'.
+    //   모노큘러 카메라에서 진짜 거리 추정은 monocular depth 모델 필요.
 
     // ── Ego (cyan top-down 차량 silhouette)
     final pEgo = _project(0, 0.0, size);

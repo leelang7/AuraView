@@ -43,7 +43,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 5);  // v12.163: 2s → 5s (발열 감소, 검출 0건이면 빠르게 도는 의미 없음)
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.168';
+const String kAppVersion = 'v12.170';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -1087,6 +1087,8 @@ class _FleetHomeState extends State<FleetHome>
         await controller.initialize();
         _cam = controller;
         debugPrint('[AURAVIEW] CameraController.initialize() OK, previewSize=${controller.value.previewSize}');
+        // v12.170: camera2 default auto-flash 차단 — takePicture 시 자동 라이트 켜지는 버그 회피
+        try { await controller.setFlashMode(FlashMode.off); } catch (_) {}
         // v12.6: startImageStream — 매 프레임 _onCameraFrame() 호출
         await controller.startImageStream(_onCameraFrame);
         _imageStreamRunning = true;
@@ -1223,8 +1225,9 @@ class _FleetHomeState extends State<FleetHome>
           'labels': labelStr, 'kept': kept, 'rej': rejReason,
         });
         if (!kept) continue;
-        final aspect = h / w;
-        final cls = aspect > 1.4 ? 'person' : 'car';
+        // v12.169: (h/w) > 1.4 ? person : car 거짓 분류 제거. ML Kit base 가 semantic class 안 줌.
+        //   대신 ML Kit 원본 라벨 그대로 (labelStr — 'unlabeled' 또는 'Home goods:67%' 같은).
+        final cls = 'object';   // generic — BEV/footprint 표시 시 색상 단일
         double score = 0.6;
         if (obj.labels.isNotEmpty) score = obj.labels.first.confidence;
         dets.add({'cls': cls, 'box': [box.left.toInt(), box.top.toInt(), w.toInt(), h.toInt()], 'score': score});
@@ -1383,6 +1386,8 @@ class _FleetHomeState extends State<FleetHome>
     if (_cam == null || !_cam!.value.isInitialized) return;
     if (_cam!.value.isTakingPicture) return;
     try {
+      // v12.170: 매 takePicture 전에 flash off 재확인 (camera2 가 auto 로 복원하는 케이스 회피)
+      try { await _cam!.setFlashMode(FlashMode.off); } catch (_) {}
       final shot = await _cam!.takePicture();
       final bytes = await shot.readAsBytes();
       _captures++;
@@ -6241,82 +6246,49 @@ class _CamBoxPainter extends CustomPainter {
       dx = (size.width - imgW * scale) / 2;
     }
 
-    // v12.86: kept 박스 = 굵고 명확한 색상 + 한글 라벨 / 거부 박스 = 옅음
-    //   kept person → 빨강, kept car/vehicle → 사이언, 기타 kept → 초록, rejected → 노랑
+    // v12.169: 거짓 '사람/차량/자전거' 분류 제거. ML Kit base ObjectDetector 가 'Person'/'Car' 같은
+    //   semantic 클래스를 안 줌 → 키워드 매칭 (lbLow.contains('person/car/...')) 은 거의 매칭 X →
+    //   분류 라벨이 가짜 또는 generic '●' 만. rejected 박스도 화면 어수선만 만들고 무의미.
+    // 정직: kept 박스만 표시 + 라벨 = ML Kit 원본 텍스트 (보통 'unlabeled' 또는 generic category) + confidence%.
+    final cyan = const Color(0xFF00C8FF);
     for (final d in rawDetections) {
-      final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
       final kept = d['kept'] as bool? ?? false;
+      if (!kept) continue;   // rejected 표시 안 함 (어수선만)
+      final box = (d['box'] as List).map((e) => (e as num).toDouble()).toList();
       final labels = d['labels']?.toString() ?? '';
-      final rej = d['rej']?.toString();
       final r = Rect.fromLTWH(
         dx + box[0] * scale, dy + box[1] * scale,
         box[2] * scale, box[3] * scale);
 
-      // 클래스별 색상 + 한글 라벨 매핑 (kept 만)
-      Color col; String kLabel; String icon;
-      final lbLow = labels.toLowerCase();
-      if (lbLow.contains('person') || lbLow.contains('pedestrian')) {
-        col = const Color(0xFFFF4040); kLabel = '사람'; icon = '🚶';
-      } else if (lbLow.contains('car') || lbLow.contains('vehicle') || lbLow.contains('truck') || lbLow.contains('bus')) {
-        col = const Color(0xFF00C8FF); kLabel = '차량'; icon = '🚗';
-      } else if (lbLow.contains('bicycle') || lbLow.contains('bike')) {
-        col = const Color(0xFF7C3AED); kLabel = '자전거'; icon = '🚲';
-      } else if (lbLow.contains('motorcycle')) {
-        col = const Color(0xFFFFB020); kLabel = '오토바이'; icon = '🏍';
-      } else if (kept) {
-        col = const Color(0xFF00E09A); kLabel = labels; icon = '●';
-      } else {
-        col = const Color(0xFFFFB020); kLabel = labels; icon = '';
-      }
-
-      // 박스 그리기 — kept 굵게, rejected 옅게
+      // 박스 (단일 cyan, kept 만)
       canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)),
-        Paint()..style = PaintingStyle.stroke..strokeWidth = kept ? 4.0 : 1.2
-          ..color = col.withValues(alpha: kept ? 1.0 : 0.45));
-      // kept 만 추가 글로우
-      if (kept) {
-        canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)),
-          Paint()..style = PaintingStyle.stroke..strokeWidth = 7.0
-            ..color = col.withValues(alpha: 0.22)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 4));
-        // 네 모서리 작은 코너 표시 (Tesla 식)
-        const cornerLen = 12.0;
-        final cp = Paint()..color = col..strokeWidth = 3.0..style = PaintingStyle.stroke;
-        canvas.drawLine(r.topLeft, r.topLeft.translate(cornerLen, 0), cp);
-        canvas.drawLine(r.topLeft, r.topLeft.translate(0, cornerLen), cp);
-        canvas.drawLine(r.topRight, r.topRight.translate(-cornerLen, 0), cp);
-        canvas.drawLine(r.topRight, r.topRight.translate(0, cornerLen), cp);
-        canvas.drawLine(r.bottomLeft, r.bottomLeft.translate(cornerLen, 0), cp);
-        canvas.drawLine(r.bottomLeft, r.bottomLeft.translate(0, -cornerLen), cp);
-        canvas.drawLine(r.bottomRight, r.bottomRight.translate(-cornerLen, 0), cp);
-        canvas.drawLine(r.bottomRight, r.bottomRight.translate(0, -cornerLen), cp);
-      }
+        Paint()..style = PaintingStyle.stroke..strokeWidth = 2.5..color = cyan);
+      // 네 모서리 코너 액센트 (Tesla FSD UI 스타일)
+      const cornerLen = 12.0;
+      final cp = Paint()..color = cyan..strokeWidth = 3.0..style = PaintingStyle.stroke;
+      canvas.drawLine(r.topLeft, r.topLeft.translate(cornerLen, 0), cp);
+      canvas.drawLine(r.topLeft, r.topLeft.translate(0, cornerLen), cp);
+      canvas.drawLine(r.topRight, r.topRight.translate(-cornerLen, 0), cp);
+      canvas.drawLine(r.topRight, r.topRight.translate(0, cornerLen), cp);
+      canvas.drawLine(r.bottomLeft, r.bottomLeft.translate(cornerLen, 0), cp);
+      canvas.drawLine(r.bottomLeft, r.bottomLeft.translate(0, -cornerLen), cp);
+      canvas.drawLine(r.bottomRight, r.bottomRight.translate(-cornerLen, 0), cp);
+      canvas.drawLine(r.bottomRight, r.bottomRight.translate(0, -cornerLen), cp);
 
-      // 라벨 박스
-      final tag = kept
-        ? '$icon $kLabel'
-        : '✗ $rej';
+      // 라벨 = ML Kit 원본 (보통 'unlabeled' 또는 'Home goods:67%' 같은 generic).
+      //   거짓 '차/사람' 분류 안 함 — ML Kit 가 준 그대로.
       final tp = TextPainter(
-        text: TextSpan(text: tag, style: TextStyle(
-          color: kept ? Colors.white : const Color(0xFFFFCB6B),
-          fontSize: kept ? 12 : 9, fontWeight: FontWeight.w900,
-          letterSpacing: kept ? 0.4 : 0)),
+        text: TextSpan(text: labels.isEmpty ? 'object' : labels,
+          style: const TextStyle(color: Colors.white, fontSize: 10,
+            fontWeight: FontWeight.w800, letterSpacing: 0.2)),
         textDirection: TextDirection.ltr,
         maxLines: 1, ellipsis: '…',
       )..layout(maxWidth: r.width * 1.5);
-      // 라벨 배경 박스 (kept 만 색칠)
-      if (kept) {
-        final tagRect = Rect.fromLTWH(r.left, r.top - tp.height - 4,
-          tp.width + 10, tp.height + 4);
-        canvas.drawRRect(RRect.fromRectAndRadius(tagRect, const Radius.circular(3)),
-          Paint()..color = col);
-        tp.paint(canvas, Offset(r.left + 5, r.top - tp.height - 2));
-      } else {
-        // rejected 박스는 라벨 배경 없이
-        canvas.drawRect(Rect.fromLTWH(r.left, r.top - tp.height - 1, tp.width + 4, tp.height + 1),
-          Paint()..color = Colors.black.withValues(alpha: 0.55));
-        tp.paint(canvas, Offset(r.left + 2, r.top - tp.height));
-      }
+      final tagRect = Rect.fromLTWH(r.left, r.top - tp.height - 4,
+        tp.width + 8, tp.height + 4);
+      canvas.drawRRect(RRect.fromRectAndRadius(tagRect, const Radius.circular(3)),
+        Paint()..color = cyan.withValues(alpha: 0.85));
+      tp.paint(canvas, Offset(r.left + 4, r.top - tp.height - 2));
     }
   }
   @override

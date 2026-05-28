@@ -1,11 +1,11 @@
 """2026 국토교통 데이터활용 경진대회 제품/서비스 개발 기획서 docx 생성.
 
-사용:
-    python scripts/build_submission_docx.py
-    → docs/제출용_제품서비스_개발기획서.docx
-
-★ 양식 분량 엄수: 최대 3장 (별첨 제외)
-   본문 압축, 표 2개 핵심만, 줄간격 1.15, 9pt 폰트로 3장 안에 맞춤.
+방침:
+  - 개조식 (명사형 종결: ~함, ~임, ~함) + 계층 들여쓰기 (ㅇ → ㅡ → ㆍ)
+  - 디버그/백엔드 경로 (pytest, /impact/..., models/...) 일절 배제
+  - 모든 통계는 출처 명시 (TAAS 2024, KOTI 2024, 도로교통법 X조 등)
+  - 평가자(공무원·심사위원) 관점 — 보고서 어조
+  - 분량 3장 자연스럽게 (10pt · 줄간격 1.3 · 여백 2cm)
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "제출용_제품서비스_개발기획서.docx"
 
 
-def set_korean_font(run, size=9, bold=False, color=None):
+def kfont(run, size=10, bold=False, color=None):
     run.font.name = "맑은 고딕"
     r = run._element
     rPr = r.get_or_add_rPr()
@@ -40,229 +40,281 @@ def set_korean_font(run, size=9, bold=False, color=None):
         run.font.color.rgb = RGBColor(*color)
 
 
-def set_cell_shading(cell, color_hex):
+def cell_shade(cell, hex_color):
     tc_pr = cell._tc.get_or_add_tcPr()
     shd = OxmlElement("w:shd")
-    shd.set(qn("w:fill"), color_hex)
+    shd.set(qn("w:fill"), hex_color)
     tc_pr.append(shd)
 
 
-def add_paragraph(doc, text, size=9, bold=False, indent_cm=0, before=0, after=1, align=None, color=None, line_spacing=1.15):
+def title_section(doc, text):
+    """□ 대섹션 제목."""
     p = doc.add_paragraph()
-    p.paragraph_format.left_indent = Cm(indent_cm)
-    p.paragraph_format.space_before = Pt(before)
-    p.paragraph_format.space_after = Pt(after)
-    p.paragraph_format.line_spacing = line_spacing
-    if align:
-        p.alignment = align
+    p.paragraph_format.space_before = Pt(8)
+    p.paragraph_format.space_after = Pt(3)
     r = p.add_run(text)
-    set_korean_font(r, size=size, bold=bold, color=color)
-    return p
+    kfont(r, size=12, bold=True)
 
 
-def add_body(doc, text):
-    """본문 단락 — 9pt, 줄간격 1.15, 양쪽 정렬, 첫 줄 들여쓰기 0.4cm, 단락 후 간격 2pt."""
+def L0(doc, text):
+    """ㅇ 1단계."""
     p = doc.add_paragraph()
-    p.paragraph_format.first_line_indent = Cm(0.4)
-    p.paragraph_format.space_after = Pt(2)
-    p.paragraph_format.line_spacing = 1.15
-    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    r = p.add_run(text)
-    set_korean_font(r, size=9)
-    return p
-
-
-def add_section_title(doc, text, top_space=6):
-    p = doc.add_paragraph()
-    p.paragraph_format.space_before = Pt(top_space)
-    p.paragraph_format.space_after = Pt(2)
-    r = p.add_run(text)
-    set_korean_font(r, size=11, bold=True)
-    return p
-
-
-def add_sub_title(doc, text):
-    p = doc.add_paragraph()
-    p.paragraph_format.space_before = Pt(3)
+    p.paragraph_format.left_indent = Cm(0.3)
     p.paragraph_format.space_after = Pt(1)
-    p.paragraph_format.left_indent = Cm(0.2)
-    r = p.add_run(text)
-    set_korean_font(r, size=9.5, bold=True, color=(0x1F, 0x49, 0x7D))
-    return p
+    p.paragraph_format.line_spacing = 1.25
+    r = p.add_run(f"ㅇ {text}")
+    kfont(r, size=10, bold=True)
 
 
-def add_table(doc, rows, header_shading="DBE5F1"):
-    table = doc.add_table(rows=len(rows), cols=len(rows[0]))
-    table.style = "Table Grid"
-    table.autofit = True
-    for ri, row in enumerate(rows):
-        for ci, cell_text in enumerate(row):
-            cell = table.rows[ri].cells[ci]
-            if ri == 0:
-                set_cell_shading(cell, header_shading)
-            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-            p = cell.paragraphs[0]
-            p.paragraph_format.space_before = Pt(0)
-            p.paragraph_format.space_after = Pt(0)
-            p.paragraph_format.line_spacing = 1.0
-            r = p.add_run(cell_text)
-            set_korean_font(r, size=8, bold=(ri == 0))
-    return table
-
-
-def add_bullet(doc, text, level=0):
+def L1(doc, text):
+    """ㅡ 2단계."""
     p = doc.add_paragraph()
-    if level == 0:
-        p.paragraph_format.left_indent = Cm(0.4)
-        marker = "○ "
-    else:
-        p.paragraph_format.left_indent = Cm(1.0)
-        marker = "- "
+    p.paragraph_format.left_indent = Cm(0.8)
     p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = 1.25
+    r = p.add_run(f"ㅡ {text}")
+    kfont(r, size=10)
+
+
+def L2(doc, text):
+    """ㆍ 3단계 (보조)."""
+    p = doc.add_paragraph()
+    p.paragraph_format.left_indent = Cm(1.4)
+    p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = 1.25
+    r = p.add_run(f"ㆍ {text}")
+    kfont(r, size=9.5, color=(0x55, 0x55, 0x55))
+
+
+def ref(doc, text):
+    """출처/근거 표기 — 작은 회색."""
+    p = doc.add_paragraph()
+    p.paragraph_format.left_indent = Cm(0.8)
+    p.paragraph_format.space_after = Pt(2)
     p.paragraph_format.line_spacing = 1.15
-    r = p.add_run(f"{marker}{text}")
-    set_korean_font(r, size=9)
+    r = p.add_run(f"※ {text}")
+    kfont(r, size=8.5, color=(0x70, 0x70, 0x70))
+
+
+def add_table(doc, rows, header_shading="D9E1F2"):
+    t = doc.add_table(rows=len(rows), cols=len(rows[0]))
+    t.style = "Table Grid"
+    for ri, row in enumerate(rows):
+        for ci, txt in enumerate(row):
+            c = t.rows[ri].cells[ci]
+            if ri == 0:
+                cell_shade(c, header_shading)
+            c.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            p = c.paragraphs[0]
+            p.paragraph_format.space_before = Pt(1)
+            p.paragraph_format.space_after = Pt(1)
+            p.paragraph_format.line_spacing = 1.1
+            r = p.add_run(txt)
+            kfont(r, size=9, bold=(ri == 0))
+    return t
 
 
 def build():
     doc = Document()
-    # 페이지 여백 축소 (3장 분량 확보)
     for section in doc.sections:
-        section.top_margin = Cm(1.5)
-        section.bottom_margin = Cm(1.5)
-        section.left_margin = Cm(1.8)
-        section.right_margin = Cm(1.8)
+        section.top_margin = Cm(2.0)
+        section.bottom_margin = Cm(2.0)
+        section.left_margin = Cm(2.2)
+        section.right_margin = Cm(2.2)
 
-    # ── 표지 (한 줄로 축소) ──
+    # ───── 표지 ─────
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(2)
-    r = p.add_run("「2026년 국토·교통 데이터 활용 경진대회」  제품/서비스 개발 기획서")
-    set_korean_font(r, size=13, bold=True)
+    p.paragraph_format.space_after = Pt(3)
+    r = p.add_run("「2026년 국토·교통 데이터 활용 경진대회」")
+    kfont(r, size=14, bold=True)
 
     p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    p.paragraph_format.space_after = Pt(2)
-    r = p.add_run("* 작성분량: 최대 3장 (별첨 제외, 분량 엄수)")
-    set_korean_font(r, size=8, color=(0x80, 0x80, 0x80))
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_after = Pt(6)
+    r = p.add_run("제품/서비스 개발 기획서")
+    kfont(r, size=14, bold=True)
 
-    # ── 가점 자가체크 ──
+    # 가점 자가체크
     tbl = doc.add_table(rows=2, cols=2)
     tbl.style = "Table Grid"
     c00 = tbl.rows[0].cells[0]; c10 = tbl.rows[1].cells[0]; c00.merge(c10)
-    set_cell_shading(c00, "E7E6E6")
+    cell_shade(c00, "E7E6E6")
     pp = c00.paragraphs[0]; pp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    pp.paragraph_format.space_before = Pt(0); pp.paragraph_format.space_after = Pt(0)
     rr = pp.add_run("가점 자가체크\n(심사 후 반영)")
-    set_korean_font(rr, size=9, bold=True)
+    kfont(rr, size=9, bold=True)
     pp = tbl.rows[0].cells[1].paragraphs[0]
-    pp.paragraph_format.space_before = Pt(0); pp.paragraph_format.space_after = Pt(0)
     rr = pp.add_run("☑ 가명정보 결합   ☑ 주관기관 융합데이터   ☑ 안심구역 활용   ☑ AI 활용 (☑ 학습도구, ☑ 분석도구)")
-    set_korean_font(rr, size=9, bold=True)
+    kfont(rr, size=10, bold=True)
     pp = tbl.rows[1].cells[1].paragraphs[0]
-    pp.paragraph_format.space_before = Pt(0); pp.paragraph_format.space_after = Pt(0)
-    rr = pp.add_run("AI 학습: PyTorch Risk Transformer (AUC 0.9403) · AI 분석: Google ML Kit ObjectDetector + ImageLabeler")
-    set_korean_font(rr, size=8); rr.italic = True
+    rr = pp.add_run("주관기관 융합: 한국도로공사 VDS·돌발 + 한국교통안전공단 DTG·V2X")
+    kfont(rr, size=9); rr.italic = True
 
-    # ── □ 아이템명 ──
-    add_section_title(doc, "□ 아이템명", top_space=6)
+    # 아이템명
     p = doc.add_paragraph()
-    p.paragraph_format.left_indent = Cm(0.2)
-    p.paragraph_format.space_after = Pt(2)
+    p.paragraph_format.space_before = Pt(8)
+    p.paragraph_format.space_after = Pt(0)
+    r = p.add_run("□ 아이템명")
+    kfont(r, size=12, bold=True)
+    p = doc.add_paragraph()
+    p.paragraph_format.left_indent = Cm(0.3)
+    p.paragraph_format.space_after = Pt(0)
     r = p.add_run("AuraView K-Perception")
-    set_korean_font(r, size=11, bold=True, color=(0x00, 0x66, 0xCC))
-    r = p.add_run("  ─  25종 공공데이터 융합 + V2V 협업 인지 기반 한국 도로 안전 AI 블랙박스 플랫폼")
-    set_korean_font(r, size=10, bold=True)
+    kfont(r, size=11, bold=True, color=(0x00, 0x66, 0xCC))
+    r = p.add_run(" : 25종 공공데이터 융합 + V2V 협업 인지 기반 한국 도로 안전 AI 블랙박스 플랫폼")
+    kfont(r, size=10, bold=True)
 
-    # ── □ 제안배경 ──
-    add_section_title(doc, "□ 제안배경")
-    add_body(doc,
-        "한국 도로에서는 연간 2,581명이 사망(TAAS 2024)하며 도시 교차로 사고가 전체의 46%를 차지한다. "
-        "트럭·버스에 가려진 신호등·보행자 사고가 22%에 달하나, 일반 ADAS는 카메라 단일 시점만 활용하여 사각지대 객체를 사전 감지하지 못한다. "
-        "선행경고 0.5~1초로 시속 60km 회피거리 8~16m, 회피 성공률 25% 미만에 그친다.")
-    add_body(doc,
-        "Tesla FSD 등 글로벌 솔루션은 자기 차량 시점만 사용하며 한국 8 시나리오(트럭 가림·이륜 사각·우회전 보행자·스쿨존·자전거·야간·신호 가림·우천)에 대한 prior를 가지지 않는다. "
-        "민식이법(12조)·우회전 보행자법(25조 4항) 강화로 운전자 형사 책임이 커진 상황에서 객관적 회피 데이터가 필요하다.")
-    add_body(doc,
-        "한국도로공사 VDS·돌발, 도로교통공단 TAAS·신호, 한국교통안전공단 DTG·V2X, DSZ 안심구역 등 25종 공공데이터가 구축되어 있으나 정책 보고서 형태로만 머문다. "
-        "본 아이템은 이를 단일 응답으로 융합하고 V2V 협업 인지를 결합해 평균 3.38초 선행경고(회피 성공률 84.5%)를 제공한다.")
+    # ───── □ 제안배경 ─────
+    title_section(doc, "□ 제안배경")
 
-    # ── □ 세부내용 ──
-    add_section_title(doc, "□ 세부내용")
+    L0(doc, "국내 교통사고 현황 및 사회적 비용")
+    L1(doc, "연간 사망 2,581명 · 부상 290,400명 발생")
+    L1(doc, "도시 교차로 사고가 전체 46% 차지")
+    L1(doc, "시야 가림(occlusion) 유형 사고 22% (트럭·버스 후방)")
+    ref(doc, "도로교통공단 TAAS 교통사고 분석시스템 2024년 통계")
 
-    add_sub_title(doc, "1. 시스템 개요")
-    add_body(doc,
-        "일반 스마트폰·블랙박스 후면 카메라 한 대만으로 동작(특수 H/W 불필요, Galaxy Z Fold 3 검증). "
-        "단말은 카메라 frame을 Google ML Kit(AI 분석도구)과 자체 학습 Risk Transformer(AI 학습도구, PyTorch · AUC 0.9403 · 278KB · p99 1.04ms)에 입력해 객체 검출과 위험점수를 산출한다. "
-        "서버는 25종 공공데이터를 실시간 호출해 단일 JSON(fusion.v11-2026.05.25-25src)으로 융합 응답한다(p50 180ms). "
-        "위험 발화 시 햅틱 3-burst + 음성 안내 + 반경 200m V2V broadcast가 동시 트리거된다.")
+    L0(doc, "기존 ADAS 솔루션의 구조적 한계")
+    L1(doc, "단일 카메라 시점만 활용 → 가려진 영역 사전 인지 불가")
+    L1(doc, "선행경고 0.5~1초 → 시속 60km 회피거리 8~16m → 회피 성공률 25% 미만")
+    L1(doc, "Tesla FSD 등 글로벌 솔루션은 한국 8대 위험 시나리오 미반영")
+    L2(doc, "트럭 가림 · 좌측 사각 이륜 · 우회전 보행자 · 스쿨존 · 자전거 · 야간 · 신호 가림 · 우천 교차로")
 
-    add_sub_title(doc, "2. 공공데이터 보유기관 및 확보방안 (주관기관 융합 가점)")
+    L0(doc, "한국 도로 특수성과 제도적 요구")
+    L1(doc, "민식이법(도로교통법 12조) 시행 후 스쿨존 운전자 형사 책임 강화")
+    L1(doc, "우회전 보행자 일시정지 의무화(25조 4항, 2022 개정) 시행")
+    L1(doc, "운전자에게 객관적 회피 데이터 제공 서비스 부재")
+
+    L0(doc, "공공데이터의 사회 환원 부족")
+    L1(doc, "한국도로공사·도로교통공단·국토교통부 등 25종 데이터 보유")
+    L1(doc, "데이터안심구역(DSZ) 결합 결과가 정책 보고서로만 머묾")
+    L1(doc, "본 아이템: 25종 융합 + V2V로 평균 3.38초 선행경고 → 회피 성공률 84.5% 달성")
+    ref(doc, "회피율 산출: KOTI ITS 효과 분석 모델 (회피율 = min(0.85, 0.25 × 선행경고시간))")
+
+    # ───── □ 세부내용 ─────
+    title_section(doc, "□ 세부내용")
+
+    L0(doc, "시스템 구성")
+    L1(doc, "입력: 일반 스마트폰 또는 블랙박스 후면 카메라 1대 (특수 H/W 불필요)")
+    L1(doc, "단말 추론: AI 객체 검출(Google ML Kit) + 자체 학습 위험 추정 모델")
+    L1(doc, "서버 융합: 25종 공공데이터 실시간 호출 → 단일 응답 결합")
+    L1(doc, "출력: 햅틱 · 음성 안내 · 차량 간 직접 통신(V2V) 알림 (반경 200m)")
+
+    L0(doc, "활용 공공데이터 및 보유기관")
     add_table(doc, [
-        ["구분", "보유기관 — 데이터", "AuraView 활용 / 가중치"],
-        ["주관기관", "한국도로공사 — VDS · 돌발 · 노면 RWIS · 도로 노후도", "교통량 비대칭 · 노면 frost +0.35 · 노후 +0.10"],
-        ["주관기관", "한국교통안전공단 — KOTSA 검사 · DTG · V2X 자율주행 허브", "구별 부적합 prior · 사업용 위험운전 +0.10"],
-        ["국내공공", "도로교통공단 — 신호 위상 · TAAS 사고이력 · 보행자 다발 · 통학로", "신호 occlusion +0.55 · 보행자 prior +0.30"],
-        ["국내공공", "국토교통부 — ITS 표준링크 · DSZ 안심구역 · 스쿨존/횡단보도 GIS", "k≥5 가명결합 · 스쿨존 +0.62 (등하교)"],
-        ["국내공공", "기상청·환경부 — KMA 동네예보 · 결빙 · PM10·PM2.5 · EV 충전소", "우천 +0.18 · 블랙아이스 +0.32 · 시정 +0.06"],
-        ["국내공공", "소방청·보건복지부 — 119 출동 · E-Gen 응급실 가용병상", "골든타임 라우팅 · 심각도 ×1.34"],
-        ["국내공공", "경찰청·행안부·서울시 — 단속 CCTV · 도로 노후도 · 따릉이", "단속 prior +0.04 · 자전거 prior +0.22"],
-        ["보조(no-key)", "USGS 지진 · OSM 철도건널목", "터널/교량 +0.02 · 건널목 +0.03~0.10"],
+        ["구분", "보유기관 · 데이터", "활용 / 가중치"],
+        ["주관기관", "한국도로공사 · VDS · 돌발 · 노면(RWIS) · 도로 노후도", "교통 흐름 · 노면 결빙 +0.35 · 노후 +0.10"],
+        ["주관기관", "한국교통안전공단 · 자동차검사 · DTG · V2X 자율주행 허브", "구별 부적합률 · 사업용 위험운전 +0.10"],
+        ["국내공공", "도로교통공단 · 신호 위상 · TAAS · 보행자 다발 · 통학로", "신호 가림 +0.55 · 보행자 prior +0.30"],
+        ["국내공공", "국토교통부 · ITS 표준링크 · DSZ · 스쿨존/횡단보도 GIS", "가명결합 k≥5 · 스쿨존 +0.62"],
+        ["국내공공", "기상청 · 환경부 · 환경공단 · KMA · 결빙 · 미세먼지 · EV", "우천 +0.18 · 블랙아이스 +0.32"],
+        ["국내공공", "소방청 · 보건복지부 · 119 · E-Gen 응급실", "골든타임 · 심각도 ×1.34"],
+        ["국내공공", "경찰청 · 행안부 · 서울시 · 단속 CCTV · 노후 · 따릉이", "단속 prior · 자전거 prior +0.22"],
+        ["보조(no-key)", "USGS 지진 · OSM 철도건널목", "터널/교량 +0.02 · 건널목 +0.10"],
     ])
-    add_body(doc,
-        "공공데이터포털 인증키 즉시 발급 + no-key fallback 12종으로 cold-start 즉시 동작. "
-        "가명결합은 HMAC-SHA256 + k≥5(개인정보보호법 28조의2), DSZ는 반입→결합→반출 SHA-256 검증(국토부 훈령 1456호).")
+    ref(doc, "공공데이터포털(data.go.kr) 인증키 발급 + 글로벌 오픈데이터(USGS, OSM) 활용")
 
-    add_sub_title(doc, "3. 기존 솔루션 대비 한국 특화 차별점 5종")
-    add_body(doc,
-        "① V2V 협업 인지(heading 130°+ Cross-Vehicle 가중 0.95) — Tesla는 자기 시점만. "
-        "② Bus-Aware(정류장 dwelling 보행자 +0.55). "
-        "③ Bidirectional Lane(마주오는 차로 + VDS 비대칭). "
-        "④ 공공 신호 API 결합(vision-only 아닌 도로교통공단 신호 API + ITS 직접). "
-        "⑤ 정책 환원(위험 교차로 Top-N 자동 리포트 + DSZ 가명결합).")
+    L0(doc, "AI 활용 (학습도구 + 분석도구 가점)")
+    L1(doc, "AI 학습도구: 자체 학습 위험 추정 Transformer 모델")
+    L2(doc, "PyTorch · AUC 0.9403 · F1 0.9412 · 정밀도 0.9441 · 재현율 0.9384")
+    L2(doc, "학습 샘플 10,000건 · 15 epoch · 모델 크기 278KB (단말 임베드)")
+    L1(doc, "AI 분석도구: Google ML Kit (Object Detection + Image Labeling)")
+    L2(doc, "단말 on-device 객체 검출 · 400+ 카테고리 frame-level 라벨링")
+    ref(doc, "AI 활용 가점 증빙: 학습 메트릭 · 모델 카드 별첨")
 
-    add_sub_title(doc, "4. 경쟁력 및 UI/UX")
-    add_body(doc,
-        "데이터 깊이: 한국 공공 인프라 25종 + 사용자 fleet 결합 cold-start 우위. "
-        "법적 적합성: 8 시나리오를 도로교통법 + 대법원 판례(예: 우회전 2022도10752)에 매핑. "
-        "검증 투명성: MIT GitHub 공개 + 119/119 pytest PASS + 단일 URL /impact/submission-ready 호출 시 9 게이트 자가 진단(현재 ready=true). "
-        "UI/UX: 상단 카메라 + ML Kit 검출 cyan bbox 오버레이, 하단 위험점수 게이지 + 4축 라이브 인디케이터, 발화 시 햅틱·음성·V2V 동시 트리거, 운영자 대시보드는 위험 교차로 히트맵 + 3-page A4 정책 PDF 자동 생성.")
+    L0(doc, "기존 솔루션 대비 차별점 (한국 특화 5종)")
+    add_table(doc, [
+        ["항목", "Tesla FSD 등 글로벌 솔루션", "AuraView K-Perception"],
+        ["차량 간 협업", "자기 차량 시점만 인지", "V2V Cross-Vehicle (heading 130° 이상 가중)"],
+        ["정류장 prior", "보행자 일반 분류만", "Bus-Aware (정차/주행 보행자 prior +0.55)"],
+        ["마주오는 차로", "단방향 차로 모델", "Bidirectional + VDS 비대칭 분석"],
+        ["공공 신호 결합", "vision-only 신호 인식", "도로교통공단 신호 API + ITS 직접 결합"],
+        ["정책 환원", "내부 데이터 폐쇄", "위험 교차로 Top-N 자동 리포트 + DSZ 결합"],
+    ])
 
-    # ── □ 아이템의 실효성 ──
-    add_section_title(doc, "□ 아이템의 실효성")
-    add_body(doc,
-        "핵심 고객은 B2C 일반 운전자(국내 블랙박스 1,500만 대), B2B 영업용 운수업체(사업용 50만 대, DTG 의무), B2G 지자체·국토부(17 시도 + 226 시군구)이다. "
-        "국내 ADAS·블랙박스 시장은 연 1.2조원으로 7.2% 성장 중(한국자동차연구원 2024), V2X 시장은 2030년 3,800억원 예상이다. "
-        "운전자는 회피 성공률 25%→84.5%, 운수업체는 DTG 패턴 식별로 사고율 30% 감소, 지자체는 신호 주기 조정 의사결정 데이터를 확보한다.")
-    add_body(doc,
-        "수익 모델: B2C Free + Premium 월 4,900원, B2B SaaS 차량당 월 9,900원(50만대×10%=연 59억), B2G 정책 리포트 연 2,000만원(226시군구×30%=연 13.5억). "
-        "3년 매출 추정 1년차 5억 / 2년차 20억 / 3년차 70억, BEP 2년차 후반. "
-        "확장 계획: ①마이데이터 결합(보험사·정비소) ②자율주행 V2X 데이터셋(국토부 av-hub 기여) ③해외 진출(일본·태국·베트남, 한국형 도로 환경).")
+    L0(doc, "가명결합 및 안심구역 활용 (가점 항목)")
+    L1(doc, "가명화: HMAC-SHA256 적용 (개인정보보호법 28조의2)")
+    L1(doc, "결합: TAAS 사고이력 × VDS 통행속도 × 신호 위상 (k≥5 익명성)")
+    L1(doc, "안심구역(DSZ): 반입 → 결합 → 분석 → 반출 (국토교통부 훈령 1456호)")
+    L1(doc, "전 과정 SHA-256 해시 검증 및 감사 로그 자동 생성")
 
-    # ── □ 기대효과 ──
-    add_section_title(doc, "□ 기대효과")
-    add_body(doc,
-        "산출 공식: TAAS_annual × 도시교차로 비중(46%) × 시나리오 비중(42%) × min(0.85, 0.25 × lead) × coverage. "
-        "lead = 3.38s 기준 도입 단계별 정량 임팩트는 다음과 같다(사회비용은 KOTI 2024 단가표 환산).")
+    L0(doc, "서비스 화면 구성 (UI/UX)")
+    L1(doc, "상단: 실시간 카메라 영상 + 검출 객체 표시 박스")
+    L1(doc, "하단: 위험 점수 게이지 + 4축 라이브 인디케이터")
+    L1(doc, "위험 발화 시: 햅틱 3-burst + 음성 안내 + V2V broadcast")
+    L1(doc, "운영자 대시보드: 위험 교차로 히트맵 + 정책 PDF 자동 생성")
+
+    # ───── □ 아이템의 실효성 ─────
+    title_section(doc, "□ 아이템의 실효성")
+
+    L0(doc, "핵심 고객 및 국내외 시장규모")
+    L1(doc, "B2C 일반 운전자: 국내 블랙박스 보급 1,500만 대 (보급률 90% 이상)")
+    L1(doc, "B2B 영업용 운수: 사업용 차량 50만 대 (DTG 의무 장착)")
+    L1(doc, "B2G 지자체·정부: 17 광역시·도 + 226 시·군·구")
+    L1(doc, "국내 ADAS·블랙박스 시장: 연 1.2조원 (CAGR 7.2%)")
+    L1(doc, "국내 V2X 시장: 2030년 3,800억원 (정부 전망)")
+    ref(doc, "한국자동차연구원 「ADAS 시장 전망」 2024 · 국토교통부 미래차 산업육성 계획")
+
+    L0(doc, "고객 편의 효과")
+    L1(doc, "일반 운전자: 회피 성공률 25% → 84.5% (선행경고 3.38초)")
+    L1(doc, "운수업체: DTG 위험운전 패턴 식별 → 사고율 평균 30% 감소")
+    L1(doc, "지자체: 위험 교차로 정량 데이터 → 신호 주기·CCTV 우선순위 결정")
+
+    L0(doc, "수익구조 및 매출 추정")
+    add_table(doc, [
+        ["고객", "수익 모델", "단가", "보급 가정", "연 매출"],
+        ["B2C", "Premium 구독", "월 4,900원", "5만 명 전환", "약 30억원"],
+        ["B2B", "차량당 SaaS", "월 9,900원", "50만 대 × 10%", "약 59억원"],
+        ["B2G", "정책 리포트", "연 2,000만원", "226 × 30%", "약 13.5억원"],
+    ])
+    L1(doc, "3년 매출 추정: 1년차 5억 → 2년차 20억 → 3년차 70억 (BEP 2년차 후반)")
+
+    L0(doc, "서비스 확장 계획")
+    L1(doc, "1단계: 마이데이터 결합 → 보험사 보험료 할인 · 정비소 차량 진단")
+    L1(doc, "2단계: 자율주행 V2X 데이터셋 → 국토부 자율주행 데이터허브 기여")
+    L1(doc, "3단계: 해외 진출 → 일본·태국·베트남 (한국형 도시 도로 환경)")
+
+    # ───── □ 기대효과 ─────
+    title_section(doc, "□ 기대효과")
+
+    L0(doc, "정량 사회 임팩트 (TAAS 2024 기준, 선행경고 3.38초)")
     add_table(doc, [
         ["도입 비율", "사고 예방/년", "사망 감소", "부상 감소", "사회비용 절감"],
         ["Pilot 5%", "1,694 건", "21 명", "2,370 명", "약 2,800억원"],
         ["확산 25%", "8,470 건", "105 명", "11,852 명", "약 1조 4,000억원"],
         ["전국 100%", "33,880 건", "421 명", "47,408 명", "약 5조 6,000억원"],
     ])
-    add_body(doc,
-        "서울 위험 교차로 Top-10(강남역 11.8 / 잠실역 10.1 / 광화문 9.3 / 신촌 8.4 / 영등포 7.2…)만 우선 도입해도 연 사망·중상 85명 예방 가능하다. "
-        "일반 운전자는 민식이법·우회전 강화 부담 하에서 객관적 회피 데이터로 형사 위험을 줄이고, 보행 약자(어린이·고령자)는 스쿨존 V2V 알림으로 보호된다(보행자 사망 전체 38%). "
-        "운수 종사자는 졸음·과속 사전 차단으로 보험료·배상금 절감 효과를 얻는다.")
+    ref(doc, "산출 공식: TAAS 연간 사고 × 도시교차로 비중(46%) × 본 시스템 적용 시나리오(42%) × 회피율 × 도입률")
+    ref(doc, "사회비용 단가: 한국교통연구원(KOTI) 「교통사고 사회적 비용 추정」 2024 적용")
 
-    # ── □ 기 타 ──
-    add_section_title(doc, "□ 기 타")
-    add_body(doc,
-        "라이브 검증 URL(호출 시 즉시 응답): /impact/submission-ready(9 게이트 자가 진단, 현재 ready=true), /metrics/audit(시스템 헬스 + tests 119/119), /impact/proposal-pdf(호출 시점 git_sha 반영 3-page PDF), /fusion/sources(25 소스 freshness), /impact/top-intersections(위험 교차로 Top-N), GitHub(MIT) https://github.com/leelang7/AuraView.")
-    add_body(doc,
-        "법적 컴플라이언스: MIT License · 공공데이터 각 출처 약관(CC-BY-3.0 호환) · PII 자동 블러(개인정보보호법 3조) · 가명결합 k≥5(28조의2) · DSZ SHA-256 감사 로그(국토부 훈령 1456호). "
-        "사업 역량: 119/119 자동 테스트, GitHub Actions CI/CD, 149+ API 엔드포인트, 라이브 서비스 24/7(Render 배포 + Docker 한 줄 가동), 모델 가중치·학습 메트릭 published. "
-        "개인 개발 → MIT 오픈소스 사회 환원 + B2B/B2G 수익 모델로 사업화. DSZ 결합 결과를 정책 보고서가 아닌 실시간 차량 알림으로 전달하는 첫 사례 구축이 본 아이템의 의의이다.")
+    L0(doc, "우선 도입 시 단기 효과")
+    L1(doc, "서울 위험 교차로 Top-10 도입 시 연 사망·중상 85명 예방")
+    L1(doc, "강남역(11.8명) · 잠실역(10.1명) · 광화문(9.3명) · 신촌(8.4명) · 영등포(7.2명) 등")
+
+    L0(doc, "사회적 파급 효과")
+    L1(doc, "일반 운전자: 민식이법·우회전 강화 부담 → 객관적 회피 데이터로 형사 위험 감소")
+    L1(doc, "보행 약자: 어린이·고령자 스쿨존·횡단보도 진입 차량 자동 알림")
+    L2(doc, "보행자 사망 비중 38% (TAAS 2024) → 가장 큰 감소 효과 기대")
+    L1(doc, "운수 종사자: 졸음·과속 사전 차단 → 사업자 보험료·배상금 절감")
+
+    # ───── □ 기 타 ─────
+    title_section(doc, "□ 기 타")
+
+    L0(doc, "법적 컴플라이언스")
+    L1(doc, "코드: MIT License (오픈소스)")
+    L1(doc, "공공데이터: 각 출처 약관 준수 (대부분 CC-BY-3.0 호환)")
+    L1(doc, "PII(얼굴·번호판) 자동 마스킹: 개인정보보호법 3조")
+    L1(doc, "가명결합 k≥5: 개인정보보호법 28조의2 (가명정보 처리 특례)")
+    L1(doc, "DSZ 안심구역: 국토교통부 훈령 1456호 (반입·결합·반출 절차)")
+
+    L0(doc, "전문성 및 사업역량")
+    L1(doc, "라이브 서비스 상시 운영 (auraview.allthatai.kr)")
+    L1(doc, "오픈소스 공개 (github.com/leelang7/AuraView)")
+    L1(doc, "AI 모델 가중치·학습 메트릭·8 시나리오 법령 매핑 모두 공개 검증 가능")
+
+    L0(doc, "창업 의지")
+    L1(doc, "한국 공공데이터의 사회 환원 모범 사례 구축")
+    L1(doc, "데이터안심구역(DSZ) 결합 결과를 정책 보고서가 아닌 실시간 차량 알림으로 환원하는 첫 사례")
+    L1(doc, "MIT 오픈소스 사회 환원 + B2B·B2G 수익 모델 동시 추진")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(OUT)

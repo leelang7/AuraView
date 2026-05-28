@@ -58,8 +58,12 @@ def main():
             out = OUT_DIR / fname
             try:
                 print(f"  [+] {fname:25s} ← {url}")
-                page.goto(url, wait_until="networkidle", timeout=30000)
-                page.wait_for_timeout(2000)  # 동적 로딩 + 애니메이션 대기
+                try:
+                    page.goto(url, wait_until="networkidle", timeout=30000)
+                except Exception:
+                    page.goto(url, wait_until="load", timeout=30000)
+                page.wait_for_timeout(3500)  # 동적 로딩 + 애니메이션 대기
+                # full_page=False → viewport 만 (1280x900) — 페이지 첫 화면만 깔끔히 캡쳐
                 page.screenshot(path=str(out), full_page=False)
                 size_kb = out.stat().st_size / 1024
                 results.append((fname, label, size_kb, "OK"))

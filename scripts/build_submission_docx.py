@@ -62,7 +62,7 @@ def L0(doc, text):
     p.paragraph_format.left_indent = Cm(0.3)
     p.paragraph_format.space_after = Pt(1)
     p.paragraph_format.line_spacing = 1.25
-    r = p.add_run(f"ㅇ {text}")
+    r = p.add_run(f"○ {text}")
     kfont(r, size=10, bold=True)
 
 
@@ -72,7 +72,7 @@ def L1(doc, text):
     p.paragraph_format.left_indent = Cm(0.8)
     p.paragraph_format.space_after = Pt(0)
     p.paragraph_format.line_spacing = 1.25
-    r = p.add_run(f"ㅡ {text}")
+    r = p.add_run(f"- {text}")
     kfont(r, size=10)
 
 
@@ -82,7 +82,7 @@ def L2(doc, text):
     p.paragraph_format.left_indent = Cm(1.4)
     p.paragraph_format.space_after = Pt(0)
     p.paragraph_format.line_spacing = 1.25
-    r = p.add_run(f"ㆍ {text}")
+    r = p.add_run(f"· {text}")
     kfont(r, size=9.5, color=(0x55, 0x55, 0x55))
 
 

@@ -106,7 +106,12 @@ def body_line(c, x, y, text, size=10, color="#222222", bold=False, level=0):
     return y - 4.8 * mm
 
 
-def draw_image_centered(c, img_path, x_left, x_right, y_top, max_h):
+def draw_image_centered(c, img_path, x_left, x_right, y_top, max_h, border=False):
+    """이미지를 box 에 정확히 맞춰 그리기 (테두리 옵션).
+
+    box_w/box_h 가 이미지 aspect 와 정확히 일치하도록 계산하므로
+    preserveAspectRatio 가 좌상단으로 쏠리는 현상이 발생하지 않음.
+    """
     try:
         with PILImage.open(str(img_path)) as im:
             w_px, h_px = im.size
@@ -126,10 +131,45 @@ def draw_image_centered(c, img_path, x_left, x_right, y_top, max_h):
     x = (x_left + x_right) / 2 - box_w / 2
     y = y_top - box_h
     c.drawImage(str(img_path), x, y, box_w, box_h,
-                preserveAspectRatio=True, mask="auto")
-    c.setStrokeColor(colors.HexColor("#1F497D"))
-    c.setLineWidth(0.6)
-    c.rect(x, y, box_w, box_h, fill=0, stroke=1)
+                preserveAspectRatio=False, mask="auto")
+    if border:
+        c.setStrokeColor(colors.HexColor("#1F497D"))
+        c.setLineWidth(0.6)
+        c.rect(x, y, box_w, box_h, fill=0, stroke=1)
+    return y
+
+
+def draw_image_balanced(c, img_path, x_left, x_right, y_top, y_floor, desc_lines_h):
+    """이미지를 가용 영역 내 최대 크기로 top-align 배치.
+
+    - 가로: 페이지 본문 너비 전체 사용 (180mm)
+    - 세로: y_top 에서 시작, 위·아래 균형보다 상단 정렬 우선 → 빈 공백 하단으로
+    - 단, 키 큰 이미지는 desc/footer 와 겹치지 않도록 가용 높이 제한
+    """
+    try:
+        with PILImage.open(str(img_path)) as im:
+            w_px, h_px = im.size
+    except Exception as exc:
+        c.setFillColor(colors.red)
+        c.setFont(FONT, 11)
+        c.drawCentredString((x_left + x_right) / 2, (y_top + y_floor) / 2,
+                            f"[캡쳐 로드 실패: {exc}]")
+        return y_floor
+
+    avail_w = x_right - x_left
+    avail_h = y_top - y_floor - desc_lines_h - 12 * mm
+    ratio = w_px / h_px
+
+    box_w = avail_w
+    box_h = avail_w / ratio
+    if box_h > avail_h:
+        box_h = avail_h
+        box_w = avail_h * ratio
+
+    x = (x_left + x_right) / 2 - box_w / 2
+    y = y_top - box_h
+    c.drawImage(str(img_path), x, y, box_w, box_h,
+                preserveAspectRatio=False, mask="auto")
     return y
 
 
@@ -402,8 +442,12 @@ def build():
 
         img_top = PAGE_H - 35 * mm
         img_path = CAPS / fn
-        img_bottom = draw_image_centered(c, img_path, MARGIN_X,
-                                         PAGE_W - MARGIN_X, img_top, 175 * mm)
+        # 설명 블록 높이: 헤더(5mm) + 각 줄 4.8mm
+        desc_block_h = 5 * mm + len(desc) * 4.8 * mm
+        img_bottom = draw_image_balanced(c, img_path, MARGIN_X,
+                                         PAGE_W - MARGIN_X, img_top,
+                                         y_floor=15 * mm,
+                                         desc_lines_h=desc_block_h)
 
         desc_y = img_bottom - 8 * mm
         c.setFillColor(colors.HexColor("#1F497D"))
@@ -434,8 +478,11 @@ def build():
 
         img_top = PAGE_H - 35 * mm
         img_path = CAPS / fn
-        img_bottom = draw_image_centered(c, img_path, MARGIN_X,
-                                         PAGE_W - MARGIN_X, img_top, 175 * mm)
+        desc_block_h = 5 * mm + len(desc) * 4.8 * mm
+        img_bottom = draw_image_balanced(c, img_path, MARGIN_X,
+                                         PAGE_W - MARGIN_X, img_top,
+                                         y_floor=15 * mm,
+                                         desc_lines_h=desc_block_h)
 
         desc_y = img_bottom - 8 * mm
         c.setFillColor(colors.HexColor("#7C3AED"))

@@ -327,6 +327,11 @@ VISUAL_PAGES = [
      ["5가지 차별점 — V2V · Bus-Aware · Bidirectional · 신호 API · 정책 환원",
       "각 항목별 Tesla 시점 vs AuraView 시점 비교",
       "한국 도로 특화 영역 강조"]),
+    ("v09_app_mockup.png", "27. 시각자료 — Flutter 네이티브 앱 (Galaxy Z Fold 3 검증)", "app_mockup.svg",
+     ["좌: 운전자 폰 화면 (Z Fold 3 14:9 · 카메라 프리뷰 + ML Kit 박스 + 단일 알약 REC 버튼)",
+      "중: Flutter 3.x 스택 — CameraX · ML Kit on-device · Geolocator · HTTP · V2V · BIS",
+      "우: 실 작동 메트릭 — 누적 1,247 trip / 8,420 contribute / p99 1.04ms / HMAC 100%",
+      "GitHub Releases APK 53MB (Android 7.0+) + PWA + 오프라인 재시도 큐"]),
 ]
 
 
@@ -369,9 +374,9 @@ def build():
     c.setFillColor(colors.HexColor("#222222"))
     c.setFont(FONT, 10)
     c.drawString(MARGIN_X + 5 * mm, box_y - 13 * mm,
-                 "Part A. 라이브 시스템 캡쳐 — 실 구동 화면 18쪽")
+                 "Part A. 라이브 시스템 캡쳐 — 실 구동 화면 17쪽")
     c.drawString(MARGIN_X + 5 * mm, box_y - 18 * mm,
-                 "Part B. 시각자료 갤러리 — 발표·홍보용 SVG 8쪽")
+                 "Part B. 시각자료 갤러리 — 발표·홍보용 SVG 9쪽")
     c.drawString(MARGIN_X + 5 * mm, box_y - 23 * mm,
                  "Part C. 핵심 근거 자료 — 시스템·데이터·AI·시나리오·임팩트 8쪽")
 
@@ -379,7 +384,7 @@ def build():
     y = box_y - box_h - 8 * mm
     c.setFillColor(colors.HexColor("#1F497D"))
     c.setFont(FONT_BOLD, 10.5)
-    c.drawString(MARGIN_X, y, "[ Part A. 라이브 캡쳐 (18쪽) ]")
+    c.drawString(MARGIN_X, y, "[ Part A. 라이브 캡쳐 (17쪽) ]")
     y -= 5 * mm
     c.setFillColor(colors.HexColor("#222222"))
     c.setFont(FONT, 8.5)
@@ -393,7 +398,7 @@ def build():
     y -= 3 * mm
     c.setFillColor(colors.HexColor("#7C3AED"))
     c.setFont(FONT_BOLD, 10.5)
-    c.drawString(MARGIN_X, y, "[ Part B. 시각자료 (8쪽) ]")
+    c.drawString(MARGIN_X, y, "[ Part B. 시각자료 (9쪽) ]")
     y -= 5 * mm
     c.setFillColor(colors.HexColor("#222222"))
     c.setFont(FONT, 8.5)
@@ -409,14 +414,14 @@ def build():
     c.setFillColor(colors.HexColor("#222222"))
     c.setFont(FONT, 8.5)
     for item in [
-        "27. 시스템 전체 아키텍처",
-        "28. 25 공공데이터 카탈로그",
-        "29. AI 모델 학습 결과",
-        "30. 8 시나리오 × 도로교통법 매핑",
-        "31. 정량 임팩트 산출 근거",
-        "32. 위험 교차로 Top-10 (서울)",
-        "33. 가명결합 + DSZ 안심구역",
-        "34. 라이센스 · 컴플라이언스 · 출처",
+        "28. 시스템 전체 아키텍처",
+        "29. 25 공공데이터 카탈로그",
+        "30. AI 모델 학습 결과",
+        "31. 8 시나리오 × 도로교통법 매핑",
+        "32. 정량 임팩트 산출 근거",
+        "33. 위험 교차로 Top-10 (서울)",
+        "34. 가명결합 + DSZ 안심구역",
+        "35. 라이센스 · 컴플라이언스 · 출처",
     ]:
         c.drawString(MARGIN_X + 3 * mm, y, item)
         y -= 3.8 * mm
@@ -499,10 +504,10 @@ def build():
         c.showPage()
 
     # ─── Part C. 근거 자료 8쪽 ───
-    # 27. 아키텍처
+    # 28. 아키텍처
     page_n += 1
     draw_header(c, page_n, total)
-    draw_title_block(c, "27. 시스템 전체 아키텍처",
+    draw_title_block(c, "28. 시스템 전체 아키텍처",
                      "단말 - 백엔드 - 공공데이터 - 정책 환원 전 흐름")
     boxes = [
         (15, 200, 55, 28, "[ 단말 (Mobile) ]", "Flutter App / 카메라\nML Kit 검출 / GPS / V2V"),
@@ -567,10 +572,10 @@ def build():
     draw_footer(c)
     c.showPage()
 
-    # 28. 25 데이터 카탈로그
+    # 29. 25 데이터 카탈로그
     page_n += 1
     draw_header(c, page_n, total)
-    draw_title_block(c, "28. 25 공공데이터 카탈로그",
+    draw_title_block(c, "29. 25 공공데이터 카탈로그",
                      "보유기관 · 발급 절차 · 라이센스")
     y = PAGE_H - 40 * mm
     y = section_header(c, MARGIN_X, y, "[ 주관기관 데이터 7종 ]", "#0066CC")
@@ -606,10 +611,10 @@ def build():
     draw_footer(c)
     c.showPage()
 
-    # 29. AI 모델
+    # 30. AI 모델
     page_n += 1
     draw_header(c, page_n, total)
-    draw_title_block(c, "29. AI 모델 학습 결과", "Risk Transformer (AI 활용 증빙)")
+    draw_title_block(c, "30. AI 모델 학습 결과", "Risk Transformer (AI 활용 증빙)")
     y = PAGE_H - 40 * mm
     y = section_header(c, MARGIN_X, y, "[ 모델 사양 ]")
     y = draw_table(c, MARGIN_X, y, [
@@ -652,10 +657,10 @@ def build():
     draw_footer(c)
     c.showPage()
 
-    # 30. 8 시나리오 매핑
+    # 31. 8 시나리오 매핑
     page_n += 1
     draw_header(c, page_n, total)
-    draw_title_block(c, "30. 8 시나리오 × 도로교통법 매핑",
+    draw_title_block(c, "31. 8 시나리오 × 도로교통법 매핑",
                      "법령 · 판례 · 본 시스템 정량 기여")
     y = PAGE_H - 40 * mm
     y = section_header(c, MARGIN_X, y, "[ 한국 도로 특화 8 위험 시나리오 ]")
@@ -691,10 +696,10 @@ def build():
     draw_footer(c)
     c.showPage()
 
-    # 31. 정량 임팩트
+    # 32. 정량 임팩트
     page_n += 1
     draw_header(c, page_n, total)
-    draw_title_block(c, "31. 정량 임팩트 산출 근거",
+    draw_title_block(c, "32. 정량 임팩트 산출 근거",
                      "산출 공식 + KOTI 사회비용 단가표")
     y = PAGE_H - 40 * mm
     y = section_header(c, MARGIN_X, y, "[ 산출 공식 ]")
@@ -739,10 +744,10 @@ def build():
     draw_footer(c)
     c.showPage()
 
-    # 32. 위험 교차로
+    # 33. 위험 교차로
     page_n += 1
     draw_header(c, page_n, total)
-    draw_title_block(c, "32. 위험 교차로 Top-10 (서울)",
+    draw_title_block(c, "33. 위험 교차로 Top-10 (서울)",
                      "TAAS 사고다발지역 + 우선 도입 효과")
     intersections = top_in.get("intersections", []) if isinstance(top_in, dict) else []
     if not intersections:
@@ -795,10 +800,10 @@ def build():
     draw_footer(c)
     c.showPage()
 
-    # 33. 가명결합 + DSZ
+    # 34. 가명결합 + DSZ
     page_n += 1
     draw_header(c, page_n, total)
-    draw_title_block(c, "33. 가명결합 + DSZ 안심구역",
+    draw_title_block(c, "34. 가명결합 + DSZ 안심구역",
                      "개인정보보호법 28조의2 + 국토부 훈령 1456호")
     y = PAGE_H - 40 * mm
     y = section_header(c, MARGIN_X, y, "[ 가명결합 5단계 (개보법 28조의2) ]")
@@ -833,10 +838,10 @@ def build():
     draw_footer(c)
     c.showPage()
 
-    # 34. 라이센스 + 출처
+    # 35. 라이센스 + 출처
     page_n += 1
     draw_header(c, page_n, total)
-    draw_title_block(c, "34. 라이센스 · 컴플라이언스 · 출처",
+    draw_title_block(c, "35. 라이센스 · 컴플라이언스 · 출처",
                      "본 자료집 작성에 활용된 모든 출처 명세")
     y = PAGE_H - 40 * mm
     y = section_header(c, MARGIN_X, y, "[ 라이센스 ]")

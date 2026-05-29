@@ -21,28 +21,26 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "docs" / "captures"
 LIVE = "https://auraview.allthatai.kr"
 
-# (파일명, URL, 대기 ms, full_page, 라벨)
-# 페이지 길이가 viewport 보다 짧으면 full_page=False (그대로),
-# 길고 위쪽이 중요한 페이지는 full_page=False + viewport 1280x1400 으로 크게,
-# 전체가 다 의미 있는 페이지는 full_page=True (전체 캡쳐)
+# (파일명, URL, 대기 ms, full_page, 라벨, scroll_y)
+# scroll_y=N (px): 캡쳐 전 페이지를 N픽셀 아래로 스크롤 → 다른 영역 보임
 PAGES = [
-    ("01_home.png", "/ui", 4000, False, "메인 대시보드"),
-    ("02_story_top.png", "/story/", 4000, False, "스토리 (상단 hero)"),
-    ("03_story_mid.png", "/story/", 4000, False, "스토리 (전체)"),
-    ("04_summary.png", "/submission/", 5000, False, "One-page Summary"),
-    ("05_fleet.png", "/fleet-dash/", 8000, False, "데이터 라이브 그리드"),
-    ("06_policy.png", "/policy/", 4000, False, "정책 의사결정 대시보드"),
-    ("07_safezone.png", "/safezone/", 4000, False, "DSZ 안심구역 시각화"),
-    ("08_privacy.png", "/privacy/", 4000, False, "PII 마스킹 검증"),
-    ("09_gallery_top.png", "/gallery/", 4000, False, "갤러리 (상단)"),
-    ("10_gallery_full.png", "/gallery/", 4000, False, "갤러리 (전체)"),
-    ("11_slides.png", "/slides/", 4000, False, "발표 슬라이드"),
-    ("12_kiosk_1.png", "/kiosk/", 4000, False, "키오스크 (장면 A)"),
-    ("13_kiosk_2.png", "/kiosk/", 12000, False, "키오스크 (장면 B)"),
-    ("14_bev3d.png", "/bev3d/", 5000, False, "3D BEV 시각화"),
-    ("15_competition.png", "/competition/", 4000, False, "통합 검증 허브"),
-    ("16_scorecard.png", "/scorecard/", 4000, False, "데이터 활용 증빙 라이브"),
-    ("17_reel.png", "/reel/", 4000, False, "시네마틱 영상 합본"),
+    ("01_home.png", "/ui", 4000, False, "메인 대시보드", 0),
+    ("02_story_top.png", "/story/", 4000, False, "스토리 (상단 hero)", 0),
+    ("03_story_mid.png", "/story/", 4000, False, "스토리 (임팩트 시뮬레이터)", 1400),
+    ("04_summary.png", "/submission/", 5000, False, "One-page Summary", 0),
+    ("05_fleet.png", "/fleet-dash/", 8000, False, "데이터 라이브 그리드", 0),
+    ("06_policy.png", "/policy/", 4000, False, "정책 의사결정 대시보드", 0),
+    ("07_safezone.png", "/safezone/", 4000, False, "DSZ 안심구역 시각화", 0),
+    ("08_privacy.png", "/privacy/", 4000, False, "PII 마스킹 검증", 0),
+    ("09_gallery_top.png", "/gallery/", 4000, False, "갤러리 (상단)", 0),
+    ("10_gallery_full.png", "/gallery/", 4000, False, "갤러리 (하단 시나리오)", 1600),
+    ("11_slides.png", "/slides/", 4000, False, "발표 슬라이드", 0),
+    ("12_kiosk_1.png", "/kiosk/", 4000, False, "키오스크 (장면 A)", 0),
+    ("13_kiosk_2.png", "/kiosk/", 12000, False, "키오스크 (장면 B)", 0),
+    ("14_bev3d.png", "/bev3d/", 5000, False, "3D BEV 시각화", 0),
+    ("15_competition.png", "/competition/", 4000, False, "통합 검증 허브", 0),
+    ("16_scorecard.png", "/scorecard/", 4000, False, "데이터 활용 증빙 라이브", 0),
+    ("17_reel.png", "/reel/", 4000, False, "시네마틱 영상 합본", 0),
 ]
 
 # visuals SVG → PNG 변환 (브라우저에서 SVG 로드 후 캡쳐)
@@ -82,17 +80,21 @@ def main():
 
         # === 1. 페이지 캡쳐 ===
         results = []
-        for fname, path, wait_ms, full_page, label in PAGES:
+        for fname, path, wait_ms, full_page, label, scroll_y in PAGES:
             url = f"{LIVE}{path}"
             out = OUT_DIR / fname
             try:
                 fp_tag = "(full)" if full_page else "(view)"
-                print(f"  [+] {fname:30s} {fp_tag} ← {url}")
+                scroll_tag = f" [scroll={scroll_y}]" if scroll_y else ""
+                print(f"  [+] {fname:30s} {fp_tag}{scroll_tag} ← {url}")
                 try:
                     page.goto(url, wait_until="networkidle", timeout=30000)
                 except Exception:
                     page.goto(url, wait_until="load", timeout=30000)
                 page.wait_for_timeout(wait_ms)
+                if scroll_y:
+                    page.evaluate(f"window.scrollTo(0, {scroll_y})")
+                    page.wait_for_timeout(1500)
                 page.screenshot(path=str(out), full_page=full_page)
                 size_kb = out.stat().st_size / 1024
                 results.append((fname, label, size_kb, "OK" if size_kb > 30 else "EMPTY?"))

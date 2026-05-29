@@ -87,195 +87,66 @@
     Android 7.0+ · iOS PWA · GitHub Releases APK 51MB · auraview.allthatai.kr/pwa/
   </text>
 
-  <!-- ==================== LEFT PANEL: PHONE FRAME ==================== -->
+  <!-- ==================== LEFT PANEL: PHONE FRAME (v12.171: 가짜 박스 일괄 제거) ==================== -->
   <g transform="translate(40, 80)">
     <!-- Phone outer shell -->
     <rect x="30" y="0" width="330" height="620" rx="40" ry="40" fill="url(#phoneGrad)" filter="url(#shadow)"/>
-    <!-- Phone bezel highlight -->
     <rect x="30" y="0" width="330" height="620" rx="40" ry="40" fill="none" stroke="#333333" stroke-width="2"/>
+
     <!-- Side buttons -->
     <rect x="22" y="120" width="6" height="50" rx="3" fill="#222222"/>
     <rect x="22" y="185" width="6" height="35" rx="3" fill="#222222"/>
     <rect x="352" y="140" width="6" height="65" rx="3" fill="#222222"/>
-    <!-- Notch / Dynamic Island -->
+
+    <!-- Status bar (notch + clock) -->
     <rect x="155" y="8" width="80" height="22" rx="11" fill="#0A0A0A"/>
-    <!-- Camera dot in notch -->
-    <circle cx="221" cy="19" r="4" fill="#1A1A1A"/>
-    <circle cx="221" cy="19" r="2" fill="#0D0D0D"/>
+    <text x="60" y="22" font-size="9" fill="#888888" font-weight="700">09:42</text>
+    <text x="320" y="22" font-size="9" fill="#888888" font-weight="700" text-anchor="end">100%</text>
 
-    <!-- ===== PHONE SCREEN ===== -->
-    <clipPath id="screenClip">
-      <rect x="42" y="38" width="306" height="568" rx="8" ry="8"/>
-    </clipPath>
-    <g clip-path="url(#screenClip)">
-      <!-- Screen background - road camera view -->
-      <rect x="42" y="38" width="306" height="568" fill="url(#roadGrad)"/>
+    <!-- Screen area (camera preview - dark, no fake objects) -->
+    <rect x="40" y="40" width="310" height="500" rx="6" fill="#070A12"/>
+    <!-- Subtle camera noise texture -->
+    <rect x="40" y="40" width="310" height="500" rx="6" fill="url(#noise)" opacity="0.06"/>
 
-      <!-- Road texture lines -->
-      <line x1="192" y1="38" x2="150" y2="606" stroke="#1E2A35" stroke-width="1" opacity="0.6"/>
-      <line x1="192" y1="38" x2="235" y2="606" stroke="#1E2A35" stroke-width="1" opacity="0.6"/>
-      <!-- Road center dashes -->
-      <rect x="185" y="200" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
-      <rect x="185" y="260" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
-      <rect x="185" y="320" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
-      <rect x="185" y="380" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
-      <rect x="185" y="440" width="14" height="30" rx="2" fill="#2A3545" opacity="0.5"/>
-      <!-- Horizon glow -->
-      <rect x="42" y="38" width="306" height="120" fill="#0A1830" opacity="0.7"/>
-      <!-- Streetlight blobs -->
-      <circle cx="80" cy="130" r="8" fill="#FFB020" opacity="0.15"/>
-      <circle cx="300" cy="120" r="6" fill="#FFB020" opacity="0.12"/>
-      <!-- Scan line animation -->
-      <rect x="42" y="38" width="306" height="3" fill="#00E09A" opacity="0.06">
-        <animate attributeName="y" values="38;606;38" dur="3s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0.06;0.02;0.06" dur="3s" repeatCount="indefinite"/>
-      </rect>
-
-      <!-- Camera noise overlay -->
-      <rect x="42" y="38" width="306" height="568" fill="url(#roadGrad)" opacity="0.05" filter="url(#noise)"/>
-
-      <!-- ===== STATUS BAR ===== -->
-      <rect x="42" y="38" width="306" height="26" fill="#060C14" opacity="0.9"/>
-      <text x="58" y="55" font-size="11" fill="#CCCCCC" font-weight="600">09:42</text>
-      <!-- Signal bars -->
-      <rect x="290" y="47" width="3" height="8" rx="1" fill="#CCCCCC"/>
-      <rect x="295" y="44" width="3" height="11" rx="1" fill="#CCCCCC"/>
-      <rect x="300" y="41" width="3" height="14" rx="1" fill="#CCCCCC"/>
-      <rect x="305" y="38" width="3" height="17" rx="1" fill="#CCCCCC" opacity="0.4"/>
-      <!-- Battery -->
-      <rect x="313" y="44" width="20" height="11" rx="2" fill="none" stroke="#CCCCCC" stroke-width="1.5"/>
-      <rect x="333" y="47" width="2.5" height="5" rx="1" fill="#CCCCCC"/>
-      <rect x="314.5" y="45.5" width="14" height="8" rx="1" fill="#00E09A"/>
-      <!-- WiFi -->
-      <text x="277" y="55" font-size="11" fill="#CCCCCC">▲</text>
-
-      <!-- ===== HEADER BAR ===== -->
-      <rect x="42" y="64" width="306" height="28" fill="#050D18" opacity="0.95"/>
-      <text x="58" y="82" font-size="9" font-weight="700" fill="#00E09A" letter-spacing="1.5">AURAVIEW · K-PERCEPTION</text>
-      <circle cx="322" cy="78" r="6" fill="#00E09A" opacity="0.2"/>
-      <circle cx="322" cy="78" r="3" fill="#00E09A"/>
-
-      <!-- ===== BIS LIVE BADGE (top-right) ===== -->
-      <rect x="248" y="96" width="92" height="22" rx="5" fill="#0A1A28" stroke="#00C8FF" stroke-width="1"/>
-      <text x="258" y="111" font-size="9" fill="#00C8FF" font-weight="700">🚌 BIS 3대 · </text>
-      <circle cx="330" cy="107" r="4" fill="#FF4040">
-        <animate attributeName="opacity" values="1;0.2;1" dur="1.2s" repeatCount="indefinite"/>
-      </circle>
-      <text x="337" y="111" font-size="8" fill="#FF4040" font-weight="700">
-        <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>LIVE
-      </text>
-
-      <!-- ===== BEV 3D VOXEL GRID (center) ===== -->
-      <g transform="translate(92,148)">
-        <text x="60" y="-4" text-anchor="middle" font-size="7" fill="#00E09A" opacity="0.7" letter-spacing="1">BEV · TOP VIEW</text>
-        <!-- Grid base -->
-        <rect x="0" y="0" width="120" height="90" rx="4" fill="#050F1A" stroke="#0A2030" stroke-width="1"/>
-        <!-- Voxel grid lines -->
-        <line x1="0" y1="18" x2="120" y2="18" stroke="#0D2535" stroke-width="0.5"/>
-        <line x1="0" y1="36" x2="120" y2="36" stroke="#0D2535" stroke-width="0.5"/>
-        <line x1="0" y1="54" x2="120" y2="54" stroke="#0D2535" stroke-width="0.5"/>
-        <line x1="0" y1="72" x2="120" y2="72" stroke="#0D2535" stroke-width="0.5"/>
-        <line x1="20" y1="0" x2="20" y2="90" stroke="#0D2535" stroke-width="0.5"/>
-        <line x1="40" y1="0" x2="40" y2="90" stroke="#0D2535" stroke-width="0.5"/>
-        <line x1="60" y1="0" x2="60" y2="90" stroke="#0D2535" stroke-width="0.5"/>
-        <line x1="80" y1="0" x2="80" y2="90" stroke="#0D2535" stroke-width="0.5"/>
-        <line x1="100" y1="0" x2="100" y2="90" stroke="#0D2535" stroke-width="0.5"/>
-        <!-- Ego vehicle (center) -->
-        <rect x="50" y="36" width="20" height="30" rx="3" fill="#00E09A" opacity="0.9" filter="url(#glow-green)"/>
-        <text x="60" y="54" text-anchor="middle" font-size="7" fill="#000" font-weight="700">EGO</text>
-        <!-- Other vehicles -->
-        <rect x="10" y="18" width="16" height="24" rx="2" fill="#FF4040" opacity="0.8"/>
-        <rect x="90" y="10" width="16" height="24" rx="2" fill="#FFB020" opacity="0.7"/>
-        <rect x="30" y="60" width="16" height="24" rx="2" fill="#00C8FF" opacity="0.7"/>
-        <rect x="80" y="54" width="16" height="24" rx="2" fill="#FFB020" opacity="0.6"/>
-        <!-- Detection circles -->
-        <circle cx="18" cy="30" r="14" fill="none" stroke="#FF4040" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.5"/>
-        <circle cx="98" cy="22" r="12" fill="none" stroke="#FFB020" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.5"/>
-      </g>
-
-      <!-- ===== ALT SIGNAL HUD CARD (left side) ===== -->
-      <!-- Glow pulse background -->
-      <rect x="46" y="148" width="88" height="66" rx="6" fill="url(#hudGlow)"/>
-      <rect x="46" y="148" width="88" height="66" rx="6" fill="url(#hudGrad)" stroke="#FF4040" stroke-width="1.5">
-        <animate attributeName="stroke-opacity" values="1;0.4;1" dur="1.8s" repeatCount="indefinite"/>
-      </rect>
-      <text x="55" y="166" font-size="16">⛔</text>
-      <text x="72" y="166" font-size="9" fill="#FF4040" font-weight="700">위험</text>
-      <text x="52" y="180" font-size="9" fill="#FFFFFF" font-weight="600">강남대로 — 정지</text>
-      <rect x="52" y="184" width="76" height="1" fill="#FF4040" opacity="0.4"/>
-      <text x="52" y="198" font-size="10" fill="#FF4040" font-weight="800">남은 8초</text>
-      <rect x="52" y="200" width="55" height="4" rx="2" fill="#1A0A0A"/>
-      <rect x="52" y="200" width="10" height="4" rx="2" fill="#FF4040">
-        <animate attributeName="width" values="55;10;55" dur="8s" repeatCount="indefinite"/>
-      </rect>
-
-      <!-- ===== CITY INFO LINE (bottom HUD) ===== -->
-      <rect x="42" y="430" width="306" height="90" fill="#050D18" opacity="0.97"/>
-      <rect x="42" y="430" width="306" height="1" fill="#00E09A" opacity="0.3"/>
-      <!-- Info chips row 1 -->
-      <g font-size="8" fill="#CCCCCC">
-        <rect x="48" y="436" width="38" height="14" rx="3" fill="#1A0A0A" stroke="#FF4040" stroke-width="0.5"/>
-        <text x="51" y="446" fill="#FF4040" font-weight="700">🚦 정지</text>
-
-        <rect x="90" y="436" width="44" height="14" rx="3" fill="#0A1A20" stroke="#00C8FF" stroke-width="0.5"/>
-        <text x="93" y="446" fill="#00C8FF">🚗 35km/h</text>
-
-        <rect x="138" y="436" width="36" height="14" rx="3" fill="#1A1200" stroke="#FFB020" stroke-width="0.5"/>
-        <text x="141" y="446" fill="#FFB020">⚠ TAAS 3</text>
-
-        <rect x="178" y="436" width="42" height="14" rx="3" fill="#0A1220" stroke="#00C8FF" stroke-width="0.5"/>
-        <text x="181" y="446" fill="#88AACC">🌧️ 우천 +18%</text>
-
-        <rect x="224" y="436" width="36" height="14" rx="3" fill="#0A1420" stroke="#A095FF" stroke-width="0.5"/>
-        <text x="227" y="446" fill="#A095FF">🏥 ER 82%</text>
-
-        <rect x="264" y="436" width="40" height="14" rx="3" fill="#0A1A10" stroke="#00E09A" stroke-width="0.5"/>
-        <text x="267" y="446" fill="#00E09A">🚴 +22%</text>
-      </g>
-      <!-- Info chips row 2 -->
-      <g font-size="8" fill="#CCCCCC">
-        <rect x="48" y="454" width="44" height="14" rx="3" fill="#1A1000" stroke="#FFB020" stroke-width="0.5"/>
-        <text x="51" y="464" fill="#FFB020">🏫 스쿨존 ×1.5</text>
-
-        <rect x="96" y="454" width="34" height="14" rx="3" fill="#0A1A20" stroke="#00C8FF" stroke-width="0.5"/>
-        <text x="99" y="464" fill="#00C8FF">🚌 BIS 3대</text>
-
-        <rect x="134" y="454" width="50" height="14" rx="3" fill="#0D1A10" stroke="#00E09A" stroke-width="0.5"/>
-        <text x="137" y="464" fill="#00E09A" font-weight="700">9src v2 ✓</text>
-
-        <!-- Fusion quality indicator -->
-        <rect x="188" y="454" width="80" height="14" rx="3" fill="#0A1020" stroke="#444" stroke-width="0.5"/>
-        <text x="191" y="464" fill="#666">융합 신뢰도</text>
-        <rect x="243" y="456" width="23" height="10" rx="2" fill="#0A2010"/>
-        <rect x="243" y="456" width="20" height="10" rx="2" fill="#00E09A" opacity="0.8"/>
-      </g>
-
-      <!-- ===== CAMERA PiP (bottom left) ===== -->
-      <rect x="48" y="474" width="68" height="50" rx="4" fill="#050A10" stroke="#334455" stroke-width="1"/>
-      <text x="52" y="485" font-size="6" fill="#556677">CAM · REAR</text>
-      <!-- PiP road scene simplified -->
-      <rect x="48" y="478" width="68" height="46" rx="3" fill="#0A1520" opacity="0.5"/>
-      <line x1="82" y1="490" x2="75" y2="524" stroke="#1E2A35" stroke-width="1"/>
-      <line x1="82" y1="490" x2="89" y2="524" stroke="#1E2A35" stroke-width="1"/>
-      <rect x="77" y="505" width="10" height="14" rx="1" fill="#FF4040" opacity="0.6"/>
-      <text x="78" y="487" font-size="5" fill="#00C8FF" opacity="0.7">● REC</text>
-
-      <!-- ===== MAIN PILL BUTTON ===== -->
-      <rect x="90" y="528" width="210" height="36" rx="18" fill="url(#btnGrad)" filter="url(#glow-green)"/>
-      <rect x="90" y="528" width="210" height="36" rx="18" fill="none" stroke="#00E09A" stroke-width="1" opacity="0.5"/>
-      <circle cx="110" cy="546" r="6" fill="#00E09A"/>
-      <circle cx="110" cy="546" r="4" fill="#005540">
-        <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
-        <animate attributeName="fill-opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
-      </circle>
-      <text x="200" y="550" text-anchor="middle" font-size="11" fill="#FFFFFF" font-weight="700">주행 모니터링 중</text>
-
-      <!-- Bottom safe area -->
-      <rect x="42" y="568" width="306" height="38" fill="#050D18"/>
-      <rect x="155" y="578" width="80" height="4" rx="2" fill="#333333"/>
+    <!-- v12.171: Large AuraView 눈 로고 중앙 - 글로우 -->
+    <g transform="translate(195, 240)">
+      <!-- Outer glow halo -->
+      <circle cx="0" cy="0" r="60" fill="url(#blueGlow)" opacity="0.7"/>
+      <!-- Upper arc (vision/radar) -->
+      <path d="M -28 0 Q 0 -22 28 0" stroke="#00C8FF" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <!-- Lower arc (road/ground) -->
+      <path d="M -28 0 Q 0 22 28 0" stroke="#00C8FF" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <!-- Pupil dot -->
+      <circle cx="0" cy="0" r="5.5" fill="#00C8FF"/>
+      <circle cx="0" cy="0" r="9" fill="#00C8FF" opacity="0.35"/>
+      <!-- Light highlight -->
+      <circle cx="-1.5" cy="-1.5" r="1.8" fill="#FFFFFF" opacity="0.55"/>
     </g>
-    <!-- Phone frame border overlay -->
-    <rect x="30" y="0" width="330" height="620" rx="40" ry="40" fill="none" stroke="#444444" stroke-width="1.5"/>
+
+    <!-- Brand text below logo -->
+    <text x="195" y="335" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="3">AURAVIEW</text>
+    <text x="195" y="352" font-size="8" font-weight="800" fill="#00C8FF" text-anchor="middle" letter-spacing="2">K-PERCEPTION  v12.171</text>
+
+    <!-- Top status strip (brand + 연결 점 + 누적 카운터) -->
+    <rect x="50" y="50" width="290" height="30" rx="15" fill="#0D1520" opacity="0.85"/>
+    <circle cx="68" cy="65" r="3.5" fill="#00E09A"/>
+    <text x="80" y="69" font-size="9" font-weight="800" fill="#FFFFFF" letter-spacing="1">AURAVIEW</text>
+    <text x="146" y="69" font-size="7" font-weight="700" fill="#00C8FF" letter-spacing="1">v12.171</text>
+    <text x="330" y="69" font-size="8" font-weight="700" fill="#AAAAAA" text-anchor="end" font-family="monospace">8,420</text>
+
+    <!-- v12.171: 누적 거리 (단순 chip, 가짜 객체 박스 없음) -->
+    <g transform="translate(195, 405)">
+      <rect x="-70" y="-15" width="140" height="30" rx="15" fill="rgba(0,0,0,0.45)" opacity="0.6"/>
+      <text x="0" y="5" font-size="11" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">1,247 trip  ·  47.3 km</text>
+    </g>
+
+    <!-- Bottom single REC pill button (시연용 가짜 UI 제거 후 남은 유일한 컨트롤) -->
+    <g transform="translate(195, 480)">
+      <rect x="-65" y="-22" width="130" height="44" rx="22" fill="#00E09A" filter="url(#glow-green)"/>
+      <circle cx="-38" cy="0" r="6" fill="#0D1520"/>
+      <text x="-22" y="5" font-size="13" font-weight="900" fill="#0D1520" letter-spacing="2">주행 보기</text>
+    </g>
+
   </g>
 
   <!-- ==================== CENTER PANEL: FLUTTER TECH STACK ==================== -->

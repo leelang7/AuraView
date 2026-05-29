@@ -46,15 +46,17 @@ PAGES = [
 ]
 
 # visuals SVG → PNG 변환 (브라우저에서 SVG 로드 후 캡쳐)
+# SVG 원본 (width, height) 비율에 맞춰 viewport 동적 변경 → 빈 여백 제거
+# (파일명, SVG URL, viewport_w, viewport_h, 설명)
 VISUALS = [
-    ("v01_fusion_diagram.png", "/static/visuals/fusion_diagram.svg", "25 데이터 융합 다이어그램"),
-    ("v02_before_after.png", "/static/visuals/before_after.svg", "BEFORE/AFTER 비교"),
-    ("v03_hud_mockup.png", "/static/visuals/hud_mockup.svg", "HUD UI mockup"),
-    ("v04_og_card.png", "/static/visuals/og_card.svg", "OG 공유 카드"),
-    ("v05_timeline.png", "/static/visuals/timeline_57s.svg", "3.38초 선행경고 타임라인"),
-    ("v06_impact.png", "/static/visuals/impact_waffle.svg", "21명 생명 살림 waffle"),
-    ("v07_ai_metrics.png", "/static/visuals/ai_metrics.svg", "AI 학습 메트릭"),
-    ("v08_tesla_vs.png", "/static/visuals/tesla_vs_auraview.svg", "Tesla vs AuraView 비교"),
+    ("v01_fusion_diagram.png", "/static/visuals/fusion_diagram.svg", 1600, 960, "25 데이터 융합 다이어그램"),  # 1200x720 → 1.33배
+    ("v02_before_after.png", "/static/visuals/before_after.svg", 1600, 800, "BEFORE/AFTER 비교"),  # 1200x600
+    ("v03_hud_mockup.png", "/static/visuals/hud_mockup.svg", 720, 1440, "HUD UI mockup"),  # 720x1440 세로
+    ("v04_og_card.png", "/static/visuals/og_card.svg", 1600, 840, "OG 공유 카드"),  # 1200x630
+    ("v05_timeline.png", "/static/visuals/timeline_57s.svg", 1600, 670, "3.38초 선행경고 타임라인"),  # 1200x500
+    ("v06_impact.png", "/static/visuals/impact_waffle.svg", 1600, 960, "21명 생명 살림 waffle"),
+    ("v07_ai_metrics.png", "/static/visuals/ai_metrics.svg", 1600, 960, "AI 학습 메트릭"),
+    ("v08_tesla_vs.png", "/static/visuals/tesla_vs_auraview.svg", 1600, 960, "Tesla vs AuraView 비교"),
 ]
 
 
@@ -100,22 +102,22 @@ def main():
                 results.append((fname, label, 0, f"FAIL"))
 
         # === 2. visuals SVG → PNG ===
+        # SVG 비율에 맞춰 viewport 동적 변경 → 빈 여백 최소화
         print("\n[Visuals] SVG → PNG capture")
-        # SVG 를 큰 크기로 보기 위해 viewport 변경
-        ctx2 = browser.new_context(
-            viewport={"width": 1600, "height": 1000},
-            device_scale_factor=1.5,
-        )
-        page2 = ctx2.new_page()
-        # SVG 를 가운데 정렬한 HTML 래퍼로 표시
-        for fname, path, label in VISUALS:
+        for fname, path, vw, vh, label in VISUALS:
             url = f"{LIVE}{path}"
             out = OUT_DIR / fname
             try:
-                print(f"  [+] {fname:30s} ← {url}")
+                print(f"  [+] {fname:30s} ({vw}x{vh}) ← {url}")
+                ctx2 = browser.new_context(
+                    viewport={"width": vw, "height": vh},
+                    device_scale_factor=1.5,
+                )
+                page2 = ctx2.new_page()
                 page2.goto(url, wait_until="load", timeout=20000)
                 page2.wait_for_timeout(2000)
                 page2.screenshot(path=str(out), full_page=False)
+                ctx2.close()
                 size_kb = out.stat().st_size / 1024
                 results.append((fname, label, size_kb, "OK"))
                 print(f"      → {size_kb:.1f} KB")

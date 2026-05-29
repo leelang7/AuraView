@@ -1763,53 +1763,63 @@ class _FleetHomeState extends State<FleetHome>
     if (_initing) {
       return Scaffold(
         backgroundColor: _bg,
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment(0, -0.1), radius: 1.2,
-              colors: [Color(0xFF003E5C), _bg],
+        body: SizedBox.expand(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0, -0.1), radius: 1.2,
+                colors: [Color(0xFF003E5C), _bg],
+              ),
             ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // v12.171: '큰 AuraView 브랜드 로고' — 텍스트 'A' → 실제 눈 아이콘 (ic_launcher_foreground 와 동일 시그니처)
-              Container(
-                width: 140, height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const RadialGradient(
-                    colors: [Color(0x88003E5C), Color(0x44003E5C), Color(0x00000000)],
-                    stops: [0.0, 0.6, 1.0],
+            // v12.171: 화면 중앙 정렬 강제 — Z Fold 3 unfold 시 좌측 쏠림 방지
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // v12.171: '큰 AuraView 브랜드 로고' — 텍스트 'A' → 실제 눈 아이콘 (ic_launcher_foreground 와 동일 시그니처)
+                  Container(
+                    width: 140, height: 140,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const RadialGradient(
+                        colors: [Color(0x88003E5C), Color(0x44003E5C), Color(0x00000000)],
+                        stops: [0.0, 0.6, 1.0],
+                      ),
+                      boxShadow: [
+                        BoxShadow(color: _accent.withValues(alpha: 0.55), blurRadius: 50, spreadRadius: 4),
+                        BoxShadow(color: _accent2.withValues(alpha: 0.30), blurRadius: 80, spreadRadius: 8),
+                      ],
+                    ),
+                    child: CustomPaint(
+                      size: const Size(140, 140),
+                      painter: _AuraLogoLargePainter(color: _accent),
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(color: _accent.withValues(alpha: 0.55), blurRadius: 50, spreadRadius: 4),
-                    BoxShadow(color: _accent2.withValues(alpha: 0.30), blurRadius: 80, spreadRadius: 8),
-                  ],
-                ),
-                child: CustomPaint(
-                  size: const Size(140, 140),
-                  painter: _AuraLogoLargePainter(color: _accent),
-                ),
+                  const SizedBox(height: 28),
+                  const Text('Aura',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: _muted, fontSize: 32, fontWeight: FontWeight.w300, letterSpacing: 4),
+                  ),
+                  Text('VIEW',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: _accent, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 8,
+                                     shadows: [Shadow(color: _accent.withValues(alpha:0.5), blurRadius: 16)]),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: 24, height: 24,
+                    child: CircularProgressIndicator(color: _accent, strokeWidth: 2),
+                  ),
+                  const SizedBox(height: 14),
+                  Text('K-Perception 시작 중…',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: _muted, fontSize: 11, letterSpacing: 2,
+                                     fontFamily: 'monospace')),
+                ],
               ),
-              const SizedBox(height: 28),
-              const Text('Aura',
-                style: TextStyle(color: _muted, fontSize: 32, fontWeight: FontWeight.w300, letterSpacing: 4),
-              ),
-              Text('VIEW',
-                style: TextStyle(color: _accent, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 8,
-                                 shadows: [Shadow(color: _accent.withValues(alpha:0.5), blurRadius: 16)]),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: 24, height: 24,
-                child: CircularProgressIndicator(color: _accent, strokeWidth: 2),
-              ),
-              const SizedBox(height: 14),
-              Text('K-Perception 시작 중…',
-                style: TextStyle(color: _muted, fontSize: 11, letterSpacing: 2,
-                                 fontFamily: 'monospace')),
-            ],
+            ),
           ),
         ),
       );

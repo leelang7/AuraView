@@ -762,15 +762,22 @@ def build():
     y = section_header(c, MARGIN_X, y, "[ 서울 위험 교차로 Top-10 ]")
     rows = [["순위", "교차로", "행정구역", "사망·중상/년", "예방 효과"]]
     for it in intersections[:10]:
+        # 라이브 API 키 (annual_kis_baseline/prevented_kis_yearly) 우선,
+        # 폴백 더미 키 (deaths_yr/prevented) 호환
+        baseline = it.get("annual_kis_baseline", it.get("deaths_yr", "?"))
+        prevented = it.get("prevented_kis_yearly", it.get("prevented", "?"))
         rows.append([
             f"#{it.get('rank', '-')}",
             str(it.get("name", "?")),
             str(it.get("district", "?")),
-            f"{it.get('deaths_yr', '?')} 명",
-            f"{it.get('prevented', '?')} 명/년",
+            f"{baseline} 명",
+            f"{prevented} 명/년",
         ])
     y = draw_table(c, MARGIN_X, y, rows, [20, 50, 45, 35, 30])
-    total_prev = sum(it.get("prevented", 0) for it in intersections[:10])
+    total_prev = sum(
+        (it.get("prevented_kis_yearly") or it.get("prevented") or 0)
+        for it in intersections[:10]
+    )
     y -= 8 * mm
     y = section_header(c, MARGIN_X, y, "[ 우선 도입 효과 ]", "#00A36C")
     y = body_line(c, MARGIN_X, y,

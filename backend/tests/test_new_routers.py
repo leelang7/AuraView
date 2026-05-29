@@ -1,7 +1,7 @@
 """
 신규 router 통합 테스트 — /privacy · /ai · /competition
 
-프로젝트 25점 항목 증빙 엔드포인트 전체 smoke test.
+프로젝트 평가 5종 증빙 엔드포인트 전체 smoke test.
 """
 
 from __future__ import annotations

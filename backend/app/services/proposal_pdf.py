@@ -100,14 +100,14 @@ def render_proposal_pdf() -> bytes:
         for i, item in enumerate(items):
             _txt(ax, 0.08, 0.78 - i * 0.022, item, fontsize=10, color="#333")
 
-        # 점수 25점 매트릭스
-        _section_header(ax, 0.06, 0.66, "2. 평가 점수 25점 — 항목별 증빙 URL", color="#00A36C")
+        # 평가 5종 매트릭스
+        _section_header(ax, 0.06, 0.66, "2. 평가 5종 — 항목별 증빙 URL", color="#00A36C")
         score_rows = [
-            ("AI 학습", "5점", "Risk Transformer (AUC 0.9403, F1 0.9412, 8000 train, 15 epoch)", "/ai/model-card"),
-            ("AI 분석", "5점", "4 시나리오 + Attention + ROC + Confusion Matrix + p99 1.04ms", "/ai/scenario-analysis"),
-            ("데이터융합", "5점", f"25 소스 (국내공공 {domestic_count} + 보조 {aux_count}) · {live_count} live", "/fusion/sources"),
-            ("가명정보결합", "5점", "HMAC-SHA256 + k≥5 익명 + TAAS×VDS 결합 전 과정", "/privacy/pipeline-spec"),
-            ("안심구역", "5점", "dsz.ex.co.kr 반입→결합→반출 + SHA-256 검증 + 감사 로그", "/dsz/pipeline-report"),
+            ("AI 학습", "✓", "Risk Transformer (AUC 0.9403, F1 0.9412, 8000 train, 15 epoch)", "/ai/model-card"),
+            ("AI 분석", "✓", "4 시나리오 + Attention + ROC + Confusion Matrix + p99 1.04ms", "/ai/scenario-analysis"),
+            ("데이터융합", "✓", f"25 소스 (국내공공 {domestic_count} + 보조 {aux_count}) · {live_count} live", "/fusion/sources"),
+            ("가명정보결합", "✓", "HMAC-SHA256 + k≥5 익명 + TAAS×VDS 결합 전 과정", "/privacy/pipeline-spec"),
+            ("안심구역", "✓", "dsz.ex.co.kr 반입→결합→반출 + SHA-256 검증 + 감사 로그", "/dsz/pipeline-report"),
         ]
         y0 = 0.63
         for i, (name, pts, evidence, url) in enumerate(score_rows):
@@ -244,7 +244,7 @@ def render_proposal_pdf() -> bytes:
         verify_urls = [
             ("라이브 시스템 헬스", "https://auraview.allthatai.kr/metrics/audit"),
             ("URL master index (manifest)", "https://auraview.allthatai.kr/metrics/manifest"),
-            ("25점 항목별 자체 채점", "https://auraview.allthatai.kr/metrics/scoreboard"),
+            ("평가 5종 항목별 자체 채점", "https://auraview.allthatai.kr/metrics/scoreboard"),
             ("종합 스코어카드", "https://auraview.allthatai.kr/scorecard/"),
             ("API 디렉토리", "https://auraview.allthatai.kr/metrics/api-directory"),
             ("이벤트 forensic trail", "https://auraview.allthatai.kr/fleet/proof/0"),

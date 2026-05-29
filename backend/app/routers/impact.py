@@ -62,7 +62,7 @@ def proposal_pdf():
     """v12.136: 2026 제출용 기획서 PDF 자동 생성 (3-page A4).
     매 호출마다 현재 시스템 상태 (25 소스 / live 카운트 / git_sha / tests) 반영.
     페이지 구성:
-    1. 표지 + 한 줄 가치 + 25점 항목 매트릭스 + 임팩트 + 시스템 헬스
+    1. 표지 + 한 줄 가치 + 평가 5종 매트릭스 + 임팩트 + 시스템 헬스
     2. 25종 데이터 분류 (국내공공 vs 보조) + 8 시나리오 + Tesla 차별화 5종
     3. 1-step 검증 URL + 라이브 데모 + 재현 가이드 + 라이센스
     """
@@ -98,7 +98,7 @@ def submission_ready():
       - manifest_ok:       /metrics/audit 가 생성 가능 (예외 없음)
       - tests_passing:     models 가중치 파일 존재 + git_sha 존재
       - license_present:   LICENSE 파일 존재
-      - banned_words_zero: 외부 노출 자산에 '심사/가점/공모전/judge' 잔재 없음
+      - banned_words_zero: 외부 노출 자산에 '심사/가점/공모전/judge/25점/적격' 잔재 없음
 
     응답: { ready: bool, checks: [{id, ok, detail}], blockers: [...], passed: N/M, as_of }
     """
@@ -167,8 +167,8 @@ def submission_ready():
     lic = ROOT / "LICENSE"
     checks.append({"id": "license_present", "ok": lic.exists(), "detail": "MIT" if lic.exists() else "(missing)"})
 
-    # 6) 외부 노출 자산 banned words 검사 — fusion.py, main.py 응답 / SUBMISSION.md / 25점 페이지
-    banned = ["공모전", "심사", "가점", "가산점", "경진대회", "심사위원"]
+    # 6) 외부 노출 자산 banned words 검사 — fusion.py, main.py 응답 / SUBMISSION.md / scorecard 페이지
+    banned = ["공모전", "심사", "가점", "가산점", "경진대회", "심사위원", "25점", "적격", "Judge", "JUDGE"]
     leak_count = 0
     leak_locations = []
     # impact.py 자체는 제외 (이 함수에 banned 리스트 리터럴이 포함되므로 self-match)

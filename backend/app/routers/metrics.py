@@ -140,7 +140,7 @@ def competition_kpis():
         "scenarios_supported": scenarios_supported,
         "differentiation": differentiation,
         "verification": {
-            "tests": "90 passed (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 25점 항목 증빙)",
+            "tests": "90 passed (68 기존 + 22 신규: /privacy·/ai·/competition·/dsz 평가 5종 증빙)",
             "ci": ".github/workflows/ci.yml — 4 jobs (Python/Flutter/Docker/Docs)",
             "fallback_mode": os.getenv("ALLOW_FALLBACK", "1") == "1",
         },
@@ -377,7 +377,7 @@ def competition_manifest():
             "종합_스코어카드":  "/competition/scorecard",
         },
         "verification_in_one_step": [
-            {"label": "25점 항목 종합 스코어카드", "url": "/competition/scorecard"},
+            {"label": "평가 5종 종합 스코어카드", "url": "/competition/scorecard"},
             {"label": "AI 학습·분석 증빙 보고서",  "url": "/ai/evidence-report"},
             {"label": "가명정보결합 파이프라인 명세", "url": "/privacy/pipeline-spec"},
             {"label": "안심구역 활용 보고서",       "url": "/dsz/pipeline-report"},
@@ -424,7 +424,7 @@ def competition_manifest():
             "school_zone", "bicycle_lane", "night_pedestrian",
         ],
         "tests_passed": 118,
-        "tests_breakdown": "68 기존 + 50 신규 (privacy·ai·competition·dsz 25점 항목 router + v12.83 location_verified · v12.87 speed_kmh 게이트)",
+        "tests_breakdown": "68 기존 + 50 신규 (privacy·ai·competition·dsz 평가 5종 router + v12.83 location_verified · v12.87 speed_kmh 게이트)",
         "data_sources_total": 25,
         "data_sources_live_potential": 12,
         "live_source_list": [
@@ -748,7 +748,7 @@ def audit():
 
 @router.get("/scoreboard")
 def scoreboard():
-    """프로젝트 25점 항목 항목별 자체 채점 — 개발자 가독성."""
+    """프로젝트 평가 5종 항목 자체 채점 — 개발자 가독성."""
     m = _read_json("models/risk_transformer_trained_metric.json")
     return {
         "as_of": datetime.utcnow().isoformat() + "Z",

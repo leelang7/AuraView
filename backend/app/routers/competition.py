@@ -1,16 +1,16 @@
 """
-프로젝트 점수 종합 대시보드 — 검증자용 원스톱 증빙 엔드포인트.
+프로젝트 평가 5종 종합 대시보드 — 검증자용 원스톱 증빙 엔드포인트.
 
-  GET /competition/scorecard    25점 항목 항목별 달성 현황 (검증 제출용)
+  GET /competition/scorecard    평가 5종 항목별 달성 현황 (제출용)
   GET /competition/summary      시스템 KPI 종합 (발표 슬라이드용)
   GET /competition/api-map      전체 86 엔드포인트 → 평가 항목 매핑
   GET /competition/checklist    제출 전 체크리스트
 
-AuraView K-Perception 점수:
-  - AI활용 10점 (학습 5 + 분석 5)
-  - 데이터융합 5점
-  - 가명정보결합 5점
-  - 안심구역 5점
+AuraView K-Perception 평가 5종:
+  - AI활용 (학습 + 분석)
+  - 데이터융합
+  - 가명정보결합
+  - 안심구역
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ _METRIC_PATH = Path("models/risk_transformer_trained_metric.json")
 
 @router.get("/scorecard")
 def scorecard():
-    """25점 항목 항목별 달성 현황 (검증 제출용 원스톱 증빙)."""
+    """평가 5종 항목별 달성 현황 (제출용 원스톱 증빙)."""
     import json as _json
     m = _json.loads(_METRIC_PATH.read_text(encoding="utf-8")) if _METRIC_PATH.exists() else {}
 

@@ -241,9 +241,9 @@ _mount_static(app, ["static", "story"], "/story")        # v3 2026-05-16: 일반
 _mount_static(app, ["static", "reel"], "/reel")          # v5 2026-05-16: 72초 자동재생 시네마틱 시퀀스 (영상 대체)
 _mount_static(app, ["static", "gallery"], "/gallery")    # v6 2026-05-17: 17 SVG 시각자료 갤러리 (필터+라이트박스)
 _mount_static(app, ["static", "bev3d"], "/bev3d")        # v7 2026-05-18: AuraView 자체 Three.js 3D BEV (네이티브앱 WebView 임베드용)
-_mount_static(app, ["static", "scorecard"], "/scorecard")  # v7 2026-05-18: 검증 25점 항목 적격 증거표 (검증자용)
-_mount_static(app, ["static", "privacy"], "/privacy")    # v7 2026-05-18: 가명정보 처리 파이프라인 라이브 데모 (5pt 실증)
-_mount_static(app, ["static", "safezone"], "/safezone")  # v7 2026-05-18: 안전구역 라이브 대시보드 (5pt 실증)
+_mount_static(app, ["static", "scorecard"], "/scorecard")  # v7 2026-05-18: 평가 5종 라이브 증빙 매핑
+_mount_static(app, ["static", "privacy"], "/privacy")    # v7 2026-05-18: 가명정보 처리 파이프라인 라이브 데모
+_mount_static(app, ["static", "safezone"], "/safezone")  # v7 2026-05-18: 안전구역 라이브 대시보드
 _mount_static(app, ["static", "policy"], "/policy")      # v8 2026-05-18: 수집→통계분석→정책의사결정 (Tesla fleet)
 _mount_static(app, ["static", "fleet"], "/fleet-dash")   # v12.17 2026-05-21: 라이브 수집 대시보드 (지도 + 피드)
 _mount_static(app, ["static"], "/static")
@@ -442,7 +442,7 @@ html,body{width:100%;height:100%;background:#04070D;color:#fff;overflow:hidden;
   <a href="/policy/">POLICY</a>
   <a href="/scorecard/">SCORECARD</a>
   <a href="/bev3d/">BEV3D</a>
-  <a href="/metrics/audit" target="_blank" title="라이브 시스템 헬스 + 25점 항목 + 데이터 신뢰성 (단일 GET)">AUDIT</a>
+  <a href="/metrics/audit" target="_blank" title="라이브 시스템 헬스 + 평가 5종 + 데이터 신뢰성 (단일 GET)">AUDIT</a>
   <a href="/impact/submission-ready" target="_blank" title="제출 readiness 9 게이트 자가 진단 (sources/schema/PDF/manifest/모델/git/license/font/banned-words)">✓ READY</a>
   <a href="/impact/proposal-pdf" target="_blank" title="2026 제출용 기획서 PDF (3-page A4, 현재 상태 자동 반영) 다운로드">📄 PROPOSAL</a>
   <span class="sep"></span>

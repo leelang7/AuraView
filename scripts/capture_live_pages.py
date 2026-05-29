@@ -21,26 +21,28 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "docs" / "captures"
 LIVE = "https://auraview.allthatai.kr"
 
-# (파일명, URL, 대기 ms, 스크롤 px, 라벨)
+# (파일명, URL, 대기 ms, full_page, 라벨)
+# 페이지 길이가 viewport 보다 짧으면 full_page=False (그대로),
+# 길고 위쪽이 중요한 페이지는 full_page=False + viewport 1280x1400 으로 크게,
+# 전체가 다 의미 있는 페이지는 full_page=True (전체 캡쳐)
 PAGES = [
-    ("01_home.png", "/ui", 4000, 0, "메인 대시보드"),
-    ("02_story_top.png", "/story/", 4000, 0, "스토리 (상단 hero)"),
-    ("03_story_mid.png", "/story/", 4000, 1000, "스토리 (중간 BEFORE/AFTER)"),
-    ("04_story_bot.png", "/story/", 4000, 2200, "스토리 (시뮬레이터)"),
-    ("05_summary.png", "/submission/", 5000, 0, "One-page Summary"),
-    ("06_fleet.png", "/fleet-dash/", 8000, 0, "데이터 라이브 그리드"),
-    ("07_policy.png", "/policy/", 4000, 0, "정책 의사결정 대시보드"),
-    ("08_safezone.png", "/safezone/", 4000, 0, "DSZ 안심구역 시각화"),
-    ("09_privacy.png", "/privacy/", 4000, 0, "PII 마스킹 검증"),
-    ("10_gallery_top.png", "/gallery/", 4000, 0, "갤러리 (상단)"),
-    ("11_gallery_mid.png", "/gallery/", 4000, 900, "갤러리 (8 시나리오)"),
-    ("12_slides.png", "/slides/", 4000, 0, "발표 슬라이드"),
-    ("13_kiosk_1.png", "/kiosk/", 4000, 0, "키오스크 (장면 A)"),
-    ("14_kiosk_2.png", "/kiosk/", 12000, 0, "키오스크 (장면 B - 자동순환)"),
-    ("15_bev3d.png", "/bev3d/", 5000, 0, "3D BEV 시각화"),
-    ("16_competition.png", "/competition/", 4000, 0, "통합 검증 허브"),
-    ("17_scorecard.png", "/scorecard/", 4000, 0, "데이터 활용 증빙 라이브"),
-    ("18_reel.png", "/reel/", 4000, 0, "시네마틱 영상 합본"),
+    ("01_home.png", "/ui", 4000, False, "메인 대시보드"),
+    ("02_story_top.png", "/story/", 4000, False, "스토리 (상단 hero)"),
+    ("03_story_mid.png", "/story/", 4000, False, "스토리 (전체)"),
+    ("04_summary.png", "/submission/", 5000, False, "One-page Summary"),
+    ("05_fleet.png", "/fleet-dash/", 8000, False, "데이터 라이브 그리드"),
+    ("06_policy.png", "/policy/", 4000, False, "정책 의사결정 대시보드"),
+    ("07_safezone.png", "/safezone/", 4000, False, "DSZ 안심구역 시각화"),
+    ("08_privacy.png", "/privacy/", 4000, False, "PII 마스킹 검증"),
+    ("09_gallery_top.png", "/gallery/", 4000, False, "갤러리 (상단)"),
+    ("10_gallery_full.png", "/gallery/", 4000, False, "갤러리 (전체)"),
+    ("11_slides.png", "/slides/", 4000, False, "발표 슬라이드"),
+    ("12_kiosk_1.png", "/kiosk/", 4000, False, "키오스크 (장면 A)"),
+    ("13_kiosk_2.png", "/kiosk/", 12000, False, "키오스크 (장면 B)"),
+    ("14_bev3d.png", "/bev3d/", 5000, False, "3D BEV 시각화"),
+    ("15_competition.png", "/competition/", 4000, False, "통합 검증 허브"),
+    ("16_scorecard.png", "/scorecard/", 4000, False, "데이터 활용 증빙 라이브"),
+    ("17_reel.png", "/reel/", 4000, False, "시네마틱 영상 합본"),
 ]
 
 # visuals SVG → PNG 변환 (브라우저에서 SVG 로드 후 캡쳐)
@@ -62,34 +64,34 @@ def main():
     except Exception:
         pass
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    OUT_DIR.mkdir(parents=False, exist_ok=True)
     print(f"\n[Capture] live: {LIVE}")
     print(f"          out:  {OUT_DIR}\n")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
+        # viewport 높이 1500으로 확대 (기본 900 → 1500) → 페이지 첫 화면에서
+        # 더 많은 콘텐츠 캡쳐. PDF aspect ratio 약 1.17 → 페이지에 잘 들어감.
         ctx = browser.new_context(
-            viewport={"width": 1280, "height": 900},
+            viewport={"width": 1280, "height": 1500},
             device_scale_factor=1.5,
         )
         page = ctx.new_page()
 
         # === 1. 페이지 캡쳐 ===
         results = []
-        for fname, path, wait_ms, scroll_y, label in PAGES:
+        for fname, path, wait_ms, full_page, label in PAGES:
             url = f"{LIVE}{path}"
             out = OUT_DIR / fname
             try:
-                print(f"  [+] {fname:30s} ← {url}")
+                fp_tag = "(full)" if full_page else "(view)"
+                print(f"  [+] {fname:30s} {fp_tag} ← {url}")
                 try:
                     page.goto(url, wait_until="networkidle", timeout=30000)
                 except Exception:
                     page.goto(url, wait_until="load", timeout=30000)
                 page.wait_for_timeout(wait_ms)
-                if scroll_y > 0:
-                    page.evaluate(f"window.scrollTo(0, {scroll_y})")
-                    page.wait_for_timeout(1500)
-                page.screenshot(path=str(out), full_page=False)
+                page.screenshot(path=str(out), full_page=full_page)
                 size_kb = out.stat().st_size / 1024
                 results.append((fname, label, size_kb, "OK" if size_kb > 30 else "EMPTY?"))
                 print(f"      → {size_kb:.1f} KB {'[!] EMPTY?' if size_kb < 30 else ''}")

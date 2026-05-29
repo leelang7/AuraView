@@ -123,7 +123,7 @@
     <div class="total">
       <div class="pts"><span id="total-pts">0</span><span class="small">/5</span></div>
       <div class="label">
-        <b>5종 평가 항목 라이브 증빙</b><br>
+        <b>5종 평가 항목 라이브 증빙 완료</b><br>
         AI 학습 · AI 분석 · 데이터 융합 · 가명정보 · 안전구역
       </div>
     </div>
@@ -154,11 +154,11 @@
 
   <div class="grid">
 
-    <!-- 1) AI 10pt -->
+    <!-- 1) AI -->
     <section class="card ai">
       <div class="head">
         <div class="cat">AI · 인공지능</div>
-        <div class="pts">10<span class="pt">pt</span></div>
+        <div class="pts" style="font-size:24px;">✓<span class="pt">증빙</span></div>
       </div>
       <h2>딥러닝 위험도 추론 + 온디바이스 객체 검출</h2>
       <p class="crit"><b>평가기준:</b> 인공지능 모델 학습·추론, 실서비스 적용, 성능 정량 지표</p>
@@ -176,11 +176,11 @@
       </div>
     </section>
 
-    <!-- 2) 데이터융합 5pt -->
+    <!-- 2) 데이터융합 -->
     <section class="card fusion">
       <div class="head">
         <div class="cat">데이터 융합</div>
-        <div class="pts">5<span class="pt">pt</span></div>
+        <div class="pts" style="font-size:24px;">✓<span class="pt">증빙</span></div>
       </div>
       <h2>25종 공공데이터 실시간 융합 어댑터</h2>
       <p class="crit"><b>평가기준:</b> 이종 공공데이터 결합, 실시간성, 융합으로 인한 가치 창출</p>
@@ -198,11 +198,11 @@
       </div>
     </section>
 
-    <!-- 3) 가명정보 5pt -->
+    <!-- 3) 가명정보 -->
     <section class="card pseudo">
       <div class="head">
         <div class="cat">가명정보 · PII</div>
-        <div class="pts">5<span class="pt">pt</span></div>
+        <div class="pts" style="font-size:24px;">✓<span class="pt">증빙</span></div>
       </div>
       <h2>차량번호·얼굴 즉시 마스킹 + k-익명 결합</h2>
       <p class="crit"><b>평가기준:</b> 가명정보 처리 절차, 재식별 방지, 데이터안심구역 활용</p>
@@ -220,11 +220,11 @@
       </div>
     </section>
 
-    <!-- 4) 안전구역 5pt -->
+    <!-- 4) 안전구역 -->
     <section class="card safezone">
       <div class="head">
         <div class="cat">교통안전 구역</div>
-        <div class="pts">5<span class="pt">pt</span></div>
+        <div class="pts" style="font-size:24px;">✓<span class="pt">증빙</span></div>
       </div>
       <h2>스쿨존 + 통학로 + 보행자 다발지역 실시간</h2>
       <p class="crit"><b>평가기준:</b> 어린이보호구역·노인보호구역·보행자보호 등 안전구역 데이터 활용</p>
@@ -244,10 +244,10 @@
 
   </div>
 
-  <!-- v12.47: 25종 공공데이터 mini strip (v11) — 데이터융합 5점 증빙 직접 노출 -->
+  <!-- v12.47: 25종 공공데이터 mini strip (v11) — 데이터융합 라이브 증빙 직접 노출 -->
   <div style="margin:18px 0;padding:14px 18px;background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.30);border-radius:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
     <div>
-      <div style="font-size:9.5px;letter-spacing:2px;color:var(--muted);font-weight:800;margin-bottom:3px;">// 데이터융합 5점 증빙</div>
+      <div style="font-size:9.5px;letter-spacing:2px;color:var(--muted);font-weight:800;margin-bottom:3px;">// 데이터융합 라이브 증빙</div>
       <div style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-0.3px;">
         지금 <span id="sc-srcs-counter" style="color:var(--accent);">— / 25</span> 종 공공데이터 호출 중
       </div>
@@ -285,7 +285,7 @@
 </div>
 
 <script>
-// v0.18: 페이지 로드 시 25점 count-up + 시스템 라이브 상태 확인
+// v0.18: 페이지 로드 시 5종 항목 count-up + 시스템 라이브 상태 확인
 (function () {
   const el = document.getElementById('total-pts');
   if (el) {
@@ -293,9 +293,9 @@
     function tick(now) {
       const u = Math.min(1, (now - t0) / 1400);
       const ease = 1 - Math.pow(1 - u, 2.5);
-      el.textContent = Math.floor(25 * ease);
+      el.textContent = Math.floor(5 * ease);
       if (u < 1) requestAnimationFrame(tick);
-      else el.textContent = '25';
+      else el.textContent = '5';
     }
     requestAnimationFrame(tick);
   }

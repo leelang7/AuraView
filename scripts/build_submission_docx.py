@@ -164,6 +164,45 @@ def build():
     r = p.add_run(" : 25종 공공데이터 융합 + V2V 협업 인지 기반 한국 도로 안전 AI 블랙박스 플랫폼")
     kfont(r, size=10, bold=True)
 
+    # 활용 데이터 (제공기관명)
+    p = doc.add_paragraph()
+    p.paragraph_format.space_before = Pt(6)
+    p.paragraph_format.space_after = Pt(0)
+    r = p.add_run("□ 활용 데이터 (제공기관명)")
+    kfont(r, size=12, bold=True)
+    p = doc.add_paragraph()
+    p.paragraph_format.left_indent = Cm(0.3)
+    p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = 1.15
+    r = p.add_run(
+        "한국도로공사(VDS·돌발·RWIS·도로노후도), 한국교통안전공단(자동차검사·DTG·V2X 자율주행허브), "
+        "국토교통부(ITS 표준링크·DSZ 안심구역·스쿨존/횡단보도 GIS), "
+        "도로교통공단(신호 위상·TAAS·보행자 다발지점·통학로), "
+        "기상청(KMA 결빙·강수), 환경부·환경공단(미세먼지·EV 충전소), "
+        "소방청·보건복지부(119·E-Gen 응급실), 경찰청·행안부·서울시(단속 CCTV·교량 노후도·따릉이) — 총 25종"
+    )
+    kfont(r, size=9.5)
+
+    # 핵심내용 (요약)
+    p = doc.add_paragraph()
+    p.paragraph_format.space_before = Pt(6)
+    p.paragraph_format.space_after = Pt(0)
+    r = p.add_run("□ 핵심내용 (요약)")
+    kfont(r, size=12, bold=True)
+    p = doc.add_paragraph()
+    p.paragraph_format.left_indent = Cm(0.3)
+    p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = 1.2
+    r = p.add_run(
+        "스마트폰 카메라 1대로 25종 공공데이터를 실시간 융합하고 V2V 차량 간 협업 인지를 결합하여, "
+        "평균 3.38초 사전 위험 경고를 제공하는 한국 도로 특화 AI 블랙박스 플랫폼임. "
+        "가명결합(개보법 28조의2)·DSZ 안심구역(국토부 훈령 1456호) 절차를 준수하고, "
+        "한국 8 시나리오(트럭 사각·이륜·신호 가림·우천·우회전·스쿨존·자전거·야간)에 특화된 자체 Transformer(AUC 0.9403)와 "
+        "Google ML Kit를 결합하여 운전자 회피 성공률 25% → 84.5%로 향상시킴. "
+        "B2C·B2B·B2G 모델 운영, 전국 확산 시 연 사망 421명·사회비용 5조 6,000억 원 절감 효과 기대."
+    )
+    kfont(r, size=9.5)
+
     # ───── □ 제안배경 ─────
     title_section(doc, "□ 제안배경")
 

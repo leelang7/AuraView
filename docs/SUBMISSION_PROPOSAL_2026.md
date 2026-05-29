@@ -77,16 +77,16 @@
 
 ---
 
-## 4. 평가 항목별 25점 매핑
+## 4. 평가 5종 항목 매핑
 
-| 평가 항목 | 점수 | 핵심 증빙 | 라이브 URL |
+| 평가 항목 | 증빙 | 핵심 증빙 | 라이브 URL |
 |---|:---:|---|---|
-| **AI 학습** | 5점 | PyTorch Transformer 실 학습 · AUC 0.9403 · F1 0.9412 · 10,000 train · 15 epoch | [`/ai/model-card`](https://auraview.allthatai.kr/ai/model-card) |
-| **AI 분석** | 5점 | 4 시나리오 분류 · Attention 피처 중요도 · ROC 50pt · 혼동행렬 · p99 1.04ms | [`/ai/scenario-analysis`](https://auraview.allthatai.kr/ai/scenario-analysis) |
-| **데이터 융합** | 5점 | **25종** (국내공공 23 + 보조 2) 실시간 융합 · 12종 no-key 라이브 | [`/fusion/sources`](https://auraview.allthatai.kr/fusion/sources) |
-| **가명정보 결합** | 5점 | HMAC-SHA256 가명화 + k≥5 익명 + TAAS×VDS 결합 전 과정 | [`/privacy/pipeline-spec`](https://auraview.allthatai.kr/privacy/pipeline-spec) |
-| **안심구역 (DSZ)** | 5점 | dsz.ex.co.kr 반입→결합→반출 + SHA-256 해시 검증 + 감사 로그 | [`/dsz/pipeline-report`](https://auraview.allthatai.kr/dsz/pipeline-report) |
-| **합계** | **25점** | | |
+| **AI 학습** | ✓ | PyTorch Transformer 실 학습 · AUC 0.9403 · F1 0.9412 · 10,000 train · 15 epoch | [`/ai/model-card`](https://auraview.allthatai.kr/ai/model-card) |
+| **AI 분석** | ✓ | 4 시나리오 분류 · Attention 피처 중요도 · ROC 50pt · 혼동행렬 · p99 1.04ms | [`/ai/scenario-analysis`](https://auraview.allthatai.kr/ai/scenario-analysis) |
+| **데이터 융합** | ✓ | **25종** (국내공공 23 + 보조 2) 실시간 융합 · 12종 no-key 라이브 | [`/fusion/sources`](https://auraview.allthatai.kr/fusion/sources) |
+| **가명정보 결합** | ✓ | HMAC-SHA256 가명화 + k≥5 익명 + TAAS×VDS 결합 전 과정 | [`/privacy/pipeline-spec`](https://auraview.allthatai.kr/privacy/pipeline-spec) |
+| **안심구역 (DSZ)** | ✓ | dsz.ex.co.kr 반입→결합→반출 + SHA-256 해시 검증 + 감사 로그 | [`/dsz/pipeline-report`](https://auraview.allthatai.kr/dsz/pipeline-report) |
+| **합계** | **5/5** | 라이브 증빙 완료 | |
 
 ---
 

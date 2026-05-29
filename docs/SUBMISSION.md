@@ -3,7 +3,7 @@
 > **AuraView K-Perception** · Tesla FSD 영감 + 한국 도로 협업 인지 + **25종 공공데이터 융합** (v11-2026.05.25, OSM 철도 건널목 추가)
 > 12종 no-key 라이브 (Open-Meteo · OSM Overpass · Citybikes · USGS FDSN) + 정부 API stub
 > 위치/속도 검증 게이트 — `events_verified_pct` 부풀려진 100% → 정직한 ~43% (v12.92 자동 backfill)
-> 검증 1-step 허브: <https://auraview.allthatai.kr/metrics/audit> (라이브 시스템 헬스 + 25점 readiness)
+> 검증 1-step 허브: <https://auraview.allthatai.kr/metrics/audit> (라이브 시스템 헬스 + 평가 5종 readiness)
 > 기획서 PDF 자동 생성: <https://auraview.allthatai.kr/impact/proposal-pdf> (3-page A4 · 호출 시점 git_sha 반영)
 
 ---
@@ -95,16 +95,16 @@
 
 ---
 
-## 🏅 프로젝트 25점 항목 — 항목별 증빙 엔드포인트
+## 🏅 프로젝트 평가 5종 — 항목별 증빙 엔드포인트
 
-| 평가 항목 | 점수 | 증빙 엔드포인트 | 핵심 근거 |
+| 평가 항목 | 증빙 | 증빙 엔드포인트 | 핵심 근거 |
 |---|:---:|---|---|
-| **AI 학습** | 5점 | `GET /ai/model-card` · `GET /ai/training-history` · `GET /ai/roc-curve` | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10,000 샘플, 15 epoch) |
-| **AI 분석** | 5점 | `GET /ai/scenario-analysis` · `GET /ai/feature-importance` · `GET /ai/confusion-matrix` | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt + 혼동행렬 |
-| **데이터융합** | 5점 | `GET /fusion/sources` · `GET /fusion/intersection/{id}` · `GET /fusion/earthquake` | 신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진·**철도건널목** **25종 실시간 융합** (v11) — 12종 no-key 라이브 (Open-Meteo · OSM Overpass · Citybikes · USGS FDSN) |
-| **가명정보결합** | 5점 | `GET /privacy/pipeline-spec` · `POST /privacy/demo-join` · `GET /privacy/evidence-report` | HMAC-SHA256 가명화 + k-익명성(k≥5) + TAAS×VDS 결합 전 과정 |
-| **안심구역** | 5점 | `GET /dsz/pipeline-report` · `POST /dsz/seed-demo` · `GET /dsz/compliance-status` | dsz.ex.co.kr 반입→결합→반출 전 과정 (SHA-256 해시 검증 + 감사 로그) |
-| **종합 스코어카드** | — | `GET /competition/scorecard` | 25점 항목별 달성 현황 + 증거 링크 원스톱 |
+| **AI 학습** | ✓ | `GET /ai/model-card` · `GET /ai/training-history` · `GET /ai/roc-curve` | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10,000 샘플, 15 epoch) |
+| **AI 분석** | ✓ | `GET /ai/scenario-analysis` · `GET /ai/feature-importance` · `GET /ai/confusion-matrix` | 4종 시나리오 분류 + Attention 피처 중요도 + ROC 50pt + 혼동행렬 |
+| **데이터융합** | ✓ | `GET /fusion/sources` · `GET /fusion/intersection/{id}` · `GET /fusion/earthquake` | 신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진·**철도건널목** **25종 실시간 융합** (v11) — 12종 no-key 라이브 (Open-Meteo · OSM Overpass · Citybikes · USGS FDSN) |
+| **가명정보결합** | ✓ | `GET /privacy/pipeline-spec` · `POST /privacy/demo-join` · `GET /privacy/evidence-report` | HMAC-SHA256 가명화 + k-익명성(k≥5) + TAAS×VDS 결합 전 과정 |
+| **안심구역** | ✓ | `GET /dsz/pipeline-report` · `POST /dsz/seed-demo` · `GET /dsz/compliance-status` | dsz.ex.co.kr 반입→결합→반출 전 과정 (SHA-256 해시 검증 + 감사 로그) |
+| **종합 스코어카드** | — | `GET /competition/scorecard` | 평가 5종 항목별 달성 현황 + 증거 링크 원스톱 |
 
 > **통합 AI 증빙:** `GET /ai/evidence-report` | **가명정보 증빙:** `GET /privacy/evidence-report` | **안심구역 증빙:** `GET /dsz/pipeline-report`
 

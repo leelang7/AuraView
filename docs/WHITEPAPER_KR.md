@@ -6,16 +6,16 @@
 
 ---
 
-## 0. 프로젝트 25점 항목 달성 현황
+## 0. 프로젝트 평가 5종 항목 달성 현황
 
-| 평가 항목 | 점수 | 핵심 증빙 | 증빙 엔드포인트 |
+| 평가 항목 | 증빙 | 핵심 증빙 | 증빙 엔드포인트 |
 |---|:---:|---|---|
-| **AI 학습** | 5점 | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) | `GET /ai/model-card` |
-| **AI 분석** | 5점 | 4종 시나리오 분류 · Attention 피처 중요도 · ROC 50pt | `GET /ai/scenario-analysis` |
-| **데이터융합** | 5점 | **25종 공공데이터** 실시간 융합 (신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진·철도건널목) v11-2026.05.25 (국내공공 23 + 보조 2: USGS earthquake + OSM 철도건널목) | `GET /fusion/sources` |
-| **가명정보결합** | 5점 | HMAC-SHA256 가명화 · k-익명성(k≥5) · TAAS×VDS 결합 | `GET /privacy/pipeline-spec` |
-| **안심구역** | 5점 | dsz.ex.co.kr 반입→결합→반출 파이프라인 · SHA-256 해시 검증 | `GET /dsz/pipeline-report` |
-| **합계** | **25점** | 종합 스코어카드 | `GET /competition/scorecard` |
+| **AI 학습** | ✓ | PyTorch Transformer 실 학습 (AUC 0.9403, F1 0.9412, 10k 샘플) | `GET /ai/model-card` |
+| **AI 분석** | ✓ | 4종 시나리오 분류 · Attention 피처 중요도 · ROC 50pt | `GET /ai/scenario-analysis` |
+| **데이터융합** | ✓ | **25종 공공데이터** 실시간 융합 (신호·VDS·돌발·TAAS·ITS·DSZ·KMA·NEDIS·따릉이·스쿨존·결빙·보행·PM10·통학로·EV·RWIS·KOTSA·DTG·119·노후·V2X·단속·횡단·지진·철도건널목) v11-2026.05.25 (국내공공 23 + 보조 2: USGS earthquake + OSM 철도건널목) | `GET /fusion/sources` |
+| **가명정보결합** | ✓ | HMAC-SHA256 가명화 · k-익명성(k≥5) · TAAS×VDS 결합 | `GET /privacy/pipeline-spec` |
+| **안심구역** | ✓ | dsz.ex.co.kr 반입→결합→반출 파이프라인 · SHA-256 해시 검증 | `GET /dsz/pipeline-report` |
+| **합계** | **5/5** | 종합 스코어카드 | `GET /competition/scorecard` |
 
 ---
 

@@ -43,7 +43,7 @@ const String kApiBase = String.fromEnvironment(
 const Duration kShadowInterval = Duration(seconds: 5);  // v12.163: 2s → 5s (발열 감소, 검출 0건이면 빠르게 도는 의미 없음)
 const double kEntropyThreshold = 0.55;
 // v12.138: 앱 버전 (status bar 표시 + /fleet/contribute 메타) — pubspec.yaml 와 동기 유지
-const String kAppVersion = 'v12.170';
+const String kAppVersion = 'v12.171';
 
 // ── Theme tokens ──────────────────────────────────────────────────
 const _bg = Color(0xFF080C14);
@@ -1773,28 +1773,23 @@ class _FleetHomeState extends State<FleetHome>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 큰 AuraView 브랜드 로고
+              // v12.171: '큰 AuraView 브랜드 로고' — 텍스트 'A' → 실제 눈 아이콘 (ic_launcher_foreground 와 동일 시그니처)
               Container(
                 width: 140, height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const RadialGradient(
-                    colors: [Color(0xFFE8F8FF), _accent, _accent2],
-                    stops: [0.0, 0.5, 1.0],
+                    colors: [Color(0x88003E5C), Color(0x44003E5C), Color(0x00000000)],
+                    stops: [0.0, 0.6, 1.0],
                   ),
                   boxShadow: [
                     BoxShadow(color: _accent.withValues(alpha: 0.55), blurRadius: 50, spreadRadius: 4),
                     BoxShadow(color: _accent2.withValues(alpha: 0.30), blurRadius: 80, spreadRadius: 8),
                   ],
                 ),
-                child: const Center(
-                  child: Text('A',
-                    style: TextStyle(
-                      fontSize: 64, fontWeight: FontWeight.w900,
-                      color: _bg, letterSpacing: -2,
-                      shadows: [Shadow(color: Color(0x66FFFFFF), blurRadius: 6)],
-                    ),
-                  ),
+                child: CustomPaint(
+                  size: const Size(140, 140),
+                  painter: _AuraLogoLargePainter(color: _accent),
                 ),
               ),
               const SizedBox(height: 28),
@@ -7749,6 +7744,57 @@ class _AuraIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_AuraIconPainter old) => old.color != color;
+}
+
+// v12.171: 로딩 화면용 큰 AuraView 로고 — ic_launcher_foreground 와 동일 시그니처 + 글로우
+class _AuraLogoLargePainter extends CustomPainter {
+  final Color color;
+  _AuraLogoLargePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final cx = w / 2, cy = h / 2;
+    // 외곽 글로우 호 (옅은 색)
+    final glowStroke = Paint()
+      ..color = color.withValues(alpha: 0.18)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = w * 0.10
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    final glowArc = Path()..moveTo(w * 0.18, cy)..quadraticBezierTo(cx, h * 0.18, w * 0.82, cy);
+    canvas.drawPath(glowArc, glowStroke);
+    // 1) 상단 호 — '레이더 / 시야' 곡선
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = w * 0.045;
+    final arcPath = Path()..moveTo(w * 0.18, cy)..quadraticBezierTo(cx, h * 0.18, w * 0.82, cy);
+    canvas.drawPath(arcPath, stroke);
+    // 2) 하단 호 — '도로 / 지면' 곡선
+    final groundPath = Path()..moveTo(w * 0.18, cy)..quadraticBezierTo(cx, h * 0.82, w * 0.82, cy);
+    canvas.drawPath(groundPath, stroke);
+    // 3) 중앙 동공 — 채워진 큰 원 (밝은 시그니처)
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), w * 0.17, fillPaint);
+    // 4) 동공 외곽 글로우
+    final glowPaint = Paint()
+      ..color = color.withValues(alpha: 0.45)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawCircle(Offset(cx, cy), w * 0.24, glowPaint);
+    // 5) 내부 하이라이트 (광원감)
+    final highlight = Paint()
+      ..color = Colors.white.withValues(alpha: 0.55)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx - w * 0.045, cy - h * 0.045), w * 0.045, highlight);
+  }
+
+  @override
+  bool shouldRepaint(_AuraLogoLargePainter old) => old.color != color;
 }
 
 class _RecPill extends StatefulWidget {

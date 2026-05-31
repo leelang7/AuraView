@@ -170,7 +170,7 @@ python -m pytest backend/tests/  # 119 / 119 PASS
 | Risk Transformer | AUC 0.9403 · F1 0.9412 · p99 1.04ms |
 | 테스트 | 119 / 119 PASS |
 | API 엔드포인트 | 149+ |
-| Native APK | v12.170 (Galaxy Z Fold 3 검증) |
+| Native APK | v12.171 (Galaxy Z Fold 3 검증, ABI split 34.6MB) |
 | GitHub | <https://github.com/leelang7/AuraView> (MIT) |
 
 ---
@@ -208,7 +208,7 @@ python -m pytest backend/tests/  # 119 / 119 PASS
 | 위험 교차로 Top-N | <https://auraview.allthatai.kr/impact/top-intersections> |
 | 30초 일반인 스토리 | <https://auraview.allthatai.kr/story/> |
 | GitHub (MIT) | <https://github.com/leelang7/AuraView> |
-| Native APK v12.170 | (별도 첨부: `auraview_fleet/build/app/outputs/flutter-apk/app-release.apk` 56MB) |
+| Native APK v12.171 | (별도 첨부: `auraview_fleet/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk` 34.6MB) |
 
 ---
 
@@ -220,7 +220,7 @@ python -m pytest backend/tests/  # 119 / 119 PASS
 - [x] 즉석 PDF 자동 생성 (호출 시점 git_sha 반영, 154KB Noto 환경 / 53KB Render)
 - [x] 외부 노출 자산 '공모전/심사/가점' 등 금지 단어 0건
 - [x] 25 sources `fusion.v11-2026.05.25-25src` 전 site 일관성
-- [x] Native APK v12.170 빌드 (Galaxy Z Fold 3 검증)
+- [x] Native APK v12.171 빌드 (Galaxy Z Fold 3 검증, ABI split 34.6MB)
 - [ ] **제출 시스템 업로드** (PDF + GitHub URL + 라이브 URL)
 - [ ] (선택) `auraview_submission_YYYYMMDD.zip` 번들 동봉 (`scripts/build_submission_bundle.py`)
 

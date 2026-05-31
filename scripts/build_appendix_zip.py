@@ -8,7 +8,7 @@
     01_기획서_본문/         제출용_제품서비스_개발기획서.docx
     02_별첨_종합_PDF/       별첨_AuraView_2026.pdf (11페이지, 라이브 데이터 반영)
     03_AI_모델_가중치/      models/risk_transformer.pt + risk_transformer_trained_metric.json
-    04_네이티브_APK/        app-release.apk (v12.170, 56MB)
+    04_네이티브_APK/        AuraView_v12.171_arm64-v8a.apk (34.6MB · ABI split)
     05_라이브_스냅샷/       /metrics/audit + /fusion/sources + /impact/submission-ready JSON
     06_라이센스_컴플라이언스/ LICENSE
     README.txt              구성 안내 + 라이브 검증 URL
@@ -71,7 +71,7 @@ def build():
         "03_AI_모델_가중치/risk_transformer.pt": ROOT / "models" / "risk_transformer.pt",
         "03_AI_모델_가중치/risk_transformer_trained_metric.json": ROOT / "models" / "risk_transformer_trained_metric.json",
         # 04. 네이티브 APK
-        "04_네이티브_APK/AuraView_v12.170_arm64-v8a.apk": ROOT / "auraview_fleet" / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk",
+        "04_네이티브_APK/AuraView_v12.171_arm64-v8a.apk": ROOT / "auraview_fleet" / "build" / "app" / "outputs" / "flutter-apk" / "app-arm64-v8a-release.apk",
         # 06. 라이센스
         "06_라이센스_컴플라이언스/LICENSE": ROOT / "LICENSE",
     }
@@ -126,8 +126,8 @@ GitHub:    https://github.com/leelang7/AuraView (MIT)
    risk_transformer_trained_metric.json     학습 메트릭 (AUC/F1/loss curve)
 
 04_네이티브_APK/
-   AuraView_v12.170_arm64-v8a.apk           Galaxy Z Fold 3 검증, Android 14, ~56MB
-   → adb install -r AuraView_v12.170_arm64-v8a.apk
+   AuraView_v12.171_arm64-v8a.apk           Galaxy Z Fold 3 검증, Android 14, 34.6MB (ABI split)
+   → adb install -r AuraView_v12.171_arm64-v8a.apk
 
 05_라이브_스냅샷/                            본 ZIP 생성 시점의 라이브 응답
    metrics_audit.json                       전체 시스템 헬스

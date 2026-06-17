@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{position:absolute;inset:0;background:radial-gradient(1200px 800px at 80% 10%,rgba(0,200,255,0.06),transparent 60%);}
+  h1{font-size:50px;font-weight:800;line-height:1.1;letter-spacing:-1.5px;margin-top:14px;max-width:1320px;}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:30px;}
+  .cell{position:relative;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);
+    background:#0B1018;aspect-ratio:1.5;}
+  .cell img{width:100%;height:100%;object-fit:cover;object-position:center 32%;}
+  .cell .lab{position:absolute;left:0;right:0;bottom:0;padding:10px 14px;
+    background:linear-gradient(0deg,rgba(5,8,15,0.92),transparent);
+    display:flex;align-items:baseline;gap:8px;}
+  .cell .no{font-size:15px;font-weight:800;color:#00C8FF;}
+  .cell .nm{font-size:17px;font-weight:700;color:#EAF2F8;}
+  .cell .gain{position:absolute;top:10px;right:12px;font-size:12px;font-weight:800;color:#00E09A;
+    background:rgba(0,224,154,0.12);border:1px solid rgba(0,224,154,0.3);padding:3px 9px;border-radius:99px;}
+  .kicker{position:absolute;bottom:58px;left:110px;right:110px;font-size:22px;font-weight:700;color:#C9D6E0;}
+  .kicker em{font-style:normal;color:#00E09A;font-weight:800;}
+</style></head><body>
+<div class="stage">
+  <div class="bg"></div>
+  <div class="pagenum"><b>05</b> / 12</div>
+  <div class="pad" style="padding:60px 90px;">
+    <div class="eyebrow"><span class="dot"></span> 한국 도로 특화 · 8 위험 시나리오 <span class="line"></span></div>
+    <h1>한 가지가 아닙니다 — <span class="hl">8가지 한국형 사각지대</span>를 각각 모델링</h1>
+    <div class="grid">
+      <div class="cell"><img src="../../docs/captures/assets/01_truck_occlusion.png"/><span class="gain">+0.55</span><div class="lab"><span class="no">01</span><span class="nm">트럭 가림</span></div></div>
+      <div class="cell"><img src="../../docs/captures/assets/02_motorcycle_blindspot.png"/><span class="gain">측면 sweep</span><div class="lab"><span class="no">02</span><span class="nm">좌측 사각 이륜</span></div></div>
+      <div class="cell"><img src="../../docs/captures/assets/03_signal_occlusion.png"/><span class="gain">신호 API</span><div class="lab"><span class="no">03</span><span class="nm">신호 가림</span></div></div>
+      <div class="cell"><img src="../../docs/captures/assets/04_rainy_intersection.png"/><span class="gain">+0.45</span><div class="lab"><span class="no">04</span><span class="nm">우천 교차로</span></div></div>
+      <div class="cell"><img src="../../docs/captures/assets/05_right_turn_pedestrian.png"/><span class="gain">sweep</span><div class="lab"><span class="no">05</span><span class="nm">우회전 보행자</span></div></div>
+      <div class="cell"><img src="../../docs/captures/assets/06_school_zone.png"/><span class="gain">+0.62</span><div class="lab"><span class="no">06</span><span class="nm">스쿨존</span></div></div>
+      <div class="cell"><img src="../../docs/captures/assets/07_bicycle_lane.png"/><span class="gain">+0.40</span><div class="lab"><span class="no">07</span><span class="nm">자전거</span></div></div>
+      <div class="cell"><img src="../../docs/captures/assets/08_night_pedestrian.png"/><span class="gain">V2V</span><div class="lab"><span class="no">08</span><span class="nm">야간 보행자</span></div></div>
+    </div>
+  </div>
+  <div class="kicker">8 시나리오 전부 <em>도로교통법 조항 · 판례 · 정량 기여도</em>까지 매핑 — 글로벌 솔루션엔 없는 한국 정합성.</div>
+</div></body></html>

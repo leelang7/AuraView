@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  body{background:#05080F;}
+  .stage{display:flex;flex-direction:column;}
+  .topbar{position:absolute;top:54px;left:90px;right:90px;display:flex;justify-content:space-between;
+    align-items:center;z-index:5;}
+  .eyebrow{font-size:16px;letter-spacing:5px;}
+  .pagenum{position:static;}
+  .frame{position:absolute;top:108px;left:90px;right:90px;bottom:70px;display:flex;
+    align-items:center;justify-content:center;}
+  .frame img{max-width:100%;max-height:100%;border-radius:14px;
+    box-shadow:0 18px 60px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.06);}
+  .foot{position:absolute;bottom:34px;left:90px;font-size:14px;color:#5C6B78;font-weight:500;}
+</style></head><body>
+<div class="stage">
+  <div class="topbar">
+    <div class="eyebrow" id="eb"><span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#00E09A;margin-right:12px;vertical-align:middle;"></span><span id="ebt"></span></div>
+    <div class="pagenum"><b id="pn"></b> <span id="pt">/ 12</span></div>
+  </div>
+  <div class="frame"><img id="im" src=""/></div>
+  <div class="foot" id="ft"></div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  document.getElementById('im').src = q.get('img');
+  document.getElementById('ebt').textContent = q.get('eb')||'';
+  document.getElementById('pn').textContent = q.get('pn')||'';
+  document.getElementById('ft').textContent = q.get('ft')||'';
+</script>
+</body></html>

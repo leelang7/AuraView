@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{position:absolute;inset:0;background:radial-gradient(1000px 800px at 22% 50%,rgba(0,200,255,0.07),transparent 60%);}
+  h1{font-size:54px;font-weight:800;line-height:1.1;letter-spacing:-1.5px;margin-top:14px;max-width:1100px;}
+  .wrap{display:flex;gap:70px;margin-top:34px;align-items:center;}
+  .phone{flex:0 0 360px;display:flex;justify-content:center;}
+  .phone .frame{width:360px;border-radius:40px;padding:14px;background:#0A0E16;
+    border:2px solid #20303f;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 60px rgba(0,200,255,0.10);}
+  .phone img{width:100%;border-radius:28px;display:block;}
+  .right{flex:1;}
+  .right .h{font-size:18px;font-weight:800;color:#5FB8D8;letter-spacing:1px;margin-bottom:20px;text-transform:uppercase;}
+  .feat{display:flex;gap:18px;align-items:flex-start;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.07);}
+  .feat .ic{width:44px;height:44px;border-radius:11px;flex:0 0 44px;display:flex;align-items:center;
+    justify-content:center;font-size:22px;background:rgba(0,200,255,0.10);border:1px solid rgba(0,200,255,0.3);}
+  .feat.g .ic{background:rgba(0,224,154,0.10);border-color:rgba(0,224,154,0.3);}
+  .feat.r .ic{background:rgba(255,107,107,0.10);border-color:rgba(255,107,107,0.3);}
+  .feat .tx .t{font-size:23px;font-weight:800;color:#EAF2F8;}
+  .feat .tx .d{font-size:17px;color:#9FB4C4;margin-top:3px;font-weight:500;line-height:1.45;}
+  .feat .tx .d b{color:#D6E2EC;font-weight:700;}
+  .kicker{position:absolute;bottom:58px;left:110px;right:110px;font-size:22px;font-weight:700;color:#C9D6E0;}
+  .kicker em{font-style:normal;color:#00C8FF;font-weight:800;}
+</style></head><body>
+<div class="stage">
+  <div class="bg"></div>
+  <div class="pagenum"><b>08</b> / 12</div>
+  <div class="pad" style="padding:58px 90px;">
+    <div class="eyebrow"><span class="dot"></span> 운전자 클라이언트 · 모바일 UI <span class="line"></span></div>
+    <h1>운전자가 보는 화면 —<br><span class="hl">카메라부터 사각지대까지</span> 한 화면에</h1>
+    <div class="wrap">
+      <div class="phone"><div class="frame"><img src="../../docs/captures/assets/hud_mockup.png"/></div></div>
+      <div class="right">
+        <div class="h">Flutter 네이티브 앱 (Galaxy Z Fold 3 검증)</div>
+        <div class="feat"><div class="ic">📷</div><div class="tx"><div class="t">상단 — 카메라 + 실시간 검출</div><div class="d">ML Kit 온디바이스 · <b>TRUCK·보행자·신호 가림</b> 박스 + 신뢰도 (28 FPS)</div></div></div>
+        <div class="feat r"><div class="ic">⚠️</div><div class="tx"><div class="t">위험 게이지 + 11 데이터 칩</div><div class="d">위험 0.72 · 우천·결빙·스쿨존·119·V2X… <b>25종 융합 결과를 실시간</b> 표시</div></div></div>
+        <div class="feat g"><div class="ic">🛰️</div><div class="tx"><div class="t">중앙 — BEV 3D Occupancy</div><div class="d">EGO·트럭·V2V·<b>BLIND-SPOT</b>을 위에서 — 안 보이는 사각지대를 시각화</div></div></div>
+        <div class="feat"><div class="ic">🔔</div><div class="tx"><div class="t">하단 — FUSION RISK + 발화</div><div class="d">0.72 MEDIUM · 임계 초과 시 <b>햅틱 + 음성 + V2V 200m 전파</b></div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="kicker">특수 장비 0원 — <em>폰 한 대를 거치</em>하면, 카메라가 못 본 위험까지 운전자에게 전달됩니다.</div>
+</div></body></html>

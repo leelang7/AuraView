@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1100px;height:1100px;overflow:hidden;background:#05080F;
+    font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;}
+  .scene{position:relative;width:1100px;height:1100px;
+    background:radial-gradient(900px 700px at 50% 64%, #0E1726 0%, #070B14 55%, #05080F 100%);
+    overflow:hidden;}
+  /* 3D 원근 바닥 */
+  .stage3d{position:absolute;inset:0;perspective:1100px;perspective-origin:50% 38%;}
+  .ground{position:absolute;left:50%;top:60%;width:1500px;height:1700px;
+    transform:translate(-50%,-50%) rotateX(64deg);transform-style:preserve-3d;
+    background:
+      linear-gradient(0deg, rgba(0,200,255,0.04), transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0 78px, rgba(90,150,200,0.10) 78px 80px),
+      repeating-linear-gradient(90deg, transparent 0 78px, rgba(90,150,200,0.07) 78px 80px),
+      radial-gradient(closest-side, #0C1422, #070C16);
+    border-radius:8px;
+    box-shadow:0 0 200px rgba(0,120,200,0.10) inset;}
+  /* 도로 (중앙 세로) */
+  .road{position:absolute;left:50%;top:0;width:360px;height:1700px;transform:translateX(-50%);
+    background:linear-gradient(90deg, transparent, #10192800 6%, #131D2C 12%, #131D2C 88%, #10192800 94%, transparent);}
+  .lane{position:absolute;top:0;width:6px;height:1700px;
+    background:repeating-linear-gradient(0deg,#E8C24A 0 60px, transparent 60px 130px);
+    box-shadow:0 0 14px rgba(232,194,74,0.6);}
+  .edge{position:absolute;top:0;width:4px;height:1700px;background:rgba(120,200,255,0.5);
+    box-shadow:0 0 18px rgba(0,200,255,0.5);}
+
+  /* 객체 (빌보드: 바닥 위에 세움) */
+  .obj{position:absolute;transform-style:preserve-3d;}
+  .car-shape{border-radius:14px 14px 10px 10px;position:relative;}
+  .car-shape::before{content:'';position:absolute;left:14%;right:14%;top:14%;height:32%;
+    border-radius:8px;background:rgba(255,255,255,0.18);}
+
+  /* HUD */
+  .hud{position:absolute;inset:0;pointer-events:none;}
+  .badge{position:absolute;font-family:'JetBrains Mono',monospace;font-weight:800;}
+  .alert{left:50%;top:42px;transform:translateX(-50%);background:rgba(255,60,60,0.16);
+    border:1.5px solid rgba(255,90,90,0.6);color:#FF9A9A;padding:14px 26px;border-radius:99px;
+    font-size:26px;box-shadow:0 0 40px rgba(255,60,60,0.25);}
+  .gauge{right:54px;bottom:90px;text-align:right;}
+  .gauge .lab{font-size:18px;color:#8FA8BC;letter-spacing:2px;}
+  .gauge .val{font-size:78px;font-weight:900;color:#FF6B6B;line-height:0.9;
+    text-shadow:0 0 40px rgba(255,107,107,0.5);}
+  .gauge .sub{font-size:17px;color:#9FB4C4;}
+  .spd{left:54px;bottom:90px;}
+  .spd .v{font-size:72px;font-weight:900;color:#fff;line-height:0.9;}
+  .spd .u{font-size:20px;color:#8FA8BC;letter-spacing:2px;}
+  .occlabel{position:absolute;left:50%;top:30%;transform:translateX(-50%);text-align:center;}
+  .occlabel .t{font-size:24px;font-weight:800;color:#FF8A8A;text-shadow:0 0 20px rgba(255,80,80,0.6);}
+  .occlabel .s{font-size:16px;color:#FFC0C0;margin-top:4px;}
+</style></head><body>
+<div class="scene">
+  <div class="stage3d">
+    <div class="ground">
+      <div class="road">
+        <div class="edge" style="left:0;"></div>
+        <div class="edge" style="right:0;"></div>
+        <div class="lane" style="left:50%;transform:translateX(-50%);"></div>
+      </div>
+
+      <!-- occlusion shadow (트럭 뒤 = 먼 쪽, 부채꼴 위로 퍼짐) -->
+      <div style="position:absolute;left:50%;top:40px;transform:translateX(-50%);
+        width:560px;height:540px;
+        background:radial-gradient(ellipse 55% 85% at 50% 100%, rgba(255,60,60,0.40), rgba(255,90,40,0.15) 45%, transparent 72%);
+        filter:blur(3px);"></div>
+
+      <!-- 숨은 보행자 (트럭 뒤 사각지대 안) -->
+      <div class="obj" style="left:53%;top:340px;">
+        <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,110,110,0.9);
+          box-shadow:0 0 24px rgba(255,80,80,0.8);"></div>
+        <div style="width:36px;height:70px;margin:2px auto 0;border-radius:18px;
+          border:2px dashed rgba(255,150,150,0.9);background:rgba(255,80,80,0.22);"></div>
+      </div>
+
+      <!-- 예측 경로 (EGO → 정지선) -->
+      <div style="position:absolute;left:50%;top:760px;transform:translateX(-50%);
+        width:96px;height:430px;border-radius:48px;
+        background:linear-gradient(0deg, rgba(0,200,255,0.40), rgba(0,200,255,0.04));
+        box-shadow:0 0 30px rgba(0,200,255,0.25);"></div>
+
+      <!-- TRUCK (시야 가림) — cab + trailer -->
+      <div class="obj" style="left:50%;top:540px;transform:translateX(-50%);">
+        <div style="width:240px;height:120px;border-radius:14px 14px 4px 4px;
+          background:linear-gradient(180deg,#7C8A9C,#4A5564);box-shadow:0 8px 30px rgba(0,0,0,0.6);"></div>
+        <div style="width:240px;height:280px;margin-top:4px;border-radius:4px 4px 12px 12px;
+          background:linear-gradient(180deg,#5C6878,#363F4C);
+          box-shadow:0 0 0 2px rgba(255,255,255,0.08) inset, 0 10px 40px rgba(0,0,0,0.6);"></div>
+      </div>
+
+      <!-- 좌측 차량 -->
+      <div class="obj" style="left:22%;top:780px;">
+        <div class="car-shape" style="width:150px;height:260px;
+          background:linear-gradient(180deg,#5A6473 0%,#343C49 100%);"></div>
+      </div>
+
+      <!-- EGO (내 차) -->
+      <div class="obj" style="left:50%;top:1180px;transform:translateX(-50%);">
+        <div style="width:186px;height:120px;border-radius:24px 24px 8px 8px;
+          background:linear-gradient(180deg,#9BE8FF,#37C8FF);"></div>
+        <div style="width:186px;height:210px;margin-top:3px;border-radius:8px 8px 22px 22px;
+          background:linear-gradient(180deg,#37C8FF,#0A6FB0);
+          box-shadow:0 0 80px rgba(0,200,255,0.65), 0 0 0 2px rgba(180,240,255,0.45) inset;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD overlay -->
+  <div class="hud">
+    <div class="badge alert">🚨 사각지대 보행자 가능 — 즉시 감속</div>
+    <div class="occlabel"><div class="t">← 사각지대 계산</div><div class="s">occlusion shadow · 보행자 확률 0.55</div></div>
+    <div class="spd"><div class="v">38</div><div class="u">KM / H</div></div>
+    <div class="gauge"><div class="lab">FUSION RISK</div><div class="val">0.68</div><div class="sub">충돌 확률 · 3.38초 먼저</div></div>
+  </div>
+</div>
+</body></html>

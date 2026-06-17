@@ -157,7 +157,7 @@
   <!-- N/23 sources counter -->
   <g transform="translate(540,610)">
     <rect x="0" y="0" width="64" height="22" rx="4" fill="rgba(0,224,154,0.18)" stroke="#00E09A" stroke-width="0.8"/>
-    <text x="32" y="15" text-anchor="middle" font-size="11" fill="#00E09A" font-weight="900" letter-spacing="0.5">23src v9</text>
+    <text x="32" y="15" text-anchor="middle" font-size="11" fill="#00E09A" font-weight="900" letter-spacing="0.5">25src v11</text>
   </g>
 
   <!-- ─── BEV view (bottom half) ─── -->

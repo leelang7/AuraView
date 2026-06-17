@@ -15,11 +15,17 @@
     justify-content:center;font-size:22px;background:rgba(0,200,255,0.10);border:1px solid rgba(0,200,255,0.3);}
   .feat.g .ic{background:rgba(0,224,154,0.10);border-color:rgba(0,224,154,0.3);}
   .feat.r .ic{background:rgba(255,107,107,0.10);border-color:rgba(255,107,107,0.3);}
-  .feat .tx .t{font-size:23px;font-weight:800;color:#EAF2F8;}
-  .feat .tx .d{font-size:17px;color:#9FB4C4;margin-top:3px;font-weight:500;line-height:1.45;}
+  .feat .tx{flex:1;}
+  .feat .tx .t{font-size:22px;font-weight:800;color:#EAF2F8;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .feat .tx .d{font-size:16px;color:#9FB4C4;margin-top:3px;font-weight:500;line-height:1.4;}
   .feat .tx .d b{color:#D6E2EC;font-weight:700;}
-  .kicker{position:absolute;bottom:58px;left:110px;right:110px;font-size:22px;font-weight:700;color:#C9D6E0;}
-  .kicker em{font-style:normal;color:#00C8FF;font-weight:800;}
+  .st{font-size:12px;font-weight:800;padding:3px 10px;border-radius:99px;letter-spacing:.5px;}
+  .st.live{color:#00E09A;background:rgba(0,224,154,.12);border:1px solid rgba(0,224,154,.4);}
+  .st.srv{color:#00C8FF;background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.4);}
+  .st.road{color:#FFB020;background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.4);}
+  .kicker{position:absolute;bottom:58px;left:110px;right:110px;font-size:21px;font-weight:700;color:#C9D6E0;}
+  .kicker em{font-style:normal;color:#00E09A;font-weight:800;}
+  .kicker .b{color:#00C8FF;}
 </style></head><body>
 <div class="stage">
   <div class="bg"></div>
@@ -30,13 +36,14 @@
     <div class="wrap">
       <div class="phone"><div class="frame"><img src="../../docs/captures/assets/hud_mockup.png"/></div></div>
       <div class="right">
-        <div class="h">Flutter 네이티브 앱 (Galaxy Z Fold 3 검증)</div>
-        <div class="feat"><div class="ic">📷</div><div class="tx"><div class="t">상단 — 카메라 + 실시간 검출</div><div class="d">ML Kit 온디바이스 · <b>TRUCK·보행자·신호 가림</b> 박스 + 신뢰도 (28 FPS)</div></div></div>
-        <div class="feat r"><div class="ic">⚠️</div><div class="tx"><div class="t">위험 게이지 + 11 데이터 칩</div><div class="d">위험 0.72 · 우천·결빙·스쿨존·119·V2X… <b>25종 융합 결과를 실시간</b> 표시</div></div></div>
-        <div class="feat g"><div class="ic">🛰️</div><div class="tx"><div class="t">중앙 — BEV 3D Occupancy</div><div class="d">EGO·트럭·V2V·<b>BLIND-SPOT</b>을 위에서 — 안 보이는 사각지대를 시각화</div></div></div>
-        <div class="feat"><div class="ic">🔔</div><div class="tx"><div class="t">하단 — FUSION RISK + 발화</div><div class="d">0.72 MEDIUM · 임계 초과 시 <b>햅틱 + 음성 + V2V 200m 전파</b></div></div></div>
+        <div class="h">Flutter 네이티브 앱 · 기능 현황 (정직 표기)</div>
+        <div class="feat"><div class="ic">📷</div><div class="tx"><div class="t">카메라 + ML Kit 객체 검출 <span class="st live">단말 작동</span></div><div class="d">온디바이스 검출 박스 + FPS · Z Fold 3는 still-frame 폴백으로 보정</div></div></div>
+        <div class="feat r"><div class="ic">⚠️</div><div class="tx"><div class="t">위험 점수 + 25 융합 데이터 칩 <span class="st live">단말 작동</span></div><div class="d">TAAS·우천·결빙·스쿨존·119·V2X… <b>/fusion 실시간</b> 표시 + 신호 가림 HUD</div></div></div>
+        <div class="feat g"><div class="ic">🔔</div><div class="tx"><div class="t">발화 · V2V 송신 · 기여 업로드 <span class="st live">단말 작동</span></div><div class="d">임계 초과 시 <b>햅틱 + 음성</b> · V2V broadcast · /fleet/contribute</div></div></div>
+        <div class="feat"><div class="ic">🛰️</div><div class="tx"><div class="t">BEV 3D Occupancy (사각지대) <span class="st srv">서버 라이브</span></div><div class="d"><b>/occupancy/demo</b>에서 계산 — 좌측 시각화는 단말 지향 UI (로드맵)</div></div></div>
+        <div class="feat"><div class="ic">🎯</div><div class="tx"><div class="t">차량·보행자 정밀 분류 <span class="st road">로드맵</span></div><div class="d">현재 generic 검출 → fleet 학습으로 클래스 정밀화 예정</div></div></div>
       </div>
     </div>
   </div>
-  <div class="kicker">특수 장비 0원 — <em>폰 한 대를 거치</em>하면, 카메라가 못 본 위험까지 운전자에게 전달됩니다.</div>
+  <div class="kicker">핵심 흐름은 <em>단말에서 실제 작동</em> · 사각지대 계산은 <span class="b">서버 라이브</span> — 과장 없이, 되는 것만 표기.</div>
 </div></body></html>

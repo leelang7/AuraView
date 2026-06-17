@@ -41,29 +41,29 @@
       <div class="occ">
         <img src="../../docs/captures/assets/bev_occupancy.png" alt="tesla-style BEV occupancy"/>
         <span class="live">Occupancy · BEV</span>
-        <div class="cap">Occupancy Network (40×40m · 0.5m voxel) — 트럭 뒤 <b>occlusion shadow를 확률 0.55로 계산</b>.
-          충돌확률 0.68 (라이브 /occupancy/demo 데이터 기반 시각화)</div>
+        <div class="cap">입체 점유 계산 — 트럭 뒤 <b>안 보이는 영역에 보행자가 있을 확률 0.55로 계산</b>.
+          충돌 위험 0.68 (실제 시스템 계산 결과를 시각화)</div>
       </div>
       <div class="right">
         <div class="h">Tesla식 코어 + 한국 전용 인지</div>
         <div class="stack">
-          <div class="si k"><div class="t">Occupancy Network</div><div class="d">BEV voxel · 사각지대 점유 추정</div></div>
-          <div class="si k"><div class="t">Risk Transformer</div><div class="d">2-head · 충돌/근접 위험 (자체 학습)</div></div>
-          <div class="si"><div class="t">Fleet Learning</div><div class="d">shadow mode · hard-sample 수집</div></div>
-          <div class="si"><div class="t">Intent Prediction</div><div class="d">가려진 보행자 등장 예측</div></div>
-          <div class="si"><div class="t">V2V Cross-Vehicle</div><div class="d">마주 차량 시점 병합 (한국 전용)</div></div>
-          <div class="si"><div class="t">Bus-Aware Prior</div><div class="d">정류장 보행자 +0.55 (한국 전용)</div></div>
+          <div class="si k"><div class="t">입체 점유 계산</div><div class="d">사각지대까지 점유 확률로 추정</div></div>
+          <div class="si k"><div class="t">위험 예측 AI</div><div class="d">충돌·근접 2종 위험 (자체 학습)</div></div>
+          <div class="si"><div class="t">집단 학습</div><div class="d">주행하며 위험 사례 자동 수집</div></div>
+          <div class="si"><div class="t">의도 예측</div><div class="d">가려진 보행자 등장 예측</div></div>
+          <div class="si"><div class="t">차량 간 협력 인지</div><div class="d">마주 차량 시점 병합 (한국 전용)</div></div>
+          <div class="si"><div class="t">정류장 보행자 보정</div><div class="d">버스 정차 구간 위험 +0.55 (한국 전용)</div></div>
         </div>
-        <div class="h">Risk Transformer · 학습 성능</div>
+        <div class="h">위험 예측 AI · 학습 성능</div>
         <div class="kpis">
-          <div class="kp"><div class="v">0.9403</div><div class="l">AUC (ROC)</div></div>
-          <div class="kp"><div class="v">0.9412</div><div class="l">F1 @ 0.5</div></div>
-          <div class="kp"><div class="v">1.04<span style="font-size:18px;">ms</span></div><div class="l">CPU p99</div></div>
-          <div class="kp"><div class="v">278<span style="font-size:18px;">KB</span></div><div class="l">단말 임베드</div></div>
+          <div class="kp"><div class="v">0.9403</div><div class="l">정확도 지표 AUC · 목표 0.85 초과</div></div>
+          <div class="kp"><div class="v">0.9412</div><div class="l">균형 정확도 F1</div></div>
+          <div class="kp"><div class="v">1.04<span style="font-size:18px;">ms</span></div><div class="l">추론 속도 · 실시간 가능</div></div>
+          <div class="kp"><div class="v">278<span style="font-size:18px;">KB</span></div><div class="l">폰에 탑재</div></div>
         </div>
         <div class="badges">
-          <span class="badge">✓ AI 학습도구 (PyTorch 자체 학습)</span>
-          <span class="badge">✓ AI 분석도구 (ML Kit · YOLOv8)</span>
+          <span class="badge">✓ AI 학습도구 — 직접 학습한 모델</span>
+          <span class="badge">✓ AI 분석도구 — 온디바이스 객체 인식</span>
         </div>
       </div>
     </div>

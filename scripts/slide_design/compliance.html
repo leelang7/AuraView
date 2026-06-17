@@ -30,21 +30,21 @@
     <div class="wrap">
       <div class="col a">
         <div class="h">가명결합 5단계 · 개보법 28조의2</div>
-        <div class="step"><div class="n">①</div><div class="mid"><div class="t">가명화</div><div class="d">HMAC-SHA256 · 식별자 별도 분리 저장</div></div></div>
-        <div class="step"><div class="n">②</div><div class="mid"><div class="t">결합</div><div class="d">TAAS × VDS × 신호 위상 3-table join</div></div></div>
-        <div class="step"><div class="n">③</div><div class="mid"><div class="t">익명성 검증</div><div class="d">k≥5 (k-anonymity) 자동 검증</div></div></div>
-        <div class="step"><div class="n">④</div><div class="mid"><div class="t">집계</div><div class="d">100m × 100m 그리드 셀 단위 통계</div></div></div>
-        <div class="step"><div class="n">⑤</div><div class="mid"><div class="t">검증 로그</div><div class="d">시점·k값·결과 해시 자동 기록</div></div></div>
+        <div class="step"><div class="n">①</div><div class="mid"><div class="t">가명화</div><div class="d">암호 비식별 처리 · 식별자 별도 분리 저장</div></div></div>
+        <div class="step"><div class="n">②</div><div class="mid"><div class="t">결합</div><div class="d">사고이력 × 교통량 × 신호 데이터 결합</div></div></div>
+        <div class="step"><div class="n">③</div><div class="mid"><div class="t">익명성 검증</div><div class="d">재식별 불가 수준 자동 검증 (k≥5)</div></div></div>
+        <div class="step"><div class="n">④</div><div class="mid"><div class="t">집계</div><div class="d">100m 단위 구역 통계로만 산출</div></div></div>
+        <div class="step"><div class="n">⑤</div><div class="mid"><div class="t">검증 로그</div><div class="d">처리 이력 자동 기록·보존</div></div></div>
       </div>
       <div class="col b">
         <div class="h">DSZ 안심구역 · 국토부 훈령 1456호</div>
-        <div class="step"><div class="n">→</div><div class="mid"><div class="t">반입 · SHA-256 사전 검증</div><div class="d">안심구역 환경으로 안전 전송</div></div></div>
+        <div class="step"><div class="n">→</div><div class="mid"><div class="t">반입 · 무결성 검증</div><div class="d">안심구역 환경으로 안전 전송</div></div></div>
         <div class="step"><div class="n">→</div><div class="mid"><div class="t">결합 · 분석</div><div class="d">구역 내 추가 결합 + 위험 점수 산출</div></div></div>
         <div class="step"><div class="n">→</div><div class="mid"><div class="t">반출 · 통계만</div><div class="d">식별자 제거 · 재식별 검토 통과분만</div></div></div>
-        <div class="step"><div class="n">→</div><div class="mid"><div class="t">감사 · 5년 보존</div><div class="d">SHA-256 사후 검증 로그</div></div></div>
+        <div class="step"><div class="n">→</div><div class="mid"><div class="t">감사 · 5년 보존</div><div class="d">처리 이력 무결성 사후 검증</div></div></div>
         <div class="badges">
-          <span class="badge">✓ PII 온디바이스 마스킹</span>
-          <span class="badge">✓ GPS 100m 양자화</span>
+          <span class="badge">✓ 얼굴·번호판 단말 자동 마스킹</span>
+          <span class="badge">✓ 위치 100m 단위 일반화</span>
           <span class="badge">✓ 원본 이미지 외부 송출 0</span>
         </div>
       </div>

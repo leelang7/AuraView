@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
 <style>
-  .bg{position:absolute;inset:0;background:radial-gradient(1100px 800px at 80% 12%,rgba(0,200,255,0.06),transparent 60%);}
+  .bgimg{position:absolute;inset:0;background-image:url('../../docs/captures/bg_client_road.png');
+    background-size:cover;background-position:center;opacity:0.16;}
+  .bg{position:absolute;inset:0;background:
+    linear-gradient(180deg,#05080F 6%,rgba(5,8,15,0.72) 40%,rgba(5,8,15,0.55) 100%),
+    radial-gradient(1100px 800px at 80% 12%,rgba(0,200,255,0.06),transparent 60%);}
   h1{font-size:52px;font-weight:800;line-height:1.1;letter-spacing:-1.5px;margin-top:14px;max-width:1320px;}
   .lede{font-size:23px;color:#9FB7C7;margin-top:18px;font-weight:500;}
   .lede b{color:#fff;font-weight:800;}
@@ -28,6 +32,7 @@
   .kicker em{font-style:normal;color:#00E09A;font-weight:800;}
 </style></head><body>
 <div class="stage">
+  <div class="bgimg"></div>
   <div class="bg"></div>
   <div class="pagenum"><b>03</b> / 12</div>
   <div class="pad" style="padding:60px 90px;">
@@ -49,7 +54,7 @@
       <div class="band p">
         <div class="who"><div class="seg">B2G · POLICY</div><div class="nm">정책결정자</div><div class="sub">지자체 · 도로공사 · 국토부</div></div>
         <div class="flow">
-          <div class="step"><div class="t">대시보드 접속</div><div class="d">/policy · /competition</div></div>
+          <div class="step"><div class="t">대시보드 접속</div><div class="d">웹에서 바로 확인</div></div>
           <div class="arr">→</div>
           <div class="step"><div class="t">위험 교차로 Top-N</div><div class="d">실측 사각지대 통계</div></div>
           <div class="arr">→</div>

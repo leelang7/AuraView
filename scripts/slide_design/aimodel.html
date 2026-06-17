@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.36;filter:saturate(1.05);}
+  .vignette{position:absolute;inset:0;background:radial-gradient(1100px 800px at 80% 45%,rgba(0,200,255,0.10),transparent 60%),linear-gradient(90deg,#05080F 22%,rgba(5,8,15,0.5) 60%,rgba(5,8,15,0.15) 100%),linear-gradient(0deg,#05080F 3%,transparent 44%);}
+  h1{font-size:62px;font-weight:800;line-height:1.13;letter-spacing:-2px;margin-top:22px;max-width:1260px;}
+  .wrap{display:flex;gap:64px;margin-top:54px;}
+  .left{flex:0 0 540px;}
+  .left .h{font-size:18px;font-weight:800;color:#5FB8D8;letter-spacing:1px;margin-bottom:14px;text-transform:uppercase;}
+  .spec{display:flex;justify-content:space-between;padding:15px 0;border-bottom:1px solid rgba(255,255,255,0.07);}
+  .spec .k{font-size:19px;color:#9FB4C4;font-weight:500;}
+  .spec .v{font-size:19px;color:#E6EEF5;font-weight:700;font-variant-numeric:tabular-nums;}
+  .right{flex:1;}
+  .kgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .k{background:rgba(13,21,32,0.55);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:26px 28px;}
+  .k .v{font-size:54px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums;}
+  .k:nth-child(1) .v{color:#00C8FF;} .k:nth-child(2) .v{color:#00C8FF;}
+  .k:nth-child(3) .v{color:#00E09A;} .k:nth-child(4) .v{color:#FFB020;}
+  .k .l{font-size:17px;color:#8FA0B0;margin-top:12px;font-weight:600;}
+  .badges{display:flex;gap:14px;margin-top:24px;}
+  .badge{font-size:16px;font-weight:800;color:#00E09A;background:rgba(0,224,154,0.10);
+    border:1px solid rgba(0,224,154,0.32);padding:10px 20px;border-radius:99px;}
+  .kicker{position:absolute;bottom:118px;left:110px;right:110px;font-size:26px;font-weight:700;color:#C9D6E0;line-height:1.5;}
+  .kicker em{font-style:normal;color:#00C8FF;font-weight:800;}
+  .src{position:absolute;bottom:64px;left:110px;font-size:14px;color:#5C6B78;font-weight:500;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/bg_ai.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>08</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> AI 활용 · 학습도구 ＋ 분석도구 <span class="line"></span></div>
+    <h1>API 호출이 아니라, <span class="hl">직접 학습시킨 모델</span>입니다</h1>
+    <div class="wrap">
+      <div class="left">
+        <div class="h">Risk Transformer · 모델 사양</div>
+        <div class="spec"><span class="k">구조</span><span class="v">Transformer (2-layer, d=64)</span></div>
+        <div class="spec"><span class="k">파라미터</span><span class="v">67,970 개</span></div>
+        <div class="spec"><span class="k">모델 크기</span><span class="v">278 KB · 단말 임베드</span></div>
+        <div class="spec"><span class="k">학습 데이터</span><span class="v">10,000 샘플 · 15 epoch</span></div>
+        <div class="spec"><span class="k">프레임워크</span><span class="v">PyTorch · AdamW (lr 1e-4)</span></div>
+        <div class="badges">
+          <span class="badge">✓ AI 학습도구</span>
+          <span class="badge">✓ AI 분석도구 · Google ML Kit</span>
+        </div>
+      </div>
+      <div class="right">
+        <div class="kgrid">
+          <div class="k"><div class="v">0.9403</div><div class="l">AUC (ROC) · 목표 0.85 초과</div></div>
+          <div class="k"><div class="v">0.9412</div><div class="l">F1 @ 0.5</div></div>
+          <div class="k"><div class="v">0.9441</div><div class="l">Precision · 오탐 5.6%</div></div>
+          <div class="k"><div class="v">1.04<span style="font-size:26px;">ms</span></div><div class="l">CPU p99 · 실시간 추론</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="kicker">278KB로 폰 안에 들어가, <em>온디바이스 1.04ms</em>에 위험을 판단합니다. 모델 가중치까지 공개 검증.</div>
+  <div class="src">모델 가중치(.pt) + 학습 메트릭(JSON) 별첨 제출 · github.com/leelang7/AuraView</div>
+</div></body></html>

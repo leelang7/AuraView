@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.22;filter:saturate(0.9) brightness(0.8);}
+  .vignette{position:absolute;inset:0;background:linear-gradient(0deg,#05080F 3%,transparent 50%),linear-gradient(90deg,#05080F 8%,transparent 50%);}
+  h1{font-size:60px;font-weight:800;line-height:1.12;letter-spacing:-2px;margin-top:20px;max-width:1300px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;margin-top:46px;}
+  .sc{display:flex;align-items:center;gap:20px;background:rgba(13,21,32,0.5);border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;padding:18px 24px;}
+  .sc .no{font-size:30px;font-weight:800;color:#00C8FF;min-width:42px;font-variant-numeric:tabular-nums;}
+  .sc .mid{flex:1;}
+  .sc .nm{font-size:23px;font-weight:800;color:#fff;}
+  .sc .law{font-size:15px;color:#7E92A2;margin-top:3px;font-weight:500;}
+  .sc .law b{color:#A9BAC8;font-weight:600;}
+  .sc .gain{font-size:17px;font-weight:800;color:#00E09A;text-align:right;min-width:160px;
+    font-variant-numeric:tabular-nums;}
+  .src{position:absolute;bottom:60px;left:110px;font-size:14px;color:#5C6B78;font-weight:500;}
+  .note{position:absolute;bottom:60px;right:110px;font-size:16px;color:#9FB4C4;font-weight:600;text-align:right;}
+  .note em{font-style:normal;color:#00E09A;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/hero_02_truck_occlusion.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>05</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 한국 도로 특화 깊이 <span class="line"></span></div>
+    <h1>한국형 8대 위험을, <span class="hl">법령·판례·기여도</span>까지 매핑했습니다</h1>
+    <div class="grid">
+      <div class="sc"><div class="no">01</div><div class="mid"><div class="nm">트럭 가림</div><div class="law">도교법 27조 · <b>판례 2019도11622</b></div></div><div class="gain">occlusion +0.55</div></div>
+      <div class="sc"><div class="no">02</div><div class="mid"><div class="nm">좌측 사각 이륜</div><div class="law">도교법 19조의2 · <b>2019도14517</b></div></div><div class="gain">측면 sweep</div></div>
+      <div class="sc"><div class="no">03</div><div class="mid"><div class="nm">신호 가림</div><div class="law">도교법 5조 · <b>2020도11458</b></div></div><div class="gain">신호 API + V2V</div></div>
+      <div class="sc"><div class="no">04</div><div class="mid"><div class="nm">우천 교차로</div><div class="law">도교법 19조 + 시행규칙 · <b>2017도9534</b></div></div><div class="gain">환경 +0.45</div></div>
+      <div class="sc"><div class="no">05</div><div class="mid"><div class="nm">우회전 보행자</div><div class="law">도교법 25조 4항(2022) · <b>2022도10752</b></div></div><div class="gain">sweep zone</div></div>
+      <div class="sc"><div class="no">06</div><div class="mid"><div class="nm">스쿨존 · 민식이법</div><div class="law">도교법 12조 + 민식이법 · <b>헌재 2019헌마927</b></div></div><div class="gain">DSZ +0.62</div></div>
+      <div class="sc"><div class="no">07</div><div class="mid"><div class="nm">자전거</div><div class="law">도교법 13조 + 자전거법 · <b>2021도8395</b></div></div><div class="gain">자전거 GIS +0.40</div></div>
+      <div class="sc"><div class="no">08</div><div class="mid"><div class="nm">야간 보행자</div><div class="law">도교법 48조 · <b>2018도12521</b></div></div><div class="gain">V2V 헤드라이트</div></div>
+    </div>
+  </div>
+  <div class="src">출처 — 국가법령정보센터 · 대법원 종합법률정보 · 헌법재판소 판례검색</div>
+  <div class="note">글로벌 솔루션엔 없는 <em>한국 법체계 정합성</em></div>
+</div></body></html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"/>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1920px; height:1080px; overflow:hidden;
+    font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;
+    background:#05080F; color:#fff; -webkit-font-smoothing:antialiased; }
+
+  .stage { position:relative; width:1920px; height:1080px; }
+
+  /* background imagery */
+  .bg { position:absolute; inset:0; background-size:cover; background-position:center;
+        opacity:0.5; filter:saturate(1.1); }
+  .bg-grad { position:absolute; inset:0;
+    background:
+      radial-gradient(1400px 900px at 78% 30%, rgba(0,200,255,0.10), transparent 60%),
+      linear-gradient(105deg, #05080F 30%, rgba(5,8,15,0.72) 58%, rgba(5,8,15,0.30) 100%),
+      linear-gradient(0deg, #05080F 2%, transparent 38%); }
+  .grain { position:absolute; inset:0; opacity:0.04; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+  .pad { position:absolute; inset:0; padding:96px 110px; display:flex; flex-direction:column; }
+
+  /* header */
+  .eyebrow { display:flex; align-items:center; gap:14px; font-size:17px; letter-spacing:6px;
+    font-weight:700; color:#5FB8D8; text-transform:uppercase; margin-bottom:22px; }
+  .eyebrow .dot { width:9px; height:9px; border-radius:50%; background:#00E09A;
+    box-shadow:0 0 16px #00E09A; }
+  .eyebrow .line { flex:1; height:1px; max-width:340px;
+    background:linear-gradient(90deg,rgba(95,184,216,0.5),transparent); }
+
+  h1 { font-size:72px; font-weight:800; line-height:1.08; letter-spacing:-2px; max-width:1180px; }
+  h1 .hl { background:linear-gradient(120deg,#00E09A,#00C8FF);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  h1 .num { font-variant-numeric:tabular-nums; }
+
+  /* big stat ladder */
+  .ladder { display:flex; gap:0; margin-top:64px; }
+  .step { flex:1; padding:0 40px; border-left:1px solid rgba(255,255,255,0.10);
+    position:relative; }
+  .step:first-child { padding-left:0; border-left:none; }
+  .step .tag { display:inline-block; font-size:18px; font-weight:700; letter-spacing:1px;
+    padding:6px 16px; border-radius:99px; margin-bottom:22px; }
+  .step.s1 .tag { color:#9FB4C4; background:rgba(159,180,196,0.12); }
+  .step.s2 .tag { color:#00C8FF; background:rgba(0,200,255,0.14); }
+  .step.s3 .tag { color:#00E09A; background:rgba(0,224,154,0.16);
+    box-shadow:0 0 0 1px rgba(0,224,154,0.30) inset; }
+  .step .deaths { font-size:108px; font-weight:800; line-height:0.92; letter-spacing:-4px;
+    font-variant-numeric:tabular-nums; }
+  .step.s1 .deaths { color:#C9D6E0; }
+  .step.s2 .deaths { color:#00C8FF; }
+  .step.s3 .deaths { color:#00E09A; text-shadow:0 0 50px rgba(0,224,154,0.35); }
+  .step .deaths .unit { font-size:38px; font-weight:700; letter-spacing:-1px; margin-left:6px; }
+  .step .sub { font-size:19px; color:#8295A5; margin-top:14px; line-height:1.5; }
+  .step .sub b { color:#C9D6E0; font-weight:700; }
+  .step .bar { height:6px; border-radius:3px; margin-top:26px; background:rgba(255,255,255,0.08);
+    overflow:hidden; }
+  .step .bar i { display:block; height:100%; border-radius:3px; }
+  .step.s1 .bar i { width:5%;   background:#9FB4C4; }
+  .step.s2 .bar i { width:25%;  background:#00C8FF; }
+  .step.s3 .bar i { width:100%; background:linear-gradient(90deg,#00C8FF,#00E09A); }
+
+  /* bottom row */
+  .bottom { margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end; }
+  .seoul { max-width:1080px; }
+  .seoul .h { font-size:22px; font-weight:800; color:#00E09A; margin-bottom:12px;
+    display:flex; align-items:center; gap:10px; }
+  .seoul .h::before { content:''; width:24px; height:3px; background:#00E09A; border-radius:2px; }
+  .seoul .names { font-size:21px; color:#B9C7D2; line-height:1.55; font-weight:500; }
+  .seoul .punch { font-size:26px; font-weight:800; color:#fff; margin-top:14px; }
+  .seoul .punch em { color:#00E09A; font-style:normal; }
+
+  .src { font-size:14px; color:#5C6B78; line-height:1.7; text-align:right; max-width:560px;
+    font-weight:500; }
+
+  .pagenum { position:absolute; top:96px; right:110px; font-size:20px; font-weight:700;
+    color:#3D4B58; letter-spacing:2px; }
+  .pagenum b { color:#00C8FF; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/hero_06_impact_abstract.png');"></div>
+  <div class="bg-grad"></div>
+  <div class="grain"></div>
+
+  <div class="pagenum"><b>11</b> / 12</div>
+
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 사회적 가치 · 정량 추정
+      <span style="color:#3D4B58;letter-spacing:2px;">3.38초 선행경고 기준 · TAAS 2024</span>
+      <span class="line"></span></div>
+
+    <h1>보급이 넓어질수록, <span class="hl">집으로 돌아가는 생명</span>이 늘어납니다</h1>
+
+    <div class="ladder">
+      <div class="step s1">
+        <span class="tag">Pilot · 5%</span>
+        <div class="deaths">21<span class="unit">명</span></div>
+        <div class="sub">매년 지키는 생명 · 중상 <b>2,370명</b> 예방<br>사회적 비용 <b>2,800억원</b> 절감</div>
+        <div class="bar"><i></i></div>
+      </div>
+      <div class="step s2">
+        <span class="tag">확산 · 25%</span>
+        <div class="deaths">105<span class="unit">명</span></div>
+        <div class="sub">매년 지키는 생명 · 중상 <b>11,852명</b> 예방<br>사회적 비용 <b>1.4조원</b> 절감</div>
+        <div class="bar"><i></i></div>
+      </div>
+      <div class="step s3">
+        <span class="tag">전국 · 100%</span>
+        <div class="deaths">421<span class="unit">명</span></div>
+        <div class="sub">매년 지키는 생명 · 중상 <b>47,408명</b> 예방<br>사회적 비용 <b>5.6조원</b> 절감</div>
+        <div class="bar"><i></i></div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="seoul">
+        <div class="h">지금 가장 위험한 곳부터 — 서울 사고다발 교차로 Top 10</div>
+        <div class="names">강남역 · 잠실역 · 광화문 · 신촌 · 청량리 · 건대입구 · 사당 · 홍대입구 · 신림 · 서울역광장</div>
+        <div class="punch">이 10곳에 먼저 닿는 것만으로 <em>매년 84명</em> — 강남역 단 한 곳에서 <em>연 12명</em>이 무사히 귀가합니다</div>
+      </div>
+      <div class="src">
+        추정 근거 — TAAS 연간 사고 × 도시교차로 46% × 대응 시나리오 42% × 회피율 84.5% × 보급률<br>
+        비용 기준 — 한국교통연구원(KOTI) 교통사고 사회적 비용 2024
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

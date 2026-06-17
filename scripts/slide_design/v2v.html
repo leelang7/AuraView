@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.55;filter:saturate(1.1) contrast(1.05);}
+  .vignette{position:absolute;inset:0;background:linear-gradient(90deg,#05080F 22%,rgba(5,8,15,0.5) 56%,transparent 88%),linear-gradient(0deg,#05080F 3%,transparent 40%);}
+  .pad{justify-content:center;}
+  h1{font-size:78px;font-weight:800;line-height:1.1;letter-spacing:-2.5px;max-width:1150px;}
+  .sub{font-size:27px;color:#9FB7C7;margin-top:30px;line-height:1.5;max-width:900px;font-weight:500;}
+  .sub b{color:#fff;font-weight:800;}
+  .cmp{display:flex;gap:24px;margin-top:56px;}
+  .cmp .box{flex:1;max-width:440px;border-radius:16px;padding:26px 28px;}
+  .cmp .box.t{background:rgba(255,176,32,0.07);border:1px solid rgba(255,176,32,0.28);}
+  .cmp .box.a{background:rgba(0,224,154,0.08);border:1px solid rgba(0,224,154,0.32);}
+  .cmp .box .lab{font-size:16px;font-weight:800;letter-spacing:1px;margin-bottom:12px;}
+  .cmp .box.t .lab{color:#FFB020;} .cmp .box.a .lab{color:#00E09A;}
+  .cmp .box .txt{font-size:22px;color:#E6EEF5;line-height:1.45;font-weight:600;}
+  .src{position:absolute;bottom:64px;left:110px;font-size:14px;color:#5C6B78;font-weight:500;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/hero_04_v2v.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>07</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 차별점 · V2V 협력 인지 <span class="line"></span></div>
+    <h1 style="margin-top:22px;">한 대가 본 위험을,<br><span class="hl">200m 안 모든 차</span>가 동시에 압니다</h1>
+    <div class="sub">앞차가 트럭에 가려 못 본 신호를, 뒤차는 <b>이미 알고</b> 진입합니다.<br>heading 130° 이상 가중 · KOTSA 자율주행 데이터허브(V2X) 연계.</div>
+    <div class="cmp">
+      <div class="box t"><div class="lab">Tesla FSD 등 글로벌</div><div class="txt">자기 차량 시점만 인지<br>· 내부 데이터 폐쇄</div></div>
+      <div class="box a"><div class="lab">AuraView</div><div class="txt">차량 간 위험 전파<br>· 위험 교차로 정책 환원</div></div>
+    </div>
+  </div>
+  <div class="src">V2V Cross-Vehicle broadcast · 반경 200m · 햅틱 + 음성 + 차량 간 직접 통신 알림</div>
+</div></body></html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg { opacity:0.62; filter:saturate(1.05) contrast(1.05); }
+  .vignette { position:absolute; inset:0;
+    background:
+      radial-gradient(1500px 1000px at 70% 40%, transparent, rgba(5,8,15,0.45) 70%),
+      linear-gradient(90deg, #05080F 18%, rgba(5,8,15,0.55) 52%, rgba(5,8,15,0.15) 100%),
+      linear-gradient(0deg, #05080F 4%, transparent 40%); }
+
+  .pad { justify-content:center; }
+  .topbar { position:absolute; top:96px; left:110px; right:110px; display:flex;
+    justify-content:space-between; align-items:center; }
+  .topbar .left { display:flex; align-items:center; gap:14px; font-size:16px; letter-spacing:5px;
+    font-weight:700; color:#5FB8D8; text-transform:uppercase; }
+  .topbar .left .dot { width:9px; height:9px; border-radius:50%; background:#00E09A; box-shadow:0 0 16px #00E09A; }
+  .topbar .right { font-size:15px; color:#5C6B78; font-weight:600; letter-spacing:1px; }
+
+  .brand { display:flex; align-items:baseline; gap:22px; margin-bottom:30px; }
+  .brand .logo { font-size:30px; font-weight:800; color:#fff; letter-spacing:-0.5px; }
+  .brand .logo .a { color:#00C8FF; }
+  .brand .chip { font-size:15px; font-weight:700; color:#00E09A; letter-spacing:2px;
+    padding:6px 14px; border:1px solid rgba(0,224,154,0.35); border-radius:99px; }
+
+  h1 { font-size:50px; font-weight:800; line-height:1.18; letter-spacing:-1.5px; max-width:1180px;
+    color:#EAF2F8; }
+  h1 .accent { color:#fff; }
+
+  .hook { font-size:30px; font-weight:600; color:#9FB7C7; margin-top:34px; line-height:1.5;
+    max-width:1040px; }
+  .hook b { color:#fff; font-weight:800; }
+
+  .kpis { display:flex; gap:54px; margin-top:64px; }
+  .kpi .v { font-size:58px; font-weight:800; line-height:1; letter-spacing:-2px;
+    font-variant-numeric:tabular-nums; }
+  .kpi:nth-child(1) .v { color:#00C8FF; }
+  .kpi:nth-child(2) .v { color:#00E09A; }
+  .kpi:nth-child(3) .v { color:#7FD4FF; }
+  .kpi:nth-child(4) .v { color:#FFB020; }
+  .kpi .l { font-size:18px; color:#7E92A2; margin-top:12px; font-weight:600; }
+  .kpi .v small { font-size:26px; font-weight:700; margin-left:2px; }
+
+  .foot { position:absolute; bottom:60px; left:110px; right:110px; display:flex;
+    justify-content:space-between; align-items:center;
+    border-top:1px solid rgba(255,255,255,0.08); padding-top:22px; }
+  .foot .who { font-size:18px; color:#B9C7D2; font-weight:600; }
+  .foot .who b { color:#fff; font-weight:800; }
+  .foot .url { font-size:17px; color:#5FB8D8; font-weight:700; letter-spacing:0.5px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/hero_01_cover.png');"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+  <div class="topbar">
+    <div class="left"><span class="dot"></span> 2026 국토·교통 데이터 활용 경진대회 · 2차 발표</div>
+    <div class="right">제품·서비스 개발 부문</div>
+  </div>
+
+  <div class="pad">
+    <div class="brand">
+      <span class="logo"><span class="a">Aura</span>View</span>
+      <span class="chip">한국 도로 안전 AI 블랙박스</span>
+    </div>
+
+    <h1><span class="accent">공공데이터 융합</span> · <span class="accent">차량 협력 인지</span> 기반<br>도로 안전 <span class="hl">AI 플랫폼</span></h1>
+
+    <div class="hook">스마트기기 한 대로 <b>25종 공공데이터</b>를 실시간 융합해,<br>운전자가 못 본 위험을 <b>평균 3.38초 먼저</b> 알립니다.</div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="v num">3.38<small>초</small></div><div class="l">선행 경고 (ADAS 0.5초)</div></div>
+      <div class="kpi"><div class="v num">84.5<small>%</small></div><div class="l">회피 성공률 (25%→)</div></div>
+      <div class="kpi"><div class="v num">0.9403</div><div class="l">자체 학습 모델 AUC</div></div>
+      <div class="kpi"><div class="v num">25<small>종</small></div><div class="l">11개 기관 데이터 융합</div></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="who"><b>이석창</b> · 올댓에이아이 (창업) · 1인 개발·운영</div>
+    <div class="url">auraview.allthatai.kr · github.com/leelang7/AuraView</div>
+  </div>
+</div>
+</body>
+</html>

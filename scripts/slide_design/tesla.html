@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.20;filter:saturate(0.9) brightness(0.8);}
+  .vignette{position:absolute;inset:0;background:linear-gradient(0deg,#05080F 3%,transparent 50%),linear-gradient(90deg,#05080F 8%,transparent 60%);}
+  h1{font-size:60px;font-weight:800;line-height:1.12;letter-spacing:-2px;margin-top:20px;max-width:1300px;}
+  .tbl{margin-top:48px;}
+  .thead{display:grid;grid-template-columns:300px 1fr 1fr;gap:24px;padding:0 28px 16px;}
+  .thead .c{font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase;}
+  .thead .c1{color:#5FB8D8;} .thead .c2{color:#FFB020;} .thead .c3{color:#00E09A;}
+  .trow{display:grid;grid-template-columns:300px 1fr 1fr;gap:24px;align-items:center;
+    background:rgba(13,21,32,0.45);border:1px solid rgba(255,255,255,0.06);border-radius:12px;
+    padding:18px 28px;margin-bottom:11px;}
+  .trow .k{font-size:22px;font-weight:800;color:#fff;}
+  .trow .t{font-size:19px;color:#90A0AE;font-weight:500;}
+  .trow .a{font-size:19px;color:#D6F5E8;font-weight:700;}
+  .trow .a b{color:#00E09A;}
+  .note{position:absolute;bottom:62px;right:110px;font-size:14px;color:#5C6B78;font-weight:500;text-align:right;}
+  .kicker{position:absolute;bottom:60px;left:110px;font-size:18px;color:#9FB4C4;font-weight:600;}
+  .kicker em{font-style:normal;color:#00E09A;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/bg_dark_clean.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>09</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 차별화 · 한국 특화 5종 <span class="line"></span></div>
+    <h1>세계 최고의 자율주행도, <span class="hl">한국 도로에선 다시 배워야</span> 합니다</h1>
+    <div class="tbl">
+      <div class="thead"><div class="c c1">항목</div><div class="c c2">Tesla FSD 등 글로벌</div><div class="c c3">AuraView K-Perception</div></div>
+      <div class="trow"><div class="k">차량 간 협업</div><div class="t">자기 차량 시점만 인지</div><div class="a"><b>V2V Cross-Vehicle</b> · heading 130° 가중</div></div>
+      <div class="trow"><div class="k">정류장 prior</div><div class="t">보행자 일반 분류만</div><div class="a"><b>Bus-Aware</b> · 정차/주행 prior +0.55</div></div>
+      <div class="trow"><div class="k">마주오는 차로</div><div class="t">단방향 차로 모델</div><div class="a"><b>Bidirectional</b> + VDS 비대칭 분석</div></div>
+      <div class="trow"><div class="k">공공 신호 결합</div><div class="t">vision-only 신호 인식</div><div class="a">도로교통공단 <b>신호 API</b> + ITS 직접 결합</div></div>
+      <div class="trow"><div class="k">정책 환원</div><div class="t">내부 데이터 폐쇄</div><div class="a">위험 교차로 <b>Top-N 리포트</b> + DSZ 결합</div></div>
+    </div>
+  </div>
+  <div class="kicker">한국 도로는 한국 데이터로 — <em>글로벌 솔루션이 학습하지 않은 영역</em>이 우리의 자리입니다.</div>
+  <div class="note">상세 — tesla_vs_auraview.svg · auraview.allthatai.kr/gallery</div>
+</div></body></html>

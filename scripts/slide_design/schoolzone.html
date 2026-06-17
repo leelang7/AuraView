@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.92;filter:saturate(1.05) contrast(1.03);}
+  .vignette{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,8,15,0.88) 28%,rgba(5,8,15,0.45) 56%,transparent 80%),linear-gradient(0deg,#05080F 2%,transparent 36%);}
+  .pad{justify-content:center;}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-size:17px;font-weight:800;letter-spacing:1px;
+    color:#0A1018;background:#00E09A;padding:9px 20px;border-radius:99px;width:max-content;margin-bottom:30px;}
+  h1{font-size:74px;font-weight:800;line-height:1.12;letter-spacing:-2px;max-width:1050px;}
+  h1 .hl2{color:#00E09A;}
+  .chips{display:flex;flex-direction:column;gap:12px;margin-top:46px;}
+  .chip{display:flex;align-items:center;gap:16px;width:max-content;background:rgba(13,21,32,0.6);
+    border:1px solid rgba(0,224,154,0.25);border-radius:12px;padding:14px 22px;}
+  .chip .k{font-size:21px;font-weight:700;color:#E6EEF5;}
+  .chip .v{font-size:20px;font-weight:800;color:#00E09A;font-variant-numeric:tabular-nums;}
+  .law{position:absolute;bottom:120px;left:110px;font-size:25px;font-weight:700;color:#FFD68A;}
+  .sub{position:absolute;bottom:74px;left:110px;font-size:20px;color:#A9BAC8;font-weight:500;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/hero_03_schoolzone.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>06</b> / 12</div>
+  <div class="pad">
+    <div class="tag">시나리오 ⑥ · 스쿨존 등하교</div>
+    <h1>어린이가 가장 위험한 시간을,<br><span class="hl2">데이터가 먼저</span> 압니다</h1>
+    <div class="chips">
+      <div class="chip"><span class="k">V-World 어린이보호구역 GIS</span><span class="v">DSZ 위험 +0.62</span></div>
+      <div class="chip"><span class="k">도로교통공단 통학로 GIS</span><span class="v">통학시간 ×1.5</span></div>
+      <div class="chip"><span class="k">TAAS 보행자 사고다발지점</span><span class="v">prior +0.30</span></div>
+    </div>
+  </div>
+  <div class="law">도교법 12조 · 민식이법 — 무거워진 책임을, 객관적 데이터로 뒷받침</div>
+  <div class="sub">등하교 시간대 자동 부스트 · 보행 약자(어린이·고령자) 우선 알림</div>
+</div></body></html>

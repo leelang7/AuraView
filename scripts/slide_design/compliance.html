@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.30;filter:saturate(1.0);}
+  .vignette{position:absolute;inset:0;background:radial-gradient(1100px 800px at 80% 50%,rgba(0,200,255,0.08),transparent 60%),linear-gradient(90deg,#05080F 22%,rgba(5,8,15,0.5) 60%,rgba(5,8,15,0.15) 100%),linear-gradient(0deg,#05080F 3%,transparent 44%);}
+  h1{font-size:62px;font-weight:800;line-height:1.13;letter-spacing:-2px;margin-top:22px;max-width:1260px;}
+  .wrap{display:flex;gap:64px;margin-top:52px;}
+  .col{flex:1;}
+  .col .h{font-size:19px;font-weight:800;letter-spacing:1px;margin-bottom:24px;text-transform:uppercase;}
+  .col.a .h{color:#00C8FF;} .col.b .h{color:#00E09A;}
+  .step{display:flex;gap:18px;align-items:flex-start;padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+  .step .n{font-size:20px;font-weight:800;color:#00C8FF;min-width:30px;}
+  .step .mid .t{font-size:22px;font-weight:700;color:#E6EEF5;}
+  .step .mid .d{font-size:16px;color:#8295A5;margin-top:3px;font-weight:500;}
+  .law{font-size:16px;font-weight:700;color:#7FD4FF;margin-top:22px;}
+  .badges{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;}
+  .badge{font-size:15px;font-weight:800;color:#00E09A;background:rgba(0,224,154,0.10);
+    border:1px solid rgba(0,224,154,0.30);padding:9px 18px;border-radius:99px;}
+  .kicker{position:absolute;bottom:116px;left:110px;right:110px;font-size:26px;font-weight:700;color:#C9D6E0;line-height:1.5;}
+  .kicker em{font-style:normal;color:#00E09A;font-weight:800;}
+  .src{position:absolute;bottom:64px;left:110px;font-size:14px;color:#5C6B78;font-weight:500;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/bg_compliance.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>10</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 신뢰 기반 · 컴플라이언스 <span class="line"></span></div>
+    <h1>데이터를 다루는 <span class="hl">자격부터</span> 갖췄습니다</h1>
+    <div class="wrap">
+      <div class="col a">
+        <div class="h">가명결합 5단계 · 개보법 28조의2</div>
+        <div class="step"><div class="n">①</div><div class="mid"><div class="t">가명화</div><div class="d">HMAC-SHA256 · 식별자 별도 분리 저장</div></div></div>
+        <div class="step"><div class="n">②</div><div class="mid"><div class="t">결합</div><div class="d">TAAS × VDS × 신호 위상 3-table join</div></div></div>
+        <div class="step"><div class="n">③</div><div class="mid"><div class="t">익명성 검증</div><div class="d">k≥5 (k-anonymity) 자동 검증</div></div></div>
+        <div class="step"><div class="n">④</div><div class="mid"><div class="t">집계</div><div class="d">100m × 100m 그리드 셀 단위 통계</div></div></div>
+        <div class="step"><div class="n">⑤</div><div class="mid"><div class="t">검증 로그</div><div class="d">시점·k값·결과 해시 자동 기록</div></div></div>
+      </div>
+      <div class="col b">
+        <div class="h">DSZ 안심구역 · 국토부 훈령 1456호</div>
+        <div class="step"><div class="n">→</div><div class="mid"><div class="t">반입 · SHA-256 사전 검증</div><div class="d">안심구역 환경으로 안전 전송</div></div></div>
+        <div class="step"><div class="n">→</div><div class="mid"><div class="t">결합 · 분석</div><div class="d">구역 내 추가 결합 + 위험 점수 산출</div></div></div>
+        <div class="step"><div class="n">→</div><div class="mid"><div class="t">반출 · 통계만</div><div class="d">식별자 제거 · 재식별 검토 통과분만</div></div></div>
+        <div class="step"><div class="n">→</div><div class="mid"><div class="t">감사 · 5년 보존</div><div class="d">SHA-256 사후 검증 로그</div></div></div>
+        <div class="badges">
+          <span class="badge">✓ PII 온디바이스 마스킹</span>
+          <span class="badge">✓ GPS 100m 양자화</span>
+          <span class="badge">✓ 원본 이미지 외부 송출 0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="kicker">DSZ 결합 결과를 <em>정책 보고서가 아닌 실시간 차량 알림</em>으로 환원하는 첫 사례.</div>
+  <div class="src">법령 — 개인정보보호법 3·28조의2 · 국토교통부 훈령 1456호 · 코드 MIT / 공공누리 1~2유형</div>
+</div></body></html>

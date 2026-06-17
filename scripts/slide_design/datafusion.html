@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.40;filter:saturate(1.05);}
+  .vignette{position:absolute;inset:0;background:radial-gradient(1200px 800px at 82% 50%,rgba(0,200,255,0.08),transparent 60%),linear-gradient(90deg,#05080F 20%,rgba(5,8,15,0.5) 58%,rgba(5,8,15,0.15) 100%),linear-gradient(0deg,#05080F 3%,transparent 44%);}
+  h1{font-size:62px;font-weight:800;line-height:1.13;letter-spacing:-2px;margin-top:22px;max-width:1240px;}
+  .wrap{display:flex;gap:70px;margin-top:54px;}
+  .left{flex:0 0 560px;}
+  .vbadge{display:inline-flex;align-items:center;gap:10px;font-size:17px;font-weight:700;color:#00C8FF;
+    background:rgba(0,200,255,0.10);border:1px solid rgba(0,200,255,0.3);padding:8px 18px;border-radius:99px;margin-bottom:30px;}
+  .metric{padding:22px 0;border-bottom:1px solid rgba(255,255,255,0.07);}
+  .metric .v{font-size:52px;font-weight:800;color:#fff;letter-spacing:-2px;font-variant-numeric:tabular-nums;}
+  .metric .v em{font-style:normal;color:#00E09A;}
+  .metric .l{font-size:18px;color:#8FA0B0;margin-top:6px;font-weight:500;}
+  .right{flex:1;}
+  .right .h{font-size:18px;font-weight:800;color:#5FB8D8;letter-spacing:1px;margin-bottom:18px;text-transform:uppercase;}
+  .agrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 40px;}
+  .ag{padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+  .ag .nm{font-size:21px;font-weight:700;color:#E6EEF5;}
+  .ag .nm span{color:#00C8FF;}
+  .ag .dt{font-size:15px;color:#7E92A2;margin-top:3px;font-weight:500;}
+  .kicker{position:absolute;bottom:118px;left:110px;right:110px;font-size:26px;font-weight:700;color:#C9D6E0;line-height:1.5;}
+  .kicker em{font-style:normal;color:#00E09A;font-weight:800;}
+  .src{position:absolute;bottom:64px;left:110px;font-size:14px;color:#5C6B78;font-weight:500;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/hero_05_data_fusion.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>04</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 핵심 자산 · 데이터 융합 엔진 <span class="line"></span></div>
+    <h1>11개 기관, 25종을 <span class="hl">한 번의 호출</span>로 —<br>v1에서 v11까지 직접 쌓았습니다</h1>
+    <div class="wrap">
+      <div class="left">
+        <span class="vbadge">schema fusion.v11 · 2026.05.25</span>
+        <div class="metric"><div class="v num">25<em>종</em></div><div class="l">실시간 융합 공공데이터 (국내공공 23 + 글로벌 2)</div></div>
+        <div class="metric"><div class="v num">180<em>ms</em></div><div class="l">교차로별 융합 응답 p50 · 5초 캐시 · 무중단 fallback</div></div>
+        <div class="metric"><div class="v num">11<em>개</em></div><div class="l">직접 연동한 데이터 제공 기관</div></div>
+      </div>
+      <div class="right">
+        <div class="h">융합 데이터 제공 기관</div>
+        <div class="agrid">
+          <div class="ag"><div class="nm"><span>한국도로공사</span></div><div class="dt">VDS · 돌발 · RWIS · 도로 노후도</div></div>
+          <div class="ag"><div class="nm"><span>한국교통안전공단</span></div><div class="dt">자동차검사 · DTG · V2X 자율주행 허브</div></div>
+          <div class="ag"><div class="nm"><span>도로교통공단</span></div><div class="dt">신호 위상 · TAAS · 보행자 다발 · 통학로</div></div>
+          <div class="ag"><div class="nm"><span>국토교통부</span></div><div class="dt">ITS · DSZ · 스쿨존 · 횡단보도 GIS</div></div>
+          <div class="ag"><div class="nm">기상청</div><div class="dt">동네예보 · 도로결빙</div></div>
+          <div class="ag"><div class="nm">환경부·환경공단</div><div class="dt">미세먼지 · EV 충전소</div></div>
+          <div class="ag"><div class="nm">소방청·보건복지부</div><div class="dt">119 출동 · E-Gen 응급실</div></div>
+          <div class="ag"><div class="nm">경찰청·행안부·서울시</div><div class="dt">단속 CCTV · 노후도 · 따릉이</div></div>
+          <div class="ag"><div class="nm">USGS <span style="color:#FFB020;font-size:14px;">글로벌</span></div><div class="dt">실시간 지진 M2.0+</div></div>
+          <div class="ag"><div class="nm">OpenStreetMap <span style="color:#FFB020;font-size:14px;">글로벌</span></div><div class="dt">철도 건널목 · 횡단보도</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="kicker">주관기관 융합 — 한국도로공사 VDS·돌발 <em>＋</em> 한국교통안전공단 DTG·V2X 까지 한 응답에.</div>
+  <div class="src">발급 — 공공데이터포털(data.go.kr) 인증키 + 글로벌 오픈데이터(USGS·OSM, no-key)</div>
+</div></body></html>

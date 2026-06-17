@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.34;filter:saturate(1.05);}
+  .vignette{position:absolute;inset:0;background:radial-gradient(1100px 800px at 22% 45%,rgba(0,224,154,0.08),transparent 60%),linear-gradient(90deg,#05080F 18%,rgba(5,8,15,0.5) 56%,rgba(5,8,15,0.2) 100%),linear-gradient(0deg,#05080F 3%,transparent 44%);}
+  h1{font-size:64px;font-weight:800;line-height:1.12;letter-spacing:-2px;margin-top:22px;max-width:1240px;}
+  .wrap{display:flex;gap:60px;margin-top:50px;}
+  .left{flex:1;}
+  .left .h{font-size:18px;font-weight:800;color:#5FB8D8;letter-spacing:1px;margin-bottom:16px;text-transform:uppercase;}
+  .curl{font-family:'JetBrains Mono',monospace;font-size:17px;color:#00E09A;background:rgba(0,224,154,0.07);
+    border:1px solid rgba(0,224,154,0.25);border-radius:10px;padding:16px 20px;font-weight:600;}
+  .ready{font-size:22px;font-weight:800;color:#fff;margin-top:16px;}
+  .ready em{font-style:normal;color:#00E09A;}
+  .gates{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;}
+  .g{font-size:14px;font-weight:800;color:#00E09A;background:rgba(0,224,154,0.10);
+    border:1px solid rgba(0,224,154,0.30);padding:7px 14px;border-radius:99px;font-family:'JetBrains Mono',monospace;}
+  .pkg{margin-top:30px;}
+  .pkg .row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+  .pkg .k{font-size:18px;color:#9FB4C4;font-weight:500;}
+  .pkg .v{font-size:18px;color:#E6EEF5;font-weight:700;}
+  .right{flex:0 0 540px;}
+  .right .h{font-size:18px;font-weight:800;color:#00E09A;letter-spacing:1px;margin-bottom:16px;text-transform:uppercase;}
+  .rev{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .rev .c{background:rgba(13,21,32,0.55);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px 18px;}
+  .rev .c .v{font-size:30px;font-weight:800;color:#fff;letter-spacing:-1px;font-variant-numeric:tabular-nums;}
+  .rev .c .l{font-size:14px;color:#8295A5;margin-top:6px;font-weight:600;}
+  .cta{margin-top:18px;background:linear-gradient(120deg,#00C8FF,#00E09A);border-radius:16px;padding:24px 28px;}
+  .cta .b{font-size:34px;font-weight:800;color:#06121A;letter-spacing:-0.5px;}
+  .cta .s{font-size:17px;color:#0A1E26;font-weight:700;margin-top:6px;}
+  .src{position:absolute;bottom:60px;left:110px;font-size:14px;color:#5C6B78;font-weight:500;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/bg_verify.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>12</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 검증 가능성 · 사업화 <span class="line"></span></div>
+    <h1>이 모든 게 <span class="hl">지금 작동</span>합니다.<br>URL 하나로 직접 확인하세요</h1>
+    <div class="wrap">
+      <div class="left">
+        <div class="h">1-step 라이브 자가 진단</div>
+        <div class="curl">curl auraview.allthatai.kr/impact/submission-ready</div>
+        <div class="ready">→ <em>ready=true</em> · 9 / 9 게이트 PASS</div>
+        <div class="gates">
+          <span class="g">✓ sources=25</span><span class="g">✓ schema v11</span>
+          <span class="g">✓ AUC 0.9403</span><span class="g">✓ git_sha live</span>
+          <span class="g">✓ banned 0 leaks</span>
+        </div>
+        <div class="pkg">
+          <div class="row"><span class="k">라이브 시스템</span><span class="v">auraview.allthatai.kr</span></div>
+          <div class="row"><span class="k">오픈소스 (MIT)</span><span class="v">github.com/leelang7/AuraView</span></div>
+          <div class="row"><span class="k">네이티브 앱</span><span class="v">Galaxy Z Fold 3 검증 · APK 34.6MB</span></div>
+          <div class="row"><span class="k">학습 모델 + 별첨</span><span class="v">risk_transformer.pt · PDF 35쪽</span></div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="h">사업 모델 · 3년차 매출 70억</div>
+        <div class="rev">
+          <div class="c"><div class="v">30<span style="font-size:18px;">억</span></div><div class="l">B2C 구독<br>월 4,900원 · 5만명</div></div>
+          <div class="c"><div class="v">59<span style="font-size:18px;">억</span></div><div class="l">B2B SaaS<br>월 9,900원 · 운수</div></div>
+          <div class="c"><div class="v">13.5<span style="font-size:18px;">억</span></div><div class="l">B2G 리포트<br>226 시군구</div></div>
+        </div>
+        <div class="cta">
+          <div class="b">B2C · B2B · B2G 동시 추진</div>
+          <div class="s">마이데이터 결합 → 자율주행 데이터허브 기여 → 해외 진출</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="src">2026 국토·교통 데이터 활용 경진대회 · 공공데이터 융합·차량 협력 인지 기반 도로 안전 AI 플랫폼 · 이석창</div>
+</div></body></html>

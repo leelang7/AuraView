@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg { opacity:0.30; filter:saturate(0.9) brightness(0.8); }
+  .vignette { position:absolute; inset:0;
+    background:
+      linear-gradient(90deg, #05080F 30%, rgba(5,8,15,0.6) 62%, rgba(5,8,15,0.2) 100%),
+      linear-gradient(0deg, #05080F 3%, transparent 44%); }
+
+  h1 { font-size:66px; font-weight:800; line-height:1.12; letter-spacing:-2px; margin-top:22px;
+    max-width:1280px; }
+  h1 .big { font-size:72px; }
+
+  .body { display:flex; gap:80px; margin-top:60px; }
+  .col { flex:1; }
+  .col .ch { font-size:21px; font-weight:800; letter-spacing:1px; margin-bottom:26px;
+    display:flex; align-items:center; gap:12px; }
+  .col.a .ch { color:#FF6B6B; } .col.a .ch::before { content:''; width:26px; height:3px; background:#FF6B6B; border-radius:2px; }
+  .col.b .ch { color:#FFB020; } .col.b .ch::before { content:''; width:26px; height:3px; background:#FFB020; border-radius:2px; }
+
+  .stat-row { display:flex; align-items:baseline; gap:18px; padding:18px 0;
+    border-bottom:1px solid rgba(255,255,255,0.07); }
+  .stat-row .v { font-size:46px; font-weight:800; color:#fff; letter-spacing:-1.5px;
+    font-variant-numeric:tabular-nums; min-width:200px; }
+  .stat-row .v.danger { color:#FF8A8A; }
+  .stat-row .l { font-size:20px; color:#A9BAC8; font-weight:500; line-height:1.4; }
+
+  .point { display:flex; gap:16px; padding:16px 0; align-items:flex-start; }
+  .point .n { font-size:18px; font-weight:800; color:#FFB020; min-width:26px; margin-top:4px; }
+  .point .t { font-size:22px; color:#D6E2EC; line-height:1.5; font-weight:500; }
+  .point .t b { color:#fff; font-weight:800; }
+
+  .kicker { position:absolute; bottom:130px; left:110px; right:110px;
+    font-size:28px; font-weight:700; color:#C9D6E0; line-height:1.5; }
+  .kicker em { font-style:normal; color:#00E09A; font-weight:800; }
+  .src { position:absolute; bottom:64px; left:110px; font-size:14px; color:#5C6B78; font-weight:500; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/hero_02_truck_occlusion.png');"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+  <div class="pagenum"><b>02</b> / 12</div>
+
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 풀어야 할 문제 <span class="line"></span></div>
+    <h1>한국 도로 사망의 <span class="hl">22%</span>는,<br><span class="big">‘보였다면 피했을’</span> 사고입니다</h1>
+
+    <div class="body">
+      <div class="col a">
+        <div class="ch">한국 도로의 현실 · TAAS 2024</div>
+        <div class="stat-row"><div class="v danger num">2,581<span style="font-size:24px;">명</span></div>
+          <div class="l">매년 도로 위에서 떠나는 생명<br>(부상 290,400명)</div></div>
+        <div class="stat-row"><div class="v num">46<span style="font-size:24px;">%</span></div>
+          <div class="l">사고가 집중되는 도시 교차로</div></div>
+        <div class="stat-row"><div class="v num">22<span style="font-size:24px;">%</span></div>
+          <div class="l">트럭·버스에 시야가 가려 일어난 사고</div></div>
+      </div>
+
+      <div class="col b">
+        <div class="ch">기존 기술이 놓치는 지점</div>
+        <div class="point"><div class="n">01</div><div class="t">단일 카메라 ADAS는 <b>가려진 영역을 사전에 못 본다</b> — 선행경고 0.5초, 회피율 25% 미만</div></div>
+        <div class="point"><div class="n">02</div><div class="t">Tesla FSD 등 글로벌 솔루션은 <b>한국형 8대 위험 시나리오</b>(트럭·신호 가림, 우회전 보행자, 스쿨존…)를 학습하지 않았다</div></div>
+        <div class="point"><div class="n">03</div><div class="t">민식이법·우회전 일시정지로 <b>운전자 책임은 무거워졌지만</b>, 객관적 회피 데이터를 주는 서비스는 없다</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="kicker">카메라 한 대의 시야로는 부족합니다. <em>도로 전체가 함께 봐야</em> 막을 수 있습니다.</div>
+  <div class="src">출처 — 도로교통공단 교통사고분석시스템(TAAS) 2024 · 한국교통연구원(KOTI) 사회적 비용 추정</div>
+</div>
+</body>
+</html>

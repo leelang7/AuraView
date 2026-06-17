@@ -1,59 +1,72 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
 <style>
-  .bg{opacity:0.36;filter:saturate(1.05);}
-  .vignette{position:absolute;inset:0;background:radial-gradient(1100px 800px at 80% 45%,rgba(0,200,255,0.10),transparent 60%),linear-gradient(90deg,#05080F 22%,rgba(5,8,15,0.5) 60%,rgba(5,8,15,0.15) 100%),linear-gradient(0deg,#05080F 3%,transparent 44%);}
-  h1{font-size:62px;font-weight:800;line-height:1.13;letter-spacing:-2px;margin-top:22px;max-width:1260px;}
-  .wrap{display:flex;gap:64px;margin-top:54px;}
-  .left{flex:0 0 540px;}
-  .left .h{font-size:18px;font-weight:800;color:#5FB8D8;letter-spacing:1px;margin-bottom:14px;text-transform:uppercase;}
-  .spec{display:flex;justify-content:space-between;padding:15px 0;border-bottom:1px solid rgba(255,255,255,0.07);}
-  .spec .k{font-size:19px;color:#9FB4C4;font-weight:500;}
-  .spec .v{font-size:19px;color:#E6EEF5;font-weight:700;font-variant-numeric:tabular-nums;}
+  .bg{opacity:0.30;filter:saturate(1.05);}
+  .vignette{position:absolute;inset:0;background:radial-gradient(1000px 800px at 26% 50%,rgba(0,200,255,0.08),transparent 60%),linear-gradient(90deg,#05080F 16%,rgba(5,8,15,0.5) 56%,rgba(5,8,15,0.18) 100%),linear-gradient(0deg,#05080F 3%,transparent 44%);}
+  h1{font-size:56px;font-weight:800;line-height:1.13;letter-spacing:-2px;margin-top:18px;max-width:1320px;}
+  .wrap{display:flex;gap:54px;margin-top:38px;align-items:flex-start;}
+  .occ{flex:0 0 440px;position:relative;}
+  .occ img{width:440px;height:440px;border-radius:16px;border:1px solid rgba(255,255,255,0.10);display:block;}
+  .occ .cap{font-size:15px;color:#8295A5;margin-top:12px;font-weight:600;line-height:1.5;}
+  .occ .cap b{color:#FF8A8A;font-weight:800;}
+  .occ .live{position:absolute;top:14px;left:14px;font-size:13px;font-weight:800;color:#0A1018;
+    background:#00E09A;padding:5px 12px;border-radius:99px;font-family:'JetBrains Mono',monospace;}
   .right{flex:1;}
-  .kgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-  .k{background:rgba(13,21,32,0.55);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:26px 28px;}
-  .k .v{font-size:54px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums;}
-  .k:nth-child(1) .v{color:#00C8FF;} .k:nth-child(2) .v{color:#00C8FF;}
-  .k:nth-child(3) .v{color:#00E09A;} .k:nth-child(4) .v{color:#FFB020;}
-  .k .l{font-size:17px;color:#8FA0B0;margin-top:12px;font-weight:600;}
-  .badges{display:flex;gap:14px;margin-top:24px;}
-  .badge{font-size:16px;font-weight:800;color:#00E09A;background:rgba(0,224,154,0.10);
-    border:1px solid rgba(0,224,154,0.32);padding:10px 20px;border-radius:99px;}
-  .kicker{position:absolute;bottom:118px;left:110px;right:110px;font-size:26px;font-weight:700;color:#C9D6E0;line-height:1.5;}
-  .kicker em{font-style:normal;color:#00C8FF;font-weight:800;}
-  .src{position:absolute;bottom:64px;left:110px;font-size:14px;color:#5C6B78;font-weight:500;}
+  .right .h{font-size:17px;font-weight:800;color:#5FB8D8;letter-spacing:1px;margin-bottom:14px;text-transform:uppercase;}
+  .stack{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-bottom:24px;}
+  .si{background:rgba(13,21,32,0.5);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:13px 16px;}
+  .si .t{font-size:17px;font-weight:800;color:#E6EEF5;}
+  .si .d{font-size:13px;color:#8295A5;margin-top:2px;font-weight:500;}
+  .si.k{border-color:rgba(0,224,154,0.3);} .si.k .t{color:#00E09A;}
+  .kpis{display:flex;gap:14px;}
+  .kp{flex:1;background:rgba(13,21,32,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 18px;}
+  .kp .v{font-size:36px;font-weight:800;color:#00C8FF;letter-spacing:-1.5px;line-height:1;font-variant-numeric:tabular-nums;}
+  .kp:nth-child(3) .v{color:#00E09A;} .kp:nth-child(4) .v{color:#FFB020;}
+  .kp .l{font-size:13px;color:#8295A5;margin-top:8px;font-weight:600;}
+  .badges{display:flex;gap:10px;margin-top:16px;}
+  .badge{font-size:14px;font-weight:800;color:#00E09A;background:rgba(0,224,154,0.10);
+    border:1px solid rgba(0,224,154,0.30);padding:8px 16px;border-radius:99px;}
+  .kicker{position:absolute;bottom:62px;left:110px;right:110px;font-size:23px;font-weight:700;color:#C9D6E0;line-height:1.5;}
+  .kicker em{font-style:normal;color:#FF8A8A;font-weight:800;}
+  .kicker .g{color:#00E09A;}
 </style></head><body>
 <div class="stage">
   <div class="bg" style="background-image:url('../../docs/captures/bg_ai.png');"></div>
   <div class="vignette"></div><div class="grain"></div>
   <div class="pagenum"><b>08</b> / 12</div>
   <div class="pad">
-    <div class="eyebrow"><span class="dot"></span> AI 활용 · 학습도구 ＋ 분석도구 <span class="line"></span></div>
-    <h1>API 호출이 아니라, <span class="hl">직접 학습시킨 모델</span>입니다</h1>
+    <div class="eyebrow"><span class="dot"></span> AI · Tesla급 인지 스택 (한국형) <span class="line"></span></div>
+    <h1>보이는 걸 검출하는 게 아니라,<br><span class="hl">안 보이는 사각지대를 계산</span>합니다</h1>
     <div class="wrap">
-      <div class="left">
-        <div class="h">Risk Transformer · 모델 사양</div>
-        <div class="spec"><span class="k">구조</span><span class="v">Transformer (2-layer, d=64)</span></div>
-        <div class="spec"><span class="k">파라미터</span><span class="v">67,970 개</span></div>
-        <div class="spec"><span class="k">모델 크기</span><span class="v">278 KB · 단말 임베드</span></div>
-        <div class="spec"><span class="k">학습 데이터</span><span class="v">10,000 샘플 · 15 epoch</span></div>
-        <div class="spec"><span class="k">프레임워크</span><span class="v">PyTorch · AdamW (lr 1e-4)</span></div>
-        <div class="badges">
-          <span class="badge">✓ AI 학습도구</span>
-          <span class="badge">✓ AI 분석도구 · Google ML Kit</span>
-        </div>
+      <div class="occ">
+        <img src="../../docs/captures/occ_annotated.png" alt="occupancy grid"/>
+        <span class="live">LIVE · /occupancy/demo</span>
+        <div class="cap">Occupancy Network (40×40m · 0.5m voxel) — 트럭 뒤 <b>occlusion shadow를 확률 0.55로 계산</b>.
+          충돌확률 0.68 · 4.2초 선행경고 (라이브 응답)</div>
       </div>
       <div class="right">
-        <div class="kgrid">
-          <div class="k"><div class="v">0.9403</div><div class="l">AUC (ROC) · 목표 0.85 초과</div></div>
-          <div class="k"><div class="v">0.9412</div><div class="l">F1 @ 0.5</div></div>
-          <div class="k"><div class="v">0.9441</div><div class="l">Precision · 오탐 5.6%</div></div>
-          <div class="k"><div class="v">1.04<span style="font-size:26px;">ms</span></div><div class="l">CPU p99 · 실시간 추론</div></div>
+        <div class="h">Tesla식 코어 + 한국 전용 인지</div>
+        <div class="stack">
+          <div class="si k"><div class="t">Occupancy Network</div><div class="d">BEV voxel · 사각지대 점유 추정</div></div>
+          <div class="si k"><div class="t">Risk Transformer</div><div class="d">2-head · 충돌/근접 위험 (자체 학습)</div></div>
+          <div class="si"><div class="t">Fleet Learning</div><div class="d">shadow mode · hard-sample 수집</div></div>
+          <div class="si"><div class="t">Intent Prediction</div><div class="d">가려진 보행자 등장 예측</div></div>
+          <div class="si"><div class="t">V2V Cross-Vehicle</div><div class="d">마주 차량 시점 병합 (한국 전용)</div></div>
+          <div class="si"><div class="t">Bus-Aware Prior</div><div class="d">정류장 보행자 +0.55 (한국 전용)</div></div>
+        </div>
+        <div class="h">Risk Transformer · 학습 성능</div>
+        <div class="kpis">
+          <div class="kp"><div class="v">0.9403</div><div class="l">AUC (ROC)</div></div>
+          <div class="kp"><div class="v">0.9412</div><div class="l">F1 @ 0.5</div></div>
+          <div class="kp"><div class="v">1.04<span style="font-size:18px;">ms</span></div><div class="l">CPU p99</div></div>
+          <div class="kp"><div class="v">278<span style="font-size:18px;">KB</span></div><div class="l">단말 임베드</div></div>
+        </div>
+        <div class="badges">
+          <span class="badge">✓ AI 학습도구 (PyTorch 자체 학습)</span>
+          <span class="badge">✓ AI 분석도구 (ML Kit · YOLOv8)</span>
         </div>
       </div>
     </div>
   </div>
-  <div class="kicker">278KB로 폰 안에 들어가, <em>온디바이스 1.04ms</em>에 위험을 판단합니다. 모델 가중치까지 공개 검증.</div>
-  <div class="src">모델 가중치(.pt) + 학습 메트릭(JSON) 별첨 제출 · github.com/leelang7/AuraView</div>
+  <div class="kicker">대시캠은 <em>보이는 것만</em> 찍습니다. AuraView는 <span class="g">트럭 뒤 안 보이는 영역까지 확률로 계산</span>합니다.</div>
 </div></body></html>

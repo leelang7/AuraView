@@ -100,21 +100,30 @@
         <div class="ft"><b>우천·노면 반사</b> → 강수 데이터로 위험도 +0.45 보정</div>
       </div>
 
-      <!-- 05 우회전 보행자: 교차로, 내 차 우회전(우측), 우측 횡단보도에 보행자 -->
+      <!-- 05 우회전 보행자: 내 차 위로 진행 → 우측(동쪽)으로 우회전, 동쪽 진입로 횡단보도 보행자 -->
       <div class="cell">
         <div class="hd"><div><div class="nm"><span class="no">05</span> 우회전 보행자</div><div class="law">도교법 25조 4항(2022) · 2022도10752</div></div><div class="gain">의도 예측</div></div>
-        <div class="road" style="height:300px;"></div>
-        <div class="road h"></div>
-        <!-- 우측 횡단보도 (가로 도로 우측 끝, 세로 stripe) -->
-        <div style="position:absolute;right:18px;bottom:30px;width:54px;height:90px;z-index:2;
-          background:repeating-linear-gradient(90deg,rgba(232,240,255,.85) 0 7px,transparent 7px 14px);"></div>
-        <!-- 우회전 경로 -->
-        <div style="position:absolute;left:calc(50% + 14px);top:120px;width:42px;height:90px;border:0 solid;z-index:2;
-          border-right:3px dashed #FF6B6B;border-bottom:3px dashed #FF6B6B;border-radius:0 0 40px 0;"></div>
-        <div class="ego" style="left:calc(50% + 16px);top:96px;"></div>
-        <div class="ped" style="right:40px;bottom:62px;"></div>
-        <span class="lbl" style="right:30px;bottom:128px;color:#FFAAAA;">우측 횡단<br>보행자</span>
-        <div class="ft"><b>우회전 시 우측 횡단보도</b> 보행자 — 보행 의도 예측·일시정지</div>
+        <svg viewBox="0 0 440 300" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;">
+          <!-- 세로 도로 -->
+          <rect x="170" y="0" width="100" height="300" fill="#171F30"/>
+          <!-- 동쪽 진입로 (우측 가로 도로) -->
+          <rect x="270" y="92" width="170" height="96" fill="#171F30"/>
+          <!-- 세로 중앙선 (교차로 아래) -->
+          <g fill="#FFD93D" opacity="0.8"><rect x="218" y="196" width="4" height="16"/><rect x="218" y="226" width="4" height="16"/><rect x="218" y="256" width="4" height="16"/></g>
+          <!-- 동쪽 진입로 횡단보도 (도로 가로지르는 stripe, 차 동쪽진행과 평행) -->
+          <g fill="rgba(232,240,255,0.85)"><rect x="286" y="96" width="34" height="8"/><rect x="286" y="110" width="34" height="8"/><rect x="286" y="124" width="34" height="8"/><rect x="286" y="138" width="34" height="8"/><rect x="286" y="152" width="34" height="8"/><rect x="286" y="166" width="34" height="8"/></g>
+          <!-- 우회전 경로: 위로 진행 → 우측(동)으로 -->
+          <path d="M 240 250 C 240 175 250 138 300 138 L 360 138" stroke="#FF6B6B" stroke-width="3" fill="none" stroke-dasharray="7,4"/>
+          <polygon points="356,131 372,138 356,145" fill="#FF6B6B"/>
+          <!-- 내 차 (우측 차로, 위로 진행) -->
+          <rect x="226" y="206" width="30" height="54" rx="6" fill="#2E86C8"/>
+          <rect x="232" y="214" width="18" height="13" rx="3" fill="rgba(255,255,255,0.25)"/>
+          <polygon points="241,196 235,206 247,206" fill="#7CD4FF"/>
+          <!-- 보행자 (동쪽 횡단보도 위) -->
+          <circle cx="303" cy="150" r="8" fill="#FF6B6B"/>
+        </svg>
+        <span class="lbl" style="left:calc(50% + 60px);top:128px;color:#FFAAAA;">횡단 보행자</span>
+        <div class="ft"><b>우회전(↱) 시 진입로 횡단보도</b> 보행자 — 보행 의도 예측·일시정지</div>
       </div>
 
       <!-- 06 스쿨존: 학교 + 어린이 + 30 -->
@@ -136,27 +145,47 @@
       <!-- 07 자전거: 우측 자전거 도로 + 자전거 -->
       <div class="cell">
         <div class="hd"><div><div class="nm"><span class="no">07</span> 자전거</div><div class="law">도교법 13조 + 자전거법</div></div><div class="gain">+0.40</div></div>
-        <div class="road"></div><div class="cl"></div>
-        <!-- 우측 가장자리 자전거 전용도로 -->
-        <div style="position:absolute;left:calc(50% + 52px);top:0;width:22px;height:300px;background:rgba(0,180,90,.18);border-left:2px solid rgba(0,224,154,.5);z-index:1;"></div>
-        <span class="lbl" style="left:calc(50% + 30px);top:36px;color:#00E09A;">자전거<br>전용</span>
-        <div class="veh" style="left:calc(50% + 58px);top:120px;width:11px;height:24px;background:#00E09A;border-radius:4px;"></div>
-        <div class="occ" style="left:calc(50% + 44px);top:150px;width:44px;height:70px;"></div>
-        <div class="ego" style="left:calc(50% + 14px);top:200px;"></div>
-        <div class="ft"><b>우측 자전거 도로</b> 진입 자전거 — 따릉이 거치 데이터로 사전 인지</div>
+        <div class="road" style="width:170px;"></div><div class="cl"></div>
+        <!-- 우측 가장자리 자전거 전용도로 (내 차 오른쪽) -->
+        <div style="position:absolute;left:calc(50% + 58px);top:0;width:26px;height:300px;background:rgba(0,180,90,.26);border-left:2px dashed rgba(0,224,154,.7);z-index:1;"></div>
+        <span class="lbl" style="left:calc(50% + 50px);top:34px;color:#00E09A;">자전거<br>전용</span>
+        <div class="veh" style="left:calc(50% + 64px);top:130px;width:13px;height:26px;background:#00E09A;border-radius:4px;box-shadow:0 0 10px rgba(0,224,154,.7);"></div>
+        <div class="occ" style="left:calc(50% + 48px);top:158px;width:46px;height:74px;"></div>
+        <div class="ego" style="left:calc(50% + 16px);top:200px;"></div>
+        <div class="ft"><b>내 차 우측 자전거 도로</b> 진입 자전거 — 따릉이 거치 데이터로 사전 인지</div>
       </div>
 
-      <!-- 08 야간 보행자: 어두움 + 보행자 + 헤드라이트 -->
+      <!-- 08 야간 보행자: 내 차 헤드라이트 + 맞은편 차 V2V 시야 공유로 보행자 탐지 -->
       <div class="cell" style="background:#06080E;">
         <div class="hd"><div><div class="nm"><span class="no">08</span> 야간 보행자</div><div class="law">도교법 48조 · 2018도12521</div></div><div class="gain">협력 시야</div></div>
-        <div class="road" style="background:#0E1320;"></div><div class="cl"></div>
-        <!-- 헤드라이트 콘 -->
-        <div style="position:absolute;left:calc(50% + 1px);top:90px;width:60px;height:130px;z-index:1;
-          background:linear-gradient(0deg,rgba(255,240,180,.22),transparent 80%);transform:translateX(-50%);clip-path:polygon(40% 100%,60% 100%,100% 0,0 0);"></div>
-        <div class="ped" style="left:calc(50% - 4px);top:78px;opacity:.85;"></div>
-        <span class="lbl" style="left:calc(50% + 14px);top:74px;color:#FFD68A;">야간 보행자</span>
-        <div class="ego" style="left:calc(50% + 16px);top:200px;"></div>
-        <div class="ft"><b>야간 시야 부족</b> → 차량 간 헤드라이트·시야 공유로 탐지 확장</div>
+        <svg viewBox="0 0 440 300" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;">
+          <defs>
+            <linearGradient id="beam8" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stop-color="#FFE9A8" stop-opacity="0.32"/><stop offset="1" stop-color="#FFE9A8" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="beam8b" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#9FD0FF" stop-opacity="0.18"/><stop offset="1" stop-color="#9FD0FF" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <rect x="170" y="0" width="100" height="300" fill="#0E1320"/>
+          <g fill="#FFD93D" opacity="0.7"><rect x="218" y="20" width="4" height="16"/><rect x="218" y="60" width="4" height="16"/><rect x="218" y="120" width="4" height="16"/><rect x="218" y="200" width="4" height="16"/><rect x="218" y="250" width="4" height="16"/></g>
+          <!-- 내 차 헤드라이트 빔 (아래→위 확산) -->
+          <polygon points="232,210 258,210 300,70 196,70" fill="url(#beam8)"/>
+          <!-- 맞은편 차 시야 빔 (위→아래) — V2V 공유 -->
+          <polygon points="196,70 240,70 226,170 188,170" fill="url(#beam8b)"/>
+          <!-- 내 차 (우측 차로, 위로 진행) -->
+          <rect x="226" y="212" width="30" height="54" rx="6" fill="#2E86C8"/>
+          <rect x="232" y="220" width="18" height="13" rx="3" fill="rgba(255,255,255,0.22)"/>
+          <!-- 맞은편 차 (좌측 차로, 아래로) -->
+          <rect x="186" y="40" width="26" height="46" rx="5" fill="#3A434F"/>
+          <!-- 야간 보행자 (빔 경계, 흐릿) -->
+          <circle cx="250" cy="120" r="9" fill="#FF6B6B" opacity="0.92"/>
+          <!-- V2V 공유 라인 -->
+          <path d="M 200 70 Q 235 95 246 115" stroke="#00E09A" stroke-width="1.6" fill="none" stroke-dasharray="5,3" opacity="0.8"/>
+        </svg>
+        <span class="lbl" style="left:calc(50% + 30px);top:96px;color:#FFD68A;">야간 보행자</span>
+        <span class="lbl" style="left:calc(50% - 70px);top:36px;color:#9FD0FF;">맞은편 차</span>
+        <div class="ft"><b>야간 시야 부족</b> → 맞은편 차와 헤드라이트·시야 공유로 보행자 탐지</div>
       </div>
 
     </div>

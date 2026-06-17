@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>AuraView K-Perception — 2차 발표</title>
+<meta name="description" content="AuraView K-Perception 2차 심사 발표 자료. 25 공공데이터 융합 + V2V 협업 인지 기반 한국 도로 안전 AI 블랙박스."/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reset.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css"/>
+<style>
+  :root {
+    --bg:#080C14; --surface:#0D1520; --line:#1A2330;
+    --text:#E8F0F8; --muted:#8FA0B0;
+    --accent:#00C8FF; --safe:#00E09A; --warn:#FFB020; --bad:#FF6B6B;
+    --brand-grad: linear-gradient(135deg, #00C8FF 0%, #7C3AED 100%);
+  }
+  body, .reveal { background:var(--bg); color:var(--text); font-family:'Pretendard','Inter','Apple SD Gothic Neo','Malgun Gothic',sans-serif; }
+  .reveal h1, .reveal h2, .reveal h3 { color:var(--text); font-weight:900; letter-spacing:-0.5px; line-height:1.05; }
+  .reveal h1 { font-size:88px; }
+  .reveal h2 { font-size:60px; margin:0 0 24px 0; }
+  .reveal h3 { font-size:38px; }
+  .reveal p, .reveal li { color:var(--text); font-size:24px; line-height:1.5; }
+  .reveal .slides section { text-align:left; padding:0; }
+  .reveal .slides > section, .reveal .slides > section > section { padding:0; }
+
+  .reveal section[data-background-image] { padding:0; }
+
+  /* Hero text overlay on image slides — already baked into PNG */
+  .reveal section.hero-img { background-position:center; background-size:cover; }
+
+  /* Content slides (no hero img) */
+  .content { padding:60px 80px; height:100%; box-sizing:border-box; }
+  .eyebrow { font-family:'JetBrains Mono','Courier New',monospace; font-size:14px; letter-spacing:3px;
+             color:var(--muted); margin-bottom:10px; font-weight:800; }
+  .gradient { background:var(--brand-grad); -webkit-background-clip:text; background-clip:text;
+              -webkit-text-fill-color:transparent; }
+
+  .kpi-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:28px; margin-top:36px; }
+  .kpi { background:rgba(0,200,255,0.06); border:1px solid rgba(0,200,255,0.25); border-radius:16px; padding:24px; }
+  .kpi .val { font-size:54px; font-weight:900; line-height:1; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .kpi .lbl { font-size:18px; color:var(--muted); margin-top:8px; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0; }
+  .chip { background:rgba(0,224,154,0.10); border:1px solid rgba(0,224,154,0.35); color:var(--safe);
+          padding:8px 16px; border-radius:99px; font-size:18px; font-weight:700; }
+  .chip.warn { background:rgba(255,176,32,0.12); border-color:rgba(255,176,32,0.40); color:var(--warn); }
+  .chip.bad { background:rgba(255,107,107,0.12); border-color:rgba(255,107,107,0.40); color:var(--bad); }
+
+  table { width:100%; border-collapse:collapse; margin:24px 0; }
+  th, td { padding:12px 18px; border-bottom:1px solid var(--line); text-align:left; font-size:20px; }
+  th { color:var(--accent); font-weight:800; font-size:18px; letter-spacing:1px; text-transform:uppercase; }
+  td.num { font-variant-numeric:tabular-nums; font-weight:700; }
+  tr.total td { font-weight:900; color:var(--safe); border-top:2px solid var(--safe); border-bottom:none; }
+
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:40px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:24px; }
+  .card .head { color:var(--accent); font-weight:800; font-size:16px; letter-spacing:2px; margin-bottom:12px; }
+  .card .big { font-size:42px; font-weight:900; line-height:1; }
+
+  .footer-note { position:absolute; bottom:30px; left:80px; right:80px; font-size:14px;
+                 color:var(--muted); border-top:1px solid var(--line); padding-top:10px; }
+
+  .progress-strip { display:flex; gap:6px; margin-top:16px; }
+  .progress-strip .step { flex:1; height:8px; background:rgba(0,224,154,0.15); border-radius:4px; position:relative; overflow:hidden; }
+  .progress-strip .step.done { background:var(--safe); }
+  .progress-strip .step.now { background:linear-gradient(90deg, var(--safe), var(--accent)); }
+
+  /* Live status strip */
+  .live-strip { display:flex; gap:14px; flex-wrap:wrap; margin-top:20px;
+                font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:1px; }
+  .live-strip span { background:rgba(0,224,154,0.10); border:1px solid rgba(0,224,154,0.30);
+                     padding:6px 12px; border-radius:99px; color:var(--safe); font-weight:800; }
+
+  .reveal .controls { color:var(--accent); }
+  .reveal .progress { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ===== SLIDE 1: COVER ===== -->
+<section data-background-image="img/slide_01_cover.png" data-background-size="cover" class="hero-img">
+</section>
+
+<!-- ===== SLIDE 2: PROBLEM ===== -->
+<section data-background-color="#080C14">
+  <div class="content">
+    <div class="eyebrow">// 한국 도로의 현실</div>
+    <h2>매일 <span class="gradient">7명</span>이 죽고, <span class="gradient">800명</span>이 다친다</h2>
+    <div class="row" style="margin-top:30px;">
+      <div>
+        <h3 style="color:var(--bad); margin-bottom:18px;">TAAS 2024 통계</h3>
+        <table>
+          <tr><th>지표</th><th>값</th></tr>
+          <tr><td>연간 사망</td><td class="num">2,581 명</td></tr>
+          <tr><td>연간 부상</td><td class="num">290,400 명</td></tr>
+          <tr><td>도시 교차로 사고 비중</td><td class="num">46 %</td></tr>
+          <tr><td>시야 가림 사고 비중</td><td class="num">22 %</td></tr>
+          <tr><td>고령 65세↑ 비중</td><td class="num">46 %</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3 style="color:var(--warn); margin-bottom:18px;">기존 ADAS 한계</h3>
+        <p>• 단일 카메라 시점 → 가려진 영역 사전 인지 불가</p>
+        <p>• 선행경고 0.5~1초 → 회피 성공률 25% 미만</p>
+        <p>• Tesla FSD 등 글로벌 솔루션은 <b style="color:var(--warn);">한국 8 시나리오</b><br>
+           &nbsp;&nbsp;(트럭/이륜/신호/우천/우회전/스쿨존/자전거/야간) 미반영</p>
+        <p>• 민식이법 · 우회전 보행자 일시정지 → 운전자 형사 책임 강화</p>
+        <p style="margin-top:24px; font-size:20px; color:var(--muted);">출처: TAAS 2024, KOTI 사회적 비용 추정</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SLIDE 3: SCENARIO HERO — TRUCK ===== -->
+<section data-background-image="img/slide_03_truck.png" data-background-size="cover" class="hero-img">
+</section>
+
+<!-- ===== SLIDE 4: 25 DATA FUSION ===== -->
+<section data-background-image="img/slide_04_fusion.png" data-background-size="cover" class="hero-img">
+</section>
+
+<!-- ===== SLIDE 5: 8 SCENARIOS MATRIX ===== -->
+<section data-background-color="#080C14">
+  <div class="content">
+    <div class="eyebrow">// 한국 도로 특화 8 시나리오 × 도로교통법 매핑</div>
+    <h2>법령·판례·정량 기여 <span class="gradient">전부 매핑</span></h2>
+    <table style="margin-top:20px;">
+      <tr><th>시나리오</th><th>법령</th><th>판례</th><th>AuraView 기여</th></tr>
+      <tr><td>① 트럭 가림</td><td>도교법 27조</td><td>2019도11622</td><td class="num" style="color:var(--accent);">occlusion +0.55</td></tr>
+      <tr><td>② 좌측 사각 이륜</td><td>도교법 19조의2</td><td>2019도14517</td><td class="num" style="color:var(--accent);">측면 sweep</td></tr>
+      <tr><td>③ 신호 가림</td><td>도교법 5조</td><td>2020도11458</td><td class="num" style="color:var(--accent);">신호 API + V2V</td></tr>
+      <tr><td>④ 우천 교차로</td><td>도교법 19조 + 시행규칙</td><td>2017도9534</td><td class="num" style="color:var(--accent);">환경 +0.45</td></tr>
+      <tr><td>⑤ 우회전 보행자</td><td>도교법 25조 4항 (2022)</td><td>2022도10752</td><td class="num" style="color:var(--accent);">sweep zone</td></tr>
+      <tr><td>⑥ 스쿨존 (민식이법)</td><td>도교법 12조 + 민식이법</td><td>헌재 2019헌마927</td><td class="num" style="color:var(--accent);">DSZ +0.62</td></tr>
+      <tr><td>⑦ 자전거</td><td>도교법 13조 + 자전거법</td><td>2021도8395</td><td class="num" style="color:var(--accent);">자전거 GIS +0.40</td></tr>
+      <tr><td>⑧ 야간</td><td>도교법 48조</td><td>2018도12521</td><td class="num" style="color:var(--accent);">V2V 헤드라이트</td></tr>
+    </table>
+    <p style="font-size:18px; color:var(--muted); margin-top:14px;">
+      출처: 국가법령정보센터 · 대법원 종합법률정보 · 헌법재판소 판례검색
+    </p>
+  </div>
+</section>
+
+<!-- ===== SLIDE 6: SCHOOLZONE HERO ===== -->
+<section data-background-image="img/slide_05_schoolzone.png" data-background-size="cover" class="hero-img">
+</section>
+
+<!-- ===== SLIDE 7: V2V HERO ===== -->
+<section data-background-image="img/slide_06_v2v.png" data-background-size="cover" class="hero-img">
+</section>
+
+<!-- ===== SLIDE 8: AI MODEL ===== -->
+<section data-background-color="#080C14">
+  <div class="content">
+    <div class="eyebrow">// AI 활용 — 학습도구 + 분석도구</div>
+    <h2>자체 학습 <span class="gradient">Risk Transformer</span> · AUC 0.9403</h2>
+    <div class="row">
+      <div>
+        <h3 style="color:var(--accent);">모델 사양</h3>
+        <table>
+          <tr><td>구조</td><td class="num">Transformer (2-layer, d=64)</td></tr>
+          <tr><td>파라미터</td><td class="num">67,970 개</td></tr>
+          <tr><td>모델 크기</td><td class="num">278 KB (단말 임베드)</td></tr>
+          <tr><td>학습 샘플</td><td class="num">10,000 (15 epoch)</td></tr>
+          <tr><td>Optimizer</td><td class="num">AdamW (lr 1e-4)</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3 style="color:var(--safe);">학습 성능 (Validation)</h3>
+        <div class="kpi-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="kpi"><div class="val">0.9403</div><div class="lbl">AUC (ROC)</div></div>
+          <div class="kpi"><div class="val">0.9412</div><div class="lbl">F1 @ 0.5</div></div>
+          <div class="kpi"><div class="val">0.9441</div><div class="lbl">Precision</div></div>
+          <div class="kpi"><div class="val">1.04 ms</div><div class="lbl">CPU p99</div></div>
+        </div>
+        <p style="font-size:18px; margin-top:18px;">
+          <span class="chip">✓ AI 학습도구</span>
+          <span class="chip">✓ AI 분석도구 (ML Kit)</span>
+        </p>
+      </div>
+    </div>
+    <div class="footer-note">
+      모델 가중치 + 학습 메트릭 별첨 제출 (models/risk_transformer.pt 278KB)
+    </div>
+  </div>
+</section>
+
+<!-- ===== SLIDE 9: TESLA vs AURAVIEW ===== -->
+<section data-background-color="#080C14">
+  <div class="content">
+    <div class="eyebrow">// 글로벌 솔루션 대비 한국 특화 5종</div>
+    <h2>Tesla FSD 시점 vs <span class="gradient">AuraView</span></h2>
+    <table>
+      <tr><th>항목</th><th style="color:var(--warn);">Tesla FSD 등 글로벌</th><th style="color:var(--safe);">AuraView K-Perception</th></tr>
+      <tr><td>차량 간 협업</td><td>자기 차량 시점만</td><td><b>V2V Cross-Vehicle (heading 130° 가중)</b></td></tr>
+      <tr><td>정류장 prior</td><td>일반 보행자 분류</td><td><b>Bus-Aware (정차/주행 prior +0.55)</b></td></tr>
+      <tr><td>마주오는 차로</td><td>단방향 모델</td><td><b>Bidirectional + VDS 비대칭</b></td></tr>
+      <tr><td>공공 신호</td><td>Vision-only 인식</td><td><b>도로교통공단 신호 API + ITS 결합</b></td></tr>
+      <tr><td>정책 환원</td><td>내부 데이터 폐쇄</td><td><b>위험 교차로 Top-N + DSZ 결합</b></td></tr>
+    </table>
+    <div class="footer-note">상세: /static/visuals/tesla_vs_auraview.svg · /gallery/?f=비교</div>
+  </div>
+</section>
+
+<!-- ===== SLIDE 10: COMPLIANCE ===== -->
+<section data-background-color="#080C14">
+  <div class="content">
+    <div class="eyebrow">// 컴플라이언스 — 가명결합 + DSZ 안심구역</div>
+    <h2>개인정보보호법 · 국토부 훈령 <span class="gradient">완전 준수</span></h2>
+    <div class="row">
+      <div>
+        <h3 style="color:var(--accent);">가명결합 5단계 (개보법 28조의2)</h3>
+        <div class="progress-strip">
+          <div class="step done"></div><div class="step done"></div><div class="step done"></div>
+          <div class="step done"></div><div class="step now"></div>
+        </div>
+        <p>① 가명화 HMAC-SHA256</p>
+        <p>② TAAS × VDS × 신호 결합</p>
+        <p>③ k≥5 익명성 자동 검증</p>
+        <p>④ 100m×100m 그리드 집계</p>
+        <p>⑤ 검증 로그 (시점·k·결과 해시)</p>
+      </div>
+      <div>
+        <h3 style="color:var(--safe);">DSZ 안심구역 (국토부 훈령 1456호)</h3>
+        <table>
+          <tr><th>단계</th><th>절차</th></tr>
+          <tr><td>반입</td><td>SHA-256 사전 검증</td></tr>
+          <tr><td>결합</td><td>안심구역 내 추가 결합</td></tr>
+          <tr><td>분석</td><td>위험 점수 + 우선순위</td></tr>
+          <tr><td>반출</td><td>통계만 (식별자 X)</td></tr>
+          <tr><td>감사</td><td>5년 로그 보존</td></tr>
+        </table>
+        <p style="margin-top:18px;"><span class="chip">✓ PII 마스킹 자동</span>
+           <span class="chip">✓ 100m 그리드 양자화</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SLIDE 11: QUANTITATIVE IMPACT ===== -->
+<section data-background-color="#080C14">
+  <div class="content">
+    <div class="eyebrow">// 정량 사회 임팩트 (TAAS 2024 baseline · lead 3.38s)</div>
+    <h2>전국 도입 시 연 <span class="gradient">421명</span> 사망 예방 · <span class="gradient">5.6조원</span> 절감</h2>
+    <table style="margin-top:20px;">
+      <tr><th>도입 비율</th><th>사고 예방/년</th><th>사망 감소</th><th>부상 감소</th><th>사회비용 절감</th></tr>
+      <tr><td><b>Pilot 5%</b></td><td class="num">1,694 건</td><td class="num" style="color:var(--warn);">21 명</td><td class="num">2,370 명</td><td class="num">약 2,800 억원</td></tr>
+      <tr><td><b>확산 25%</b></td><td class="num">8,470 건</td><td class="num" style="color:var(--accent);">105 명</td><td class="num">11,852 명</td><td class="num">약 1조 4,000 억원</td></tr>
+      <tr class="total"><td><b>전국 100%</b></td><td class="num">33,880 건</td><td class="num">421 명</td><td class="num">47,408 명</td><td class="num">약 5조 6,000 억원</td></tr>
+    </table>
+    <div style="margin-top:30px;">
+      <h3 style="color:var(--safe);">서울 위험 교차로 Top-10 우선 도입</h3>
+      <p>강남역·잠실역·광화문·신촌·청량리·건대입구·사당·홍대입구·신림·서울역 광장<br>
+         → 합계 예방 효과 <b style="color:var(--safe);">약 84명/년</b> · 강남역 1곳 도입만 해도 연 11.8명 예방</p>
+    </div>
+    <div class="footer-note">
+      산출 공식: TAAS 연간 × 도시교차로(46%) × 시나리오(42%) × 회피율(84.5%) × 도입률<br>
+      단가: KOTI 사회적 비용 2024 — 사망 5.5억/명, 중상 8천만/명
+    </div>
+  </div>
+</section>
+
+<!-- ===== SLIDE 12: LIVE VERIFICATION + CTA ===== -->
+<section data-background-color="#080C14">
+  <div class="content">
+    <div class="eyebrow">// 1-step 라이브 검증 — 평가자 직접 확인 가능</div>
+    <h2>모두 <span class="gradient">지금 작동</span>하는 시스템</h2>
+    <div class="row">
+      <div>
+        <h3 style="color:var(--accent);">검증 URL</h3>
+        <p><code style="color:var(--safe);">curl https://auraview.allthatai.kr/impact/submission-ready</code></p>
+        <p>→ ready=true · 9/9 게이트 PASS</p>
+        <div class="live-strip">
+          <span>✓ sources=25</span>
+          <span>✓ schema v11</span>
+          <span>✓ AUC 0.9403</span>
+          <span>✓ git_sha live</span>
+          <span>✓ banned 0 leaks</span>
+        </div>
+        <p style="margin-top:24px;">
+          <span class="chip">/ui 통합 대시보드</span>
+          <span class="chip">/story 30초 일반인용</span>
+          <span class="chip">/scorecard 평가 5종</span>
+          <span class="chip">/policy 정책</span>
+          <span class="chip">/competition 검증 허브</span>
+        </p>
+      </div>
+      <div>
+        <h3 style="color:var(--safe);">자료 패키지</h3>
+        <table>
+          <tr><td>라이브 시스템</td><td>auraview.allthatai.kr</td></tr>
+          <tr><td>오픈소스 (MIT)</td><td>github.com/leelang7/AuraView</td></tr>
+          <tr><td>네이티브 APK</td><td>Galaxy Z Fold 3 v12.171 (34.6MB)</td></tr>
+          <tr><td>AI 모델 가중치</td><td>risk_transformer.pt 278KB</td></tr>
+          <tr><td>별첨 PDF</td><td>35쪽 (라이브 + 시각 + 근거)</td></tr>
+        </table>
+        <div style="margin-top:30px; padding:20px; background:var(--brand-grad);
+                    border-radius:14px;">
+          <div style="font-size:32px; font-weight:900; color:#080C14;">B2C · B2B · B2G</div>
+          <div style="font-size:20px; color:#0D1520; margin-top:6px; font-weight:700;">
+            3년차 매출 70억 · 마이데이터 확장
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note">
+      2026 국토 · 교통 데이터 활용 경진대회 · AuraView K-Perception · v12.171
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    width: 1920,
+    height: 1080,
+    margin: 0,
+    minScale: 0.2,
+    maxScale: 2.0,
+    controls: true,
+    progress: true,
+    hash: true,
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    keyboard: true,
+    overview: true,
+  });
+</script>
+</body>
+</html>

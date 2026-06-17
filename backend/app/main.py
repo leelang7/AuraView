@@ -246,6 +246,7 @@ _mount_static(app, ["static", "privacy"], "/privacy")    # v7 2026-05-18: 가명
 _mount_static(app, ["static", "safezone"], "/safezone")  # v7 2026-05-18: 안전구역 라이브 대시보드
 _mount_static(app, ["static", "policy"], "/policy")      # v8 2026-05-18: 수집→통계분석→정책의사결정 (Tesla fleet)
 _mount_static(app, ["static", "fleet"], "/fleet-dash")   # v12.17 2026-05-21: 라이브 수집 대시보드 (지도 + 피드)
+_mount_static(app, ["static", "pitch"], "/pitch")        # v13 2026-06-16: 2차 발표 reveal.js 12쪽 pitch deck
 _mount_static(app, ["static"], "/static")
 
 # Mobile PWA at /pwa (repo root에 frontend_pwa/ 존재 가정)

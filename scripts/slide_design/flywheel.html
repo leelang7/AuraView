@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.30;filter:saturate(1.05);}
+  .vignette{position:absolute;inset:0;background:radial-gradient(1000px 800px at 26% 50%,rgba(0,224,154,0.07),transparent 60%),linear-gradient(90deg,#05080F 18%,rgba(5,8,15,0.5) 58%,rgba(5,8,15,0.18) 100%),linear-gradient(0deg,#05080F 3%,transparent 44%);}
+  h1{font-size:60px;font-weight:800;line-height:1.13;letter-spacing:-2px;margin-top:20px;max-width:1240px;}
+  .wrap{display:flex;gap:60px;margin-top:46px;}
+  .left{flex:0 0 600px;}
+  .left .h{font-size:18px;font-weight:800;color:#5FB8D8;letter-spacing:1px;margin-bottom:20px;text-transform:uppercase;}
+  .fl{display:flex;flex-direction:column;gap:0;}
+  .fr{display:flex;align-items:center;gap:18px;padding:11px 0;}
+  .fr .ico{font-size:15px;font-weight:800;color:#0A1018;background:#00E09A;border-radius:8px;
+    width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+  .fr .tx{font-size:21px;color:#E6EEF5;font-weight:600;}
+  .fr .tx b{color:#00E09A;font-weight:800;}
+  .fr.arrow{padding:2px 0 2px 7px;color:#3D5060;font-size:20px;}
+  .right{flex:1;}
+  .right .h{font-size:18px;font-weight:800;color:#00E09A;letter-spacing:1px;margin-bottom:18px;text-transform:uppercase;}
+  .cust{background:rgba(13,21,32,0.55);border:1px solid rgba(255,255,255,0.08);border-radius:14px;
+    padding:18px 22px;margin-bottom:12px;display:flex;align-items:center;gap:20px;}
+  .cust .seg{font-size:22px;font-weight:800;min-width:62px;}
+  .cust.c1 .seg{color:#00C8FF;} .cust.c2 .seg{color:#00E09A;} .cust.c3 .seg{color:#FFB020;}
+  .cust .mid{flex:1;}
+  .cust .role{font-size:18px;color:#E6EEF5;font-weight:700;}
+  .cust .price{font-size:14px;color:#8295A5;margin-top:2px;font-weight:500;}
+  .cust .rev{font-size:26px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;text-align:right;min-width:90px;}
+  .cust .rev small{font-size:14px;color:#8295A5;font-weight:600;}
+  .total{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:0 22px;}
+  .total .l{font-size:18px;color:#9FB4C4;font-weight:600;}
+  .total .v{font-size:34px;font-weight:800;color:#00E09A;letter-spacing:-1px;}
+  .kicker{position:absolute;bottom:64px;left:110px;right:110px;font-size:22px;font-weight:700;color:#C9D6E0;line-height:1.5;}
+  .kicker em{font-style:normal;color:#00E09A;font-weight:800;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/bg_flywheel.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>11</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 사업 모델 · 데이터 플라이휠 <span class="line"></span></div>
+    <h1>세 고객이 <span class="hl">하나의 데이터 플라이휠</span>로 돕니다</h1>
+    <div class="wrap">
+      <div class="left">
+        <div class="h">왜 멈추지 않는가</div>
+        <div class="fl">
+          <div class="fr"><span class="ico">1</span><span class="tx">운전자가 <b>깔수록</b> 익명 사각지대 데이터 축적</span></div>
+          <div class="fr arrow">↓</div>
+          <div class="fr"><span class="ico">2</span><span class="tx">모델 정확↑ <b>(fleet learning)</b> + 정책 통계 풍부</span></div>
+          <div class="fr arrow">↓</div>
+          <div class="fr"><span class="ico">3</span><span class="tx">지자체가 <b>신호·교차로 개선</b> → 도로 안전↑</span></div>
+          <div class="fr arrow">↓</div>
+          <div class="fr"><span class="ico">4</span><span class="tx">예방 효과 입증 → <b>더 많은 운전자 유입</b> ↺</span></div>
+        </div>
+        <div style="margin-top:24px;font-size:19px;color:#9FB4C4;line-height:1.55;font-weight:500;">
+          Tesla는 자기 차들로만 학습. AuraView는 <b style="color:#fff;">공공데이터 + 크라우드소싱</b>으로
+          같은 네트워크 효과를 한국 도로에.</div>
+      </div>
+      <div class="right">
+        <div class="h">3 고객 · 3년차 매출 70억</div>
+        <div class="cust c1"><span class="seg">B2C</span><div class="mid"><div class="role">운전자 — 블랙박스 보조 앱</div><div class="price">사고 예방 + 과실 증거 · 월 4,900원 · 5만명</div></div><div class="rev">30<small>억</small></div></div>
+        <div class="cust c2"><span class="seg">B2B</span><div class="mid"><div class="role">운수 — fleet 관제 (50만대 DTG)</div><div class="price">사고율 30%↓ → 보험료 절감 · 월 9,900원</div></div><div class="rev">59<small>억</small></div></div>
+        <div class="cust c3"><span class="seg">B2G</span><div class="mid"><div class="role">지자체 — 사각지대 통계 리포트</div><div class="price">실측 기반 도로안전 정책 · 연 2,000만원 · 226 시군구</div></div><div class="rev">13.5<small>억</small></div></div>
+        <div class="total"><span class="l">데이터의 본체 = B2G 사각지대 통계</span><span class="v">합계 ≈ 103억</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="kicker">B2C·B2B가 <em>데이터를 만들고</em>, 그 데이터가 <em>B2G 상품</em>이 됩니다 — 셋은 분리된 사업이 아닙니다.</div>
+</div></body></html>

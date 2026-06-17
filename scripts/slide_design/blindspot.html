@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{opacity:0.40;filter:saturate(1.1);}
+  .vignette{position:absolute;inset:0;background:radial-gradient(1200px 850px at 80% 48%,rgba(255,107,107,0.06),transparent 60%),linear-gradient(90deg,#05080F 22%,rgba(5,8,15,0.55) 60%,rgba(5,8,15,0.18) 100%),linear-gradient(0deg,#05080F 3%,transparent 44%);}
+  h1{font-size:60px;font-weight:800;line-height:1.13;letter-spacing:-2px;margin-top:20px;max-width:1300px;}
+  .lede{font-size:25px;color:#9FB7C7;margin-top:24px;line-height:1.5;max-width:1080px;font-weight:500;}
+  .lede b{color:#fff;font-weight:800;}
+  .loop{display:flex;align-items:stretch;gap:0;margin-top:50px;}
+  .ph{flex:1;padding:28px 30px;position:relative;}
+  .ph:not(:last-child)::after{content:'→';position:absolute;right:-13px;top:42px;font-size:30px;color:#3D5060;z-index:2;}
+  .ph .n{font-size:14px;font-weight:800;letter-spacing:2px;color:#5FB8D8;margin-bottom:14px;text-transform:uppercase;}
+  .ph .t{font-size:25px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:12px;}
+  .ph .d{font-size:17px;color:#9FB4C4;line-height:1.5;font-weight:500;}
+  .ph .d b{color:#D6E2EC;font-weight:700;}
+  .ph.box{background:rgba(13,21,32,0.55);border:1px solid rgba(255,255,255,0.07);border-radius:16px;margin:0 8px;}
+  .ph.hot.box{border-color:rgba(255,107,107,0.35);}
+  .ph.hot .n{color:#FF8A8A;}
+  .ph.cool.box{border-color:rgba(0,224,154,0.35);}
+  .ph.cool .n{color:#00E09A;}
+  .kicker{position:absolute;bottom:118px;left:110px;right:110px;font-size:26px;font-weight:700;color:#C9D6E0;line-height:1.5;}
+  .kicker em{font-style:normal;color:#FF8A8A;font-weight:800;}
+  .kicker .g{color:#00E09A;}
+  .src{position:absolute;bottom:64px;left:110px;font-size:14px;color:#5C6B78;font-weight:500;}
+</style></head><body>
+<div class="stage">
+  <div class="bg" style="background-image:url('../../docs/captures/bg_blindspot.png');"></div>
+  <div class="vignette"></div><div class="grain"></div>
+  <div class="pagenum"><b>04</b> / 12</div>
+  <div class="pad">
+    <div class="eyebrow"><span class="dot"></span> 핵심 차별점 · 사각지대 데이터 엔진 <span class="line"></span></div>
+    <h1>사고를 <span class="hl">막는 순간</span>이, 그대로<br>도로의 <span style="color:#FF8A8A;">사각지대 통계</span>가 됩니다</h1>
+    <div class="lede">대시캠은 사고를 <b>녹화</b>만 합니다. AuraView는 가려진 위험을 <b>막는 동시에</b>,<br>그 사각지대를 자동으로 모아 <b>'어디가·언제·왜' 위험한지</b> 통계로 만듭니다.</div>
+    <div class="loop">
+      <div class="ph hot box"><div class="n">01 · 감지</div><div class="t">가려진 위험을<br>현장에서 포착</div><div class="d">트럭 뒤 신호·사각 이륜… 위치/속도 게이트로 <b>실제 위험만</b> 자동 수집 (오탐 차단)</div></div>
+      <div class="ph box"><div class="n">02 · 맥락화</div><div class="t">25종 데이터로<br>원인을 붙인다</div><div class="d">신호 위상·사고이력·날씨·스쿨존을 결합 — <b>단순 위험점이 아닌 원인별 통계</b></div></div>
+      <div class="ph cool box"><div class="n">03 · 환원</div><div class="t">통계를 정책·예방<br>으로 되돌린다</div><div class="d">위험 교차로 Top-N → 신호주기 조정·스쿨존 우선순위. <b>막고, 알리고, 고친다</b></div></div>
+    </div>
+  </div>
+  <div class="kicker">남들은 사고를 <em>모으고 끝</em>. 우리는 <span class="g">모으면서 동시에 막고, 도로까지 고칩니다.</span></div>
+  <div class="src">위치/속도 게이트로 발화 조건 검증 · 가명결합 후 100m 그리드 통계 (개인 식별 불가)</div>
+</div></body></html>

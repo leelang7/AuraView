@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/><link rel="stylesheet" href="_base.css"/>
+<style>
+  .bg{position:absolute;inset:0;background:radial-gradient(1100px 800px at 80% 12%,rgba(0,200,255,0.06),transparent 60%);}
+  h1{font-size:52px;font-weight:800;line-height:1.1;letter-spacing:-1.5px;margin-top:14px;max-width:1320px;}
+  .lede{font-size:23px;color:#9FB7C7;margin-top:18px;font-weight:500;}
+  .lede b{color:#fff;font-weight:800;}
+  .rows{margin-top:34px;display:flex;flex-direction:column;gap:14px;}
+  .band{display:grid;grid-template-columns:230px 1fr 300px;gap:28px;align-items:center;
+    border-radius:16px;padding:22px 28px;border:1px solid rgba(255,255,255,0.07);}
+  .band.d{background:rgba(0,200,255,0.06);border-color:rgba(0,200,255,0.22);}
+  .band.p{background:rgba(0,224,154,0.06);border-color:rgba(0,224,154,0.22);}
+  .band.c{background:rgba(255,176,32,0.06);border-color:rgba(255,176,32,0.22);}
+  .who .seg{font-size:15px;font-weight:800;letter-spacing:2px;}
+  .band.d .who .seg{color:#00C8FF;} .band.p .who .seg{color:#00E09A;} .band.c .who .seg{color:#FFB020;}
+  .who .nm{font-size:27px;font-weight:800;color:#fff;margin-top:4px;}
+  .who .sub{font-size:15px;color:#8295A5;margin-top:4px;font-weight:500;}
+  .flow{display:flex;align-items:center;gap:12px;}
+  .step{flex:1;}
+  .step .t{font-size:19px;font-weight:700;color:#E6EEF5;}
+  .step .d{font-size:14px;color:#8295A5;margin-top:3px;font-weight:500;line-height:1.4;}
+  .arr{color:#3D5060;font-size:20px;font-weight:300;}
+  .gain{text-align:right;}
+  .gain .v{font-size:23px;font-weight:800;line-height:1.2;}
+  .band.d .gain .v{color:#00C8FF;} .band.p .gain .v{color:#00E09A;} .band.c .gain .v{color:#FFB020;}
+  .gain .l{font-size:14px;color:#8295A5;margin-top:4px;font-weight:500;}
+  .kicker{position:absolute;bottom:58px;left:110px;right:110px;font-size:22px;font-weight:700;color:#C9D6E0;}
+  .kicker em{font-style:normal;color:#00E09A;font-weight:800;}
+</style></head><body>
+<div class="stage">
+  <div class="bg"></div>
+  <div class="pagenum"><b>03</b> / 12</div>
+  <div class="pad" style="padding:60px 90px;">
+    <div class="eyebrow"><span class="dot"></span> 클라이언트 · 한 시스템, 세 사용자 <span class="line"></span></div>
+    <h1>같은 데이터가 <span class="hl">세 사람</span>에게 닿습니다</h1>
+    <div class="lede">운전자는 <b>안전</b>을, 지자체는 <b>정책 근거</b>를, 시민은 <b>안전한 길</b>을 — 하나의 시스템에서.</div>
+    <div class="rows">
+      <div class="band d">
+        <div class="who"><div class="seg">B2C · DRIVER</div><div class="nm">운전자</div><div class="sub">Flutter 앱 · GitHub APK</div></div>
+        <div class="flow">
+          <div class="step"><div class="t">앱 설치 · 거치</div><div class="d">권한 허용 → 자동 모니터링</div></div>
+          <div class="arr">→</div>
+          <div class="step"><div class="t">위험 감지</div><div class="d">햅틱 + 음성 + HUD 경보</div></div>
+          <div class="arr">→</div>
+          <div class="step"><div class="t">사고 회피</div><div class="d">+ 사고 시 8시나리오 증거</div></div>
+        </div>
+        <div class="gain"><div class="v">3.38초 먼저</div><div class="l">회피율 25% → 84.5%</div></div>
+      </div>
+      <div class="band p">
+        <div class="who"><div class="seg">B2G · POLICY</div><div class="nm">정책결정자</div><div class="sub">지자체 · 도로공사 · 국토부</div></div>
+        <div class="flow">
+          <div class="step"><div class="t">대시보드 접속</div><div class="d">/policy · /competition</div></div>
+          <div class="arr">→</div>
+          <div class="step"><div class="t">위험 교차로 Top-N</div><div class="d">실측 사각지대 통계</div></div>
+          <div class="arr">→</div>
+          <div class="step"><div class="t">정책 리포트</div><div class="d">신호주기·스쿨존 자동 PDF</div></div>
+        </div>
+        <div class="gain"><div class="v">실측 기반 정책</div><div class="l">설문 아닌 주행 데이터</div></div>
+      </div>
+      <div class="band c">
+        <div class="who"><div class="seg">B2B · FLEET / 시민</div><div class="nm">운수 · 시민</div><div class="sub">영업용 fleet · 보행 약자</div></div>
+        <div class="flow">
+          <div class="step"><div class="t">fleet 관제</div><div class="d">DTG × 위험운전 점수</div></div>
+          <div class="arr">→</div>
+          <div class="step"><div class="t">위험 사전 차단</div><div class="d">졸음·과속 경고</div></div>
+          <div class="arr">→</div>
+          <div class="step"><div class="t">보행 안전 환원</div><div class="d">어린이·고령자 우선 알림</div></div>
+        </div>
+        <div class="gain"><div class="v">사고율 30%↓</div><div class="l">보험료·배상금 절감</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="kicker">세 사용자가 만든 데이터가 <em>서로의 안전을 키웁니다</em> — 같은 플랫폼, 세 가지 가치.</div>
+</div></body></html>

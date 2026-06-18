@@ -272,3 +272,50 @@ async def detect_video(
         "risk_ratio": risk_ratio,
         "highlights": highlights[:3]
     }
+
+# ── YOLO11 도로 사용자 검출 (실검출 → 실BEV) ──────────────────────────
+# ML Kit/YOLOv8 → YOLO11n 업그레이드. 모바일 TFLite ~3MB·실시간.
+import tempfile as _tempfile
+from fastapi import Query as _Query
+from ..services import yolo11_detector as _yolo11
+
+
+@router.get("/yolo/health")
+def yolo_health():
+    """YOLO11 가용성 + 모델 정보."""
+    ok = _yolo11.available()
+    return {
+        "ok": ok,
+        "model": "yolo11n",
+        "size_mb": 5.4,
+        "mobile": "TFLite int8 ~3MB · NNAPI/GPU 델리게이트 실시간",
+        "classes": list(_yolo11._ROAD_CLASS.values()),
+        "note": "ML Kit/YOLOv8 대비 도로 사용자 정확 분류 업그레이드" if ok else "ultralytics 미설치",
+    }
+
+
+@router.post("/yolo")
+async def yolo_detect(
+    image: UploadFile = File(...),
+    bev: bool = _Query(True, description="검출→BEV 점유 투영 포함"),
+    conf: float = _Query(0.30, ge=0.05, le=0.9),
+):
+    """업로드 이미지 → YOLO11 도로 사용자 검출 (+ 실검출 기반 BEV 점유).
+
+    BEV 는 스크립트가 아니라 검출 bbox 의 기하 투영 결과(source=live_detection).
+    """
+    suffix = os.path.splitext(image.filename or "f.jpg")[1] or ".jpg"
+    with _tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tf:
+        tf.write(await image.read())
+        tmp = tf.name
+    try:
+        if bev:
+            out = _yolo11.detect_to_bev(tmp, conf=conf)
+        else:
+            out = _yolo11.detect(tmp, conf=conf)
+        return out
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass

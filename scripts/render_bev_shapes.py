@@ -45,19 +45,31 @@ for m in range(0, int(FWD), 3):
 d.line([(gx(-road_half), gy(0)), (gx(-road_half), gy(FWD))], fill=(110, 190, 255, 90), width=2)
 d.line([(gx(road_half), gy(0)), (gx(road_half), gy(FWD))], fill=(110, 190, 255, 90), width=2)
 
-SPEC = {
-    "car":        (1.9, 4.6, (150, 170, 190), "veh"),
-    "truck":      (2.6, 9.0, (110, 125, 145), "veh"),
-    "bus":        (2.6, 11.0, (200, 165, 80), "veh"),
-    "motorcycle": (0.8, 2.1, (255, 176, 32), "two"),
-    "bicycle":    (0.65, 1.8, (0, 224, 154), "two"),
-    "person":     (0.55, 0.55, (255, 90, 90), "ped"),
-}
+KIND = {"car": "veh", "truck": "veh", "bus": "veh",
+        "motorcycle": "two", "bicycle": "two", "person": "ped"}
+COLOR = {"car": (150, 170, 190), "truck": (110, 125, 145), "bus": (200, 165, 80),
+         "motorcycle": (255, 176, 32), "bicycle": (0, 224, 154), "person": (255, 90, 90)}
+
+def _car_silhouette(cx, cy, w, l, color):
+    """top-view 차 실루엣 — 앞코(위) 살짝 좁힘 + 앞/뒤 유리 + 지붕."""
+    nose = w * 0.16
+    body = [
+        (cx - w/2, cy - l/2 + nose), (cx - w/2 + nose, cy - l/2),       # 앞 좌
+        (cx + w/2 - nose, cy - l/2), (cx + w/2, cy - l/2 + nose),       # 앞 우
+        (cx + w/2, cy + l/2 - nose*0.6), (cx + w/2 - nose*0.6, cy + l/2),
+        (cx - w/2 + nose*0.6, cy + l/2), (cx - w/2, cy + l/2 - nose*0.6),
+    ]
+    d.polygon(body, fill=color + (245,), outline=(255, 255, 255, 70))
+    # 앞 유리(어둡게) + 지붕(밝게) + 뒤 유리
+    d.rounded_rectangle([cx - w*0.36, cy - l*0.22, cx + w*0.36, cy - l*0.02], radius=3, fill=(20, 30, 45, 150))
+    d.rounded_rectangle([cx - w*0.34, cy - l*0.02, cx + w*0.34, cy + l*0.20], radius=3, fill=(255, 255, 255, 55))
+    d.rounded_rectangle([cx - w*0.34, cy + l*0.20, cx + w*0.34, cy + l*0.34], radius=3, fill=(20, 30, 45, 120))
 
 def draw_obj(p):
     cx, cy = gx(p["lateral_m"]), gy(p["distance_m"])
-    w_m, l_m, color, kind = SPEC.get(p["cls"], (1.8, 4.0, (150, 160, 175), "veh"))
-    w, l = w_m * PXM, l_m * PXM
+    cls = p["cls"]; kind = KIND.get(cls, "veh"); color = COLOR.get(cls, (150, 160, 175))
+    w = p.get("width_m", 1.9) * PXM
+    l = p.get("length_m", 4.6) * PXM
     if kind == "ped":
         r = max(5, int(w / 2))
         d.ellipse([cx - r - 6, cy - r - 6, cx + r + 6, cy + r + 6], outline=color + (130,), width=2)
@@ -66,22 +78,19 @@ def draw_obj(p):
     elif kind == "two":
         d.rounded_rectangle([cx - w/2, cy - l/2, cx + w/2, cy + l/2], radius=3,
                             fill=color + (240,), outline=(255, 255, 255, 70), width=1)
-        d.ellipse([cx - 3, cy - l/2 - 3, cx + 3, cy - l/2 + 3], fill=(255, 255, 255, 160))
-        lbl = f"{'오토바이' if p['cls'] == 'motorcycle' else '자전거'} {p['distance_m']}m"
+        d.ellipse([cx - 3, cy - l/2 - 3, cx + 3, cy - l/2 + 3], fill=(255, 255, 255, 170))  # 헤드라이트(앞)
+        lbl = f"{'오토바이' if cls == 'motorcycle' else '자전거'} {p['distance_m']}m"
     else:
-        d.rounded_rectangle([cx - w/2, cy - l/2, cx + w/2, cy + l/2], radius=max(3, int(w * 0.16)),
-                            fill=color + (240,), outline=(255, 255, 255, 60), width=1)
-        d.rounded_rectangle([cx - w*0.34, cy - l*0.30, cx + w*0.34, cy + l*0.05], radius=3,
-                            fill=(255, 255, 255, 45))
-        lbl = f"{p['cls']} {p['distance_m']}m"
-    d.text((cx + w/2 + 6, cy - 9), lbl, font=F(17),
-           fill=(255, 200, 200) if kind == "ped" else (235, 245, 252))
+        _car_silhouette(cx, cy, w, l, color)
+        lbl = f"{cls} {p.get('width_m','?')}×{p.get('length_m','?')}m"
+    d.text((cx + w/2 + 6, cy - 9), lbl, font=F(15),
+           fill=(255, 200, 200) if kind == "ped" else (225, 238, 248))
 
 occ = next((p for p in b["placed"] if p["cls"] in ("truck", "bus")), None)
 if occ:
     ox, oy = gx(occ["lateral_m"]), gy(occ["distance_m"])
     fy2 = gy(min(FWD, occ["distance_m"] + 12))
-    spread = SPEC[occ["cls"]][0] * PXM
+    spread = occ.get("width_m", 2.5) * PXM
     d.polygon([(ox - spread, oy), (ox + spread, oy), (ox + spread * 2.4, fy2), (ox - spread * 2.4, fy2)],
               fill=(255, 70, 70, 50))
     d.text((ox - spread * 1.6, (oy + fy2) // 2), "사각지대(가려짐)", font=F(16), fill=(255, 150, 150))
@@ -90,14 +99,14 @@ for p in sorted(b["placed"], key=lambda z: -z["distance_m"]):
     draw_obj(p)
 
 ex = gx(0); ey = gy(2.3)
-ew, el = 1.9 * PXM, 4.6 * PXM
-d.rounded_rectangle([ex - ew/2, ey - el/2, ex + ew/2, ey + el/2], radius=7,
-                    fill=(46, 134, 200, 255), outline=(150, 230, 255, 210), width=2)
-d.rounded_rectangle([ex - ew*0.32, ey - el*0.30, ex + ew*0.32, ey + el*0.05], radius=3, fill=(170, 235, 255, 90))
-d.text((ex - 30, ey + el/2 + 6), "EGO (내 차)", font=F(17), fill=(140, 230, 255))
+_car_silhouette(ex, ey, 1.85 * PXM, 4.7 * PXM, (46, 134, 200))
+d.ellipse([ex - 1.85*PXM/2 - 7, ey - 4.7*PXM/2 - 7, ex + 1.85*PXM/2 + 7, ey + 4.7*PXM/2 + 7],
+          outline=(120, 220, 255, 120), width=2)
+d.text((ex - 30, ey + 4.7*PXM/2 + 8), "EGO (내 차)", font=F(17), fill=(140, 230, 255))
 
-d.text((24, 22), "AuraView BEV — YOLO11 실검출 · 정사영 실측비율", font=F(23), fill=(235, 245, 252))
-d.text((24, 56), f"source: live_detection · 22px = 1m · {b['summary']}", font=F(15), fill=(120, 175, 205))
+d.text((24, 22), "AuraView BEV — YOLO11 실검출 · 핀홀 실측 치수", font=F(23), fill=(235, 245, 252))
+d.text((24, 56), f"치수 = bbox 폭(px) × 거리 / 초점거리 (핀홀 계산) · 22px=1m · {b['summary']}",
+       font=F(14), fill=(120, 175, 205))
 
 im.save(os.path.join(ROOT, "docs", "captures", out_name))
 print(f"saved {out_name} · {len(b['placed'])} objects · {b['summary']}")

@@ -131,14 +131,22 @@ def detect_to_bev(image_path: str, conf: float = 0.30, grid: int = 40,
             continue
         x, y, w, h = det["box"]
         cx = x + w / 2.0
-        foot_y = y + h            # bbox 하단 = 지면 접점
-        # 전방 거리: bbox 높이/클래스 실제 높이 기반 근사
+        # 전방 거리: bbox 높이/클래스 실제 높이 기반 근사 (핀홀)
         real_h = {"person": 1.7, "bicycle": 1.5, "motorcycle": 1.5,
                   "car": 1.5, "bus": 3.2, "truck": 3.5}.get(name, 1.6)
         dist = float(np.clip(real_h * focal / max(h, 1.0), 1.0, forward_m))
         # 횡방향(좌우): 광선 각도
         ang = (cx - iw / 2.0) / focal
         lateral = float(np.clip(dist * ang, -lateral_m, lateral_m))
+        # ★ 실측 치수: bbox 폭(px) → 실제 폭(m) = w_px/focal × 거리 (핀홀)
+        #   길이는 클래스 표준 종횡비로 폭에서 추정 (단일 프레임 깊이 한계)
+        meas_w = float(w / focal * dist)
+        clamp_w = {"person": (0.4, 0.8), "bicycle": (0.4, 0.8), "motorcycle": (0.5, 1.0),
+                   "car": (1.6, 2.1), "bus": (2.3, 2.7), "truck": (2.0, 2.7)}.get(name, (1.6, 2.1))
+        w_m = float(np.clip(meas_w, *clamp_w))
+        ratio = {"car": 2.4, "truck": 3.0, "bus": 4.3, "motorcycle": 2.5,
+                 "bicycle": 2.6, "person": 1.0}.get(name, 2.4)
+        l_m = round(w_m * ratio, 2)
         # 격자 좌표
         row = int(np.clip(grid - 1 - (dist / forward_m) * (grid - 1), 0, grid - 1))
         col = int(np.clip((lateral + lateral_m) / (2 * lateral_m) * (grid - 1), 0, grid - 1))
@@ -146,7 +154,8 @@ def detect_to_bev(image_path: str, conf: float = 0.30, grid: int = 40,
         _splat(g, row, col, sigma=1.4, mass=mass)
         cls_g[row, col] = 2 if name in ("person", "bicycle", "motorcycle") else 1
         placed.append({"cls": name, "row": row, "col": col,
-                       "distance_m": round(dist, 1), "lateral_m": round(lateral, 1)})
+                       "distance_m": round(dist, 1), "lateral_m": round(lateral, 1),
+                       "width_m": round(w_m, 2), "length_m": l_m})
 
     occ_mass = float(g.sum())
     return {
